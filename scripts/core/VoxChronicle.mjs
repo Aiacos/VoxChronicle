@@ -11,6 +11,7 @@
  */
 
 import { MODULE_ID } from '../main.mjs';
+import { SessionOrchestrator } from '../orchestration/SessionOrchestrator.mjs';
 
 /**
  * Main VoxChronicle singleton class
@@ -100,6 +101,15 @@ class VoxChronicle {
 
       // Services will be instantiated here once their classes are created
       // For now, we set up the structure for later integration
+
+      // Initialize session orchestrator with available services
+      this.sessionOrchestrator = new SessionOrchestrator({
+        audioRecorder: this.audioRecorder,
+        transcriptionService: this.transcriptionService,
+        entityExtractor: this.entityExtractor,
+        imageGenerationService: this.imageGenerationService,
+        kankaService: this.kankaService
+      });
 
       // Mark as initialized
       this.isInitialized = true;
@@ -257,7 +267,8 @@ class VoxChronicle {
         transcription: !!this.transcriptionService,
         imageGeneration: !!this.imageGenerationService,
         kanka: !!this.kankaService,
-        entityExtractor: !!this.entityExtractor
+        entityExtractor: !!this.entityExtractor,
+        sessionOrchestrator: !!this.sessionOrchestrator
       },
       settings: {
         openaiConfigured: !!this._getSetting('openaiApiKey'),
