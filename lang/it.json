@@ -234,6 +234,13 @@
       "Help": "Aiuto"
     },
 
+    "Controls": {
+      "Title": "VoxChronicle",
+      "Recorder": "Registratore Sessione",
+      "SpeakerLabels": "Etichette Parlanti",
+      "Settings": "Impostazioni Modulo"
+    },
+
     "UI": {
       "ControlTitle": "VoxChronicle",
       "ControlHint": "Apri il registratore sessione VoxChronicle",

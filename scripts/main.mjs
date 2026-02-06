@@ -14,6 +14,25 @@
 const MODULE_ID = 'vox-chronicle';
 
 /**
+ * Singleton reference to the RecorderControls Application
+ * Lazy-loaded when first needed
+ * @type {RecorderControls|null}
+ */
+let recorderControlsApp = null;
+
+/**
+ * Get or create the RecorderControls application instance
+ * @returns {Promise<RecorderControls>} The recorder controls application
+ */
+async function getRecorderControls() {
+  if (!recorderControlsApp) {
+    const { RecorderControls } = await import('./ui/RecorderControls.mjs');
+    recorderControlsApp = new RecorderControls();
+  }
+  return recorderControlsApp;
+}
+
+/**
  * Initialize module - called when Foundry VTT initializes
  * This hook fires before the game is fully ready
  * Use this for registering settings and preparing the module
@@ -57,6 +76,68 @@ Hooks.once('ready', async () => {
     console.error(`${MODULE_ID} | Failed to initialize module:`, error);
     ui.notifications?.error('VoxChronicle: Failed to initialize module. Check console for details.');
   }
+});
+
+/**
+ * Register VoxChronicle controls in the scene controls sidebar
+ * This hook adds a new tool group for session recording controls
+ *
+ * @param {SceneControl[]} controls - The array of scene control groups
+ */
+Hooks.on('getSceneControlButtons', (controls) => {
+  // Only show controls if module is ready
+  if (!game[MODULE_ID]?.ready) return;
+
+  // Find the notes control group or create our own group
+  // Add VoxChronicle as a new control group for clarity
+  controls.push({
+    name: MODULE_ID,
+    title: 'VOXCHRONICLE.Controls.Title',
+    icon: 'fas fa-microphone',
+    layer: 'controls',
+    visible: game.user?.isGM ?? true,
+    tools: [
+      {
+        name: 'recorder',
+        title: 'VOXCHRONICLE.Controls.Recorder',
+        icon: 'fas fa-microphone',
+        button: true,
+        onClick: async () => {
+          const recorder = await getRecorderControls();
+          recorder.render(true, { focus: true });
+        }
+      },
+      {
+        name: 'speaker-labels',
+        title: 'VOXCHRONICLE.Controls.SpeakerLabels',
+        icon: 'fas fa-users',
+        button: true,
+        onClick: async () => {
+          const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
+          const speakerLabeling = new SpeakerLabeling();
+          speakerLabeling.render(true, { focus: true });
+        }
+      },
+      {
+        name: 'settings',
+        title: 'VOXCHRONICLE.Controls.Settings',
+        icon: 'fas fa-cog',
+        button: true,
+        onClick: () => {
+          // Open module settings directly
+          const app = new SettingsConfig();
+          app.render(true, { focus: true });
+          // Scroll to VoxChronicle section after render
+          setTimeout(() => {
+            const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
+            if (section) section.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+    ]
+  });
+
+  console.log(`${MODULE_ID} | Scene control buttons registered`);
 });
 
 // Export module ID for use in other files
