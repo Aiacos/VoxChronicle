@@ -93,35 +93,46 @@ Hooks.on('getSceneControlButtons', (controls) => {
   const isV13 = typeof controls === 'object' && !Array.isArray(controls);
 
   if (isV13) {
-    // Foundry v13: controls is an object, tools must be an object keyed by name
+    // Foundry v13: SceneControl requires name, title, icon, activeTool, order, tools
+    // SceneControlTool requires name, title, icon, order, and uses onChange (not onClick)
     controls[MODULE_ID] = {
-      icon: 'fas fa-microphone',
+      name: MODULE_ID,
+      icon: 'fa-solid fa-microphone',
       title: 'VOXCHRONICLE.Controls.Title',
+      activeTool: 'recorder',
+      order: 100,
+      visible: true,
       tools: {
         recorder: {
-          icon: 'fas fa-microphone',
+          name: 'recorder',
+          icon: 'fa-solid fa-microphone',
           title: 'VOXCHRONICLE.Controls.Recorder',
+          order: 0,
           button: true,
-          onClick: async () => {
+          onChange: async () => {
             const recorder = await getRecorderControls();
             recorder.render(true, { focus: true });
           }
         },
         speakerLabels: {
-          icon: 'fas fa-users',
+          name: 'speakerLabels',
+          icon: 'fa-solid fa-users',
           title: 'VOXCHRONICLE.Controls.SpeakerLabels',
+          order: 1,
           button: true,
-          onClick: async () => {
+          onChange: async () => {
             const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
             const speakerLabeling = new SpeakerLabeling();
             speakerLabeling.render(true, { focus: true });
           }
         },
         settings: {
-          icon: 'fas fa-cog',
+          name: 'settings',
+          icon: 'fa-solid fa-cog',
           title: 'VOXCHRONICLE.Controls.Settings',
+          order: 2,
           button: true,
-          onClick: () => {
+          onChange: () => {
             const app = new SettingsConfig();
             app.render(true, { focus: true });
             setTimeout(() => {
