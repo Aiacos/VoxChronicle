@@ -1,0 +1,738 @@
+/**
+ * RecorderControls - UI Component for Session Recording
+ *
+ * A Foundry VTT Application that provides start/stop recording controls
+ * for VoxChronicle session capture. Integrates with the SessionOrchestrator
+ * for workflow management.
+ *
+ * @class RecorderControls
+ * @extends Application
+ * @module vox-chronicle
+ */
+
+import { MODULE_ID } from '../main.mjs';
+import { Logger } from '../utils/Logger.mjs';
+import { VoxChronicle } from '../core/VoxChronicle.mjs';
+import { Settings } from '../core/Settings.mjs';
+import { SessionState } from '../orchestration/SessionOrchestrator.mjs';
+
+/**
+ * Recording UI state enum
+ * @enum {string}
+ */
+const RecorderUIState = {
+  IDLE: 'idle',
+  RECORDING: 'recording',
+  PAUSED: 'paused',
+  PROCESSING: 'processing',
+  ERROR: 'error'
+};
+
+/**
+ * RecorderControls Application class
+ * Provides UI for starting, stopping, pausing, and managing session recordings
+ */
+class RecorderControls extends Application {
+  /**
+   * Logger instance for this class
+   * @type {Object}
+   * @private
+   */
+  _logger = Logger.createChild('RecorderControls');
+
+  /**
+   * Current UI state
+   * @type {string}
+   * @private
+   */
+  _uiState = RecorderUIState.IDLE;
+
+  /**
+   * Recording start timestamp
+   * @type {number|null}
+   * @private
+   */
+  _recordingStartTime = null;
+
+  /**
+   * Duration update interval ID
+   * @type {number|null}
+   * @private
+   */
+  _durationInterval = null;
+
+  /**
+   * Current progress information
+   * @type {Object}
+   * @private
+   */
+  _progress = {
+    stage: '',
+    progress: 0,
+    message: ''
+  };
+
+  /**
+   * Last error message
+   * @type {string|null}
+   * @private
+   */
+  _lastError = null;
+
+  /**
+   * Get default options for the Application
+   * @returns {Object} Default application options
+   * @static
+   */
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: 'vox-chronicle-recorder',
+      title: game.i18n?.localize('VOXCHRONICLE.Recorder.Title') || 'Session Recorder',
+      template: `modules/${MODULE_ID}/templates/recorder.hbs`,
+      classes: ['vox-chronicle', 'recorder-controls'],
+      width: 320,
+      height: 'auto',
+      minimizable: true,
+      resizable: false,
+      popOut: true
+    });
+  }
+
+  /**
+   * Create a new RecorderControls instance
+   * @param {Object} [options] - Application options
+   */
+  constructor(options = {}) {
+    super(options);
+    this._setupOrchestratorCallbacks();
+    this._logger.debug('RecorderControls initialized');
+  }
+
+  /**
+   * Set up callbacks for the SessionOrchestrator
+   * @private
+   */
+  _setupOrchestratorCallbacks() {
+    const vox = VoxChronicle.getInstance();
+    const orchestrator = vox.sessionOrchestrator;
+
+    if (orchestrator) {
+      orchestrator.setCallbacks({
+        onStateChange: this._onOrchestratorStateChange.bind(this),
+        onProgress: this._onOrchestratorProgress.bind(this),
+        onError: this._onOrchestratorError.bind(this),
+        onSessionComplete: this._onSessionComplete.bind(this)
+      });
+    }
+  }
+
+  /**
+   * Handle orchestrator state changes
+   * @param {string} newState - New session state
+   * @param {string} oldState - Previous session state
+   * @param {Object} data - Additional state data
+   * @private
+   */
+  _onOrchestratorStateChange(newState, oldState, data) {
+    this._logger.debug(`Orchestrator state: ${oldState} -> ${newState}`);
+
+    // Map orchestrator state to UI state
+    switch (newState) {
+      case SessionState.IDLE:
+      case SessionState.COMPLETE:
+        this._uiState = RecorderUIState.IDLE;
+        this._stopDurationTimer();
+        break;
+      case SessionState.RECORDING:
+        this._uiState = RecorderUIState.RECORDING;
+        this._startDurationTimer();
+        break;
+      case SessionState.PAUSED:
+        this._uiState = RecorderUIState.PAUSED;
+        break;
+      case SessionState.PROCESSING:
+      case SessionState.EXTRACTING:
+      case SessionState.GENERATING_IMAGES:
+      case SessionState.PUBLISHING:
+        this._uiState = RecorderUIState.PROCESSING;
+        break;
+      case SessionState.ERROR:
+        this._uiState = RecorderUIState.ERROR;
+        this._stopDurationTimer();
+        break;
+    }
+
+    this.render(false);
+  }
+
+  /**
+   * Handle orchestrator progress updates
+   * @param {Object} progress - Progress information
+   * @private
+   */
+  _onOrchestratorProgress(progress) {
+    this._progress = {
+      stage: progress.stage,
+      progress: progress.progress,
+      message: progress.message
+    };
+    this.render(false);
+  }
+
+  /**
+   * Handle orchestrator errors
+   * @param {Error} error - The error that occurred
+   * @param {string} stage - The stage where the error occurred
+   * @private
+   */
+  _onOrchestratorError(error, stage) {
+    this._lastError = error.message;
+    this._logger.error(`Error in ${stage}:`, error);
+    ui.notifications?.error(game.i18n?.format('VOXCHRONICLE.Errors.Generic') || error.message);
+    this.render(false);
+  }
+
+  /**
+   * Handle session completion
+   * @param {Object} session - The completed session data
+   * @private
+   */
+  _onSessionComplete(session) {
+    this._logger.log('Session complete');
+    const segmentCount = session.transcript?.segments?.length || 0;
+    ui.notifications?.info(
+      game.i18n?.format('VOXCHRONICLE.Notifications.TranscriptionComplete', { segments: segmentCount }) ||
+      `Transcription complete (${segmentCount} segments)`
+    );
+    this.render(false);
+  }
+
+  /**
+   * Start the duration timer for UI updates
+   * @private
+   */
+  _startDurationTimer() {
+    if (this._durationInterval) {
+      clearInterval(this._durationInterval);
+    }
+
+    this._recordingStartTime = Date.now();
+    this._durationInterval = setInterval(() => {
+      this.render(false);
+    }, 1000);
+  }
+
+  /**
+   * Stop the duration timer
+   * @private
+   */
+  _stopDurationTimer() {
+    if (this._durationInterval) {
+      clearInterval(this._durationInterval);
+      this._durationInterval = null;
+    }
+    this._recordingStartTime = null;
+  }
+
+  /**
+   * Get the current recording duration in seconds
+   * @returns {number} Duration in seconds
+   * @private
+   */
+  _getRecordingDuration() {
+    if (!this._recordingStartTime) return 0;
+    return Math.floor((Date.now() - this._recordingStartTime) / 1000);
+  }
+
+  /**
+   * Format duration as HH:MM:SS
+   * @param {number} seconds - Duration in seconds
+   * @returns {string} Formatted duration string
+   * @private
+   */
+  _formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Get data for the template
+   * @param {Object} options - Render options
+   * @returns {Object} Template data
+   */
+  async getData(options = {}) {
+    const vox = VoxChronicle.getInstance();
+    const orchestrator = vox.sessionOrchestrator;
+    const sessionSummary = orchestrator?.getSessionSummary();
+    const configStatus = Settings.getConfigurationStatus();
+
+    const duration = this._getRecordingDuration();
+    const formattedDuration = this._formatDuration(duration);
+
+    // Get status text
+    let statusText;
+    let statusClass = '';
+    switch (this._uiState) {
+      case RecorderUIState.RECORDING:
+        statusText = game.i18n?.localize('VOXCHRONICLE.Recorder.Recording') || 'Recording...';
+        statusClass = 'recording';
+        break;
+      case RecorderUIState.PAUSED:
+        statusText = game.i18n?.localize('VOXCHRONICLE.Recorder.Paused') || 'Paused';
+        statusClass = 'paused';
+        break;
+      case RecorderUIState.PROCESSING:
+        statusText = this._progress.message ||
+          game.i18n?.localize('VOXCHRONICLE.Recorder.Processing') || 'Processing...';
+        statusClass = 'processing';
+        break;
+      case RecorderUIState.ERROR:
+        statusText = this._lastError ||
+          game.i18n?.localize('VOXCHRONICLE.Errors.Generic') || 'Error';
+        statusClass = 'error';
+        break;
+      default:
+        statusText = game.i18n?.localize('VOXCHRONICLE.Recorder.Ready') || 'Ready to record';
+        statusClass = 'ready';
+    }
+
+    return {
+      moduleId: MODULE_ID,
+      uiState: this._uiState,
+      isIdle: this._uiState === RecorderUIState.IDLE,
+      isRecording: this._uiState === RecorderUIState.RECORDING,
+      isPaused: this._uiState === RecorderUIState.PAUSED,
+      isProcessing: this._uiState === RecorderUIState.PROCESSING,
+      isError: this._uiState === RecorderUIState.ERROR,
+      canRecord: this._uiState === RecorderUIState.IDLE,
+      canStop: this._uiState === RecorderUIState.RECORDING || this._uiState === RecorderUIState.PAUSED,
+      canPause: this._uiState === RecorderUIState.RECORDING,
+      canResume: this._uiState === RecorderUIState.PAUSED,
+      statusText,
+      statusClass,
+      duration: formattedDuration,
+      durationSeconds: duration,
+      progress: this._progress,
+      hasProgress: this._uiState === RecorderUIState.PROCESSING && this._progress.progress > 0,
+      sessionSummary,
+      configStatus,
+      isConfigured: configStatus.ready,
+      isOpenAIConfigured: configStatus.openai,
+      isKankaConfigured: configStatus.kanka,
+      lastError: this._lastError,
+      // Localization strings
+      i18n: {
+        title: game.i18n?.localize('VOXCHRONICLE.Recorder.Title') || 'Session Recorder',
+        startRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.StartRecording') || 'Start Recording',
+        stopRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.StopRecording') || 'Stop Recording',
+        pauseRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.PauseRecording') || 'Pause Recording',
+        resumeRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.ResumeRecording') || 'Resume Recording',
+        duration: game.i18n?.localize('VOXCHRONICLE.Recorder.Duration') || 'Duration',
+        status: game.i18n?.localize('VOXCHRONICLE.Recorder.Status') || 'Status',
+        notConfigured: game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
+          'Please configure your API keys in module settings.',
+        settings: game.i18n?.localize('VOXCHRONICLE.Buttons.Settings') || 'Settings'
+      }
+    };
+  }
+
+  /**
+   * Activate event listeners for the rendered HTML
+   * @param {jQuery} html - The rendered HTML element
+   */
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    // Start recording button
+    html.find('[data-action="start-recording"]').on('click', this._onStartRecording.bind(this));
+
+    // Stop recording button
+    html.find('[data-action="stop-recording"]').on('click', this._onStopRecording.bind(this));
+
+    // Pause recording button
+    html.find('[data-action="pause-recording"]').on('click', this._onPauseRecording.bind(this));
+
+    // Resume recording button
+    html.find('[data-action="resume-recording"]').on('click', this._onResumeRecording.bind(this));
+
+    // Cancel session button
+    html.find('[data-action="cancel-session"]').on('click', this._onCancelSession.bind(this));
+
+    // Open settings button
+    html.find('[data-action="open-settings"]').on('click', this._onOpenSettings.bind(this));
+
+    this._logger.debug('Event listeners activated');
+  }
+
+  /**
+   * Handle start recording button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  async _onStartRecording(event) {
+    event.preventDefault();
+    await this.startRecording();
+  }
+
+  /**
+   * Handle stop recording button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  async _onStopRecording(event) {
+    event.preventDefault();
+    await this.stopRecording();
+  }
+
+  /**
+   * Handle pause recording button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  _onPauseRecording(event) {
+    event.preventDefault();
+    this.pauseRecording();
+  }
+
+  /**
+   * Handle resume recording button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  _onResumeRecording(event) {
+    event.preventDefault();
+    this.resumeRecording();
+  }
+
+  /**
+   * Handle cancel session button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  _onCancelSession(event) {
+    event.preventDefault();
+    this.cancelSession();
+  }
+
+  /**
+   * Handle open settings button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  _onOpenSettings(event) {
+    event.preventDefault();
+    // Open the module settings
+    const settingsApp = new SettingsConfig();
+    settingsApp.render(true, { focus: true });
+  }
+
+  /**
+   * Start a new recording session
+   *
+   * @param {Object} [options] - Recording options
+   * @param {string} [options.title] - Session title
+   * @returns {Promise<void>}
+   * @throws {Error} If recording cannot be started
+   */
+  async startRecording(options = {}) {
+    const configStatus = Settings.getConfigurationStatus();
+
+    // Check if OpenAI is configured (required for transcription)
+    if (!configStatus.openai) {
+      ui.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.ApiKeyMissing') ||
+        'OpenAI API key is not configured. Please check module settings.'
+      );
+      return;
+    }
+
+    this._logger.log('Starting recording...');
+    this._lastError = null;
+
+    try {
+      const vox = VoxChronicle.getInstance();
+      const orchestrator = vox.sessionOrchestrator;
+
+      if (!orchestrator) {
+        throw new Error('Session orchestrator not available');
+      }
+
+      // Prepare session options
+      const sessionOptions = {
+        title: options.title || `Session ${new Date().toLocaleDateString()}`,
+        speakerMap: Settings.getSpeakerLabels(),
+        language: Settings.getTranscriptionLanguage(),
+        recordingOptions: Settings.getAudioSettings()
+      };
+
+      await orchestrator.startSession(sessionOptions);
+
+      ui.notifications?.info(
+        game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStarted') ||
+        'Recording started'
+      );
+
+      this._logger.log('Recording started successfully');
+
+    } catch (error) {
+      this._logger.error('Failed to start recording:', error);
+      this._lastError = error.message;
+      this._uiState = RecorderUIState.ERROR;
+
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Recorder.RecordingFailed') ||
+        `Recording failed: ${error.message}`
+      );
+
+      this.render(false);
+    }
+  }
+
+  /**
+   * Stop the current recording session
+   *
+   * @param {Object} [options] - Stop options
+   * @param {boolean} [options.processImmediately=true] - Process transcription immediately
+   * @returns {Promise<Object|null>} Session data or null if failed
+   */
+  async stopRecording(options = {}) {
+    if (this._uiState !== RecorderUIState.RECORDING && this._uiState !== RecorderUIState.PAUSED) {
+      this._logger.warn('No active recording to stop');
+      return null;
+    }
+
+    this._logger.log('Stopping recording...');
+
+    try {
+      const vox = VoxChronicle.getInstance();
+      const orchestrator = vox.sessionOrchestrator;
+
+      if (!orchestrator) {
+        throw new Error('Session orchestrator not available');
+      }
+
+      const duration = this._getRecordingDuration();
+      const sessionData = await orchestrator.stopSession(options);
+
+      ui.notifications?.info(
+        game.i18n?.format('VOXCHRONICLE.Notifications.RecordingStopped', {
+          duration: this._formatDuration(duration)
+        }) || `Recording stopped (${this._formatDuration(duration)})`
+      );
+
+      this._logger.log('Recording stopped successfully');
+      return sessionData;
+
+    } catch (error) {
+      this._logger.error('Failed to stop recording:', error);
+      this._lastError = error.message;
+
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Recorder.RecordingFailed') ||
+        `Failed to stop recording: ${error.message}`
+      );
+
+      this.render(false);
+      return null;
+    }
+  }
+
+  /**
+   * Pause the current recording
+   */
+  pauseRecording() {
+    if (this._uiState !== RecorderUIState.RECORDING) {
+      this._logger.warn('Cannot pause - not recording');
+      return;
+    }
+
+    this._logger.log('Pausing recording...');
+
+    try {
+      const vox = VoxChronicle.getInstance();
+      const orchestrator = vox.sessionOrchestrator;
+
+      if (orchestrator) {
+        orchestrator.pauseRecording();
+      }
+
+    } catch (error) {
+      this._logger.error('Failed to pause recording:', error);
+      ui.notifications?.error(`Failed to pause: ${error.message}`);
+    }
+  }
+
+  /**
+   * Resume a paused recording
+   */
+  resumeRecording() {
+    if (this._uiState !== RecorderUIState.PAUSED) {
+      this._logger.warn('Cannot resume - not paused');
+      return;
+    }
+
+    this._logger.log('Resuming recording...');
+
+    try {
+      const vox = VoxChronicle.getInstance();
+      const orchestrator = vox.sessionOrchestrator;
+
+      if (orchestrator) {
+        orchestrator.resumeRecording();
+      }
+
+    } catch (error) {
+      this._logger.error('Failed to resume recording:', error);
+      ui.notifications?.error(`Failed to resume: ${error.message}`);
+    }
+  }
+
+  /**
+   * Cancel the current session without saving
+   */
+  cancelSession() {
+    this._logger.log('Cancelling session...');
+
+    try {
+      const vox = VoxChronicle.getInstance();
+      const orchestrator = vox.sessionOrchestrator;
+
+      if (orchestrator) {
+        orchestrator.cancelSession();
+      }
+
+      this._uiState = RecorderUIState.IDLE;
+      this._lastError = null;
+      this._progress = { stage: '', progress: 0, message: '' };
+      this._stopDurationTimer();
+
+      this.render(false);
+
+    } catch (error) {
+      this._logger.error('Failed to cancel session:', error);
+    }
+  }
+
+  /**
+   * Get the current recording state
+   *
+   * @returns {Object} Current state information
+   */
+  getState() {
+    return {
+      uiState: this._uiState,
+      isRecording: this._uiState === RecorderUIState.RECORDING,
+      isPaused: this._uiState === RecorderUIState.PAUSED,
+      isProcessing: this._uiState === RecorderUIState.PROCESSING,
+      duration: this._getRecordingDuration(),
+      progress: { ...this._progress },
+      lastError: this._lastError
+    };
+  }
+
+  /**
+   * Clean up when the application is closed
+   * @param {Object} options - Close options
+   */
+  async close(options = {}) {
+    this._stopDurationTimer();
+    return super.close(options);
+  }
+
+  /**
+   * Render fallback content when template is not available
+   * This generates inline HTML for the recorder controls
+   * @returns {string} Inline HTML content
+   */
+  _renderFallbackContent() {
+    const data = this.getData();
+
+    return `
+      <div class="vox-chronicle-recorder">
+        <div class="recorder-status ${data.statusClass}">
+          <span class="status-indicator"></span>
+          <span class="status-text">${data.statusText}</span>
+        </div>
+
+        <div class="recorder-duration">
+          <span class="duration-label">${data.i18n.duration}:</span>
+          <span class="duration-value">${data.duration}</span>
+        </div>
+
+        ${data.hasProgress ? `
+          <div class="recorder-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${data.progress.progress}%"></div>
+            </div>
+            <span class="progress-text">${data.progress.message}</span>
+          </div>
+        ` : ''}
+
+        <div class="recorder-controls">
+          ${data.canRecord ? `
+            <button class="btn-record" data-action="start-recording" title="${data.i18n.startRecording}">
+              <i class="fas fa-microphone"></i> ${data.i18n.startRecording}
+            </button>
+          ` : ''}
+
+          ${data.canStop ? `
+            <button class="btn-stop" data-action="stop-recording" title="${data.i18n.stopRecording}">
+              <i class="fas fa-stop"></i> ${data.i18n.stopRecording}
+            </button>
+          ` : ''}
+
+          ${data.canPause ? `
+            <button class="btn-pause" data-action="pause-recording" title="${data.i18n.pauseRecording}">
+              <i class="fas fa-pause"></i>
+            </button>
+          ` : ''}
+
+          ${data.canResume ? `
+            <button class="btn-resume" data-action="resume-recording" title="${data.i18n.resumeRecording}">
+              <i class="fas fa-play"></i>
+            </button>
+          ` : ''}
+        </div>
+
+        ${!data.isConfigured ? `
+          <div class="recorder-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>${data.i18n.notConfigured}</span>
+            <button class="btn-settings" data-action="open-settings">
+              <i class="fas fa-cog"></i> ${data.i18n.settings}
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Override _renderInner to provide fallback content if template is missing
+   * @param {Object} data - Template data
+   * @returns {Promise<jQuery>} Rendered inner content
+   * @protected
+   */
+  async _renderInner(data) {
+    try {
+      return await super._renderInner(data);
+    } catch (error) {
+      // Template not found, use inline fallback
+      this._logger.warn('Template not found, using fallback HTML');
+      const html = this._renderFallbackContent();
+      return $(html);
+    }
+  }
+}
+
+// Export the class and enum
+export {
+  RecorderControls,
+  RecorderUIState
+};
