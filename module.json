@@ -11,7 +11,7 @@
   "authors": [
     {
       "name": "VoxChronicle Team",
-      "url": "https://github.com/voxchronicle"
+      "url": "https://github.com/Aiacos"
     }
   ],
   "esmodules": ["scripts/main.mjs"],
@@ -28,11 +28,11 @@
       "path": "lang/it.json"
     }
   ],
-  "url": "https://github.com/voxchronicle/vox-chronicle",
-  "manifest": "https://github.com/voxchronicle/vox-chronicle/releases/latest/download/module.json",
-  "download": "https://github.com/voxchronicle/vox-chronicle/releases/latest/download/vox-chronicle.zip",
+  "url": "https://github.com/Aiacos/VoxChronicle",
+  "manifest": "https://github.com/Aiacos/VoxChronicle/releases/latest/download/module.json",
+  "download": "https://github.com/Aiacos/VoxChronicle/releases/download/v1.0.0/vox-chronicle-v1.0.0.zip",
   "license": "MIT",
   "readme": "README.md",
-  "bugs": "https://github.com/voxchronicle/vox-chronicle/issues",
+  "bugs": "https://github.com/Aiacos/VoxChronicle/issues",
   "changelog": "CHANGELOG.md"
 }
