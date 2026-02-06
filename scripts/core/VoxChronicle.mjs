@@ -12,6 +12,12 @@
 
 import { MODULE_ID } from '../main.mjs';
 import { SessionOrchestrator } from '../orchestration/SessionOrchestrator.mjs';
+import { AudioRecorder } from '../audio/AudioRecorder.mjs';
+import { TranscriptionService } from '../ai/TranscriptionService.mjs';
+import { ImageGenerationService } from '../ai/ImageGenerationService.mjs';
+import { KankaService } from '../kanka/KankaService.mjs';
+import { EntityExtractor } from '../ai/EntityExtractor.mjs';
+import { NarrativeExporter } from '../kanka/NarrativeExporter.mjs';
 
 /**
  * Main VoxChronicle singleton class
@@ -41,6 +47,9 @@ class VoxChronicle {
 
     /** @type {Object|null} Entity extraction service */
     this.entityExtractor = null;
+
+    /** @type {Object|null} Narrative exporter for chronicle formatting */
+    this.narrativeExporter = null;
 
     /** @type {Object|null} Session orchestrator */
     this.sessionOrchestrator = null;
@@ -90,8 +99,12 @@ class VoxChronicle {
       const openaiApiKey = this._getSetting('openaiApiKey');
       const kankaApiToken = this._getSetting('kankaApiToken');
       const kankaCampaignId = this._getSetting('kankaCampaignId');
+      const audioSettings = {
+        echoCancellation: this._getSetting('echoCancellation') ?? true,
+        noiseSuppression: this._getSetting('noiseSuppression') ?? true
+      };
 
-      // Validate required settings
+      // Validate and warn about missing settings
       if (!openaiApiKey) {
         console.warn(`${MODULE_ID} | OpenAI API key not configured`);
       }
@@ -99,8 +112,25 @@ class VoxChronicle {
         console.warn(`${MODULE_ID} | Kanka API settings not configured`);
       }
 
-      // Services will be instantiated here once their classes are created
-      // For now, we set up the structure for later integration
+      // Initialize audio recorder (always available)
+      this.audioRecorder = new AudioRecorder(audioSettings);
+
+      // Initialize OpenAI services (if API key configured)
+      if (openaiApiKey) {
+        this.transcriptionService = new TranscriptionService(openaiApiKey);
+        this.imageGenerationService = new ImageGenerationService(openaiApiKey);
+        this.entityExtractor = new EntityExtractor(openaiApiKey);
+      }
+
+      // Initialize Kanka services (if configured)
+      if (kankaApiToken && kankaCampaignId) {
+        this.kankaService = new KankaService(kankaApiToken, kankaCampaignId);
+        this.narrativeExporter = new NarrativeExporter();
+        // Set OpenAI client on narrative exporter for AI summaries
+        if (this.transcriptionService) {
+          this.narrativeExporter.setOpenAIClient(openaiApiKey);
+        }
+      }
 
       // Initialize session orchestrator with available services
       this.sessionOrchestrator = new SessionOrchestrator({
@@ -108,13 +138,13 @@ class VoxChronicle {
         transcriptionService: this.transcriptionService,
         entityExtractor: this.entityExtractor,
         imageGenerationService: this.imageGenerationService,
-        kankaService: this.kankaService
+        kankaService: this.kankaService,
+        narrativeExporter: this.narrativeExporter
       });
 
       // Mark as initialized
       this.isInitialized = true;
       console.log(`${MODULE_ID} | VoxChronicle services initialized successfully`);
-
     } catch (error) {
       console.error(`${MODULE_ID} | Failed to initialize services:`, error);
       throw error;
@@ -268,6 +298,7 @@ class VoxChronicle {
         imageGeneration: !!this.imageGenerationService,
         kanka: !!this.kankaService,
         entityExtractor: !!this.entityExtractor,
+        narrativeExporter: !!this.narrativeExporter,
         sessionOrchestrator: !!this.sessionOrchestrator
       },
       settings: {
