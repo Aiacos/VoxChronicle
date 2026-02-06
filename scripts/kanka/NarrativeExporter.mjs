@@ -5,11 +5,15 @@
  * into well-structured Kanka journal entries (chronicles). Supports both
  * raw transcript formatting and AI-enhanced narrative summaries.
  *
+ * Integration with TranscriptionService/OpenAI enables AI-powered summary
+ * generation for richer, more narrative-style chronicles.
+ *
  * @class NarrativeExporter
  * @module vox-chronicle
  */
 
 import { Logger } from '../utils/Logger.mjs';
+import { OpenAIClient, OpenAIError, OpenAIErrorType } from '../ai/OpenAIClient.mjs';
 
 /**
  * Chronicle format types
@@ -80,19 +84,46 @@ class NarrativeExporter {
   _campaignName = '';
 
   /**
+   * OpenAI client for AI-enhanced summaries
+   * @type {OpenAIClient|null}
+   * @private
+   */
+  _openAIClient = null;
+
+  /**
+   * Whether AI summaries are enabled
+   * @type {boolean}
+   * @private
+   */
+  _aiSummaryEnabled = false;
+
+  /**
    * Create a new NarrativeExporter instance
    *
    * @param {Object} [options] - Configuration options
    * @param {string} [options.campaignName] - Campaign name for headers
    * @param {string} [options.defaultStyle='rich'] - Default formatting style
    * @param {string} [options.defaultFormat='full'] - Default chronicle format
+   * @param {string} [options.openAIApiKey] - OpenAI API key for AI-enhanced summaries
+   * @param {OpenAIClient} [options.openAIClient] - Existing OpenAI client instance
    */
   constructor(options = {}) {
     this._campaignName = options.campaignName || '';
     this._defaultStyle = options.defaultStyle || FormattingStyle.RICH;
     this._defaultFormat = options.defaultFormat || ChronicleFormat.FULL;
 
-    this._logger.debug('NarrativeExporter initialized');
+    // Initialize OpenAI client for AI summaries if credentials provided
+    if (options.openAIClient) {
+      this._openAIClient = options.openAIClient;
+      this._aiSummaryEnabled = true;
+    } else if (options.openAIApiKey) {
+      this._openAIClient = new OpenAIClient(options.openAIApiKey);
+      this._aiSummaryEnabled = true;
+    }
+
+    this._logger.debug('NarrativeExporter initialized', {
+      aiSummaryEnabled: this._aiSummaryEnabled
+    });
   }
 
   // ============================================================================
@@ -239,6 +270,172 @@ class NarrativeExporter {
     }
 
     return summary;
+  }
+
+  /**
+   * Generate an AI-enhanced narrative summary using OpenAI
+   *
+   * This method uses the OpenAI Chat Completions API to generate a rich,
+   * narrative-style summary of the session transcript. Requires OpenAI
+   * integration to be configured (via TranscriptionService or API key).
+   *
+   * @param {Array<TranscriptSegment>} segments - Transcript segments
+   * @param {Object} [options] - Summary options
+   * @param {number} [options.maxLength=1000] - Maximum summary length in characters
+   * @param {string} [options.style='narrative'] - Summary style ('narrative', 'bullet', 'formal')
+   * @param {string} [options.campaignContext] - Additional context about the campaign
+   * @param {Object} [options.entities] - Known entities to reference
+   * @returns {Promise<AISummaryResult>} AI-generated summary with metadata
+   * @throws {Error} If OpenAI integration is not configured
+   */
+  async generateAISummary(segments, options = {}) {
+    if (!this._aiSummaryEnabled || !this._openAIClient) {
+      throw new Error('AI summary generation requires OpenAI integration. Configure with openAIApiKey or openAIClient option.');
+    }
+
+    if (!segments || !Array.isArray(segments) || segments.length === 0) {
+      return {
+        summary: 'No transcript segments available for AI summary.',
+        success: false,
+        error: 'Empty segments'
+      };
+    }
+
+    const maxLength = options.maxLength || 1000;
+    const style = options.style || 'narrative';
+    const campaignContext = options.campaignContext || this._campaignName || '';
+
+    this._logger.log(`Generating AI summary from ${segments.length} segments (style: ${style})`);
+
+    // Build the transcript text for the AI
+    const transcriptText = this._buildTranscriptText(segments);
+
+    // Build the system prompt based on style
+    const systemPrompt = this._buildAISummaryPrompt(style, maxLength, campaignContext, options.entities);
+
+    try {
+      const response = await this._openAIClient.post('/chat/completions', {
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Summarize this RPG session transcript:\n\n${transcriptText}` }
+        ],
+        temperature: 0.7,
+        max_tokens: Math.ceil(maxLength / 3) // Approximate tokens from chars
+      });
+
+      const aiSummary = response.choices?.[0]?.message?.content || '';
+
+      this._logger.log(`AI summary generated successfully (${aiSummary.length} chars)`);
+
+      return {
+        summary: aiSummary.trim(),
+        success: true,
+        model: 'gpt-4o',
+        style,
+        segmentCount: segments.length,
+        generatedAt: new Date().toISOString()
+      };
+
+    } catch (error) {
+      this._logger.error('AI summary generation failed:', error.message);
+
+      // Fall back to basic summary on error
+      const fallbackSummary = this.generateSummary(segments, { maxLength });
+
+      return {
+        summary: fallbackSummary,
+        success: false,
+        error: error.message,
+        fallback: true
+      };
+    }
+  }
+
+  /**
+   * Build transcript text from segments for AI processing
+   *
+   * @param {Array<TranscriptSegment>} segments - Transcript segments
+   * @returns {string} Formatted transcript text
+   * @private
+   */
+  _buildTranscriptText(segments) {
+    const groupedSegments = this._groupBySpeaker(segments);
+    return groupedSegments
+      .map(seg => `${seg.speaker}: ${seg.text}`)
+      .join('\n\n');
+  }
+
+  /**
+   * Build the system prompt for AI summary generation
+   *
+   * @param {string} style - Summary style
+   * @param {number} maxLength - Maximum length
+   * @param {string} campaignContext - Campaign context
+   * @param {Object} entities - Known entities
+   * @returns {string} System prompt
+   * @private
+   */
+  _buildAISummaryPrompt(style, maxLength, campaignContext, entities) {
+    const basePrompt = `You are an expert chronicler for tabletop RPG campaigns. Your task is to summarize a session transcript into an engaging chronicle entry.`;
+
+    const styleInstructions = {
+      narrative: `Write in a narrative prose style, as if telling a story. Use vivid language and bring the events to life. Focus on key plot developments, character interactions, and dramatic moments.`,
+      bullet: `Create a clear, organized bullet-point summary. Group related events together. Highlight key decisions, encounters, discoveries, and NPC interactions.`,
+      formal: `Write in a formal chronicle style, documenting events objectively. Include key dates, locations, and participants. Maintain a historical record tone.`
+    };
+
+    const styleInstruction = styleInstructions[style] || styleInstructions.narrative;
+
+    let prompt = `${basePrompt}\n\n${styleInstruction}\n\nKeep the summary under ${maxLength} characters.`;
+
+    if (campaignContext) {
+      prompt += `\n\nCampaign context: ${campaignContext}`;
+    }
+
+    if (entities) {
+      const entityInfo = [];
+      if (entities.characters?.length) {
+        entityInfo.push(`Characters: ${entities.characters.map(c => c.name).join(', ')}`);
+      }
+      if (entities.locations?.length) {
+        entityInfo.push(`Locations: ${entities.locations.map(l => l.name).join(', ')}`);
+      }
+      if (entityInfo.length > 0) {
+        prompt += `\n\nKnown entities to reference: ${entityInfo.join('. ')}`;
+      }
+    }
+
+    prompt += `\n\nDo not include meta-commentary or notes. Output only the summary text.`;
+
+    return prompt;
+  }
+
+  /**
+   * Check if AI summary generation is available
+   *
+   * @returns {boolean} True if AI summaries can be generated
+   */
+  isAISummaryEnabled() {
+    return this._aiSummaryEnabled && this._openAIClient !== null;
+  }
+
+  /**
+   * Configure OpenAI integration for AI summaries
+   *
+   * @param {string|OpenAIClient} clientOrKey - OpenAI API key or client instance
+   */
+  setOpenAIClient(clientOrKey) {
+    if (typeof clientOrKey === 'string') {
+      this._openAIClient = new OpenAIClient(clientOrKey);
+    } else if (clientOrKey instanceof OpenAIClient) {
+      this._openAIClient = clientOrKey;
+    } else {
+      this._openAIClient = null;
+    }
+
+    this._aiSummaryEnabled = this._openAIClient !== null;
+    this._logger.debug(`OpenAI integration ${this._aiSummaryEnabled ? 'enabled' : 'disabled'}`);
   }
 
   /**
@@ -941,6 +1138,18 @@ class NarrativeExporter {
  * @property {string|number} [character_id] - Associated character ID
  * @property {string|number} [journal_id] - Parent journal ID
  * @property {Array} [tags] - Tag IDs
+ */
+
+/**
+ * @typedef {Object} AISummaryResult
+ * @property {string} summary - The generated summary text
+ * @property {boolean} success - Whether AI generation succeeded
+ * @property {string} [model] - The AI model used (if successful)
+ * @property {string} [style] - The summary style used
+ * @property {number} [segmentCount] - Number of segments processed
+ * @property {string} [generatedAt] - ISO timestamp of generation
+ * @property {string} [error] - Error message (if failed)
+ * @property {boolean} [fallback] - Whether a fallback summary was used
  */
 
 // Export all classes and enums
