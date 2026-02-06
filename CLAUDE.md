@@ -327,25 +327,34 @@ bash build.sh      # Linux/macOS
 build.bat           # Windows
 ```
 
-The build script auto-detects module ID, version, and GitHub URL from `module.json`. It creates a clean ZIP in `releases/{id}-v{version}.zip` with the download URL already set.
+The build script auto-detects module ID, version, and GitHub URL from `module.json`. It creates a clean ZIP in `releases/{id}-v{version}.zip` with the download URL already set in the packaged module.json.
 
-### Publish a GitHub release
+### Publish a new release
 
-```bash
-# 1. Update version in module.json
-# 2. Update the "download" URL in module.json to match the new version:
-#    https://github.com/Aiacos/VoxChronicle/releases/download/vX.Y.Z/vox-chronicle-vX.Y.Z.zip
-# 3. Build the package
-bash build.sh
-# 4. Commit and push
-git add module.json && git commit -m "Bump version to X.Y.Z" && git push
-# 5. Create the GitHub release (upload BOTH module.json and the ZIP)
-gh release create vX.Y.Z releases/vox-chronicle-vX.Y.Z.zip module.json --title "vX.Y.Z - Description"
-```
+1. **Update `module.json`** - change these two fields:
+   - `"version"`: bump to the new version (e.g. `"X.Y.Z"`)
+   - `"download"`: update to match: `https://github.com/Aiacos/VoxChronicle/releases/download/vX.Y.Z/vox-chronicle-vX.Y.Z.zip`
 
-**Important:** The `module.json` must be uploaded as a **separate release asset** alongside the ZIP. Foundry VTT downloads it first (via the manifest URL) to discover the module and its download URL.
+2. **Build the package**:
+   ```bash
+   bash build.sh
+   ```
 
-### Foundry VTT Manifest URL (for installation)
+3. **Commit and push**:
+   ```bash
+   git add module.json
+   git commit -m "Bump version to X.Y.Z"
+   git push
+   ```
+
+4. **Create GitHub release** (uploads both module.json manifest AND ZIP):
+   ```bash
+   gh release create vX.Y.Z releases/vox-chronicle-vX.Y.Z.zip module.json --title "vX.Y.Z - Description" --latest
+   ```
+
+> **Why `module.json` is uploaded separately**: Foundry VTT downloads the standalone `module.json` first (via the manifest URL) to discover the module version and its download URL. The ZIP also contains a `module.json` but that's only used after installation.
+
+### Foundry VTT Manifest URL
 
 ```
 https://github.com/Aiacos/VoxChronicle/releases/latest/download/module.json
