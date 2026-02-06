@@ -13,6 +13,10 @@
 // Module identifier constant - used for settings, logging, and hooks
 const MODULE_ID = 'vox-chronicle';
 
+// Import core classes for module initialization
+import { Settings } from './core/Settings.mjs';
+import { VoxChronicle } from './core/VoxChronicle.mjs';
+
 /**
  * Singleton reference to the RecorderControls Application
  * Lazy-loaded when first needed
@@ -42,8 +46,7 @@ Hooks.once('init', () => {
   console.log(`${MODULE_ID} | Initializing VoxChronicle module`);
 
   // Register module settings
-  // Note: Settings class will be imported and called here once created
-  // Settings.registerSettings();
+  Settings.registerSettings();
 
   // Store module reference on game object for global access
   game[MODULE_ID] = {
@@ -64,9 +67,8 @@ Hooks.once('ready', async () => {
 
   try {
     // Initialize the main VoxChronicle singleton
-    // Note: VoxChronicle class will be imported and initialized here once created
-    // const voxChronicle = VoxChronicle.getInstance();
-    // await voxChronicle.initialize();
+    const voxChronicle = VoxChronicle.getInstance();
+    await voxChronicle.initialize();
 
     // Mark module as ready
     game[MODULE_ID].ready = true;
