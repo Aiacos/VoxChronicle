@@ -1,3 +1,7 @@
+# Build output
+releases/
+*.zip
+
 .auto-claude/
 
 # Auto Claude generated files
