@@ -320,6 +320,93 @@
   background: var(--vox-primary-dark);
 }
 
+/* Cancel button */
+.vox-chronicle-recorder .btn-cancel {
+  background: transparent;
+  color: var(--vox-text-dim);
+  border: 1px solid var(--vox-border);
+  min-width: auto;
+  padding: var(--vox-spacing-sm);
+}
+
+.vox-chronicle-recorder .btn-cancel:hover {
+  color: var(--vox-error);
+  border-color: var(--vox-error);
+}
+
+/* Error display */
+.vox-chronicle-recorder .recorder-error {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: rgba(239, 35, 60, 0.1);
+  border: 1px solid var(--vox-error);
+  border-radius: var(--vox-radius-md);
+  color: var(--vox-error);
+  font-size: 0.9em;
+}
+
+.vox-chronicle-recorder .recorder-error i {
+  flex-shrink: 0;
+}
+
+/* Configuration status indicators */
+.vox-chronicle-recorder .recorder-config-status {
+  display: flex;
+  gap: var(--vox-spacing-md);
+  justify-content: center;
+  padding: var(--vox-spacing-sm);
+  background: var(--vox-bg-dark);
+  border-radius: var(--vox-radius-sm);
+  font-size: 0.85em;
+}
+
+.vox-chronicle-recorder .config-item {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-recorder .config-item.configured {
+  color: var(--vox-success);
+}
+
+.vox-chronicle-recorder .config-item.missing {
+  color: var(--vox-error);
+}
+
+.vox-chronicle-recorder .config-item.optional {
+  color: var(--vox-text-muted);
+}
+
+/* Session summary */
+.vox-chronicle-recorder .recorder-session-summary {
+  display: flex;
+  gap: var(--vox-spacing-md);
+  justify-content: center;
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: var(--vox-bg-light);
+  border-radius: var(--vox-radius-sm);
+  font-size: 0.9em;
+}
+
+.vox-chronicle-recorder .summary-item {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+}
+
+.vox-chronicle-recorder .summary-label {
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-recorder .summary-value {
+  color: var(--vox-accent);
+  font-weight: 600;
+}
+
 /* ==========================================================================
    Speaker Labeling Component
    ========================================================================== */

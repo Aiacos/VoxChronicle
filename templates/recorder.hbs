@@ -1,0 +1,139 @@
+{{!--
+  VoxChronicle - Session Recorder Template
+
+  Handlebars template for the RecorderControls Application.
+  Provides UI for starting, stopping, pausing, and managing session recordings.
+
+  @module vox-chronicle
+  @template recorder
+--}}
+
+<div class="vox-chronicle-recorder">
+  {{!-- Status indicator section --}}
+  <div class="recorder-status {{statusClass}}">
+    <span class="status-indicator"></span>
+    <span class="status-text">{{statusText}}</span>
+  </div>
+
+  {{!-- Duration display --}}
+  <div class="recorder-duration">
+    <span class="duration-label">{{i18n.duration}}:</span>
+    <span class="duration-value" data-duration="{{durationSeconds}}">{{duration}}</span>
+  </div>
+
+  {{!-- Progress bar (shown during processing) --}}
+  {{#if hasProgress}}
+  <div class="recorder-progress">
+    <div class="progress-bar">
+      <div class="progress-fill" style="width: {{progress.progress}}%"></div>
+    </div>
+    <span class="progress-text">{{progress.message}}</span>
+  </div>
+  {{/if}}
+
+  {{!-- Error display --}}
+  {{#if isError}}
+  <div class="recorder-error">
+    <i class="fas fa-exclamation-circle"></i>
+    <span>{{lastError}}</span>
+  </div>
+  {{/if}}
+
+  {{!-- Control buttons --}}
+  <div class="recorder-controls">
+    {{!-- Start Recording button (shown when idle) --}}
+    {{#if canRecord}}
+    <button type="button"
+            class="btn-record"
+            data-action="start-recording"
+            title="{{i18n.startRecording}}"
+            {{#unless isConfigured}}disabled{{/unless}}>
+      <i class="fas fa-microphone"></i>
+      <span>{{i18n.startRecording}}</span>
+    </button>
+    {{/if}}
+
+    {{!-- Pause button (shown when recording) --}}
+    {{#if canPause}}
+    <button type="button"
+            class="btn-pause"
+            data-action="pause-recording"
+            title="{{i18n.pauseRecording}}">
+      <i class="fas fa-pause"></i>
+    </button>
+    {{/if}}
+
+    {{!-- Resume button (shown when paused) --}}
+    {{#if canResume}}
+    <button type="button"
+            class="btn-resume"
+            data-action="resume-recording"
+            title="{{i18n.resumeRecording}}">
+      <i class="fas fa-play"></i>
+    </button>
+    {{/if}}
+
+    {{!-- Stop Recording button (shown when recording or paused) --}}
+    {{#if canStop}}
+    <button type="button"
+            class="btn-stop"
+            data-action="stop-recording"
+            title="{{i18n.stopRecording}}">
+      <i class="fas fa-stop"></i>
+      <span>{{i18n.stopRecording}}</span>
+    </button>
+    {{/if}}
+
+    {{!-- Cancel button (shown when recording or paused) --}}
+    {{#if canStop}}
+    <button type="button"
+            class="btn-cancel"
+            data-action="cancel-session"
+            title="Cancel Session">
+      <i class="fas fa-times"></i>
+    </button>
+    {{/if}}
+  </div>
+
+  {{!-- Configuration warning (shown when not configured) --}}
+  {{#unless isConfigured}}
+  <div class="recorder-warning">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span>{{i18n.notConfigured}}</span>
+    <button type="button" class="btn-settings" data-action="open-settings">
+      <i class="fas fa-cog"></i>
+      <span>{{i18n.settings}}</span>
+    </button>
+  </div>
+  {{/unless}}
+
+  {{!-- Configuration status indicators --}}
+  {{#if isConfigured}}
+  <div class="recorder-config-status">
+    <span class="config-item {{#if isOpenAIConfigured}}configured{{else}}missing{{/if}}" title="OpenAI API">
+      <i class="fas fa-{{#if isOpenAIConfigured}}check-circle{{else}}exclamation-circle{{/if}}"></i>
+      <span>OpenAI</span>
+    </span>
+    <span class="config-item {{#if isKankaConfigured}}configured{{else}}optional{{/if}}" title="Kanka API">
+      <i class="fas fa-{{#if isKankaConfigured}}check-circle{{else}}minus-circle{{/if}}"></i>
+      <span>Kanka</span>
+    </span>
+  </div>
+  {{/if}}
+
+  {{!-- Session summary (shown after recording) --}}
+  {{#if sessionSummary}}
+  <div class="recorder-session-summary">
+    <div class="summary-item">
+      <span class="summary-label">Segments:</span>
+      <span class="summary-value">{{sessionSummary.segmentCount}}</span>
+    </div>
+    {{#if sessionSummary.speakerCount}}
+    <div class="summary-item">
+      <span class="summary-label">Speakers:</span>
+      <span class="summary-value">{{sessionSummary.speakerCount}}</span>
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+</div>
