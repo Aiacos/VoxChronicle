@@ -1,0 +1,117 @@
+{{!--
+  VoxChronicle - Speaker Labeling Template
+
+  Handlebars template for the SpeakerLabeling FormApplication.
+  Provides UI for mapping speaker IDs (from transcription diarization) to
+  player/character names for accurate attribution in session chronicles.
+
+  @module vox-chronicle
+  @template speaker-labeling
+--}}
+
+<form class="vox-chronicle-speaker-labeling">
+  {{!-- Form description --}}
+  <div class="form-description">
+    <p>{{i18n.description}}</p>
+  </div>
+
+  {{!-- Header row for the speaker list --}}
+  <div class="speaker-labels-header">
+    <div class="header-speaker-id">{{i18n.speakerId}}</div>
+    <div class="header-player-name">{{i18n.playerName}}</div>
+    {{#if hasGameUsers}}
+    <div class="header-quick-assign">Quick Assign</div>
+    {{/if}}
+  </div>
+
+  {{!-- Speaker labels list --}}
+  <div class="speaker-labels-list">
+    {{#each speakers}}
+    <div class="speaker-row {{#if isKnown}}known{{/if}}">
+      {{!-- Speaker ID column --}}
+      <div class="speaker-id">
+        <span class="speaker-id-text">{{id}}</span>
+        {{#if isKnown}}
+        <i class="fas fa-check-circle known-indicator" title="Detected in session"></i>
+        {{/if}}
+      </div>
+
+      {{!-- Speaker label input column --}}
+      <div class="speaker-label">
+        <input type="text"
+               name="speaker-{{id}}"
+               value="{{label}}"
+               placeholder="{{placeholder}}" />
+        <button type="button"
+                class="btn-clear"
+                data-action="clear-label"
+                data-speaker-id="{{id}}"
+                title="Clear">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      {{!-- Quick assign dropdown (only if game users available) --}}
+      {{#if ../hasGameUsers}}
+      <div class="quick-assign">
+        <select data-action="quick-assign" data-speaker-id="{{id}}">
+          <option value="">Quick assign...</option>
+          {{#each ../gameUsers}}
+          <option value="{{#if isGM}}GM ({{name}}){{else}}{{name}}{{/if}}">
+            {{#if isGM}}&#128081; {{/if}}{{name}}
+          </option>
+          {{/each}}
+        </select>
+      </div>
+      {{/if}}
+    </div>
+    {{/each}}
+
+    {{!-- Empty state message if no speakers detected --}}
+    {{#unless speakers.length}}
+    <div class="no-speakers-message">
+      <i class="fas fa-info-circle"></i>
+      <span>{{noSpeakersMessage}}</span>
+    </div>
+    {{/unless}}
+  </div>
+
+  {{!-- Form action buttons --}}
+  <div class="form-actions">
+    <button type="button"
+            class="btn-auto-detect"
+            data-action="auto-detect"
+            title="{{i18n.autoDetect}}">
+      <i class="fas fa-magic"></i>
+      <span>{{i18n.autoDetect}}</span>
+    </button>
+
+    <button type="button"
+            class="btn-reset"
+            data-action="reset-labels"
+            title="{{i18n.reset}}">
+      <i class="fas fa-undo"></i>
+      <span>{{i18n.reset}}</span>
+    </button>
+
+    <button type="submit"
+            class="btn-save"
+            title="{{i18n.save}}">
+      <i class="fas fa-save"></i>
+      <span>{{i18n.save}}</span>
+    </button>
+  </div>
+
+  {{!-- Help section --}}
+  <div class="form-help">
+    <details>
+      <summary><i class="fas fa-question-circle"></i> Help</summary>
+      <div class="help-content">
+        <p><strong>Speaker IDs:</strong> These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).</p>
+        <p><strong>Known speakers:</strong> Speakers with a <i class="fas fa-check-circle"></i> icon were detected in a previous transcription session.</p>
+        <p><strong>Quick Assign:</strong> Use the dropdown to quickly assign a game user's name to a speaker slot.</p>
+        <p><strong>Auto-Detect:</strong> Automatically fills empty speaker slots with game user names in order.</p>
+      </div>
+    </details>
+  </div>
+</form>
