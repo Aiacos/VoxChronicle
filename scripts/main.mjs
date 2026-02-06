@@ -90,9 +90,8 @@ Hooks.on('getSceneControlButtons', (controls) => {
   // Only show controls if module is ready
   if (!game[MODULE_ID]?.ready) return;
 
-  // Find the notes control group or create our own group
-  // Add VoxChronicle as a new control group for clarity
-  controls.push({
+  // Build the VoxChronicle control group
+  const voxControl = {
     name: MODULE_ID,
     title: 'VOXCHRONICLE.Controls.Title',
     icon: 'fas fa-microphone',
@@ -137,7 +136,14 @@ Hooks.on('getSceneControlButtons', (controls) => {
         }
       }
     ]
-  });
+  };
+
+  // Foundry v13 uses object-based controls, v12 uses array-based
+  if (typeof controls === 'object' && !Array.isArray(controls)) {
+    controls[MODULE_ID] = voxControl;
+  } else if (Array.isArray(controls)) {
+    controls.push(voxControl);
+  }
 
   console.log(`${MODULE_ID} | Scene control buttons registered`);
 });
