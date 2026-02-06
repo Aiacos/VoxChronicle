@@ -1,0 +1,313 @@
+{{!--
+  VoxChronicle - Entity Preview Template
+
+  Handlebars template for the EntityPreview Application.
+  Provides UI for reviewing extracted entities (characters, locations, items)
+  before publishing them to Kanka.
+
+  @module vox-chronicle
+  @template entity-preview
+--}}
+
+<div class="vox-chronicle-entity-preview">
+  {{!-- Description section --}}
+  <div class="preview-description">
+    <p>{{i18n.description}}</p>
+  </div>
+
+  {{!-- Configuration warning (shown when Kanka is not configured) --}}
+  {{#unless isKankaConfigured}}
+  <div class="preview-warning">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span>{{i18n.notConfigured}}</span>
+  </div>
+  {{/unless}}
+
+  {{!-- Progress section (shown during entity creation) --}}
+  {{#if hasProgress}}
+  <div class="entity-preview-progress">
+    <div class="progress-message">{{progress.message}}</div>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width: {{progressPercent progress.current progress.total}}%"></div>
+    </div>
+    <div class="progress-count">{{progress.current}} / {{progress.total}}</div>
+  </div>
+  {{/if}}
+
+  {{!-- Results section (shown after entity creation) --}}
+  {{#if hasResults}}
+  <div class="entity-preview-results {{#if isError}}error{{else}}success{{/if}}">
+    <div class="results-summary">
+      {{#if createdCount}}
+      <div class="created-count">
+        <i class="fas fa-check"></i>
+        <span>{{i18n.created}}</span>
+      </div>
+      {{/if}}
+      {{#if failedCount}}
+      <div class="failed-count">
+        <i class="fas fa-times"></i>
+        <span>{{failedCount}} failed</span>
+      </div>
+      {{/if}}
+    </div>
+    {{#if failedCount}}
+    <div class="failed-entities">
+      {{#each results.failed}}
+      <div class="failed-entity">
+        <span class="failed-type">{{type}}:</span>
+        <span class="failed-name">{{name}}</span>
+        <span class="failed-error">- {{error}}</span>
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  {{!-- Entity sections (shown in review mode) --}}
+  {{#if isReview}}
+    {{#if hasEntities}}
+    <div class="entity-sections">
+
+      {{!-- Characters section --}}
+      {{#if hasCharacters}}
+      <div class="entity-section">
+        <div class="section-header" data-action="toggle-section">
+          <i class="fas fa-chevron-down section-toggle"></i>
+          <span class="section-title">{{i18n.characters}}</span>
+          <span class="section-count">({{characters.length}})</span>
+        </div>
+        <div class="section-content">
+          {{#each characters}}
+          <div class="entity-row {{#if selected}}selected{{/if}}">
+            <div class="entity-select">
+              <input type="checkbox"
+                     data-entity-key="{{key}}"
+                     {{#if selected}}checked{{/if}} />
+            </div>
+            <div class="entity-info">
+              <div class="entity-name">{{name}}</div>
+              <div class="entity-type">{{typeLabel}}</div>
+              {{#if description}}
+              <div class="entity-description">{{description}}</div>
+              {{/if}}
+            </div>
+            <div class="entity-actions">
+              <button type="button"
+                      class="btn-edit"
+                      data-action="edit-description"
+                      data-entity-type="characters"
+                      data-entity-index="{{index}}"
+                      title="{{../i18n.editDescription}}">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button"
+                      class="btn-generate"
+                      data-action="generate-portrait"
+                      data-entity-type="characters"
+                      data-entity-index="{{index}}"
+                      title="{{../i18n.generatePortrait}}">
+                <i class="fas fa-image"></i>
+              </button>
+            </div>
+            {{#if imageUrl}}
+            <div class="entity-preview-image">
+              <img src="{{imageUrl}}" alt="{{name}}" />
+            </div>
+            {{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+      {{!-- Locations section --}}
+      {{#if hasLocations}}
+      <div class="entity-section">
+        <div class="section-header" data-action="toggle-section">
+          <i class="fas fa-chevron-down section-toggle"></i>
+          <span class="section-title">{{i18n.locations}}</span>
+          <span class="section-count">({{locations.length}})</span>
+        </div>
+        <div class="section-content">
+          {{#each locations}}
+          <div class="entity-row {{#if selected}}selected{{/if}}">
+            <div class="entity-select">
+              <input type="checkbox"
+                     data-entity-key="{{key}}"
+                     {{#if selected}}checked{{/if}} />
+            </div>
+            <div class="entity-info">
+              <div class="entity-name">{{name}}</div>
+              <div class="entity-type">{{typeLabel}}</div>
+              {{#if description}}
+              <div class="entity-description">{{description}}</div>
+              {{/if}}
+            </div>
+            <div class="entity-actions">
+              <button type="button"
+                      class="btn-edit"
+                      data-action="edit-description"
+                      data-entity-type="locations"
+                      data-entity-index="{{index}}"
+                      title="{{../i18n.editDescription}}">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button"
+                      class="btn-generate"
+                      data-action="generate-portrait"
+                      data-entity-type="locations"
+                      data-entity-index="{{index}}"
+                      title="{{../i18n.generatePortrait}}">
+                <i class="fas fa-image"></i>
+              </button>
+            </div>
+            {{#if imageUrl}}
+            <div class="entity-preview-image">
+              <img src="{{imageUrl}}" alt="{{name}}" />
+            </div>
+            {{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+      {{!-- Items section --}}
+      {{#if hasItems}}
+      <div class="entity-section">
+        <div class="section-header" data-action="toggle-section">
+          <i class="fas fa-chevron-down section-toggle"></i>
+          <span class="section-title">{{i18n.items}}</span>
+          <span class="section-count">({{items.length}})</span>
+        </div>
+        <div class="section-content">
+          {{#each items}}
+          <div class="entity-row {{#if selected}}selected{{/if}}">
+            <div class="entity-select">
+              <input type="checkbox"
+                     data-entity-key="{{key}}"
+                     {{#if selected}}checked{{/if}} />
+            </div>
+            <div class="entity-info">
+              <div class="entity-name">{{name}}</div>
+              <div class="entity-type">{{typeLabel}}</div>
+              {{#if description}}
+              <div class="entity-description">{{description}}</div>
+              {{/if}}
+            </div>
+            <div class="entity-actions">
+              <button type="button"
+                      class="btn-edit"
+                      data-action="edit-description"
+                      data-entity-type="items"
+                      data-entity-index="{{index}}"
+                      title="{{../i18n.editDescription}}">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button"
+                      class="btn-generate"
+                      data-action="generate-portrait"
+                      data-entity-type="items"
+                      data-entity-index="{{index}}"
+                      title="{{../i18n.generatePortrait}}">
+                <i class="fas fa-image"></i>
+              </button>
+            </div>
+            {{#if imageUrl}}
+            <div class="entity-preview-image">
+              <img src="{{imageUrl}}" alt="{{name}}" />
+            </div>
+            {{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+    </div>
+    {{else}}
+    {{!-- No entities message --}}
+    <div class="no-entities">
+      <i class="fas fa-info-circle"></i>
+      <span>{{i18n.noEntities}}</span>
+    </div>
+    {{/if}}
+  {{/if}}
+
+  {{!-- Action buttons --}}
+  <div class="form-footer">
+    {{!-- Review mode actions --}}
+    {{#if isReview}}
+    <div class="selection-actions">
+      <button type="button"
+              class="btn-select-all"
+              data-action="select-all"
+              {{#if isAllSelected}}disabled{{/if}}>
+        <i class="fas fa-check-square"></i>
+        <span>{{i18n.selectAll}}</span>
+      </button>
+      <button type="button"
+              class="btn-deselect-all"
+              data-action="deselect-all"
+              {{#if isNoneSelected}}disabled{{/if}}>
+        <i class="fas fa-square"></i>
+        <span>{{i18n.deselectAll}}</span>
+      </button>
+    </div>
+    <div class="form-actions">
+      <button type="button"
+              class="btn-skip"
+              data-action="skip-all">
+        <i class="fas fa-forward"></i>
+        <span>{{i18n.skip}}</span>
+      </button>
+      <button type="button"
+              class="btn-confirm"
+              data-action="confirm-create"
+              {{#if isNoneSelected}}disabled{{/if}}
+              {{#unless isKankaConfigured}}disabled{{/unless}}>
+        <i class="fas fa-cloud-upload-alt"></i>
+        <span>{{i18n.create}} ({{selectedCount}})</span>
+      </button>
+    </div>
+    {{/if}}
+
+    {{!-- Creating mode (no buttons, just progress) --}}
+    {{#if isCreating}}
+    <div class="form-actions creating">
+      <span class="creating-message">{{i18n.creating}}</span>
+    </div>
+    {{/if}}
+
+    {{!-- Complete/Error mode actions --}}
+    {{#if isComplete}}
+    <div class="form-actions">
+      <button type="button"
+              class="btn-close"
+              data-action="close">
+        <i class="fas fa-times"></i>
+        <span>{{i18n.close}}</span>
+      </button>
+    </div>
+    {{/if}}
+
+    {{#if isError}}
+    <div class="form-actions">
+      <button type="button"
+              class="btn-retry"
+              data-action="retry">
+        <i class="fas fa-redo"></i>
+        <span>{{i18n.retry}}</span>
+      </button>
+      <button type="button"
+              class="btn-close"
+              data-action="close">
+        <i class="fas fa-times"></i>
+        <span>{{i18n.close}}</span>
+      </button>
+    </div>
+    {{/if}}
+  </div>
+</div>
