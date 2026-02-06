@@ -1,0 +1,51 @@
+{
+  "name": "vox-chronicle",
+  "version": "1.0.0",
+  "description": "Foundry VTT module that automatically transcribes tabletop RPG sessions and publishes them as adventure chronicles to Kanka",
+  "type": "module",
+  "main": "scripts/main.mjs",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.js",
+    "lint": "eslint scripts/**/*.mjs tests/**/*.js",
+    "validate": "node --check scripts/main.mjs"
+  },
+  "keywords": [
+    "foundry-vtt",
+    "foundry-vtt-module",
+    "tabletop",
+    "rpg",
+    "transcription",
+    "kanka",
+    "openai",
+    "audio",
+    "chronicle"
+  ],
+  "author": "VoxChronicle Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/vox-chronicle.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/vox-chronicle/issues"
+  },
+  "homepage": "https://github.com/your-username/vox-chronicle#readme",
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "jsdom": "^24.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "foundry": {
+    "minimum": "11",
+    "verified": "12",
+    "maximum": "12"
+  }
+}
