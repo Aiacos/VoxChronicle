@@ -87,62 +87,97 @@ Hooks.once('ready', async () => {
  * @param {SceneControl[]} controls - The array of scene control groups
  */
 Hooks.on('getSceneControlButtons', (controls) => {
-  // Only show controls if module is ready
-  if (!game[MODULE_ID]?.ready) return;
+  // Only show controls to GMs
+  if (!game.user?.isGM) return;
 
-  // Build the VoxChronicle control group
-  const voxControl = {
-    name: MODULE_ID,
-    title: 'VOXCHRONICLE.Controls.Title',
-    icon: 'fas fa-microphone',
-    layer: 'controls',
-    visible: game.user?.isGM ?? true,
-    tools: [
-      {
-        name: 'recorder',
-        title: 'VOXCHRONICLE.Controls.Recorder',
-        icon: 'fas fa-microphone',
-        button: true,
-        onClick: async () => {
-          const recorder = await getRecorderControls();
-          recorder.render(true, { focus: true });
-        }
-      },
-      {
-        name: 'speaker-labels',
-        title: 'VOXCHRONICLE.Controls.SpeakerLabels',
-        icon: 'fas fa-users',
-        button: true,
-        onClick: async () => {
-          const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
-          const speakerLabeling = new SpeakerLabeling();
-          speakerLabeling.render(true, { focus: true });
-        }
-      },
-      {
-        name: 'settings',
-        title: 'VOXCHRONICLE.Controls.Settings',
-        icon: 'fas fa-cog',
-        button: true,
-        onClick: () => {
-          // Open module settings directly
-          const app = new SettingsConfig();
-          app.render(true, { focus: true });
-          // Scroll to VoxChronicle section after render
-          setTimeout(() => {
-            const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
-            if (section) section.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
+  const isV13 = typeof controls === 'object' && !Array.isArray(controls);
+
+  if (isV13) {
+    // Foundry v13: controls is an object, tools must be an object keyed by name
+    controls[MODULE_ID] = {
+      icon: 'fas fa-microphone',
+      title: 'VOXCHRONICLE.Controls.Title',
+      tools: {
+        recorder: {
+          icon: 'fas fa-microphone',
+          title: 'VOXCHRONICLE.Controls.Recorder',
+          button: true,
+          onClick: async () => {
+            const recorder = await getRecorderControls();
+            recorder.render(true, { focus: true });
+          }
+        },
+        speakerLabels: {
+          icon: 'fas fa-users',
+          title: 'VOXCHRONICLE.Controls.SpeakerLabels',
+          button: true,
+          onClick: async () => {
+            const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
+            const speakerLabeling = new SpeakerLabeling();
+            speakerLabeling.render(true, { focus: true });
+          }
+        },
+        settings: {
+          icon: 'fas fa-cog',
+          title: 'VOXCHRONICLE.Controls.Settings',
+          button: true,
+          onClick: () => {
+            const app = new SettingsConfig();
+            app.render(true, { focus: true });
+            setTimeout(() => {
+              const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
+              if (section) section.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          }
         }
       }
-    ]
-  };
-
-  // Foundry v13 uses object-based controls, v12 uses array-based
-  if (typeof controls === 'object' && !Array.isArray(controls)) {
-    controls[MODULE_ID] = voxControl;
+    };
   } else if (Array.isArray(controls)) {
-    controls.push(voxControl);
+    // Foundry v11/v12: controls is an array, tools is an array
+    controls.push({
+      name: MODULE_ID,
+      title: 'VOXCHRONICLE.Controls.Title',
+      icon: 'fas fa-microphone',
+      layer: 'controls',
+      visible: true,
+      tools: [
+        {
+          name: 'recorder',
+          title: 'VOXCHRONICLE.Controls.Recorder',
+          icon: 'fas fa-microphone',
+          button: true,
+          onClick: async () => {
+            const recorder = await getRecorderControls();
+            recorder.render(true, { focus: true });
+          }
+        },
+        {
+          name: 'speaker-labels',
+          title: 'VOXCHRONICLE.Controls.SpeakerLabels',
+          icon: 'fas fa-users',
+          button: true,
+          onClick: async () => {
+            const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
+            const speakerLabeling = new SpeakerLabeling();
+            speakerLabeling.render(true, { focus: true });
+          }
+        },
+        {
+          name: 'settings',
+          title: 'VOXCHRONICLE.Controls.Settings',
+          icon: 'fas fa-cog',
+          button: true,
+          onClick: () => {
+            const app = new SettingsConfig();
+            app.render(true, { focus: true });
+            setTimeout(() => {
+              const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
+              if (section) section.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          }
+        }
+      ]
+    });
   }
 
   console.log(`${MODULE_ID} | Scene control buttons registered`);
