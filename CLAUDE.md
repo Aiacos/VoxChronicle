@@ -413,6 +413,10 @@ game.settings.register(MODULE_ID, 'newSetting', {
 3. Test happy path and error cases
 4. Run with `npm test`
 
+## TODO / Known Issues
+
+Before starting any work, check `TODO.md` for known issues and open tasks. After completing work, update `TODO.md` to reflect resolved items or add newly discovered issues. Keep the file organized by priority (CRITICAL > WARNING > INFO).
+
 ## Do's and Don'ts
 
 ### DO

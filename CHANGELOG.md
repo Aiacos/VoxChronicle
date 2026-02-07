@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet.
 
+## [1.0.5] - 2026-02-07
+
+### Added
+- **Foundry VTT v13 Compatibility**: Full support for Foundry VTT v13 with backward compatibility for v11 and v12
+- Verified compatibility of scene controls, UI components, settings system, and hooks in v13
+
+### Changed
+- **WebRTC Audio Capture**: Updated `AudioRecorder.mjs` to support v13's `localStream` property while maintaining backward compatibility with v11/v12's `getLocalStream()` method
+- Updated `module.json` compatibility metadata to verify v13 support
+- Updated `package.json` foundry metadata to reflect v13 compatibility
+- Updated README.md to reflect v11, v12, and v13 support
+
+### Technical Notes
+- Scene controls implementation already compatible with v13's object-based structure
+- All UI components (RecorderControls, SpeakerLabeling, EntityPreview) using Application v1 pattern remain fully supported in v13
+- Settings API and hooks system unchanged in v13 - no code changes required
+- WebRTC API change handled with backward-compatible detection: `avClient.localStream || avClient.getLocalStream?.()`
+
 ## [1.0.0] - 2026-02-06
 
 Initial release of VoxChronicle - the Foundry VTT session transcription and Kanka publishing module.
@@ -95,5 +113,6 @@ Initial release of VoxChronicle - the Foundry VTT session transcription and Kank
 - Comprehensive error handling with user-friendly notifications
 - Full JSDoc documentation in source files
 
-[Unreleased]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.0...v1.0.5
 [1.0.0]: https://github.com/voxchronicle/vox-chronicle/releases/tag/v1.0.0

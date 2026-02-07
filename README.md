@@ -1,6 +1,6 @@
 # VoxChronicle
 
-![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v11--v12-informational)
+![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v11--v13-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 
@@ -19,7 +19,7 @@ Auto-transcribe your tabletop RPG sessions and publish chronicles to [Kanka](htt
 
 ## Requirements
 
-- **Foundry VTT** v11 or v12
+- **Foundry VTT** v11, v12, or v13
 - **OpenAI API Key** - Required for transcription and image generation
 - **Kanka Account** - Required for publishing chronicles (free tier supported)
 - **Modern Browser** with microphone access support

@@ -454,7 +454,9 @@ class AudioRecorder {
     }
 
     // Try to get the local stream from Foundry's AV system
-    const localStream = avClient.getLocalStream?.();
+    // v13+: Use localStream property
+    // v11/v12: Use getLocalStream() method
+    const localStream = avClient.localStream || avClient.getLocalStream?.();
 
     if (localStream && localStream.getAudioTracks().length > 0) {
       this._stream = localStream;
