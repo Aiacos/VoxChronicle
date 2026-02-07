@@ -58,6 +58,17 @@ class Settings {
       }
     });
 
+    // Kanka API Token Creation Timestamp (internal setting)
+    // Tracks when the token was created/updated to monitor expiration (364 days)
+    game.settings.register(MODULE_ID, 'kankaApiTokenCreatedAt', {
+      name: 'Kanka API Token Created At',
+      hint: 'Timestamp when the Kanka API token was created or last updated',
+      scope: 'world',
+      config: false, // Internal setting, not shown in UI
+      type: Number,
+      default: null
+    });
+
     // ==========================================
     // Kanka Campaign Settings
     // ==========================================
