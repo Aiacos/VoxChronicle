@@ -47,7 +47,7 @@
       {{#if failedCount}}
       <div class="failed-count">
         <i class="fas fa-times"></i>
-        <span>{{failedCount}} failed</span>
+        <span>{{i18n.failedCountLabel}}</span>
       </div>
       {{/if}}
     </div>
@@ -268,7 +268,7 @@
               {{#if confidence}}
               <div class="relationship-confidence">
                 <i class="fas fa-star"></i>
-                <span>Confidence: {{confidence}}/10</span>
+                <span>{{../i18n.confidenceLabel}} {{confidence}}/10</span>
               </div>
               {{/if}}
             </div>
