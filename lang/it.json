@@ -36,7 +36,23 @@
       "SpeakerLabelsHint": "Associa gli ID dei parlanti ai nomi dei giocatori per la trascrizione",
       "ConfigureSpeakers": "Configura Parlanti",
       "SpeakerLabeling": "Etichettatura Parlanti",
-      "SpeakerLabelingHint": "Assegna nomi dei giocatori alle voci rilevate"
+      "SpeakerLabelingHint": "Assegna nomi dei giocatori alle voci rilevate",
+      "TestConnection": "Testa Connessione"
+    },
+
+    "Validation": {
+      "ValidatingOpenAI": "Validazione chiave API OpenAI...",
+      "ValidatingKanka": "Validazione token API Kanka...",
+      "OpenAIKeyNotConfigured": "La chiave API OpenAI non è configurata.",
+      "OpenAIKeyValid": "La chiave API OpenAI è valida!",
+      "OpenAIKeyInvalid": "Chiave API OpenAI non valida. Controlla le impostazioni.",
+      "OpenAIValidationError": "Errore nella validazione della chiave API OpenAI: {error}",
+      "OpenAIValidationFailed": "Validazione OpenAI fallita: {error}",
+      "KankaTokenNotConfigured": "Il token API Kanka o l'ID campagna non è configurato.",
+      "KankaTokenValid": "Il token API Kanka è valido!",
+      "KankaTokenInvalid": "Token API Kanka non valido. Controlla le impostazioni.",
+      "KankaValidationError": "Errore nella validazione del token API Kanka: {error}",
+      "KankaValidationFailed": "Validazione Kanka fallita: {error}"
     },
 
     "Recorder": {
