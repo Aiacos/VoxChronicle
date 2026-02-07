@@ -85,6 +85,72 @@
 }
 
 /* ==========================================================================
+   Settings Validation Buttons
+   ========================================================================== */
+
+.vox-chronicle-validate-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+  margin-left: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
+  background: var(--vox-primary);
+  color: white;
+  border: 1px solid var(--vox-primary-dark);
+  border-radius: var(--vox-radius-sm);
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--vox-transition);
+  white-space: nowrap;
+}
+
+.vox-chronicle-validate-button:hover:not(:disabled) {
+  background: var(--vox-primary-dark);
+  border-color: var(--vox-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--vox-shadow);
+}
+
+.vox-chronicle-validate-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.vox-chronicle-validate-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Icon states within validation button */
+.vox-chronicle-validate-button i {
+  font-size: 1em;
+  transition: all var(--vox-transition);
+}
+
+/* Loading state - spinning icon */
+.vox-chronicle-validate-button i.fa-spinner {
+  color: var(--vox-processing);
+}
+
+/* Success state - checkmark icon */
+.vox-chronicle-validate-button i.fa-check {
+  color: var(--vox-success);
+}
+
+/* Error state - X icon */
+.vox-chronicle-validate-button i.fa-times {
+  color: var(--vox-error);
+}
+
+/* Ensure button aligns properly with Foundry input fields in settings */
+form .form-group .vox-chronicle-validate-button {
+  margin-left: var(--vox-spacing-xs);
+  vertical-align: middle;
+}
+
+/* ==========================================================================
    Recorder Controls Component
    ========================================================================== */
 
