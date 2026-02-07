@@ -36,7 +36,23 @@
       "SpeakerLabelsHint": "Map speaker IDs to player names for transcription",
       "ConfigureSpeakers": "Configure Speakers",
       "SpeakerLabeling": "Speaker Labeling",
-      "SpeakerLabelingHint": "Assign player names to detected speaker voices"
+      "SpeakerLabelingHint": "Assign player names to detected speaker voices",
+      "TestConnection": "Test Connection"
+    },
+
+    "Validation": {
+      "ValidatingOpenAI": "Validating OpenAI API key...",
+      "ValidatingKanka": "Validating Kanka API token...",
+      "OpenAIKeyNotConfigured": "OpenAI API key is not configured.",
+      "OpenAIKeyValid": "OpenAI API key is valid!",
+      "OpenAIKeyInvalid": "Invalid OpenAI API key. Please check your settings.",
+      "OpenAIValidationError": "Error validating OpenAI API key: {error}",
+      "OpenAIValidationFailed": "OpenAI validation failed: {error}",
+      "KankaTokenNotConfigured": "Kanka API token or campaign ID is not configured.",
+      "KankaTokenValid": "Kanka API token is valid!",
+      "KankaTokenInvalid": "Invalid Kanka API token. Please check your settings.",
+      "KankaValidationError": "Error validating Kanka API token: {error}",
+      "KankaValidationFailed": "Kanka validation failed: {error}"
     },
 
     "Recorder": {
