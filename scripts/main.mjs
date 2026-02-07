@@ -194,5 +194,112 @@ Hooks.on('getSceneControlButtons', (controls) => {
   console.log(`${MODULE_ID} | Scene control buttons registered`);
 });
 
+/**
+ * Inject validation buttons into the settings configuration UI
+ * Adds "Test Connection" buttons next to API key fields for immediate validation feedback
+ *
+ * @param {SettingsConfig} app - The settings configuration application
+ * @param {jQuery} html - The rendered HTML element
+ */
+Hooks.on('renderSettingsConfig', (app, html) => {
+  // Only inject buttons for our module's settings
+  const openAIKeyInput = html.find(`input[name="${MODULE_ID}.openaiApiKey"]`);
+  const kankaTokenInput = html.find(`input[name="${MODULE_ID}.kankaApiToken"]`);
+
+  // Inject validation button for OpenAI API key
+  if (openAIKeyInput.length > 0) {
+    const validateButton = $(`
+      <button type="button" class="vox-chronicle-validate-button" data-validation-target="openai">
+        <i class="fas fa-plug"></i> Test Connection
+      </button>
+    `);
+
+    openAIKeyInput.parent().append(validateButton);
+
+    // Wire up click handler (validation logic will be added in next subtask)
+    validateButton.on('click', async (event) => {
+      event.preventDefault();
+      const button = $(event.currentTarget);
+      const icon = button.find('i');
+
+      // Show loading state
+      button.prop('disabled', true);
+      icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
+
+      try {
+        // TODO: Call validation handler (will be implemented in subtask-1-2)
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Placeholder
+
+        // Success state
+        icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
+        ui.notifications?.info('OpenAI API key validated successfully');
+
+        setTimeout(() => {
+          icon.removeClass('fa-check').addClass('fa-plug');
+          button.prop('disabled', false);
+        }, 2000);
+      } catch (error) {
+        // Error state
+        icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
+        ui.notifications?.error(`OpenAI validation failed: ${error.message}`);
+
+        setTimeout(() => {
+          icon.removeClass('fa-times').addClass('fa-plug');
+          button.prop('disabled', false);
+        }, 2000);
+      }
+    });
+
+    console.log(`${MODULE_ID} | Validation button injected for OpenAI API key`);
+  }
+
+  // Inject validation button for Kanka API token
+  if (kankaTokenInput.length > 0) {
+    const validateButton = $(`
+      <button type="button" class="vox-chronicle-validate-button" data-validation-target="kanka">
+        <i class="fas fa-plug"></i> Test Connection
+      </button>
+    `);
+
+    kankaTokenInput.parent().append(validateButton);
+
+    // Wire up click handler (validation logic will be added in next subtask)
+    validateButton.on('click', async (event) => {
+      event.preventDefault();
+      const button = $(event.currentTarget);
+      const icon = button.find('i');
+
+      // Show loading state
+      button.prop('disabled', true);
+      icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
+
+      try {
+        // TODO: Call validation handler (will be implemented in subtask-1-2)
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Placeholder
+
+        // Success state
+        icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
+        ui.notifications?.info('Kanka API token validated successfully');
+
+        setTimeout(() => {
+          icon.removeClass('fa-check').addClass('fa-plug');
+          button.prop('disabled', false);
+        }, 2000);
+      } catch (error) {
+        // Error state
+        icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
+        ui.notifications?.error(`Kanka validation failed: ${error.message}`);
+
+        setTimeout(() => {
+          icon.removeClass('fa-times').addClass('fa-plug');
+          button.prop('disabled', false);
+        }, 2000);
+      }
+    });
+
+    console.log(`${MODULE_ID} | Validation button injected for Kanka API token`);
+  }
+});
+
 // Export module ID for use in other files
 export { MODULE_ID };
