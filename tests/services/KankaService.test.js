@@ -63,7 +63,7 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { KankaService, KankaEntityType, CharacterType, LocationType, ItemType } from '../../scripts/kanka/KankaService.mjs';
+import { KankaService, KankaEntityType, CharacterType, LocationType, ItemType, OrganisationType, QuestType } from '../../scripts/kanka/KankaService.mjs';
 import { KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
 
 /**
@@ -141,6 +141,37 @@ function createMockItem(overrides = {}) {
     type: 'Weapon',
     is_private: false,
     entity_id: 444,
+    ...overrides
+  };
+}
+
+/**
+ * Create a mock organisation entity
+ */
+function createMockOrganisation(overrides = {}) {
+  return {
+    id: 555,
+    name: 'The Shadow Guild',
+    entry: '<p>A secretive thieves guild...</p>',
+    type: 'Guild',
+    is_private: false,
+    entity_id: 666,
+    ...overrides
+  };
+}
+
+/**
+ * Create a mock quest entity
+ */
+function createMockQuest(overrides = {}) {
+  return {
+    id: 777,
+    name: 'The Lost Artifact',
+    entry: '<p>Find the ancient artifact...</p>',
+    type: 'Main Quest',
+    is_completed: false,
+    is_private: false,
+    entity_id: 888,
     ...overrides
   };
 }
@@ -514,6 +545,279 @@ describe('KankaService', () => {
   });
 
   // ============================================================================
+  // Organisation CRUD Tests
+  // ============================================================================
+
+  describe('createOrganisation', () => {
+    it('should create an organisation with required fields', async () => {
+      const mockOrganisation = createMockOrganisation();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisation)),
+        headers: new Headers()
+      });
+
+      const result = await service.createOrganisation({
+        name: 'The Shadow Guild',
+        entry: 'A secretive thieves guild'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.name).toBe('The Shadow Guild');
+      expect(body.type).toBe(''); // Default type (OTHER)
+
+      expect(result.id).toBe(555);
+    });
+
+    it('should include organisation-specific optional fields', async () => {
+      const mockOrganisation = createMockOrganisation({ type: 'Military' });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisation)),
+        headers: new Headers()
+      });
+
+      await service.createOrganisation({
+        name: 'The Iron Legion',
+        type: 'Military',
+        location_id: 111,
+        organisation_id: 222,
+        is_private: true
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.type).toBe('Military');
+      expect(body.location_id).toBe(111);
+      expect(body.organisation_id).toBe(222);
+      expect(body.is_private).toBe(true);
+    });
+
+    it('should throw error without organisation name', async () => {
+      await expect(service.createOrganisation({ entry: 'Description' })).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('listOrganisations', () => {
+    it('should list organisations with filters', async () => {
+      const mockOrganisations = [createMockOrganisation()];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisations)),
+        headers: new Headers()
+      });
+
+      const result = await service.listOrganisations({ type: 'Guild', organisation_id: 999 });
+
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('type=Guild');
+      expect(url).toContain('organisation_id=999');
+      expect(result.data).toHaveLength(1);
+    });
+  });
+
+  describe('getOrganisation', () => {
+    it('should fetch a single organisation by ID', async () => {
+      const mockOrganisation = createMockOrganisation();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisation)),
+        headers: new Headers()
+      });
+
+      const result = await service.getOrganisation(555);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(result.id).toBe(555);
+      expect(result.name).toBe('The Shadow Guild');
+    });
+  });
+
+  describe('updateOrganisation', () => {
+    it('should update an organisation', async () => {
+      const updatedOrganisation = createMockOrganisation({ name: 'The Shadow Guild - Updated' });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(updatedOrganisation)),
+        headers: new Headers()
+      });
+
+      const result = await service.updateOrganisation(555, {
+        name: 'The Shadow Guild - Updated'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/organisations/555');
+      expect(options.method).toBe('PUT');
+      expect(result.name).toBe('The Shadow Guild - Updated');
+    });
+  });
+
+  describe('deleteOrganisation', () => {
+    it('should delete an organisation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+        headers: new Headers()
+      });
+
+      await service.deleteOrganisation(555);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/organisations/555');
+      expect(options.method).toBe('DELETE');
+    });
+  });
+
+  // ============================================================================
+  // Quest CRUD Tests
+  // ============================================================================
+
+  describe('createQuest', () => {
+    it('should create a quest with required fields', async () => {
+      const mockQuest = createMockQuest();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuest)),
+        headers: new Headers()
+      });
+
+      const result = await service.createQuest({
+        name: 'The Lost Artifact',
+        entry: 'Find the ancient artifact'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.name).toBe('The Lost Artifact');
+      expect(body.type).toBe(''); // Default type (OTHER)
+
+      expect(result.id).toBe(777);
+    });
+
+    it('should include quest-specific optional fields', async () => {
+      const mockQuest = createMockQuest({ type: 'Side Quest', is_completed: true });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuest)),
+        headers: new Headers()
+      });
+
+      await service.createQuest({
+        name: 'Bounty Hunt',
+        type: 'Side Quest',
+        character_id: 789,
+        location_id: 111,
+        quest_id: 999,
+        is_completed: true,
+        is_private: true
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.type).toBe('Side Quest');
+      expect(body.character_id).toBe(789);
+      expect(body.location_id).toBe(111);
+      expect(body.quest_id).toBe(999);
+      expect(body.is_completed).toBe(true);
+      expect(body.is_private).toBe(true);
+    });
+
+    it('should throw error without quest name', async () => {
+      await expect(service.createQuest({ entry: 'Description' })).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('listQuests', () => {
+    it('should list quests with filters', async () => {
+      const mockQuests = [createMockQuest()];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuests)),
+        headers: new Headers()
+      });
+
+      const result = await service.listQuests({ type: 'Main Quest', is_completed: false, quest_id: 999 });
+
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('type=Main%20Quest');
+      expect(url).toContain('is_completed=0');
+      expect(url).toContain('quest_id=999');
+      expect(result.data).toHaveLength(1);
+    });
+  });
+
+  describe('getQuest', () => {
+    it('should fetch a single quest by ID', async () => {
+      const mockQuest = createMockQuest();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuest)),
+        headers: new Headers()
+      });
+
+      const result = await service.getQuest(777);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(result.id).toBe(777);
+      expect(result.name).toBe('The Lost Artifact');
+    });
+  });
+
+  describe('updateQuest', () => {
+    it('should update a quest', async () => {
+      const updatedQuest = createMockQuest({ name: 'The Lost Artifact - Updated', is_completed: true });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(updatedQuest)),
+        headers: new Headers()
+      });
+
+      const result = await service.updateQuest(777, {
+        name: 'The Lost Artifact - Updated',
+        is_completed: true
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/quests/777');
+      expect(options.method).toBe('PUT');
+      expect(result.name).toBe('The Lost Artifact - Updated');
+      expect(result.is_completed).toBe(true);
+    });
+  });
+
+  describe('deleteQuest', () => {
+    it('should delete a quest', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+        headers: new Headers()
+      });
+
+      await service.deleteQuest(777);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/quests/777');
+      expect(options.method).toBe('DELETE');
+    });
+  });
+
+  // ============================================================================
   // Item CRUD Tests
   // ============================================================================
 
@@ -686,8 +990,8 @@ describe('KankaService', () => {
 
       await service.searchEntities('test');
 
-      // Should search characters, locations, items, journals
-      expect(mockFetch).toHaveBeenCalledTimes(4);
+      // Should search characters, locations, items, journals, organisations, quests
+      expect(mockFetch).toHaveBeenCalledTimes(6);
     });
   });
 
@@ -925,383 +1229,6 @@ describe('KankaService', () => {
       const noCampaignService = new KankaService('test-token', '');
 
       await expect(noCampaignService.createJournal({ name: 'Test' })).rejects.toThrow(KankaError);
-    });
-  });
-
-  // ============================================================================
-  // Relationship Tests
-  // ============================================================================
-
-  describe('createRelation', () => {
-    it('should create a relationship with required fields', async () => {
-      const mockRelation = {
-        id: 1001,
-        entity_id: 456,
-        target_id: 789,
-        relation: 'mentor',
-        attitude: 75,
-        is_star: false
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
-        headers: new Headers()
-      });
-
-      const result = await service.createRelation(456, {
-        target_id: 789,
-        relation: 'mentor'
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toContain('/campaigns/campaign-123/entities/456/relations');
-      expect(options.method).toBe('POST');
-
-      const body = JSON.parse(options.body);
-      expect(body.target_id).toBe(789);
-      expect(body.relation).toBe('mentor');
-
-      expect(result.id).toBe(1001);
-      expect(result.target_id).toBe(789);
-    });
-
-    it('should include optional fields when provided', async () => {
-      const mockRelation = {
-        id: 1002,
-        entity_id: 456,
-        target_id: 789,
-        relation: 'enemy',
-        attitude: -50,
-        is_star: true,
-        colour: '#ff0000',
-        visibility: 'all'
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
-        headers: new Headers()
-      });
-
-      await service.createRelation(456, {
-        target_id: 789,
-        relation: 'enemy',
-        attitude: -50,
-        is_star: true,
-        colour: '#ff0000',
-        visibility: 'all'
-      });
-
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.attitude).toBe(-50);
-      expect(body.is_star).toBe(true);
-      expect(body.colour).toBe('#ff0000');
-      expect(body.visibility).toBe('all');
-    });
-
-    it('should throw error without entity ID', async () => {
-      await expect(service.createRelation(null, { target_id: 789 })).rejects.toThrow(KankaError);
-    });
-
-    it('should throw error without target entity ID', async () => {
-      await expect(service.createRelation(456, {})).rejects.toThrow(KankaError);
-      await expect(service.createRelation(456, { relation: 'friend' })).rejects.toThrow(KankaError);
-    });
-  });
-
-  describe('listRelations', () => {
-    it('should list relationships for an entity', async () => {
-      const mockRelations = [
-        { id: 1001, entity_id: 456, target_id: 789, relation: 'mentor' },
-        { id: 1002, entity_id: 456, target_id: 888, relation: 'friend' }
-      ];
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse(mockRelations)),
-        headers: new Headers()
-      });
-
-      const result = await service.listRelations(456);
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const url = mockFetch.mock.calls[0][0];
-      expect(url).toContain('/campaigns/campaign-123/entities/456/relations');
-      expect(result.data).toHaveLength(2);
-    });
-
-    it('should support pagination', async () => {
-      const mockRelations = [
-        { id: 1001, entity_id: 456, target_id: 789, relation: 'mentor' }
-      ];
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse(mockRelations)),
-        headers: new Headers()
-      });
-
-      const result = await service.listRelations(456, { page: 2 });
-
-      const url = mockFetch.mock.calls[0][0];
-      expect(url).toContain('page=2');
-      expect(result.data).toBeDefined();
-    });
-
-    it('should throw error without entity ID', async () => {
-      await expect(service.listRelations(null)).rejects.toThrow(KankaError);
-    });
-  });
-
-  describe('getRelation', () => {
-    it('should fetch relationship by ID', async () => {
-      const mockRelation = {
-        id: 1001,
-        entity_id: 456,
-        target_id: 789,
-        relation: 'mentor',
-        attitude: 75
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
-        headers: new Headers()
-      });
-
-      const result = await service.getRelation(456, 1001);
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const url = mockFetch.mock.calls[0][0];
-      expect(url).toContain('/campaigns/campaign-123/entities/456/relations/1001');
-      expect(result.id).toBe(1001);
-      expect(result.relation).toBe('mentor');
-    });
-
-    it('should throw error without entity ID', async () => {
-      await expect(service.getRelation(null, 1001)).rejects.toThrow(KankaError);
-    });
-
-    it('should throw error without relation ID', async () => {
-      await expect(service.getRelation(456, null)).rejects.toThrow(KankaError);
-    });
-  });
-
-  describe('updateRelation', () => {
-    it('should update relationship', async () => {
-      const mockRelation = {
-        id: 1001,
-        entity_id: 456,
-        target_id: 789,
-        relation: 'friend',
-        attitude: 90
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
-        headers: new Headers()
-      });
-
-      const result = await service.updateRelation(456, 1001, {
-        relation: 'friend',
-        attitude: 90
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch.mock.calls[0][1].method).toBe('PUT');
-      expect(result.relation).toBe('friend');
-      expect(result.attitude).toBe(90);
-    });
-
-    it('should throw error without entity ID', async () => {
-      await expect(service.updateRelation(null, 1001, { relation: 'friend' })).rejects.toThrow(KankaError);
-    });
-
-    it('should throw error without relation ID', async () => {
-      await expect(service.updateRelation(456, null, { relation: 'friend' })).rejects.toThrow(KankaError);
-    });
-  });
-
-  describe('deleteRelation', () => {
-    it('should delete relationship', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({}),
-        headers: new Headers()
-      });
-
-      await service.deleteRelation(456, 1001);
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const url = mockFetch.mock.calls[0][0];
-      expect(url).toContain('/campaigns/campaign-123/entities/456/relations/1001');
-      expect(mockFetch.mock.calls[0][1].method).toBe('DELETE');
-    });
-
-    it('should throw error without entity ID', async () => {
-      await expect(service.deleteRelation(null, 1001)).rejects.toThrow(KankaError);
-    });
-
-    it('should throw error without relation ID', async () => {
-      await expect(service.deleteRelation(456, null)).rejects.toThrow(KankaError);
-    });
-  });
-
-  describe('batchCreateRelations', () => {
-    it('should create multiple relationships', async () => {
-      const relations = [
-        { target_id: 789, relation: 'mentor' },
-        { target_id: 888, relation: 'friend' },
-        { target_id: 999, relation: 'ally' }
-      ];
-
-      // Mock successful responses for all three
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse({
-          id: 1001,
-          entity_id: 456,
-          target_id: 789
-        })),
-        headers: new Headers()
-      });
-
-      const progressCallback = vi.fn();
-
-      const results = await service.batchCreateRelations(456, relations, {
-        onProgress: progressCallback
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-      expect(results).toHaveLength(3);
-      expect(progressCallback).toHaveBeenCalledTimes(3);
-      expect(results.every(r => r.id === 1001)).toBe(true);
-    });
-
-    it('should continue on error when continueOnError is true', async () => {
-      const relations = [
-        { target_id: 789, relation: 'mentor' },
-        { target_id: 888, relation: 'friend' },
-        { target_id: 999, relation: 'ally' }
-      ];
-
-      // First call succeeds
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse({
-          id: 1001,
-          entity_id: 456,
-          target_id: 789
-        })),
-        headers: new Headers()
-      });
-
-      // Second call fails
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        statusText: 'Unprocessable Entity',
-        text: () => Promise.resolve(JSON.stringify({ message: 'Validation failed' })),
-        headers: new Headers()
-      });
-
-      // Third call succeeds
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse({
-          id: 1002,
-          entity_id: 456,
-          target_id: 999
-        })),
-        headers: new Headers()
-      });
-
-      const results = await service.batchCreateRelations(456, relations, {
-        continueOnError: true
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-      expect(results).toHaveLength(3);
-      expect(results[0].id).toBe(1001);
-      expect(results[1]._error).toBeDefined();
-      expect(results[2].id).toBe(1002);
-    });
-
-    it('should stop on error when continueOnError is false', async () => {
-      const relations = [
-        { target_id: 789, relation: 'mentor' },
-        { target_id: 888, relation: 'friend' },
-        { target_id: 999, relation: 'ally' }
-      ];
-
-      // First call succeeds
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse({
-          id: 1001,
-          entity_id: 456,
-          target_id: 789
-        })),
-        headers: new Headers()
-      });
-
-      // Second call fails
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        statusText: 'Unprocessable Entity',
-        text: () => Promise.resolve(JSON.stringify({ message: 'Validation failed' })),
-        headers: new Headers()
-      });
-
-      await expect(
-        service.batchCreateRelations(456, relations, { continueOnError: false })
-      ).rejects.toThrow(KankaError);
-
-      // Should only have made 2 calls (second one failed and threw)
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
-
-    it('should return empty array for empty relations data', async () => {
-      const results = await service.batchCreateRelations(456, []);
-      expect(results).toEqual([]);
-      expect(mockFetch).not.toHaveBeenCalled();
-    });
-
-    it('should throw error without entity ID', async () => {
-      await expect(
-        service.batchCreateRelations(null, [{ target_id: 789 }])
-      ).rejects.toThrow(KankaError);
-    });
-
-    it('should call progress callback with correct arguments', async () => {
-      const relations = [
-        { target_id: 789, relation: 'mentor' },
-        { target_id: 888, relation: 'friend' }
-      ];
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(createMockKankaResponse({
-          id: 1001,
-          entity_id: 456
-        })),
-        headers: new Headers()
-      });
-
-      const progressCallback = vi.fn();
-
-      await service.batchCreateRelations(456, relations, {
-        onProgress: progressCallback
-      });
-
-      expect(progressCallback).toHaveBeenCalledTimes(2);
-      expect(progressCallback).toHaveBeenNthCalledWith(1, 1, 2, expect.any(Object));
-      expect(progressCallback).toHaveBeenNthCalledWith(2, 2, 2, expect.any(Object));
     });
   });
 

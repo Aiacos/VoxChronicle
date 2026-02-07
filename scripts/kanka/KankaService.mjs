@@ -82,6 +82,36 @@ const ItemType = {
 };
 
 /**
+ * Organisation types for Kanka
+ * @enum {string}
+ */
+const OrganisationType = {
+  GUILD: 'Guild',
+  COMPANY: 'Company',
+  GOVERNMENT: 'Government',
+  MILITARY: 'Military',
+  RELIGIOUS: 'Religious',
+  CRIMINAL: 'Criminal',
+  FACTION: 'Faction',
+  FAMILY: 'Family',
+  OTHER: ''
+};
+
+/**
+ * Quest types for Kanka
+ * @enum {string}
+ */
+const QuestType = {
+  MAIN: 'Main Quest',
+  SIDE: 'Side Quest',
+  PERSONAL: 'Personal Quest',
+  BOUNTY: 'Bounty',
+  MISSION: 'Mission',
+  TASK: 'Task',
+  OTHER: ''
+};
+
+/**
  * KankaService class for entity CRUD operations
  *
  * Provides high-level methods for creating, reading, updating, and deleting
@@ -749,6 +779,272 @@ class KankaService extends KankaClient {
   }
 
   // ============================================================================
+  // Organisations
+  // ============================================================================
+
+  /**
+   * Create a new organisation
+   *
+   * @param {Object} organisationData - Organisation data
+   * @param {string} organisationData.name - Organisation name
+   * @param {string} [organisationData.entry] - Organisation description (HTML/Markdown)
+   * @param {string} [organisationData.type] - Organisation type ('Guild', 'Military', etc.)
+   * @param {boolean} [organisationData.is_private=false] - Whether organisation is private
+   * @param {string|number} [organisationData.location_id] - Headquarters location ID
+   * @param {string|number} [organisationData.organisation_id] - Parent organisation ID
+   * @param {Array} [organisationData.tags] - Tag IDs to associate
+   * @returns {Promise<Object>} Created organisation data
+   */
+  async createOrganisation(organisationData) {
+    if (!organisationData?.name) {
+      throw new KankaError(
+        'Organisation name is required',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
+
+    const payload = {
+      name: organisationData.name,
+      entry: organisationData.entry || '',
+      type: organisationData.type || OrganisationType.OTHER,
+      is_private: organisationData.is_private ?? false
+    };
+
+    // Add optional fields if provided
+    if (organisationData.location_id) {
+      payload.location_id = organisationData.location_id;
+    }
+    if (organisationData.organisation_id) {
+      payload.organisation_id = organisationData.organisation_id;
+    }
+    if (organisationData.tags?.length) {
+      payload.tags = organisationData.tags;
+    }
+
+    this._logger.log(`Creating organisation: ${organisationData.name}`);
+    const response = await this.post(endpoint, payload);
+    this._logger.log(`Organisation created with ID: ${response.data?.id}`);
+
+    return response.data;
+  }
+
+  /**
+   * Get an organisation by ID
+   *
+   * @param {string|number} organisationId - Organisation ID
+   * @returns {Promise<Object>} Organisation data
+   */
+  async getOrganisation(organisationId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`Fetching organisation: ${organisationId}`);
+    const response = await this.get(endpoint);
+    return response.data;
+  }
+
+  /**
+   * Update an organisation
+   *
+   * @param {string|number} organisationId - Organisation ID
+   * @param {Object} organisationData - Updated organisation data
+   * @returns {Promise<Object>} Updated organisation data
+   */
+  async updateOrganisation(organisationId, organisationData) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`Updating organisation: ${organisationId}`);
+    const response = await this.put(endpoint, organisationData);
+    return response.data;
+  }
+
+  /**
+   * Delete an organisation
+   *
+   * @param {string|number} organisationId - Organisation ID
+   * @returns {Promise<void>}
+   */
+  async deleteOrganisation(organisationId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`Deleting organisation: ${organisationId}`);
+    await this.delete(endpoint);
+    this._logger.log(`Organisation deleted: ${organisationId}`);
+  }
+
+  /**
+   * List all organisations in the campaign
+   *
+   * @param {Object} [options] - List options
+   * @param {number} [options.page=1] - Page number for pagination
+   * @param {string} [options.type] - Filter by organisation type
+   * @param {string|number} [options.organisation_id] - Filter by parent organisation
+   * @returns {Promise<Object>} Paginated organisation list with data and meta
+   */
+  async listOrganisations(options = {}) {
+    let endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
+
+    const params = [];
+    if (options.page) {
+      params.push(`page=${options.page}`);
+    }
+    if (options.type) {
+      params.push(`type=${encodeURIComponent(options.type)}`);
+    }
+    if (options.organisation_id) {
+      params.push(`organisation_id=${options.organisation_id}`);
+    }
+    if (params.length) {
+      endpoint += `?${params.join('&')}`;
+    }
+
+    this._logger.debug('Fetching organisations list');
+    const response = await this.get(endpoint);
+    return {
+      data: response.data || [],
+      meta: response.meta || {},
+      links: response.links || {}
+    };
+  }
+
+  // ============================================================================
+  // Quests
+  // ============================================================================
+
+  /**
+   * Create a new quest
+   *
+   * @param {Object} questData - Quest data
+   * @param {string} questData.name - Quest name
+   * @param {string} [questData.entry] - Quest description (HTML/Markdown)
+   * @param {string} [questData.type] - Quest type ('Main Quest', 'Side Quest', etc.)
+   * @param {boolean} [questData.is_completed=false] - Whether quest is completed
+   * @param {boolean} [questData.is_private=false] - Whether quest is private
+   * @param {string|number} [questData.character_id] - Quest giver character ID
+   * @param {string|number} [questData.location_id] - Quest location ID
+   * @param {string|number} [questData.quest_id] - Parent quest ID
+   * @param {Array} [questData.tags] - Tag IDs to associate
+   * @returns {Promise<Object>} Created quest data
+   */
+  async createQuest(questData) {
+    if (!questData?.name) {
+      throw new KankaError(
+        'Quest name is required',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
+
+    const payload = {
+      name: questData.name,
+      entry: questData.entry || '',
+      type: questData.type || QuestType.OTHER,
+      is_private: questData.is_private ?? false
+    };
+
+    // Add optional fields if provided
+    if (questData.is_completed !== undefined) {
+      payload.is_completed = questData.is_completed;
+    }
+    if (questData.character_id) {
+      payload.character_id = questData.character_id;
+    }
+    if (questData.location_id) {
+      payload.location_id = questData.location_id;
+    }
+    if (questData.quest_id) {
+      payload.quest_id = questData.quest_id;
+    }
+    if (questData.tags?.length) {
+      payload.tags = questData.tags;
+    }
+
+    this._logger.log(`Creating quest: ${questData.name}`);
+    const response = await this.post(endpoint, payload);
+    this._logger.log(`Quest created with ID: ${response.data?.id}`);
+
+    return response.data;
+  }
+
+  /**
+   * Get a quest by ID
+   *
+   * @param {string|number} questId - Quest ID
+   * @returns {Promise<Object>} Quest data
+   */
+  async getQuest(questId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
+    this._logger.debug(`Fetching quest: ${questId}`);
+    const response = await this.get(endpoint);
+    return response.data;
+  }
+
+  /**
+   * Update a quest
+   *
+   * @param {string|number} questId - Quest ID
+   * @param {Object} questData - Updated quest data
+   * @returns {Promise<Object>} Updated quest data
+   */
+  async updateQuest(questId, questData) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
+    this._logger.debug(`Updating quest: ${questId}`);
+    const response = await this.put(endpoint, questData);
+    return response.data;
+  }
+
+  /**
+   * Delete a quest
+   *
+   * @param {string|number} questId - Quest ID
+   * @returns {Promise<void>}
+   */
+  async deleteQuest(questId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
+    this._logger.debug(`Deleting quest: ${questId}`);
+    await this.delete(endpoint);
+    this._logger.log(`Quest deleted: ${questId}`);
+  }
+
+  /**
+   * List all quests in the campaign
+   *
+   * @param {Object} [options] - List options
+   * @param {number} [options.page=1] - Page number for pagination
+   * @param {string} [options.type] - Filter by quest type
+   * @param {boolean} [options.is_completed] - Filter by completion status
+   * @param {string|number} [options.quest_id] - Filter by parent quest
+   * @returns {Promise<Object>} Paginated quest list with data and meta
+   */
+  async listQuests(options = {}) {
+    let endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
+
+    const params = [];
+    if (options.page) {
+      params.push(`page=${options.page}`);
+    }
+    if (options.type) {
+      params.push(`type=${encodeURIComponent(options.type)}`);
+    }
+    if (options.is_completed !== undefined) {
+      params.push(`is_completed=${options.is_completed ? 1 : 0}`);
+    }
+    if (options.quest_id) {
+      params.push(`quest_id=${options.quest_id}`);
+    }
+    if (params.length) {
+      endpoint += `?${params.join('&')}`;
+    }
+
+    this._logger.debug('Fetching quests list');
+    const response = await this.get(endpoint);
+    return {
+      data: response.data || [],
+      meta: response.meta || {},
+      links: response.links || {}
+    };
+  }
+
+  // ============================================================================
   // Image Upload
   // ============================================================================
 
@@ -869,231 +1165,6 @@ class KankaService extends KankaClient {
   }
 
   // ============================================================================
-  // Relationships
-  // ============================================================================
-
-  /**
-   * Create a relationship between two entities
-   *
-   * Relationships define connections between entities in Kanka (e.g., 'Gandalf is mentor of Frodo').
-   * The owner entity is specified by entityId, and the target entity is specified in relationData.
-   *
-   * @param {string|number} entityId - Owner entity ID (the entity this relationship belongs to)
-   * @param {Object} relationData - Relationship data
-   * @param {string|number} relationData.target_id - Target entity ID (required)
-   * @param {string} [relationData.relation] - Relationship description (e.g., 'mentor', 'friend', 'enemy')
-   * @param {number} [relationData.attitude] - Attitude score (-100 to 100, negative=hostile, positive=friendly)
-   * @param {boolean} [relationData.is_star] - Whether to star this relationship
-   * @param {string} [relationData.colour] - Color code for the relationship (e.g., '#ff0000')
-   * @param {string} [relationData.visibility] - Visibility setting ('all', 'admin', 'self')
-   * @returns {Promise<Object>} Created relationship data
-   */
-  async createRelation(entityId, relationData) {
-    if (!entityId) {
-      throw new KankaError(
-        'Entity ID is required for relationship creation',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    if (!relationData?.target_id) {
-      throw new KankaError(
-        'Target entity ID is required for relationship',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    // Build endpoint: /campaigns/{campaignId}/entities/{entityId}/relations
-    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations`;
-
-    const payload = {
-      target_id: relationData.target_id
-    };
-
-    // Add optional fields if provided
-    if (relationData.relation) {
-      payload.relation = relationData.relation;
-    }
-    if (relationData.attitude !== undefined) {
-      payload.attitude = relationData.attitude;
-    }
-    if (relationData.is_star !== undefined) {
-      payload.is_star = relationData.is_star;
-    }
-    if (relationData.colour) {
-      payload.colour = relationData.colour;
-    }
-    if (relationData.visibility) {
-      payload.visibility = relationData.visibility;
-    }
-
-    this._logger.log(`Creating relationship from entity ${entityId} to ${relationData.target_id}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Relationship created with ID: ${response.data?.id}`);
-
-    return response.data;
-  }
-
-  /**
-   * List all relationships for an entity
-   *
-   * @param {string|number} entityId - Owner entity ID
-   * @param {Object} [options] - List options
-   * @param {number} [options.page=1] - Page number for pagination
-   * @returns {Promise<Object>} Paginated relationship list with data and meta
-   */
-  async listRelations(entityId, options = {}) {
-    if (!entityId) {
-      throw new KankaError(
-        'Entity ID is required to list relationships',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    let endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations`;
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug(`Fetching relationships for entity: ${entityId}`);
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
-  }
-
-  /**
-   * Get a specific relationship by ID
-   *
-   * @param {string|number} entityId - Owner entity ID
-   * @param {string|number} relationId - Relationship ID
-   * @returns {Promise<Object>} Relationship data
-   */
-  async getRelation(entityId, relationId) {
-    if (!entityId || !relationId) {
-      throw new KankaError(
-        'Entity ID and Relationship ID are required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations/${relationId}`;
-    this._logger.debug(`Fetching relationship: ${relationId} for entity: ${entityId}`);
-    const response = await this.get(endpoint);
-    return response.data;
-  }
-
-  /**
-   * Update a relationship
-   *
-   * @param {string|number} entityId - Owner entity ID
-   * @param {string|number} relationId - Relationship ID
-   * @param {Object} relationData - Updated relationship data
-   * @returns {Promise<Object>} Updated relationship data
-   */
-  async updateRelation(entityId, relationId, relationData) {
-    if (!entityId || !relationId) {
-      throw new KankaError(
-        'Entity ID and Relationship ID are required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations/${relationId}`;
-    this._logger.debug(`Updating relationship: ${relationId} for entity: ${entityId}`);
-    const response = await this.put(endpoint, relationData);
-    return response.data;
-  }
-
-  /**
-   * Delete a relationship
-   *
-   * @param {string|number} entityId - Owner entity ID
-   * @param {string|number} relationId - Relationship ID
-   * @returns {Promise<void>}
-   */
-  async deleteRelation(entityId, relationId) {
-    if (!entityId || !relationId) {
-      throw new KankaError(
-        'Entity ID and Relationship ID are required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations/${relationId}`;
-    this._logger.debug(`Deleting relationship: ${relationId} for entity: ${entityId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Relationship deleted: ${relationId} for entity: ${entityId}`);
-  }
-
-  /**
-   * Batch create multiple relationships for an entity
-   *
-   * Creates multiple relationships sequentially to respect rate limits.
-   * Use with caution for large batches due to rate limiting constraints.
-   *
-   * @param {string|number} entityId - Owner entity ID (source of all relationships)
-   * @param {Array<Object>} relationsData - Array of relationship data objects
-   * @param {Object} [options] - Batch options
-   * @param {boolean} [options.continueOnError=true] - Continue creating remaining relationships if one fails
-   * @param {Function} [options.onProgress] - Progress callback (current, total, relationship)
-   * @returns {Promise<Array<Object>>} Created relationships (with _error property for failed ones)
-   */
-  async batchCreateRelations(entityId, relationsData, options = {}) {
-    if (!entityId) {
-      throw new KankaError(
-        'Entity ID is required for batch relationship creation',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    if (!Array.isArray(relationsData) || relationsData.length === 0) {
-      return [];
-    }
-
-    const continueOnError = options.continueOnError ?? true;
-    const onProgress = options.onProgress || (() => {});
-    const results = [];
-
-    for (let i = 0; i < relationsData.length; i++) {
-      const relationData = relationsData[i];
-
-      try {
-        const relationship = await this.createRelation(entityId, relationData);
-        results.push(relationship);
-        onProgress(i + 1, relationsData.length, relationship);
-      } catch (error) {
-        this._logger.error(
-          `Failed to create relationship from entity ${entityId} to ${relationData.target_id}: ${error.message}`
-        );
-
-        const errorResult = {
-          _error: error.message,
-          entityId,
-          target_id: relationData.target_id,
-          relation: relationData.relation
-        };
-
-        results.push(errorResult);
-        onProgress(i + 1, relationsData.length, null);
-
-        if (!continueOnError) {
-          throw error;
-        }
-      }
-    }
-
-    return results;
-  }
-
-  // ============================================================================
   // Utility Methods
   // ============================================================================
 
@@ -1126,7 +1197,9 @@ class KankaService extends KankaClient {
       KankaEntityType.CHARACTER,
       KankaEntityType.LOCATION,
       KankaEntityType.ITEM,
-      KankaEntityType.JOURNAL
+      KankaEntityType.JOURNAL,
+      KankaEntityType.ORGANISATION,
+      KankaEntityType.QUEST
     ];
 
     for (const type of types) {
@@ -1198,6 +1271,10 @@ class KankaService extends KankaClient {
         return this.createItem(entityData);
       case KankaEntityType.JOURNAL:
         return this.createJournal(entityData);
+      case KankaEntityType.ORGANISATION:
+        return this.createOrganisation(entityData);
+      case KankaEntityType.QUEST:
+        return this.createQuest(entityData);
       default:
         throw new KankaError(
           `Unsupported entity type: ${entityType}`,
@@ -1245,6 +1322,12 @@ class KankaService extends KankaClient {
             case KankaEntityType.JOURNAL:
               entity = await this.createJournal(entityData);
               break;
+            case KankaEntityType.ORGANISATION:
+              entity = await this.createOrganisation(entityData);
+              break;
+            case KankaEntityType.QUEST:
+              entity = await this.createQuest(entityData);
+              break;
             default:
               throw new KankaError(
                 `Unsupported entity type: ${entityType}`,
@@ -1272,5 +1355,7 @@ export {
   KankaEntityType,
   CharacterType,
   LocationType,
-  ItemType
+  ItemType,
+  OrganisationType,
+  QuestType
 };
