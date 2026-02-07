@@ -118,8 +118,10 @@
       "LabelsReset": "Speaker labels reset",
       "NoGameUsers": "No game users available for auto-detection",
       "SaveFailed": "Failed to save speaker labels",
+      "Clear": "Clear",
+      "DetectedInSession": "Detected in session",
       "HelpTitle": "Help",
-      "HelpSpeakerIDs": "These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).",
+      "HelpSpeakerIds": "These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).",
       "HelpKnownSpeakers": "Speakers with a {icon} icon were detected in a previous transcription session.",
       "HelpQuickAssign": "Use the dropdown to quickly assign a game user's name to a speaker slot.",
       "HelpAutoDetect": "Automatically fills empty speaker slots with game user names in order."

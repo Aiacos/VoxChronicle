@@ -118,8 +118,10 @@
       "LabelsReset": "Etichette parlanti reimpostate",
       "NoGameUsers": "Nessun utente di gioco disponibile per il rilevamento automatico",
       "SaveFailed": "Salvataggio etichette parlanti fallito",
+      "Clear": "Cancella",
+      "DetectedInSession": "Rilevato nella sessione",
       "HelpTitle": "Aiuto",
-      "HelpSpeakerIDs": "Questi sono assegnati automaticamente dal servizio di trascrizione (SPEAKER_00, SPEAKER_01, ecc.).",
+      "HelpSpeakerIds": "Questi sono assegnati automaticamente dal servizio di trascrizione (SPEAKER_00, SPEAKER_01, ecc.).",
       "HelpKnownSpeakers": "I parlanti con l'icona {icon} sono stati rilevati in una sessione di trascrizione precedente.",
       "HelpQuickAssign": "Usa il menu a tendina per assegnare rapidamente il nome di un utente di gioco a uno slot parlante.",
       "HelpAutoDetect": "Riempie automaticamente gli slot parlanti vuoti con i nomi degli utenti di gioco in ordine."
