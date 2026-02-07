@@ -111,10 +111,17 @@
                 <i class="fas fa-image"></i>
               </button>
             </div>
-            {{#if imageUrl}}
-            <div class="entity-preview-image">
-              <img src="{{imageUrl}}" alt="{{name}}" />
+            {{#if isGenerating}}
+            <div class="entity-preview-loading">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>{{../i18n.generating}}</span>
             </div>
+            {{else}}
+              {{#if imageUrl}}
+              <div class="entity-preview-image">
+                <img src="{{imageUrl}}" alt="{{name}}" />
+              </div>
+              {{/if}}
             {{/if}}
           </div>
           {{/each}}
@@ -163,10 +170,17 @@
                 <i class="fas fa-image"></i>
               </button>
             </div>
-            {{#if imageUrl}}
-            <div class="entity-preview-image">
-              <img src="{{imageUrl}}" alt="{{name}}" />
+            {{#if isGenerating}}
+            <div class="entity-preview-loading">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>{{../i18n.generating}}</span>
             </div>
+            {{else}}
+              {{#if imageUrl}}
+              <div class="entity-preview-image">
+                <img src="{{imageUrl}}" alt="{{name}}" />
+              </div>
+              {{/if}}
             {{/if}}
           </div>
           {{/each}}
@@ -215,10 +229,17 @@
                 <i class="fas fa-image"></i>
               </button>
             </div>
-            {{#if imageUrl}}
-            <div class="entity-preview-image">
-              <img src="{{imageUrl}}" alt="{{name}}" />
+            {{#if isGenerating}}
+            <div class="entity-preview-loading">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>{{../i18n.generating}}</span>
             </div>
+            {{else}}
+              {{#if imageUrl}}
+              <div class="entity-preview-image">
+                <img src="{{imageUrl}}" alt="{{name}}" />
+              </div>
+              {{/if}}
             {{/if}}
           </div>
           {{/each}}
