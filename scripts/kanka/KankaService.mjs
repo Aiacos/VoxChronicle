@@ -1197,7 +1197,9 @@ class KankaService extends KankaClient {
       KankaEntityType.CHARACTER,
       KankaEntityType.LOCATION,
       KankaEntityType.ITEM,
-      KankaEntityType.JOURNAL
+      KankaEntityType.JOURNAL,
+      KankaEntityType.ORGANISATION,
+      KankaEntityType.QUEST
     ];
 
     for (const type of types) {

@@ -686,8 +686,8 @@ describe('KankaService', () => {
 
       await service.searchEntities('test');
 
-      // Should search characters, locations, items, journals
-      expect(mockFetch).toHaveBeenCalledTimes(4);
+      // Should search characters, locations, items, journals, organisations, quests
+      expect(mockFetch).toHaveBeenCalledTimes(6);
     });
   });
 
