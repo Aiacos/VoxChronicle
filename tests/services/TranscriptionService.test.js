@@ -7,6 +7,20 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock global game object for Foundry VTT
+globalThis.game = {
+  settings: {
+    get: vi.fn(() => ({
+      character_names: [],
+      location_names: [],
+      items: [],
+      terms: [],
+      custom: []
+    })),
+    set: vi.fn(() => Promise.resolve())
+  }
+};
+
 // Mock Logger before importing TranscriptionService
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
   Logger: {
@@ -45,6 +59,49 @@ vi.mock('../../scripts/utils/RateLimiter.mjs', () => ({
   }
 }));
 
+// Mock MODULE_ID for Logger import chain
+vi.mock('../../scripts/main.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
+
+// Mock VocabularyDictionary
+vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({
+  VocabularyDictionary: vi.fn().mockImplementation(() => ({
+    generatePrompt: vi.fn(() => 'Fireball, Magic Missile, Dragon, Mind Flayer'),
+    initialize: vi.fn(() => Promise.resolve()),
+    addTerm: vi.fn((category, term) => Promise.resolve(true)),
+    removeTerm: vi.fn((category, term) => Promise.resolve(true)),
+    getTerms: vi.fn((category) => []),
+    getAllTerms: vi.fn(() => ({
+      character_names: [],
+      location_names: [],
+      items: [],
+      terms: ['Fireball', 'Magic Missile', 'Dragon'],
+      custom: []
+    })),
+    exportDictionary: vi.fn(() => ({})),
+    importDictionary: vi.fn(() => Promise.resolve())
+  })),
+  VocabularyCategory: {
+    CHARACTER_NAMES: 'character_names',
+    LOCATION_NAMES: 'location_names',
+    ITEMS: 'items',
+    TERMS: 'terms',
+    CUSTOM: 'custom'
+  }
+}));
+
+// Mock DND_VOCABULARY (needed by VocabularyDictionary)
+vi.mock('../../scripts/data/dnd-vocabulary.mjs', () => ({
+  DND_VOCABULARY: {
+    spells: ['Fireball', 'Magic Missile', 'Fireball'],
+    creatures: ['Dragon', 'Goblin', 'Mind Flayer'],
+    classes: ['Wizard', 'Fighter', 'Paladin'],
+    conditions: ['Prone', 'Stunned', 'Paralyzed'],
+    abilities: ['Strength', 'Dexterity', 'Constitution']
+  }
+}));
+
 // Mock AudioUtils
 vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
   AudioUtils: {
@@ -57,23 +114,21 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
 }));
 
 // Mock AudioChunker
-vi.mock('../../scripts/audio/AudioChunker.mjs', () => ({
-  AudioChunker: vi.fn().mockImplementation(() => ({
-    needsChunking: vi.fn(() => false),
-    splitIfNeeded: vi.fn((blob) => Promise.resolve([blob])),
-    getChunkingInfo: vi.fn((blob) => ({
-      totalSize: blob.size,
-      totalSizeMB: blob.size / (1024 * 1024),
-      needsChunking: false,
-      estimatedChunkCount: 1
-    }))
-  }))
-}));
-
-// Mock MODULE_ID for Logger import chain
-vi.mock('../../scripts/main.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
+vi.mock('../../scripts/audio/AudioChunker.mjs', () => {
+  return {
+    AudioChunker: vi.fn(function() {
+      // Create new mock functions for each instance
+      this.needsChunking = vi.fn(() => false);
+      this.splitIfNeeded = vi.fn((blob) => Promise.resolve([blob]));
+      this.getChunkingInfo = vi.fn((blob) => ({
+        totalSize: blob.size,
+        totalSizeMB: blob.size / (1024 * 1024),
+        needsChunking: false,
+        estimatedChunkCount: 1
+      }));
+    })
+  };
+});
 
 // Import after mocks are set up
 import { TranscriptionService, TranscriptionModel, TranscriptionResponseFormat, ChunkingStrategy } from '../../scripts/ai/TranscriptionService.mjs';

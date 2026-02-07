@@ -405,7 +405,10 @@ class TranscriptionService extends OpenAIClient {
       speakers: speakers,
       language: result.language,
       duration: result.duration,
-      raw: result
+      raw: result,
+      // Preserve chunking metadata if present
+      ...(result.chunked !== undefined && { chunked: result.chunked }),
+      ...(result.chunkCount !== undefined && { chunkCount: result.chunkCount })
     };
   }
 
