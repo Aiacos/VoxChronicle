@@ -53,7 +53,11 @@ class Settings {
       config: true,
       type: String,
       default: '',
-      onChange: () => {
+      onChange: async (newToken) => {
+        // Update the timestamp when token changes to a non-empty value
+        if (newToken && newToken.trim().length > 0) {
+          await game.settings.set(MODULE_ID, 'kankaApiTokenCreatedAt', Date.now());
+        }
         Settings._onApiKeyChange('kanka');
       }
     });
