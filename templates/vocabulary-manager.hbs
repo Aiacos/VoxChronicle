@@ -1,0 +1,161 @@
+{{!--
+  VoxChronicle - Vocabulary Manager Template
+
+  Handlebars template for the VocabularyManager Application.
+  Provides UI for managing custom vocabulary terms across multiple categories
+  (characters, locations, items, terms, custom) to improve transcription accuracy.
+
+  @module vox-chronicle
+  @template vocabulary-manager
+--}}
+
+<div class="vox-chronicle-vocabulary-manager">
+  {{!-- Description section --}}
+  <div class="vocabulary-description">
+    <p>{{i18n.description}}</p>
+    {{#if hasTerms}}
+    <div class="vocabulary-stats">
+      <span class="stats-label">{{i18n.totalTermsLabel}}:</span>
+      <span class="stats-count">{{totalTerms}}</span>
+    </div>
+    {{/if}}
+  </div>
+
+  {{!-- Tabbed navigation --}}
+  <nav class="tabs" data-group="vocabulary-categories">
+    {{#each categories}}
+    <a class="item" data-tab="{{id}}">
+      <i class="fas {{icon}}"></i>
+      <span>{{label}}</span>
+      {{#if terms.length}}
+      <span class="term-count">({{terms.length}})</span>
+      {{/if}}
+    </a>
+    {{/each}}
+  </nav>
+
+  {{!-- Tab content area --}}
+  <div class="tab-content">
+    {{#each categories}}
+    <div class="tab" data-tab="{{id}}" data-group="vocabulary-categories">
+      <div class="category-content" data-category="{{id}}">
+        {{!-- Category description --}}
+        <div class="category-description">
+          <p>{{description}}</p>
+        </div>
+
+        {{!-- Terms list --}}
+        <div class="terms-section">
+          <div class="terms-header">
+            <span class="terms-title">
+              {{#if terms.length}}
+              <strong>{{terms.length}}</strong> term{{#if (ne terms.length 1)}}s{{/if}}
+              {{else}}
+              No terms
+              {{/if}}
+            </span>
+            {{#if terms.length}}
+            <button type="button"
+                    class="clear-category-btn"
+                    title="{{../i18n.clearCategory}}">
+              <i class="fas fa-trash"></i>
+              <span>{{../i18n.clearCategory}}</span>
+            </button>
+            {{/if}}
+          </div>
+
+          {{!-- Terms list --}}
+          {{#if terms.length}}
+          <ul class="terms-list">
+            {{#each terms}}
+            <li class="term-item">
+              <span class="term-text">{{this}}</span>
+              <button type="button"
+                      class="remove-term-btn"
+                      data-term="{{this}}"
+                      title="{{../../i18n.removeTerm}}"
+                      aria-label="{{../../i18n.removeTerm}}">
+                <i class="fas fa-times"></i>
+              </button>
+            </li>
+            {{/each}}
+          </ul>
+          {{else}}
+          <div class="no-terms-message">
+            <i class="fas fa-info-circle"></i>
+            <span>{{../i18n.noTerms}}</span>
+          </div>
+          {{/if}}
+        </div>
+
+        {{!-- Add term section --}}
+        <div class="add-term-section">
+          <div class="add-term-input-group">
+            <input type="text"
+                   class="term-input"
+                   placeholder="{{../i18n.termPlaceholder}}"
+                   aria-label="{{../i18n.addTerm}}" />
+            <button type="button"
+                    class="add-term-btn"
+                    title="{{../i18n.addTerm}}">
+              <i class="fas fa-plus"></i>
+              <span>{{../i18n.addTerm}}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{/each}}
+  </div>
+
+  {{!-- Global action buttons --}}
+  <div class="vocabulary-actions">
+    <div class="action-group">
+      <button type="button"
+              class="import-btn"
+              title="{{i18n.importDict}}">
+        <i class="fas fa-file-import"></i>
+        <span>{{i18n.importDict}}</span>
+      </button>
+
+      <button type="button"
+              class="export-btn"
+              title="{{i18n.exportDict}}"
+              {{#unless hasTerms}}disabled{{/unless}}>
+        <i class="fas fa-file-export"></i>
+        <span>{{i18n.exportDict}}</span>
+      </button>
+    </div>
+
+    <div class="action-group danger">
+      <button type="button"
+              class="clear-all-btn"
+              title="{{i18n.clearAll}}"
+              {{#unless hasTerms}}disabled{{/unless}}>
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>{{i18n.clearAll}}</span>
+      </button>
+    </div>
+  </div>
+
+  {{!-- Help section --}}
+  <div class="vocabulary-help">
+    <details>
+      <summary><i class="fas fa-question-circle"></i> Help</summary>
+      <div class="help-content">
+        <p><strong>Categories:</strong> Organize your vocabulary by type for better accuracy.</p>
+        <ul>
+          <li><strong>Character Names:</strong> NPC and player character names</li>
+          <li><strong>Location Names:</strong> Cities, dungeons, regions, and places</li>
+          <li><strong>Items & Artifacts:</strong> Magical items, weapons, and equipment</li>
+          <li><strong>Game Terms:</strong> Spells, abilities, creatures, and game-specific terminology</li>
+          <li><strong>Custom Terms:</strong> Any other campaign-specific vocabulary</li>
+        </ul>
+        <p><strong>Adding Terms:</strong> Type a term and press Enter or click the Add button.</p>
+        <p><strong>Removing Terms:</strong> Click the <i class="fas fa-times"></i> icon next to any term.</p>
+        <p><strong>Import/Export:</strong> Share your vocabulary dictionary across campaigns or backup your terms.</p>
+        <p><strong>Note:</strong> These terms will be included in transcription prompts to improve accuracy for your campaign's unique vocabulary.</p>
+      </div>
+    </details>
+  </div>
+</div>
