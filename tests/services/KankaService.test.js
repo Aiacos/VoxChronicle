@@ -929,6 +929,383 @@ describe('KankaService', () => {
   });
 
   // ============================================================================
+  // Relationship Tests
+  // ============================================================================
+
+  describe('createRelation', () => {
+    it('should create a relationship with required fields', async () => {
+      const mockRelation = {
+        id: 1001,
+        entity_id: 456,
+        target_id: 789,
+        relation: 'mentor',
+        attitude: 75,
+        is_star: false
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
+        headers: new Headers()
+      });
+
+      const result = await service.createRelation(456, {
+        target_id: 789,
+        relation: 'mentor'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/campaigns/campaign-123/entities/456/relations');
+      expect(options.method).toBe('POST');
+
+      const body = JSON.parse(options.body);
+      expect(body.target_id).toBe(789);
+      expect(body.relation).toBe('mentor');
+
+      expect(result.id).toBe(1001);
+      expect(result.target_id).toBe(789);
+    });
+
+    it('should include optional fields when provided', async () => {
+      const mockRelation = {
+        id: 1002,
+        entity_id: 456,
+        target_id: 789,
+        relation: 'enemy',
+        attitude: -50,
+        is_star: true,
+        colour: '#ff0000',
+        visibility: 'all'
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
+        headers: new Headers()
+      });
+
+      await service.createRelation(456, {
+        target_id: 789,
+        relation: 'enemy',
+        attitude: -50,
+        is_star: true,
+        colour: '#ff0000',
+        visibility: 'all'
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.attitude).toBe(-50);
+      expect(body.is_star).toBe(true);
+      expect(body.colour).toBe('#ff0000');
+      expect(body.visibility).toBe('all');
+    });
+
+    it('should throw error without entity ID', async () => {
+      await expect(service.createRelation(null, { target_id: 789 })).rejects.toThrow(KankaError);
+    });
+
+    it('should throw error without target entity ID', async () => {
+      await expect(service.createRelation(456, {})).rejects.toThrow(KankaError);
+      await expect(service.createRelation(456, { relation: 'friend' })).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('listRelations', () => {
+    it('should list relationships for an entity', async () => {
+      const mockRelations = [
+        { id: 1001, entity_id: 456, target_id: 789, relation: 'mentor' },
+        { id: 1002, entity_id: 456, target_id: 888, relation: 'friend' }
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockRelations)),
+        headers: new Headers()
+      });
+
+      const result = await service.listRelations(456);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('/campaigns/campaign-123/entities/456/relations');
+      expect(result.data).toHaveLength(2);
+    });
+
+    it('should support pagination', async () => {
+      const mockRelations = [
+        { id: 1001, entity_id: 456, target_id: 789, relation: 'mentor' }
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockRelations)),
+        headers: new Headers()
+      });
+
+      const result = await service.listRelations(456, { page: 2 });
+
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('page=2');
+      expect(result.data).toBeDefined();
+    });
+
+    it('should throw error without entity ID', async () => {
+      await expect(service.listRelations(null)).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('getRelation', () => {
+    it('should fetch relationship by ID', async () => {
+      const mockRelation = {
+        id: 1001,
+        entity_id: 456,
+        target_id: 789,
+        relation: 'mentor',
+        attitude: 75
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
+        headers: new Headers()
+      });
+
+      const result = await service.getRelation(456, 1001);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('/campaigns/campaign-123/entities/456/relations/1001');
+      expect(result.id).toBe(1001);
+      expect(result.relation).toBe('mentor');
+    });
+
+    it('should throw error without entity ID', async () => {
+      await expect(service.getRelation(null, 1001)).rejects.toThrow(KankaError);
+    });
+
+    it('should throw error without relation ID', async () => {
+      await expect(service.getRelation(456, null)).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('updateRelation', () => {
+    it('should update relationship', async () => {
+      const mockRelation = {
+        id: 1001,
+        entity_id: 456,
+        target_id: 789,
+        relation: 'friend',
+        attitude: 90
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockRelation)),
+        headers: new Headers()
+      });
+
+      const result = await service.updateRelation(456, 1001, {
+        relation: 'friend',
+        attitude: 90
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0][1].method).toBe('PUT');
+      expect(result.relation).toBe('friend');
+      expect(result.attitude).toBe(90);
+    });
+
+    it('should throw error without entity ID', async () => {
+      await expect(service.updateRelation(null, 1001, { relation: 'friend' })).rejects.toThrow(KankaError);
+    });
+
+    it('should throw error without relation ID', async () => {
+      await expect(service.updateRelation(456, null, { relation: 'friend' })).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('deleteRelation', () => {
+    it('should delete relationship', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+        headers: new Headers()
+      });
+
+      await service.deleteRelation(456, 1001);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('/campaigns/campaign-123/entities/456/relations/1001');
+      expect(mockFetch.mock.calls[0][1].method).toBe('DELETE');
+    });
+
+    it('should throw error without entity ID', async () => {
+      await expect(service.deleteRelation(null, 1001)).rejects.toThrow(KankaError);
+    });
+
+    it('should throw error without relation ID', async () => {
+      await expect(service.deleteRelation(456, null)).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('batchCreateRelations', () => {
+    it('should create multiple relationships', async () => {
+      const relations = [
+        { target_id: 789, relation: 'mentor' },
+        { target_id: 888, relation: 'friend' },
+        { target_id: 999, relation: 'ally' }
+      ];
+
+      // Mock successful responses for all three
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse({
+          id: 1001,
+          entity_id: 456,
+          target_id: 789
+        })),
+        headers: new Headers()
+      });
+
+      const progressCallback = vi.fn();
+
+      const results = await service.batchCreateRelations(456, relations, {
+        onProgress: progressCallback
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(results).toHaveLength(3);
+      expect(progressCallback).toHaveBeenCalledTimes(3);
+      expect(results.every(r => r.id === 1001)).toBe(true);
+    });
+
+    it('should continue on error when continueOnError is true', async () => {
+      const relations = [
+        { target_id: 789, relation: 'mentor' },
+        { target_id: 888, relation: 'friend' },
+        { target_id: 999, relation: 'ally' }
+      ];
+
+      // First call succeeds
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse({
+          id: 1001,
+          entity_id: 456,
+          target_id: 789
+        })),
+        headers: new Headers()
+      });
+
+      // Second call fails
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        text: () => Promise.resolve(JSON.stringify({ message: 'Validation failed' })),
+        headers: new Headers()
+      });
+
+      // Third call succeeds
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse({
+          id: 1002,
+          entity_id: 456,
+          target_id: 999
+        })),
+        headers: new Headers()
+      });
+
+      const results = await service.batchCreateRelations(456, relations, {
+        continueOnError: true
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(results).toHaveLength(3);
+      expect(results[0].id).toBe(1001);
+      expect(results[1]._error).toBeDefined();
+      expect(results[2].id).toBe(1002);
+    });
+
+    it('should stop on error when continueOnError is false', async () => {
+      const relations = [
+        { target_id: 789, relation: 'mentor' },
+        { target_id: 888, relation: 'friend' },
+        { target_id: 999, relation: 'ally' }
+      ];
+
+      // First call succeeds
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse({
+          id: 1001,
+          entity_id: 456,
+          target_id: 789
+        })),
+        headers: new Headers()
+      });
+
+      // Second call fails
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        text: () => Promise.resolve(JSON.stringify({ message: 'Validation failed' })),
+        headers: new Headers()
+      });
+
+      await expect(
+        service.batchCreateRelations(456, relations, { continueOnError: false })
+      ).rejects.toThrow(KankaError);
+
+      // Should only have made 2 calls (second one failed and threw)
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return empty array for empty relations data', async () => {
+      const results = await service.batchCreateRelations(456, []);
+      expect(results).toEqual([]);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should throw error without entity ID', async () => {
+      await expect(
+        service.batchCreateRelations(null, [{ target_id: 789 }])
+      ).rejects.toThrow(KankaError);
+    });
+
+    it('should call progress callback with correct arguments', async () => {
+      const relations = [
+        { target_id: 789, relation: 'mentor' },
+        { target_id: 888, relation: 'friend' }
+      ];
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse({
+          id: 1001,
+          entity_id: 456
+        })),
+        headers: new Headers()
+      });
+
+      const progressCallback = vi.fn();
+
+      await service.batchCreateRelations(456, relations, {
+        onProgress: progressCallback
+      });
+
+      expect(progressCallback).toHaveBeenCalledTimes(2);
+      expect(progressCallback).toHaveBeenNthCalledWith(1, 1, 2, expect.any(Object));
+      expect(progressCallback).toHaveBeenNthCalledWith(2, 2, 2, expect.any(Object));
+    });
+  });
+
+  // ============================================================================
   // Exported Constants Tests
   // ============================================================================
 

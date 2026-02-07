@@ -869,6 +869,231 @@ class KankaService extends KankaClient {
   }
 
   // ============================================================================
+  // Relationships
+  // ============================================================================
+
+  /**
+   * Create a relationship between two entities
+   *
+   * Relationships define connections between entities in Kanka (e.g., 'Gandalf is mentor of Frodo').
+   * The owner entity is specified by entityId, and the target entity is specified in relationData.
+   *
+   * @param {string|number} entityId - Owner entity ID (the entity this relationship belongs to)
+   * @param {Object} relationData - Relationship data
+   * @param {string|number} relationData.target_id - Target entity ID (required)
+   * @param {string} [relationData.relation] - Relationship description (e.g., 'mentor', 'friend', 'enemy')
+   * @param {number} [relationData.attitude] - Attitude score (-100 to 100, negative=hostile, positive=friendly)
+   * @param {boolean} [relationData.is_star] - Whether to star this relationship
+   * @param {string} [relationData.colour] - Color code for the relationship (e.g., '#ff0000')
+   * @param {string} [relationData.visibility] - Visibility setting ('all', 'admin', 'self')
+   * @returns {Promise<Object>} Created relationship data
+   */
+  async createRelation(entityId, relationData) {
+    if (!entityId) {
+      throw new KankaError(
+        'Entity ID is required for relationship creation',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    if (!relationData?.target_id) {
+      throw new KankaError(
+        'Target entity ID is required for relationship',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    // Build endpoint: /campaigns/{campaignId}/entities/{entityId}/relations
+    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations`;
+
+    const payload = {
+      target_id: relationData.target_id
+    };
+
+    // Add optional fields if provided
+    if (relationData.relation) {
+      payload.relation = relationData.relation;
+    }
+    if (relationData.attitude !== undefined) {
+      payload.attitude = relationData.attitude;
+    }
+    if (relationData.is_star !== undefined) {
+      payload.is_star = relationData.is_star;
+    }
+    if (relationData.colour) {
+      payload.colour = relationData.colour;
+    }
+    if (relationData.visibility) {
+      payload.visibility = relationData.visibility;
+    }
+
+    this._logger.log(`Creating relationship from entity ${entityId} to ${relationData.target_id}`);
+    const response = await this.post(endpoint, payload);
+    this._logger.log(`Relationship created with ID: ${response.data?.id}`);
+
+    return response.data;
+  }
+
+  /**
+   * List all relationships for an entity
+   *
+   * @param {string|number} entityId - Owner entity ID
+   * @param {Object} [options] - List options
+   * @param {number} [options.page=1] - Page number for pagination
+   * @returns {Promise<Object>} Paginated relationship list with data and meta
+   */
+  async listRelations(entityId, options = {}) {
+    if (!entityId) {
+      throw new KankaError(
+        'Entity ID is required to list relationships',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    let endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations`;
+
+    const params = [];
+    if (options.page) {
+      params.push(`page=${options.page}`);
+    }
+    if (params.length) {
+      endpoint += `?${params.join('&')}`;
+    }
+
+    this._logger.debug(`Fetching relationships for entity: ${entityId}`);
+    const response = await this.get(endpoint);
+    return {
+      data: response.data || [],
+      meta: response.meta || {},
+      links: response.links || {}
+    };
+  }
+
+  /**
+   * Get a specific relationship by ID
+   *
+   * @param {string|number} entityId - Owner entity ID
+   * @param {string|number} relationId - Relationship ID
+   * @returns {Promise<Object>} Relationship data
+   */
+  async getRelation(entityId, relationId) {
+    if (!entityId || !relationId) {
+      throw new KankaError(
+        'Entity ID and Relationship ID are required',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations/${relationId}`;
+    this._logger.debug(`Fetching relationship: ${relationId} for entity: ${entityId}`);
+    const response = await this.get(endpoint);
+    return response.data;
+  }
+
+  /**
+   * Update a relationship
+   *
+   * @param {string|number} entityId - Owner entity ID
+   * @param {string|number} relationId - Relationship ID
+   * @param {Object} relationData - Updated relationship data
+   * @returns {Promise<Object>} Updated relationship data
+   */
+  async updateRelation(entityId, relationId, relationData) {
+    if (!entityId || !relationId) {
+      throw new KankaError(
+        'Entity ID and Relationship ID are required',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations/${relationId}`;
+    this._logger.debug(`Updating relationship: ${relationId} for entity: ${entityId}`);
+    const response = await this.put(endpoint, relationData);
+    return response.data;
+  }
+
+  /**
+   * Delete a relationship
+   *
+   * @param {string|number} entityId - Owner entity ID
+   * @param {string|number} relationId - Relationship ID
+   * @returns {Promise<void>}
+   */
+  async deleteRelation(entityId, relationId) {
+    if (!entityId || !relationId) {
+      throw new KankaError(
+        'Entity ID and Relationship ID are required',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    const endpoint = `/campaigns/${this._campaignId}/entities/${entityId}/relations/${relationId}`;
+    this._logger.debug(`Deleting relationship: ${relationId} for entity: ${entityId}`);
+    await this.delete(endpoint);
+    this._logger.log(`Relationship deleted: ${relationId} for entity: ${entityId}`);
+  }
+
+  /**
+   * Batch create multiple relationships for an entity
+   *
+   * Creates multiple relationships sequentially to respect rate limits.
+   * Use with caution for large batches due to rate limiting constraints.
+   *
+   * @param {string|number} entityId - Owner entity ID (source of all relationships)
+   * @param {Array<Object>} relationsData - Array of relationship data objects
+   * @param {Object} [options] - Batch options
+   * @param {boolean} [options.continueOnError=true] - Continue creating remaining relationships if one fails
+   * @param {Function} [options.onProgress] - Progress callback (current, total, relationship)
+   * @returns {Promise<Array<Object>>} Created relationships (with _error property for failed ones)
+   */
+  async batchCreateRelations(entityId, relationsData, options = {}) {
+    if (!entityId) {
+      throw new KankaError(
+        'Entity ID is required for batch relationship creation',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    if (!Array.isArray(relationsData) || relationsData.length === 0) {
+      return [];
+    }
+
+    const continueOnError = options.continueOnError ?? true;
+    const onProgress = options.onProgress || (() => {});
+    const results = [];
+
+    for (let i = 0; i < relationsData.length; i++) {
+      const relationData = relationsData[i];
+
+      try {
+        const relationship = await this.createRelation(entityId, relationData);
+        results.push(relationship);
+        onProgress(i + 1, relationsData.length, relationship);
+      } catch (error) {
+        this._logger.error(
+          `Failed to create relationship from entity ${entityId} to ${relationData.target_id}: ${error.message}`
+        );
+
+        const errorResult = {
+          _error: error.message,
+          entityId,
+          target_id: relationData.target_id,
+          relation: relationData.relation
+        };
+
+        results.push(errorResult);
+        onProgress(i + 1, relationsData.length, null);
+
+        if (!continueOnError) {
+          throw error;
+        }
+      }
+    }
+
+    return results;
+  }
+
+  // ============================================================================
   // Utility Methods
   // ============================================================================
 

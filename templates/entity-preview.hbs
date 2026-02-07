@@ -27,12 +27,7 @@
   {{#if hasProgress}}
   <div class="entity-preview-progress">
     <div class="progress-message">{{progress.message}}</div>
-    <div class="progress-bar"
-         role="progressbar"
-         aria-valuenow="{{progress.current}}"
-         aria-valuemin="0"
-         aria-valuemax="{{progress.total}}"
-         aria-label="Entity creation progress">
+    <div class="progress-bar">
       <div class="progress-fill" style="width: {{progressPercent progress.current progress.total}}%"></div>
     </div>
     <div class="progress-count">{{progress.current}} / {{progress.total}}</div>
@@ -104,8 +99,7 @@
                       data-action="edit-description"
                       data-entity-type="characters"
                       data-entity-index="{{index}}"
-                      title="{{../i18n.editDescription}}"
-                      aria-label="{{../i18n.editDescription}}">
+                      title="{{../i18n.editDescription}}">
                 <i class="fas fa-edit"></i>
               </button>
               <button type="button"
@@ -113,8 +107,7 @@
                       data-action="generate-portrait"
                       data-entity-type="characters"
                       data-entity-index="{{index}}"
-                      title="{{../i18n.generatePortrait}}"
-                      aria-label="{{../i18n.generatePortrait}}">
+                      title="{{../i18n.generatePortrait}}">
                 <i class="fas fa-image"></i>
               </button>
             </div>
@@ -158,8 +151,7 @@
                       data-action="edit-description"
                       data-entity-type="locations"
                       data-entity-index="{{index}}"
-                      title="{{../i18n.editDescription}}"
-                      aria-label="{{../i18n.editDescription}}">
+                      title="{{../i18n.editDescription}}">
                 <i class="fas fa-edit"></i>
               </button>
               <button type="button"
@@ -167,8 +159,7 @@
                       data-action="generate-portrait"
                       data-entity-type="locations"
                       data-entity-index="{{index}}"
-                      title="{{../i18n.generatePortrait}}"
-                      aria-label="{{../i18n.generatePortrait}}">
+                      title="{{../i18n.generatePortrait}}">
                 <i class="fas fa-image"></i>
               </button>
             </div>
@@ -212,8 +203,7 @@
                       data-action="edit-description"
                       data-entity-type="items"
                       data-entity-index="{{index}}"
-                      title="{{../i18n.editDescription}}"
-                      aria-label="{{../i18n.editDescription}}">
+                      title="{{../i18n.editDescription}}">
                 <i class="fas fa-edit"></i>
               </button>
               <button type="button"
@@ -221,8 +211,7 @@
                       data-action="generate-portrait"
                       data-entity-type="items"
                       data-entity-index="{{index}}"
-                      title="{{../i18n.generatePortrait}}"
-                      aria-label="{{../i18n.generatePortrait}}">
+                      title="{{../i18n.generatePortrait}}">
                 <i class="fas fa-image"></i>
               </button>
             </div>
@@ -231,6 +220,58 @@
               <img src="{{imageUrl}}" alt="{{name}}" />
             </div>
             {{/if}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+
+      {{!-- Relationships section --}}
+      {{#if hasRelationships}}
+      <div class="entity-section relationships-section">
+        <div class="section-header" data-action="toggle-section">
+          <i class="fas fa-chevron-down section-toggle"></i>
+          <span class="section-title">{{i18n.relationships}}</span>
+          <span class="section-count">({{relationships.length}})</span>
+          <button type="button"
+                  class="btn-view-graph"
+                  data-action="view-graph"
+                  title="{{i18n.viewGraph}}">
+            <i class="fas fa-project-diagram"></i>
+            <span>{{i18n.viewGraph}}</span>
+          </button>
+        </div>
+        <div class="section-content">
+          <div class="relationships-description">
+            <p>{{i18n.relationshipsDescription}}</p>
+          </div>
+          {{#each relationships}}
+          <div class="relationship-row {{#if selected}}selected{{/if}}">
+            <div class="relationship-select">
+              <input type="checkbox"
+                     data-entity-key="{{key}}"
+                     {{#if selected}}checked{{/if}} />
+            </div>
+            <div class="relationship-info">
+              <div class="relationship-entities">
+                <span class="source-entity">{{sourceEntity}}</span>
+                <i class="fas fa-arrow-right"></i>
+                <span class="target-entity">{{targetEntity}}</span>
+              </div>
+              <div class="relationship-type-label">
+                <i class="fas fa-tag"></i>
+                <span>{{typeLabel}}</span>
+              </div>
+              {{#if description}}
+              <div class="relationship-description">{{description}}</div>
+              {{/if}}
+              {{#if confidence}}
+              <div class="relationship-confidence">
+                <i class="fas fa-star"></i>
+                <span>Confidence: {{confidence}}/10</span>
+              </div>
+              {{/if}}
+            </div>
           </div>
           {{/each}}
         </div>

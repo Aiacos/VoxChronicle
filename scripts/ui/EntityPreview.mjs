@@ -14,7 +14,7 @@ import { MODULE_ID } from '../main.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { Settings } from '../core/Settings.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
-import { escapeHtml } from '../utils/HtmlUtils.mjs';
+import { RelationshipGraph } from './RelationshipGraph.mjs';
 
 /**
  * Entity selection state enum
@@ -59,6 +59,13 @@ class EntityPreview extends Application {
     locations: [],
     items: []
   };
+
+  /**
+   * Relationships to preview
+   * @type {Array}
+   * @private
+   */
+  _relationships = [];
 
   /**
    * Selection state for each entity (keyed by entity type and index)
@@ -132,6 +139,7 @@ class EntityPreview extends Application {
    * Create a new EntityPreview instance
    * @param {Object} [options] - Application options
    * @param {Object} [options.entities] - Extracted entities to preview
+   * @param {Array} [options.relationships] - Extracted relationships to preview
    * @param {Function} [options.onConfirm] - Callback when entities are confirmed
    * @param {Function} [options.onCancel] - Callback when preview is cancelled
    */
@@ -140,6 +148,10 @@ class EntityPreview extends Application {
 
     if (options.entities) {
       this.setEntities(options.entities);
+    }
+
+    if (options.relationships) {
+      this.setRelationships(options.relationships);
     }
 
     if (options.onConfirm) {
@@ -179,6 +191,24 @@ class EntityPreview extends Application {
   }
 
   /**
+   * Set the relationships to preview
+   * @param {Array} relationships - Extracted relationships array
+   */
+  setRelationships(relationships) {
+    this._relationships = Array.isArray(relationships) ? relationships : [];
+
+    // Initialize selections for relationships - all selected by default
+    this._relationships.forEach((relationship, index) => {
+      const key = `relationship-${index}`;
+      this._selections.set(key, true);
+    });
+
+    this._logger.debug('Relationships set:', {
+      count: this._relationships.length
+    });
+  }
+
+  /**
    * Initialize selection state for all entities
    * @private
    */
@@ -188,6 +218,12 @@ class EntityPreview extends Application {
         const key = `${type}-${index}`;
         this._selections.set(key, true);
       });
+    });
+
+    // Initialize relationship selections
+    this._relationships.forEach((relationship, index) => {
+      const key = `relationship-${index}`;
+      this._selections.set(key, true);
     });
   }
 
@@ -232,6 +268,17 @@ class EntityPreview extends Application {
   }
 
   /**
+   * Get localized label for relationship type
+   * @param {string} relationType - The relationship type
+   * @returns {string} Localized label
+   * @private
+   */
+  _getRelationshipTypeLabel(relationType) {
+    const typeKey = relationType ? relationType.charAt(0).toUpperCase() + relationType.slice(1) : 'Unknown';
+    return game.i18n?.localize(`VOXCHRONICLE.RelationshipGraph.${typeKey}`) || typeKey;
+  }
+
+  /**
    * Get data for the template
    * @param {Object} options - Render options
    * @returns {Object} Template data
@@ -270,6 +317,15 @@ class EntityPreview extends Application {
     const totalCount = this._getTotalEntityCount();
     const selectedCount = this._getSelectedCount();
 
+    // Build relationship list with selection state
+    const relationships = this._relationships.map((relationship, index) => ({
+      ...relationship,
+      index,
+      key: `relationship-${index}`,
+      selected: this._selections.get(`relationship-${index}`) ?? true,
+      typeLabel: this._getRelationshipTypeLabel(relationship.relationType)
+    }));
+
     return {
       moduleId: MODULE_ID,
       mode: this._mode,
@@ -286,6 +342,10 @@ class EntityPreview extends Application {
       hasLocations: locations.length > 0,
       hasItems: items.length > 0,
       hasEntities: totalCount > 0,
+
+      // Relationships
+      relationships,
+      hasRelationships: relationships.length > 0,
 
       // Selection state
       selectionState,
@@ -314,6 +374,13 @@ class EntityPreview extends Application {
         characters: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Characters') || 'Characters',
         locations: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Locations') || 'Locations',
         items: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Items') || 'Items',
+        relationships: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Relationships') || 'Relationships',
+        relationshipsDescription: game.i18n?.localize('VOXCHRONICLE.EntityPreview.RelationshipsDescription') ||
+          'Select which relationships to create in Kanka. Relationships will only be created if both entities are selected.',
+        viewGraph: game.i18n?.localize('VOXCHRONICLE.EntityPreview.ViewGraph') || 'View Graph',
+        sourceEntity: game.i18n?.localize('VOXCHRONICLE.EntityPreview.SourceEntity') || 'Source',
+        targetEntity: game.i18n?.localize('VOXCHRONICLE.EntityPreview.TargetEntity') || 'Target',
+        relationshipType: game.i18n?.localize('VOXCHRONICLE.EntityPreview.RelationshipType') || 'Type',
         selectAll: game.i18n?.localize('VOXCHRONICLE.EntityPreview.SelectAll') || 'Select All',
         deselectAll: game.i18n?.localize('VOXCHRONICLE.EntityPreview.DeselectAll') || 'Deselect All',
         create: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Create') || 'Create Selected',
@@ -378,6 +445,9 @@ class EntityPreview extends Application {
 
     // Section toggle (collapse/expand)
     html.find('[data-action="toggle-section"]').on('click', this._onToggleSection.bind(this));
+
+    // View graph button
+    html.find('[data-action="view-graph"]').on('click', this._onViewGraph.bind(this));
 
     this._logger.debug('Event listeners activated');
   }
@@ -511,6 +581,9 @@ class EntityPreview extends Application {
       throw new Error('Kanka service not available');
     }
 
+    // Map to store entity names -> Kanka entity IDs for relationship creation
+    const entityNameToId = new Map();
+
     // Create characters
     for (const character of selectedEntities.characters) {
       try {
@@ -523,10 +596,16 @@ class EntityPreview extends Application {
           type: character.isNPC ? 'NPC' : 'PC'
         });
 
+        const entityId = result?.data?.entity_id;
+        if (entityId) {
+          entityNameToId.set(character.name.toLowerCase(), entityId);
+        }
+
         this._results.created.push({
           type: 'character',
           name: character.name,
-          kankaId: result?.data?.id
+          kankaId: result?.data?.id,
+          entityId
         });
 
         this._progress.current++;
@@ -555,10 +634,16 @@ class EntityPreview extends Application {
           type: location.type
         });
 
+        const entityId = result?.data?.entity_id;
+        if (entityId) {
+          entityNameToId.set(location.name.toLowerCase(), entityId);
+        }
+
         this._results.created.push({
           type: 'location',
           name: location.name,
-          kankaId: result?.data?.id
+          kankaId: result?.data?.id,
+          entityId
         });
 
         this._progress.current++;
@@ -587,10 +672,16 @@ class EntityPreview extends Application {
           type: item.type
         });
 
+        const entityId = result?.data?.entity_id;
+        if (entityId) {
+          entityNameToId.set(item.name.toLowerCase(), entityId);
+        }
+
         this._results.created.push({
           type: 'item',
           name: item.name,
-          kankaId: result?.data?.id
+          kankaId: result?.data?.id,
+          entityId
         });
 
         this._progress.current++;
@@ -606,6 +697,9 @@ class EntityPreview extends Application {
         this._progress.current++;
       }
     }
+
+    // Create relationships after all entities are created
+    await this._createRelationshipsInKanka(entityNameToId, kankaService);
 
     // Show notification
     if (this._results.created.length > 0) {
@@ -624,6 +718,139 @@ class EntityPreview extends Application {
         }) || `${this._results.created.length} of ${this._results.created.length + this._results.failed.length} entities created`
       );
     }
+  }
+
+  /**
+   * Create relationships in Kanka
+   * @param {Map<string, number>} entityNameToId - Map of entity names to Kanka entity IDs
+   * @param {KankaService} kankaService - Kanka service instance
+   * @private
+   */
+  async _createRelationshipsInKanka(entityNameToId, kankaService) {
+    const selectedRelationships = this.getSelectedRelationships();
+
+    if (selectedRelationships.length === 0) {
+      this._logger.debug('No relationships selected for creation');
+      return;
+    }
+
+    this._logger.log(`Creating ${selectedRelationships.length} relationships in Kanka`);
+
+    // Map relationships to Kanka entity IDs and group by source entity
+    const relationshipsBySource = new Map();
+    const skippedRelationships = [];
+
+    for (const relationship of selectedRelationships) {
+      const sourceEntityId = entityNameToId.get(relationship.sourceEntity?.toLowerCase());
+      const targetEntityId = entityNameToId.get(relationship.targetEntity?.toLowerCase());
+
+      // Skip relationships where either entity wasn't created
+      if (!sourceEntityId || !targetEntityId) {
+        this._logger.warn(
+          `Skipping relationship: ${relationship.sourceEntity} -> ${relationship.targetEntity} ` +
+          `(source: ${sourceEntityId}, target: ${targetEntityId})`
+        );
+        skippedRelationships.push(relationship);
+        continue;
+      }
+
+      // Group relationships by source entity
+      if (!relationshipsBySource.has(sourceEntityId)) {
+        relationshipsBySource.set(sourceEntityId, []);
+      }
+
+      relationshipsBySource.get(sourceEntityId).push({
+        target_id: targetEntityId,
+        relation: relationship.relationType || 'unknown',
+        attitude: this._mapConfidenceToAttitude(relationship.confidence),
+        sourceEntity: relationship.sourceEntity,
+        targetEntity: relationship.targetEntity
+      });
+    }
+
+    if (skippedRelationships.length > 0) {
+      this._logger.warn(`Skipped ${skippedRelationships.length} relationships due to missing entities`);
+    }
+
+    // Create relationships for each source entity
+    let relationshipsCreated = 0;
+    let relationshipsFailed = 0;
+
+    for (const [sourceEntityId, relations] of relationshipsBySource.entries()) {
+      try {
+        this._progress.message = `Creating ${relations.length} relationship(s) from entity ${sourceEntityId}`;
+        this.render(false);
+
+        const results = await kankaService.batchCreateRelations(sourceEntityId, relations, {
+          continueOnError: true,
+          onProgress: (current, total) => {
+            this._progress.message = `Creating relationships (${current}/${total})`;
+            this.render(false);
+          }
+        });
+
+        // Count successes and failures
+        for (const result of results) {
+          if (result._error) {
+            relationshipsFailed++;
+            this._logger.warn(
+              `Failed to create relationship: ${result.relation} - ${result._error}`
+            );
+          } else {
+            relationshipsCreated++;
+          }
+        }
+
+      } catch (error) {
+        this._logger.error(
+          `Failed to create relationships for entity ${sourceEntityId}:`,
+          error
+        );
+        relationshipsFailed += relations.length;
+      }
+    }
+
+    // Log summary
+    if (relationshipsCreated > 0) {
+      this._logger.log(`Successfully created ${relationshipsCreated} relationship(s) in Kanka`);
+      ui.notifications?.info(
+        game.i18n?.format('VOXCHRONICLE.EntityPreview.RelationshipsCreated', {
+          count: relationshipsCreated
+        }) || `${relationshipsCreated} relationship(s) created in Kanka`
+      );
+    }
+
+    if (relationshipsFailed > 0) {
+      this._logger.warn(`Failed to create ${relationshipsFailed} relationship(s)`);
+      ui.notifications?.warn(
+        game.i18n?.format('VOXCHRONICLE.EntityPreview.RelationshipsFailed', {
+          count: relationshipsFailed
+        }) || `${relationshipsFailed} relationship(s) failed to create`
+      );
+    }
+  }
+
+  /**
+   * Map relationship confidence (1-10) to Kanka attitude (-3 to 3)
+   * @param {number} confidence - Confidence score (1-10)
+   * @returns {number} Kanka attitude (-3 to 3)
+   * @private
+   */
+  _mapConfidenceToAttitude(confidence) {
+    if (!confidence || confidence < 1 || confidence > 10) {
+      return 0; // Neutral
+    }
+
+    // Map 1-10 scale to -3 to 3 scale
+    // 1-3: negative attitudes (-3 to -1)
+    // 4-7: neutral attitudes (0)
+    // 8-10: positive attitudes (1 to 3)
+    if (confidence <= 3) {
+      return Math.floor((confidence - 4) / 1); // -3 to -1
+    } else if (confidence >= 8) {
+      return Math.floor((confidence - 7) / 1); // 1 to 3
+    }
+    return 0; // Neutral for 4-7
   }
 
   /**
@@ -720,12 +947,12 @@ class EntityPreview extends Application {
   async _showEditDialog(name, currentDescription) {
     return new Promise((resolve) => {
       new Dialog({
-        title: `Edit Description: ${escapeHtml(name)}`,
+        title: `Edit Description: ${name}`,
         content: `
           <form class="vox-chronicle-edit-description">
             <div class="form-group">
               <label>${game.i18n?.localize('VOXCHRONICLE.EntityPreview.Description') || 'Description'}</label>
-              <textarea name="description" rows="6" style="width: 100%;">${escapeHtml(currentDescription || '')}</textarea>
+              <textarea name="description" rows="6" style="width: 100%;">${currentDescription || ''}</textarea>
             </div>
           </form>
         `,
@@ -832,6 +1059,25 @@ class EntityPreview extends Application {
   }
 
   /**
+   * Handle view graph button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  _onViewGraph(event) {
+    event.preventDefault();
+
+    this._logger.debug('Opening relationship graph');
+
+    // Create and show the relationship graph
+    const graph = new RelationshipGraph({
+      entities: this._entities,
+      relationships: this._relationships
+    });
+
+    graph.render(true);
+  }
+
+  /**
    * Get the currently selected entities
    * @returns {Object} Selected entities by type
    */
@@ -864,11 +1110,35 @@ class EntityPreview extends Application {
   }
 
   /**
+   * Get the currently selected relationships
+   * @returns {Array} Selected relationships
+   */
+  getSelectedRelationships() {
+    const selected = [];
+
+    this._relationships.forEach((relationship, index) => {
+      if (this._selections.get(`relationship-${index}`)) {
+        selected.push(relationship);
+      }
+    });
+
+    return selected;
+  }
+
+  /**
    * Get all entities (including unselected)
    * @returns {Object} All entities by type
    */
   getAllEntities() {
     return { ...this._entities };
+  }
+
+  /**
+   * Get all relationships (including unselected)
+   * @returns {Array} All relationships
+   */
+  getAllRelationships() {
+    return [...this._relationships];
   }
 
   /**
@@ -884,6 +1154,7 @@ class EntityPreview extends Application {
    */
   reset() {
     this._entities = { characters: [], locations: [], items: [] };
+    this._relationships = [];
     this._selections.clear();
     this._mode = PreviewMode.REVIEW;
     this._progress = { current: 0, total: 0, message: '' };
@@ -907,29 +1178,29 @@ class EntityPreview extends Application {
       const entityRows = entities.map(entity => `
         <div class="entity-row ${entity.selected ? 'selected' : ''}">
           <div class="entity-select">
-            <input type="checkbox" data-entity-key="${escapeHtml(entity.key)}"
+            <input type="checkbox" data-entity-key="${entity.key}"
               ${entity.selected ? 'checked' : ''} />
           </div>
           <div class="entity-info">
-            <div class="entity-name">${escapeHtml(entity.name)}</div>
-            <div class="entity-type">${escapeHtml(entity.typeLabel)}</div>
-            <div class="entity-description">${escapeHtml(entity.description || '')}</div>
+            <div class="entity-name">${entity.name}</div>
+            <div class="entity-type">${entity.typeLabel}</div>
+            <div class="entity-description">${entity.description || ''}</div>
           </div>
           <div class="entity-actions">
             <button type="button" data-action="edit-description"
-              data-entity-type="${escapeHtml(type)}" data-entity-index="${entity.index}"
-              title="${escapeHtml(data.i18n.editDescription)}">
+              data-entity-type="${type}" data-entity-index="${entity.index}"
+              title="${data.i18n.editDescription}">
               <i class="fas fa-edit"></i>
             </button>
             <button type="button" data-action="generate-portrait"
-              data-entity-type="${escapeHtml(type)}" data-entity-index="${entity.index}"
-              title="${escapeHtml(data.i18n.generatePortrait)}">
+              data-entity-type="${type}" data-entity-index="${entity.index}"
+              title="${data.i18n.generatePortrait}">
               <i class="fas fa-image"></i>
             </button>
           </div>
           ${entity.imageUrl ? `
             <div class="entity-preview-image">
-              <img src="${escapeHtml(entity.imageUrl)}" alt="${escapeHtml(entity.name)}" />
+              <img src="${entity.imageUrl}" alt="${entity.name}" />
             </div>
           ` : ''}
         </div>
@@ -952,7 +1223,7 @@ class EntityPreview extends Application {
     // Build progress section
     const progressSection = data.hasProgress ? `
       <div class="entity-preview-progress">
-        <div class="progress-message">${escapeHtml(data.progress.message)}</div>
+        <div class="progress-message">${data.progress.message}</div>
         <div class="progress-bar">
           <div class="progress-fill" style="width: ${(data.progress.current / data.progress.total) * 100}%"></div>
         </div>
@@ -964,12 +1235,12 @@ class EntityPreview extends Application {
     const resultsSection = data.hasResults ? `
       <div class="entity-preview-results ${data.isError ? 'error' : 'success'}">
         <div class="results-summary">
-          ${data.createdCount > 0 ? `<div class="created-count"><i class="fas fa-check"></i> ${escapeHtml(data.i18n.created)}</div>` : ''}
+          ${data.createdCount > 0 ? `<div class="created-count"><i class="fas fa-check"></i> ${data.i18n.created}</div>` : ''}
           ${data.failedCount > 0 ? `<div class="failed-count"><i class="fas fa-times"></i> ${data.failedCount} failed</div>` : ''}
         </div>
         ${data.failedCount > 0 ? `
           <div class="failed-entities">
-            ${data.results.failed.map(f => `<div class="failed-entity">${escapeHtml(f.type)}: ${escapeHtml(f.name)} - ${escapeHtml(f.error)}</div>`).join('')}
+            ${data.results.failed.map(f => `<div class="failed-entity">${f.type}: ${f.name} - ${f.error}</div>`).join('')}
           </div>
         ` : ''}
       </div>

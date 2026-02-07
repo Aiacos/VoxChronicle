@@ -1024,6 +1024,452 @@ form .form-group .vox-chronicle-validate-button {
 }
 
 /* ==========================================================================
+   Relationship Graph Component
+   ========================================================================== */
+
+.vox-chronicle-relationship-graph {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vox-spacing-md);
+  min-height: 400px;
+}
+
+/* Graph container */
+.vox-chronicle-relationship-graph .graph-container {
+  position: relative;
+  flex: 1;
+  background: var(--vox-bg-dark);
+  border: 1px solid var(--vox-border);
+  border-radius: var(--vox-radius-md);
+  overflow: hidden;
+  min-height: 400px;
+}
+
+/* SVG canvas */
+.vox-chronicle-relationship-graph svg {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.vox-chronicle-relationship-graph svg.dragging {
+  cursor: grabbing;
+}
+
+/* Graph nodes */
+.vox-chronicle-relationship-graph .graph-node {
+  cursor: pointer;
+  transition: all var(--vox-transition);
+}
+
+.vox-chronicle-relationship-graph .graph-node circle {
+  fill: var(--vox-bg-light);
+  stroke: var(--vox-border-light);
+  stroke-width: 2px;
+  transition: all var(--vox-transition);
+}
+
+.vox-chronicle-relationship-graph .graph-node:hover circle {
+  fill: var(--vox-bg-hover);
+  stroke: var(--vox-primary-light);
+  stroke-width: 3px;
+}
+
+.vox-chronicle-relationship-graph .graph-node.selected circle {
+  fill: var(--vox-primary);
+  stroke: var(--vox-primary-light);
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 8px var(--vox-primary-light));
+}
+
+.vox-chronicle-relationship-graph .graph-node.dragging circle {
+  fill: var(--vox-primary-dark);
+  stroke: var(--vox-accent);
+}
+
+/* Node type colors */
+.vox-chronicle-relationship-graph .graph-node.type-character circle {
+  fill: var(--vox-primary-light);
+  stroke: var(--vox-primary);
+}
+
+.vox-chronicle-relationship-graph .graph-node.type-location circle {
+  fill: var(--vox-success);
+  stroke: #04b484;
+}
+
+.vox-chronicle-relationship-graph .graph-node.type-item circle {
+  fill: var(--vox-warning);
+  stroke: #d88e0e;
+}
+
+.vox-chronicle-relationship-graph .graph-node.type-organization circle {
+  fill: var(--vox-info);
+  stroke: #3ba8cc;
+}
+
+.vox-chronicle-relationship-graph .graph-node.type-event circle {
+  fill: var(--vox-accent);
+  stroke: var(--vox-accent-dim);
+}
+
+/* Node labels */
+.vox-chronicle-relationship-graph .node-label {
+  fill: var(--vox-text);
+  font-size: 12px;
+  font-weight: 500;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.vox-chronicle-relationship-graph .node-label-background {
+  fill: var(--vox-bg);
+  opacity: 0.9;
+  rx: 3px;
+}
+
+/* Graph edges/links */
+.vox-chronicle-relationship-graph .graph-edge {
+  stroke: var(--vox-border-light);
+  stroke-width: 2px;
+  fill: none;
+  transition: all var(--vox-transition);
+  opacity: 0.6;
+}
+
+.vox-chronicle-relationship-graph .graph-edge:hover {
+  stroke: var(--vox-accent-dim);
+  stroke-width: 3px;
+  opacity: 1;
+}
+
+.vox-chronicle-relationship-graph .graph-edge.selected {
+  stroke: var(--vox-accent);
+  stroke-width: 3px;
+  opacity: 1;
+}
+
+/* Edge arrows */
+.vox-chronicle-relationship-graph .edge-arrow {
+  fill: var(--vox-border-light);
+  transition: fill var(--vox-transition);
+}
+
+.vox-chronicle-relationship-graph .graph-edge:hover + .edge-arrow,
+.vox-chronicle-relationship-graph .graph-edge.selected + .edge-arrow {
+  fill: var(--vox-accent-dim);
+}
+
+/* Edge labels */
+.vox-chronicle-relationship-graph .edge-label {
+  fill: var(--vox-text-dim);
+  font-size: 10px;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.vox-chronicle-relationship-graph .edge-label-background {
+  fill: var(--vox-bg);
+  opacity: 0.9;
+  rx: 2px;
+}
+
+/* Graph controls */
+.vox-chronicle-relationship-graph .graph-controls {
+  position: absolute;
+  top: var(--vox-spacing-md);
+  right: var(--vox-spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--vox-spacing-xs);
+  z-index: 10;
+}
+
+.vox-chronicle-relationship-graph .graph-controls button {
+  background: var(--vox-bg-light);
+  border: 1px solid var(--vox-border);
+  border-radius: var(--vox-radius-sm);
+  color: var(--vox-text);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--vox-transition);
+  box-shadow: var(--vox-shadow);
+}
+
+.vox-chronicle-relationship-graph .graph-controls button:hover:not(:disabled) {
+  background: var(--vox-bg-hover);
+  color: var(--vox-primary-light);
+  border-color: var(--vox-primary-light);
+}
+
+.vox-chronicle-relationship-graph .graph-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vox-chronicle-relationship-graph .graph-controls button i {
+  font-size: 16px;
+}
+
+/* Graph legend */
+.vox-chronicle-relationship-graph .graph-legend {
+  position: absolute;
+  bottom: var(--vox-spacing-md);
+  left: var(--vox-spacing-md);
+  background: var(--vox-bg-light);
+  border: 1px solid var(--vox-border);
+  border-radius: var(--vox-radius-md);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  box-shadow: var(--vox-shadow);
+  z-index: 10;
+}
+
+.vox-chronicle-relationship-graph .legend-title {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: var(--vox-text);
+  margin-bottom: var(--vox-spacing-xs);
+}
+
+.vox-chronicle-relationship-graph .legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vox-spacing-xs);
+}
+
+.vox-chronicle-relationship-graph .legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-sm);
+  font-size: 0.85em;
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-relationship-graph .legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.vox-chronicle-relationship-graph .legend-color.type-character {
+  background: var(--vox-primary-light);
+  border-color: var(--vox-primary);
+}
+
+.vox-chronicle-relationship-graph .legend-color.type-location {
+  background: var(--vox-success);
+  border-color: #04b484;
+}
+
+.vox-chronicle-relationship-graph .legend-color.type-item {
+  background: var(--vox-warning);
+  border-color: #d88e0e;
+}
+
+.vox-chronicle-relationship-graph .legend-color.type-organization {
+  background: var(--vox-info);
+  border-color: #3ba8cc;
+}
+
+.vox-chronicle-relationship-graph .legend-color.type-event {
+  background: var(--vox-accent);
+  border-color: var(--vox-accent-dim);
+}
+
+/* Graph tooltip */
+.vox-chronicle-relationship-graph .graph-tooltip {
+  position: absolute;
+  background: var(--vox-bg);
+  border: 1px solid var(--vox-border-light);
+  border-radius: var(--vox-radius-sm);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  box-shadow: var(--vox-shadow-lg);
+  pointer-events: none;
+  z-index: 1000;
+  max-width: 300px;
+  animation: vox-fade-in 0.2s ease;
+}
+
+.vox-chronicle-relationship-graph .tooltip-title {
+  font-weight: 600;
+  color: var(--vox-text);
+  margin-bottom: var(--vox-spacing-xs);
+}
+
+.vox-chronicle-relationship-graph .tooltip-type {
+  font-size: 0.85em;
+  color: var(--vox-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--vox-spacing-xs);
+}
+
+.vox-chronicle-relationship-graph .tooltip-description {
+  font-size: 0.9em;
+  color: var(--vox-text-dim);
+  line-height: 1.4;
+}
+
+.vox-chronicle-relationship-graph .tooltip-relationships {
+  margin-top: var(--vox-spacing-xs);
+  padding-top: var(--vox-spacing-xs);
+  border-top: 1px solid var(--vox-border);
+  font-size: 0.85em;
+  color: var(--vox-text-dim);
+}
+
+/* Filter panel */
+.vox-chronicle-relationship-graph .graph-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-md);
+  background: var(--vox-bg-light);
+  border-radius: var(--vox-radius-md);
+}
+
+.vox-chronicle-relationship-graph .filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-sm);
+}
+
+.vox-chronicle-relationship-graph .filter-label {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-relationship-graph .filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
+  background: var(--vox-bg-dark);
+  border: 1px solid var(--vox-border);
+  border-radius: var(--vox-radius-sm);
+  cursor: pointer;
+  transition: all var(--vox-transition);
+  font-size: 0.85em;
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-relationship-graph .filter-checkbox:hover {
+  background: var(--vox-bg-hover);
+  border-color: var(--vox-primary-light);
+}
+
+.vox-chronicle-relationship-graph .filter-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--vox-primary);
+  cursor: pointer;
+}
+
+.vox-chronicle-relationship-graph .filter-checkbox.active {
+  background: var(--vox-primary);
+  color: white;
+  border-color: var(--vox-primary-light);
+}
+
+/* Empty state */
+.vox-chronicle-relationship-graph .graph-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vox-spacing-md);
+  padding: var(--vox-spacing-xl);
+  color: var(--vox-text-muted);
+  text-align: center;
+  min-height: 400px;
+}
+
+.vox-chronicle-relationship-graph .graph-empty i {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.vox-chronicle-relationship-graph .graph-empty .empty-title {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-relationship-graph .graph-empty .empty-message {
+  font-size: 0.9em;
+  max-width: 400px;
+}
+
+/* Loading state */
+.vox-chronicle-relationship-graph .graph-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vox-spacing-md);
+  padding: var(--vox-spacing-xl);
+  min-height: 400px;
+}
+
+.vox-chronicle-relationship-graph .graph-loading i {
+  font-size: 48px;
+  color: var(--vox-processing);
+  animation: vox-spin 1s linear infinite;
+}
+
+.vox-chronicle-relationship-graph .loading-text {
+  color: var(--vox-text-dim);
+  font-size: 0.95em;
+}
+
+/* Graph statistics */
+.vox-chronicle-relationship-graph .graph-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vox-spacing-md);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: var(--vox-bg-dark);
+  border-radius: var(--vox-radius-sm);
+  font-size: 0.9em;
+}
+
+.vox-chronicle-relationship-graph .stat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-relationship-graph .stat-value {
+  color: var(--vox-accent);
+  font-weight: 600;
+}
+
+/* Zoom indicator */
+.vox-chronicle-relationship-graph .zoom-indicator {
+  position: absolute;
+  bottom: var(--vox-spacing-md);
+  right: var(--vox-spacing-md);
+  background: var(--vox-bg-light);
+  border: 1px solid var(--vox-border);
+  border-radius: var(--vox-radius-sm);
+  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
+  font-size: 0.85em;
+  color: var(--vox-text-dim);
+  font-family: "Courier New", monospace;
+  box-shadow: var(--vox-shadow);
+  z-index: 10;
+}
+
+/* ==========================================================================
    Edit Description Dialog
    ========================================================================== */
 

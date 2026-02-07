@@ -53,24 +53,9 @@ class Settings {
       config: true,
       type: String,
       default: '',
-      onChange: async (newToken) => {
-        // Update the timestamp when token changes to a non-empty value
-        if (newToken && newToken.trim().length > 0) {
-          await game.settings.set(MODULE_ID, 'kankaApiTokenCreatedAt', Date.now());
-        }
+      onChange: () => {
         Settings._onApiKeyChange('kanka');
       }
-    });
-
-    // Kanka API Token Creation Timestamp (internal setting)
-    // Tracks when the token was created/updated to monitor expiration (364 days)
-    game.settings.register(MODULE_ID, 'kankaApiTokenCreatedAt', {
-      name: 'Kanka API Token Created At',
-      hint: 'Timestamp when the Kanka API token was created or last updated',
-      scope: 'world',
-      config: false, // Internal setting, not shown in UI
-      type: Number,
-      default: null
     });
 
     // ==========================================
@@ -210,6 +195,50 @@ class Settings {
       config: true,
       type: Boolean,
       default: true
+    });
+
+    // ==========================================
+    // Relationship Extraction Settings
+    // ==========================================
+
+    // Enable automatic relationship extraction
+    game.settings.register(MODULE_ID, 'autoExtractRelationships', {
+      name: 'VOXCHRONICLE.Settings.AutoExtractRelationships',
+      hint: 'VOXCHRONICLE.Settings.AutoExtractRelationshipsHint',
+      scope: 'client',
+      config: true,
+      type: Boolean,
+      default: true
+    });
+
+    // Relationship confidence threshold
+    game.settings.register(MODULE_ID, 'relationshipConfidenceThreshold', {
+      name: 'VOXCHRONICLE.Settings.RelationshipConfidenceThreshold',
+      hint: 'VOXCHRONICLE.Settings.RelationshipConfidenceThresholdHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: {
+        min: 1,
+        max: 10,
+        step: 1
+      },
+      default: 5
+    });
+
+    // Maximum relationships per session
+    game.settings.register(MODULE_ID, 'maxRelationshipsPerSession', {
+      name: 'VOXCHRONICLE.Settings.MaxRelationships',
+      hint: 'VOXCHRONICLE.Settings.MaxRelationshipsHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: {
+        min: 0,
+        max: 50,
+        step: 1
+      },
+      default: 20
     });
 
     // ==========================================
@@ -530,6 +559,20 @@ class Settings {
       console.error(`${MODULE_ID} | Kanka API token validation error:`, error);
       return false;
     }
+  }
+
+  /**
+   * Get relationship extraction settings
+   *
+   * @returns {Object} Relationship extraction configuration
+   * @static
+   */
+  static getRelationshipSettings() {
+    return {
+      autoExtract: Settings.get('autoExtractRelationships'),
+      confidenceThreshold: Settings.get('relationshipConfidenceThreshold'),
+      maxPerSession: Settings.get('maxRelationshipsPerSession')
+    };
   }
 }
 

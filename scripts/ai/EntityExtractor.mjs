@@ -32,6 +32,23 @@ const CharacterType = {
 };
 
 /**
+ * Relationship types between entities
+ * @enum {string}
+ */
+const RelationshipType = {
+  ALLY: 'ally',
+  ENEMY: 'enemy',
+  FAMILY: 'family',
+  EMPLOYER: 'employer',
+  EMPLOYEE: 'employee',
+  ROMANTIC: 'romantic',
+  FRIEND: 'friend',
+  RIVAL: 'rival',
+  NEUTRAL: 'neutral',
+  UNKNOWN: 'unknown'
+};
+
+/**
  * Default timeout for entity extraction requests (3 minutes)
  * GPT-4o chat completions are typically faster than transcription
  * @constant {number}
@@ -252,6 +269,81 @@ class EntityExtractor extends OpenAIClient {
   }
 
   /**
+   * Extract relationships between entities from transcript text
+   * Uses GPT-4o to identify and categorize connections between characters, locations, and items
+   *
+   * @param {string} transcriptText - The full transcription text
+   * @param {Array<Object>} entities - Previously extracted entities to find relationships between
+   * @param {Object} [options] - Extraction options
+   * @param {number} [options.minConfidence=5] - Minimum confidence score (1-10) for including relationships
+   * @param {string} [options.campaignContext] - Additional context about the campaign
+   * @returns {Promise<Array<ExtractedRelationship>>} Array of detected relationships
+   */
+  async extractRelationships(transcriptText, entities, options = {}) {
+    if (!transcriptText || typeof transcriptText !== 'string') {
+      throw new OpenAIError(
+        'Invalid transcript: expected non-empty string',
+        OpenAIErrorType.INVALID_REQUEST_ERROR
+      );
+    }
+
+    if (!entities || !Array.isArray(entities)) {
+      throw new OpenAIError(
+        'Invalid entities: expected array of entity objects',
+        OpenAIErrorType.INVALID_REQUEST_ERROR
+      );
+    }
+
+    if (entities.length === 0) {
+      this._logger.debug('No entities provided, skipping relationship extraction');
+      return [];
+    }
+
+    // Trim very long transcripts to avoid token limits
+    const processedText = this._truncateTranscript(transcriptText);
+
+    // Build entity list for context
+    const entityNames = entities.map(e => e.name).filter(Boolean);
+
+    const systemPrompt = this._buildRelationshipSystemPrompt(entityNames, options);
+
+    this._logger.log(`Extracting relationships between ${entityNames.length} entities`);
+
+    try {
+      const response = await this.post('/chat/completions', {
+        model: this._model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Analyze relationships between entities in this RPG session transcript:\n\n${processedText}` }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: this._extractionTemperature
+      });
+
+      const content = response.choices[0].message.content;
+      const extracted = JSON.parse(content);
+
+      // Validate and normalize the response
+      const result = this._normalizeRelationshipResult(extracted, entityNames, options);
+
+      this._logger.log(`Extracted ${result.length} relationships`);
+
+      return result;
+
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        this._logger.error('Failed to parse relationship response as JSON');
+        throw new OpenAIError(
+          'Relationship extraction returned invalid JSON',
+          OpenAIErrorType.API_ERROR
+        );
+      }
+      this._logger.error('Relationship extraction failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Extract both entities and salient moments in one call
    * More efficient than calling both methods separately
    *
@@ -401,6 +493,61 @@ Return JSON in this exact format:
   }
 
   /**
+   * Build the system prompt for relationship extraction
+   *
+   * @param {string[]} entityNames - List of entity names to find relationships between
+   * @param {Object} options - Extraction options
+   * @returns {string} System prompt
+   * @private
+   */
+  _buildRelationshipSystemPrompt(entityNames, options = {}) {
+    const entityList = entityNames.length > 0
+      ? `\n\nEntities to analyze: ${entityNames.join(', ')}`
+      : '';
+
+    const campaignContext = options.campaignContext
+      ? `\nCampaign context: ${options.campaignContext}`
+      : '';
+
+    return `You are an expert at analyzing tabletop RPG session transcripts to identify relationships between entities.
+Extract relationships mentioned in the transcript between the provided entities.
+
+Relationship types:
+- ally: Friendly cooperation, working together
+- enemy: Hostile opposition, conflict
+- family: Blood relatives or close familial bonds
+- employer: One entity employs or commands the other
+- employee: One entity works for or serves the other
+- romantic: Romantic or intimate relationship
+- friend: Personal friendship
+- rival: Competitive but not hostile
+- neutral: Acknowledged connection but no strong sentiment
+- unknown: Relationship mentioned but type unclear
+
+Rules:
+1. Only extract relationships explicitly mentioned or clearly implied in the transcript
+2. Focus on relationships between the provided entities
+3. For each relationship, provide the source entity, target entity, relationship type, brief description, and confidence (1-10)
+4. Confidence 10 = explicitly stated, 5 = clearly implied, 1 = vague mention
+5. If a relationship is bidirectional (like "friends"), create one relationship with the most relevant source
+6. Be conservative - only extract clear relationships${entityList}${campaignContext}
+
+Return JSON in this exact format:
+{
+  "relationships": [
+    {
+      "sourceEntity": "Gandalf",
+      "targetEntity": "Frodo",
+      "relationType": "friend",
+      "description": "Gandalf is a mentor and friend to Frodo",
+      "confidence": 9
+    }
+  ],
+  "summary": "Brief summary of relationships found"
+}`;
+  }
+
+  /**
    * Truncate transcript to avoid token limits
    *
    * @param {string} text - Transcript text
@@ -492,13 +639,82 @@ Return JSON in this exact format:
    * @private
    */
   _normalizeMoment(moment, index) {
+    // Parse drama score, default to 5 if invalid
+    const parsedScore = parseInt(moment.dramaScore, 10);
+    const dramaScore = isNaN(parsedScore) ? 5 : Math.min(10, Math.max(1, parsedScore));
+
     return {
       id: `moment-${index + 1}`,
       title: String(moment.title || `Moment ${index + 1}`).trim(),
       imagePrompt: String(moment.imagePrompt || '').trim(),
       context: String(moment.context || '').trim(),
-      dramaScore: Math.min(10, Math.max(1, parseInt(moment.dramaScore, 10) || 5))
+      dramaScore
     };
+  }
+
+  /**
+   * Normalize and validate relationship extraction result
+   *
+   * @param {Object} extracted - Raw extraction result
+   * @param {string[]} validEntityNames - List of valid entity names
+   * @param {Object} options - Extraction options
+   * @returns {Array<ExtractedRelationship>} Normalized relationships
+   * @private
+   */
+  _normalizeRelationshipResult(extracted, validEntityNames, options = {}) {
+    const minConfidence = options.minConfidence || 5;
+
+    // Ensure relationships array exists
+    const relationships = Array.isArray(extracted.relationships) ? extracted.relationships : [];
+
+    // Create a case-insensitive lookup for valid entity names
+    const validNamesLower = new Set(validEntityNames.map(n => n.toLowerCase()));
+
+    // Normalize and filter relationships
+    const normalizedRelationships = relationships
+      .filter(r => r && r.sourceEntity && r.targetEntity)
+      .map((r, index) => {
+        // Normalize entity names
+        const source = String(r.sourceEntity).trim();
+        const target = String(r.targetEntity).trim();
+
+        // Validate confidence
+        const confidence = Math.min(10, Math.max(1, parseInt(r.confidence, 10) || 5));
+
+        // Validate relationship type
+        let relationType = String(r.relationType || '').toLowerCase().trim();
+        const validTypes = Object.values(RelationshipType);
+        if (!validTypes.includes(relationType)) {
+          relationType = RelationshipType.UNKNOWN;
+        }
+
+        return {
+          id: `relationship-${index + 1}`,
+          sourceEntity: source,
+          targetEntity: target,
+          relationType,
+          description: String(r.description || '').trim(),
+          confidence
+        };
+      })
+      // Filter by confidence threshold
+      .filter(r => r.confidence >= minConfidence)
+      // Filter out relationships where entities aren't in the valid list (case-insensitive)
+      .filter(r => {
+        const sourceValid = validNamesLower.has(r.sourceEntity.toLowerCase());
+        const targetValid = validNamesLower.has(r.targetEntity.toLowerCase());
+        if (!sourceValid || !targetValid) {
+          this._logger.debug(
+            `Filtered out relationship: ${r.sourceEntity} -> ${r.targetEntity} (entity not in list)`
+          );
+          return false;
+        }
+        return true;
+      })
+      // Filter out self-relationships
+      .filter(r => r.sourceEntity.toLowerCase() !== r.targetEntity.toLowerCase());
+
+    return normalizedRelationships;
   }
 
   /**
@@ -644,11 +860,22 @@ Return JSON in this exact format:
  * @property {Array<SalientMoment>} moments - Identified salient moments
  */
 
+/**
+ * @typedef {Object} ExtractedRelationship
+ * @property {string} id - Unique relationship identifier
+ * @property {string} sourceEntity - Name of the source entity
+ * @property {string} targetEntity - Name of the target entity
+ * @property {string} relationType - Type of relationship (from RelationshipType enum)
+ * @property {string} description - Brief description of the relationship
+ * @property {number} confidence - Confidence score from 1-10
+ */
+
 // Export all classes and enums
 export {
   EntityExtractor,
   ExtractedEntityType,
   CharacterType,
+  RelationshipType,
   ENTITY_EXTRACTION_TIMEOUT_MS,
   DEFAULT_MAX_MOMENTS
 };

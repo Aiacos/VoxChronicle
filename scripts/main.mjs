@@ -54,7 +54,7 @@ Hooks.once('init', () => {
 
   // Store module reference on game object for global access
   game[MODULE_ID] = {
-    version: game.modules.get(MODULE_ID)?.version ?? '0.0.0',
+    version: '1.0.0',
     ready: false
   };
 
@@ -130,11 +130,23 @@ Hooks.on('getSceneControlButtons', (controls) => {
             speakerLabeling.render(true, { focus: true });
           }
         },
+        relationshipGraph: {
+          name: 'relationshipGraph',
+          icon: 'fa-solid fa-project-diagram',
+          title: 'VOXCHRONICLE.Controls.RelationshipGraph',
+          order: 2,
+          button: true,
+          onChange: async () => {
+            const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
+            const graph = new RelationshipGraph();
+            graph.render(true, { focus: true });
+          }
+        },
         settings: {
           name: 'settings',
           icon: 'fa-solid fa-cog',
           title: 'VOXCHRONICLE.Controls.Settings',
-          order: 2,
+          order: 3,
           button: true,
           onChange: () => {
             const app = new SettingsConfig();
@@ -175,6 +187,17 @@ Hooks.on('getSceneControlButtons', (controls) => {
             const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
             const speakerLabeling = new SpeakerLabeling();
             speakerLabeling.render(true, { focus: true });
+          }
+        },
+        {
+          name: 'relationship-graph',
+          title: 'VOXCHRONICLE.Controls.RelationshipGraph',
+          icon: 'fas fa-project-diagram',
+          button: true,
+          onClick: async () => {
+            const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
+            const graph = new RelationshipGraph();
+            graph.render(true, { focus: true });
           }
         },
         {

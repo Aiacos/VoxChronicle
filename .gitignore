@@ -11,3 +11,7 @@ releases/
 .worktrees/
 .security-key
 logs/security/
+
+# Dependencies
+node_modules/
+package-lock.json

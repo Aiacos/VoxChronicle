@@ -45,6 +45,7 @@ const SessionState = {
  */
 const DEFAULT_SESSION_OPTIONS = {
   autoExtractEntities: true,
+  autoExtractRelationships: true,
   autoGenerateImages: true,
   autoPublishToKanka: false,
   confirmEntityCreation: true,
@@ -303,6 +304,7 @@ class SessionOrchestrator {
         audioBlob: null,
         transcript: null,
         entities: null,
+        relationships: null,
         moments: null,
         images: [],
         chronicle: null,
@@ -561,6 +563,11 @@ class SessionOrchestrator {
         `${this._currentSession.moments.length} salient moments`
       );
 
+      // Extract relationships if enabled
+      if (this._options.autoExtractRelationships && this._entityExtractor.extractRelationships) {
+        await this._extractRelationships(extractionResult);
+      }
+
       return extractionResult;
 
     } catch (error) {
@@ -572,6 +579,70 @@ class SessionOrchestrator {
       });
       // Don't throw - extraction failure shouldn't stop the workflow
       return null;
+    }
+  }
+
+  /**
+   * Extract relationships from the transcription
+   *
+   * @param {Object} extractionResult - Entity extraction result
+   * @returns {Promise<Array>} Extracted relationships
+   * @private
+   */
+  async _extractRelationships(extractionResult) {
+    if (!this._currentSession?.transcript?.text) {
+      this._logger.warn('No transcript text available for relationship extraction');
+      return null;
+    }
+
+    if (!this._entityExtractor?.extractRelationships) {
+      this._logger.warn('Entity extractor does not support relationship extraction');
+      return null;
+    }
+
+    this._logger.log('Extracting relationships...');
+    this._reportProgress('extraction', 0, 'Extracting relationships from transcript...');
+
+    try {
+      // Build flat list of all entities
+      const allEntities = [
+        ...(extractionResult.characters || []),
+        ...(extractionResult.locations || []),
+        ...(extractionResult.items || [])
+      ];
+
+      if (allEntities.length === 0) {
+        this._logger.debug('No entities to extract relationships for');
+        return [];
+      }
+
+      // Extract relationships
+      const relationships = await this._entityExtractor.extractRelationships(
+        this._currentSession.transcript.text,
+        allEntities,
+        {
+          campaignContext: this._currentSession.title,
+          minConfidence: 5
+        }
+      );
+
+      this._currentSession.relationships = relationships || [];
+
+      this._reportProgress('extraction', 100, 'Relationship extraction complete');
+
+      this._logger.log(`Extracted ${relationships?.length || 0} relationships`);
+
+      return relationships;
+
+    } catch (error) {
+      this._logger.error('Relationship extraction failed:', error);
+      this._currentSession.errors.push({
+        stage: 'relationship_extraction',
+        error: error.message,
+        timestamp: Date.now()
+      });
+      // Don't throw - relationship extraction failure shouldn't stop the workflow
+      return [];
     }
   }
 
@@ -1130,6 +1201,7 @@ class SessionOrchestrator {
         (this._currentSession.entities.locations?.length || 0) +
         (this._currentSession.entities.items?.length || 0)
       ) : 0,
+      relationshipCount: this._currentSession.relationships?.length || 0,
       momentCount: this._currentSession.moments?.length || 0,
       imageCount: this._currentSession.images?.filter(i => i.success !== false).length || 0,
       hasChronicle: !!this._currentSession.chronicle,
@@ -1150,6 +1222,7 @@ class SessionOrchestrator {
  * @property {Blob|null} audioBlob - Recorded audio blob
  * @property {Object|null} transcript - Transcription result
  * @property {Object|null} entities - Extracted entities
+ * @property {Array|null} relationships - Extracted relationships between entities
  * @property {Array|null} moments - Salient moments
  * @property {Array} images - Generated images
  * @property {Object|null} chronicle - Created Kanka journal
