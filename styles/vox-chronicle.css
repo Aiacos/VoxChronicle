@@ -911,6 +911,11 @@ form .form-group .vox-chronicle-validate-button {
   border-color: var(--vox-primary-light);
 }
 
+.vox-chronicle-entity-preview .entity-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Entity preview image */
 .vox-chronicle-entity-preview .entity-preview-image {
   grid-column: 1 / -1;
@@ -923,6 +928,32 @@ form .form-group .vox-chronicle-validate-button {
   width: 100%;
   max-height: 150px;
   object-fit: cover;
+}
+
+/* Entity image loading placeholder */
+.vox-chronicle-entity-preview .entity-image-placeholder {
+  grid-column: 1 / -1;
+  margin-top: var(--vox-spacing-sm);
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vox-spacing-sm);
+  background: var(--vox-bg-dark);
+  border: 1px dashed var(--vox-border);
+  border-radius: var(--vox-radius-sm);
+}
+
+.vox-chronicle-entity-preview .entity-image-placeholder i {
+  font-size: 48px;
+  color: var(--vox-processing);
+}
+
+.vox-chronicle-entity-preview .entity-image-placeholder .placeholder-text {
+  font-size: 0.9em;
+  color: var(--vox-text-dim);
+  margin-top: var(--vox-spacing-xs);
 }
 
 /* No entities message */
