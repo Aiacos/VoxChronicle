@@ -388,6 +388,134 @@ class Settings {
       confirmCreation: Settings.get('confirmEntityCreation')
     };
   }
+
+  /**
+   * Validate OpenAI API key
+   * Makes a test request to verify the API key is valid
+   *
+   * @returns {Promise<boolean>} True if validation succeeds, false otherwise
+   * @static
+   */
+  static async validateOpenAIKey() {
+    // Check if API key is configured
+    if (!Settings.isOpenAIConfigured()) {
+      ui.notifications?.error('VoxChronicle: OpenAI API key is not configured.');
+      return false;
+    }
+
+    try {
+      // Show loading notification
+      const loadingNotif = ui.notifications?.info('VoxChronicle: Validating OpenAI API key...', { permanent: true });
+
+      // Import VoxChronicle dynamically to avoid circular dependencies
+      const { VoxChronicle } = await import('./VoxChronicle.mjs');
+      const voxChronicle = VoxChronicle.getInstance();
+
+      // Check if transcription service is initialized
+      if (!voxChronicle.transcriptionService) {
+        // Try to get the API key and create a temporary client
+        const { OpenAIClient } = await import('../ai/OpenAIClient.mjs');
+        const apiKey = Settings.get('openaiApiKey');
+        const tempClient = new OpenAIClient(apiKey);
+        const isValid = await tempClient.validateApiKey();
+
+        // Clear loading notification
+        if (loadingNotif) loadingNotif.remove();
+
+        // Show result
+        if (isValid) {
+          ui.notifications?.info('VoxChronicle: OpenAI API key is valid!');
+          return true;
+        } else {
+          ui.notifications?.error('VoxChronicle: Invalid OpenAI API key. Please check your settings.');
+          return false;
+        }
+      }
+
+      // Use existing service to validate
+      const isValid = await voxChronicle.transcriptionService.validateApiKey();
+
+      // Clear loading notification
+      if (loadingNotif) loadingNotif.remove();
+
+      // Show result notification
+      if (isValid) {
+        ui.notifications?.info('VoxChronicle: OpenAI API key is valid!');
+        return true;
+      } else {
+        ui.notifications?.error('VoxChronicle: Invalid OpenAI API key. Please check your settings.');
+        return false;
+      }
+    } catch (error) {
+      ui.notifications?.error(`VoxChronicle: Error validating OpenAI API key: ${error.message}`);
+      console.error(`${MODULE_ID} | OpenAI API key validation error:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Validate Kanka API token
+   * Makes a test request to verify the API token is valid
+   *
+   * @returns {Promise<boolean>} True if validation succeeds, false otherwise
+   * @static
+   */
+  static async validateKankaToken() {
+    // Check if API token is configured
+    if (!Settings.isKankaConfigured()) {
+      ui.notifications?.error('VoxChronicle: Kanka API token or campaign ID is not configured.');
+      return false;
+    }
+
+    try {
+      // Show loading notification
+      const loadingNotif = ui.notifications?.info('VoxChronicle: Validating Kanka API token...', { permanent: true });
+
+      // Import VoxChronicle dynamically to avoid circular dependencies
+      const { VoxChronicle } = await import('./VoxChronicle.mjs');
+      const voxChronicle = VoxChronicle.getInstance();
+
+      // Check if Kanka service is initialized
+      if (!voxChronicle.kankaService) {
+        // Try to get the API token and create a temporary client
+        const { KankaClient } = await import('../kanka/KankaClient.mjs');
+        const apiToken = Settings.get('kankaApiToken');
+        const tempClient = new KankaClient(apiToken);
+        const isValid = await tempClient.validateApiToken();
+
+        // Clear loading notification
+        if (loadingNotif) loadingNotif.remove();
+
+        // Show result
+        if (isValid) {
+          ui.notifications?.info('VoxChronicle: Kanka API token is valid!');
+          return true;
+        } else {
+          ui.notifications?.error('VoxChronicle: Invalid Kanka API token. Please check your settings.');
+          return false;
+        }
+      }
+
+      // Use existing service to validate
+      const isValid = await voxChronicle.kankaService.validateApiToken();
+
+      // Clear loading notification
+      if (loadingNotif) loadingNotif.remove();
+
+      // Show result notification
+      if (isValid) {
+        ui.notifications?.info('VoxChronicle: Kanka API token is valid!');
+        return true;
+      } else {
+        ui.notifications?.error('VoxChronicle: Invalid Kanka API token. Please check your settings.');
+        return false;
+      }
+    } catch (error) {
+      ui.notifications?.error(`VoxChronicle: Error validating Kanka API token: ${error.message}`);
+      console.error(`${MODULE_ID} | Kanka API token validation error:`, error);
+      return false;
+    }
+  }
 }
 
 export { Settings };
