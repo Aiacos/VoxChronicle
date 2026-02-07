@@ -53,9 +53,24 @@ class Settings {
       config: true,
       type: String,
       default: '',
-      onChange: () => {
+      onChange: async (newToken) => {
+        // Update the timestamp when token changes to a non-empty value
+        if (newToken && newToken.trim().length > 0) {
+          await game.settings.set(MODULE_ID, 'kankaApiTokenCreatedAt', Date.now());
+        }
         Settings._onApiKeyChange('kanka');
       }
+    });
+
+    // Kanka API Token Creation Timestamp (internal setting)
+    // Tracks when the token was created/updated to monitor expiration (364 days)
+    game.settings.register(MODULE_ID, 'kankaApiTokenCreatedAt', {
+      name: 'Kanka API Token Created At',
+      hint: 'Timestamp when the Kanka API token was created or last updated',
+      scope: 'world',
+      config: false, // Internal setting, not shown in UI
+      type: Number,
+      default: null
     });
 
     // ==========================================

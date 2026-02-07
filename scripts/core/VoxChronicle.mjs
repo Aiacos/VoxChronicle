@@ -142,6 +142,9 @@ class VoxChronicle {
         narrativeExporter: this.narrativeExporter
       });
 
+      // Check Kanka API token expiration
+      await this._checkKankaTokenExpiration();
+
       // Mark as initialized
       this.isInitialized = true;
       console.log(`${MODULE_ID} | VoxChronicle services initialized successfully`);
@@ -164,6 +167,65 @@ class VoxChronicle {
     } catch (error) {
       // Setting not registered yet or doesn't exist
       return null;
+    }
+  }
+
+  /**
+   * Check if the Kanka API token is approaching expiration and warn the user
+   * Kanka API tokens expire after 364 days
+   *
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _checkKankaTokenExpiration() {
+    try {
+      const kankaApiToken = this._getSetting('kankaApiToken');
+
+      // Only check if token is configured
+      if (!kankaApiToken) {
+        return;
+      }
+
+      let tokenCreatedAt = this._getSetting('kankaApiTokenCreatedAt');
+
+      // Migration: if token exists but no timestamp, set it now
+      if (!tokenCreatedAt) {
+        tokenCreatedAt = Date.now();
+        await game.settings.set(MODULE_ID, 'kankaApiTokenCreatedAt', tokenCreatedAt);
+        console.log(`${MODULE_ID} | Kanka API token timestamp initialized (migration)`);
+        return; // Don't warn on first run after migration
+      }
+
+      // Calculate days since token was created
+      const daysSinceCreation = (Date.now() - tokenCreatedAt) / (1000 * 60 * 60 * 24);
+      const daysRemaining = Math.floor(364 - daysSinceCreation);
+
+      // Show warning based on days remaining
+      if (daysRemaining <= 30) {
+        // Critical: 30 days or less
+        const message = game.i18n.format('VOXCHRONICLE.Kanka.TokenExpiringCritical', {
+          days: daysRemaining
+        });
+        ui.notifications.error(message, { permanent: true });
+        console.warn(`${MODULE_ID} | Kanka API token expires in ${daysRemaining} days (CRITICAL)`);
+      } else if (daysRemaining <= 60) {
+        // Urgent: 60 days or less
+        const message = game.i18n.format('VOXCHRONICLE.Kanka.TokenExpiringUrgent', {
+          days: daysRemaining
+        });
+        ui.notifications.warn(message, { permanent: true });
+        console.warn(`${MODULE_ID} | Kanka API token expires in ${daysRemaining} days (URGENT)`);
+      } else if (daysRemaining <= 90) {
+        // Info: 90 days or less
+        const message = game.i18n.format('VOXCHRONICLE.Kanka.TokenExpiring', {
+          days: daysRemaining
+        });
+        ui.notifications.info(message);
+        console.info(`${MODULE_ID} | Kanka API token expires in ${daysRemaining} days`);
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | Failed to check Kanka token expiration:`, error);
+      // Don't throw - this is a non-critical check
     }
   }
 
