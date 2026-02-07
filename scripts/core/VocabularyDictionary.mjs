@@ -11,6 +11,7 @@
 
 import { Logger } from '../utils/Logger.mjs';
 import { MODULE_ID } from '../main.mjs';
+import { DND_VOCABULARY } from '../data/dnd-vocabulary.mjs';
 
 /**
  * Vocabulary category types
@@ -64,6 +65,25 @@ export class VocabularyDictionary {
    */
   constructor() {
     this._logger.debug('VocabularyDictionary initialized');
+  }
+
+  /**
+   * Initialize the vocabulary dictionary
+   * Automatically loads default D&D terms if dictionary is empty
+   *
+   * @returns {Promise<void>}
+   */
+  async initialize() {
+    this._logger.debug('Initializing VocabularyDictionary...');
+
+    try {
+      // Load defaults if dictionary is empty
+      await this.loadDefaults();
+      this._logger.debug('VocabularyDictionary initialization complete');
+    } catch (error) {
+      this._logger.error('Failed to initialize VocabularyDictionary:', error);
+      throw error;
+    }
   }
 
   /**
@@ -353,6 +373,56 @@ export class VocabularyDictionary {
     return dictionary[category].some(
       existing => existing.toLowerCase() === term.toLowerCase()
     );
+  }
+
+  /**
+   * Load default D&D vocabulary terms if dictionary is empty
+   * Only runs on first use to populate the dictionary with common D&D terms
+   *
+   * @returns {Promise<Object>} Statistics about loaded terms (loaded, total, skipped)
+   */
+  async loadDefaults() {
+    const dictionary = this._getDictionary();
+
+    // Check if dictionary is already populated
+    const totalTerms = this.getTotalTermCount();
+    if (totalTerms > 0) {
+      this._logger.debug('Dictionary already has terms, skipping default load');
+      return {
+        loaded: 0,
+        total: 0,
+        skipped: totalTerms
+      };
+    }
+
+    this._logger.log('Loading default D&D vocabulary...');
+
+    const stats = {
+      loaded: 0,
+      total: 0,
+      skipped: 0
+    };
+
+    // Load all D&D vocabulary categories into the 'terms' category
+    for (const [categoryKey, terms] of Object.entries(DND_VOCABULARY)) {
+      this._logger.debug(`Loading ${terms.length} ${categoryKey} into terms category`);
+
+      for (const term of terms) {
+        const added = await this.addTerm(VocabularyCategory.TERMS, term);
+        if (added) {
+          stats.loaded++;
+        } else {
+          stats.skipped++;
+        }
+        stats.total++;
+      }
+    }
+
+    this._logger.log(
+      `Loaded ${stats.loaded} default D&D terms (${stats.skipped} skipped, ${stats.total} total)`
+    );
+
+    return stats;
   }
 
   // ==========================================
