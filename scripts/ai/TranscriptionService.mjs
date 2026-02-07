@@ -382,7 +382,7 @@ class TranscriptionService extends OpenAIClient {
       isMapped: Boolean(speakerMap[speakerId])
     }));
 
-    return {
+    const mappedResult = {
       text: result.text || '',
       segments: mappedSegments,
       speakers: speakers,
@@ -390,6 +390,16 @@ class TranscriptionService extends OpenAIClient {
       duration: result.duration,
       raw: result
     };
+
+    // Preserve chunking metadata if present
+    if (result.chunked !== undefined) {
+      mappedResult.chunked = result.chunked;
+    }
+    if (result.chunkCount !== undefined) {
+      mappedResult.chunkCount = result.chunkCount;
+    }
+
+    return mappedResult;
   }
 
   /**

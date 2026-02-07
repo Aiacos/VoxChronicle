@@ -1189,11 +1189,12 @@ describe('KankaService', () => {
         headers: new Headers()
       });
 
-      await expect(service.listJournals()).rejects.toThrow(KankaError);
-
       try {
         await service.listJournals();
+        // Should not reach here
+        expect(true).toBe(false);
       } catch (error) {
+        expect(error).toBeInstanceOf(KankaError);
         expect(error.type).toBe(KankaErrorType.AUTHENTICATION_ERROR);
       }
     });

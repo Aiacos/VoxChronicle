@@ -58,7 +58,7 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
 
 // Mock AudioChunker
 vi.mock('../../scripts/audio/AudioChunker.mjs', () => ({
-  AudioChunker: vi.fn().mockImplementation(() => ({
+  AudioChunker: vi.fn(() => ({
     needsChunking: vi.fn(() => false),
     splitIfNeeded: vi.fn((blob) => Promise.resolve([blob])),
     getChunkingInfo: vi.fn((blob) => ({
