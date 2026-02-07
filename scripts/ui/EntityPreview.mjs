@@ -117,6 +117,13 @@ class EntityPreview extends Application {
   _onCancelCallback = null;
 
   /**
+   * Loading state for image generation (keyed by entity type and index)
+   * @type {Map}
+   * @private
+   */
+  _imageLoadingStates = new Map();
+
+  /**
    * Get default options for the Application
    * @returns {Object} Default application options
    * @static
@@ -287,12 +294,13 @@ class EntityPreview extends Application {
     const configStatus = Settings.getConfigurationStatus();
     const selectionState = this._getSelectionState();
 
-    // Build entity lists with selection state
+    // Build entity lists with selection state and loading state
     const characters = this._entities.characters.map((entity, index) => ({
       ...entity,
       index,
       key: `characters-${index}`,
       selected: this._selections.get(`characters-${index}`) ?? true,
+      isGeneratingImage: this._imageLoadingStates.get(`characters-${index}`) ?? false,
       typeLabel: entity.isNPC
         ? (game.i18n?.localize('VOXCHRONICLE.EntityPreview.IsNPC') || 'NPC')
         : (game.i18n?.localize('VOXCHRONICLE.EntityPreview.IsPC') || 'PC')
@@ -303,6 +311,7 @@ class EntityPreview extends Application {
       index,
       key: `locations-${index}`,
       selected: this._selections.get(`locations-${index}`) ?? true,
+      isGeneratingImage: this._imageLoadingStates.get(`locations-${index}`) ?? false,
       typeLabel: entity.type || 'Location'
     }));
 
@@ -311,6 +320,7 @@ class EntityPreview extends Application {
       index,
       key: `items-${index}`,
       selected: this._selections.get(`items-${index}`) ?? true,
+      isGeneratingImage: this._imageLoadingStates.get(`items-${index}`) ?? false,
       typeLabel: entity.type || 'Item'
     }));
 
@@ -1003,6 +1013,12 @@ class EntityPreview extends Application {
       return;
     }
 
+    // Set loading state
+    const entityKey = `${entityType}-${entityIndex}`;
+    this._imageLoadingStates.set(entityKey, true);
+    this._logger.debug(`Image generation started for ${entityKey}`);
+    this.render(false);
+
     try {
       const vox = VoxChronicle.getInstance();
       const imageService = vox.imageGenerationService;
@@ -1031,7 +1047,7 @@ class EntityPreview extends Application {
         'Image generated'
       );
 
-      this.render(false);
+      this._logger.debug(`Image generation completed for ${entityKey}`);
 
     } catch (error) {
       this._logger.error('Failed to generate portrait:', error);
@@ -1039,6 +1055,11 @@ class EntityPreview extends Application {
         game.i18n?.localize('VOXCHRONICLE.ImageGeneration.GenerationFailed') ||
         'Image generation failed'
       );
+    } finally {
+      // Clear loading state
+      this._imageLoadingStates.set(entityKey, false);
+      this._logger.debug(`Image generation state cleared for ${entityKey}`);
+      this.render(false);
     }
   }
 
@@ -1156,6 +1177,7 @@ class EntityPreview extends Application {
     this._entities = { characters: [], locations: [], items: [] };
     this._relationships = [];
     this._selections.clear();
+    this._imageLoadingStates.clear();
     this._mode = PreviewMode.REVIEW;
     this._progress = { current: 0, total: 0, message: '' };
     this._results = { created: [], failed: [] };
