@@ -398,6 +398,7 @@ class EntityPreview extends Application {
         cancel: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Cancel') || 'Cancel',
         generatePortrait: game.i18n?.localize('VOXCHRONICLE.EntityPreview.GeneratePortrait') || 'Generate Portrait',
         editDescription: game.i18n?.localize('VOXCHRONICLE.EntityPreview.EditDescription') || 'Edit Description',
+        generating: game.i18n?.localize('VOXCHRONICLE.ImageGeneration.Generating') || 'Generating image...',
         name: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Name') || 'Name',
         type: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Type') || 'Type',
         description: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Description') || 'Description',
