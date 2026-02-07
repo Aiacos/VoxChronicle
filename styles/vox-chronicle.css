@@ -663,6 +663,84 @@ form .form-group .vox-chronicle-validate-button {
   background: var(--vox-primary-dark);
 }
 
+/* Help section */
+.vox-chronicle-speaker-labeling .form-help {
+  margin-top: var(--vox-spacing-md);
+  padding-top: var(--vox-spacing-md);
+  border-top: 1px solid var(--vox-border);
+}
+
+.vox-chronicle-speaker-labeling .form-help details {
+  background: var(--vox-bg-light);
+  border-radius: var(--vox-radius-md);
+  overflow: hidden;
+}
+
+.vox-chronicle-speaker-labeling .form-help summary {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: var(--vox-bg-dark);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--vox-text);
+  list-style: none;
+  transition: background-color var(--vox-transition);
+}
+
+.vox-chronicle-speaker-labeling .form-help summary::-webkit-details-marker {
+  display: none;
+}
+
+.vox-chronicle-speaker-labeling .form-help summary:hover {
+  background: var(--vox-bg-hover);
+}
+
+.vox-chronicle-speaker-labeling .form-help summary i {
+  transition: transform var(--vox-transition-slow);
+}
+
+.vox-chronicle-speaker-labeling .form-help details[open] summary i {
+  transform: rotate(90deg);
+}
+
+.vox-chronicle-speaker-labeling .form-help .help-content {
+  padding: var(--vox-spacing-md);
+  max-height: 500px;
+  overflow: hidden;
+  opacity: 1;
+  transition: max-height var(--vox-transition-slow),
+              opacity var(--vox-transition-slow),
+              padding var(--vox-transition-slow);
+}
+
+.vox-chronicle-speaker-labeling .form-help details:not([open]) .help-content {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.vox-chronicle-speaker-labeling .form-help .help-content p {
+  margin: 0 0 var(--vox-spacing-sm) 0;
+  color: var(--vox-text-dim);
+  line-height: 1.5;
+}
+
+.vox-chronicle-speaker-labeling .form-help .help-content p:last-child {
+  margin-bottom: 0;
+}
+
+.vox-chronicle-speaker-labeling .form-help .help-content p strong {
+  color: var(--vox-text);
+  font-weight: 600;
+}
+
+.vox-chronicle-speaker-labeling .form-help .help-content i {
+  font-size: 0.9em;
+}
+
 /* ==========================================================================
    Entity Preview Component
    ========================================================================== */
