@@ -950,7 +950,7 @@ class EntityPreview extends Application {
   async _showEditDialog(name, currentDescription) {
     return new Promise((resolve) => {
       new Dialog({
-        title: `Edit Description: ${name}`,
+        title: game.i18n?.format('VOXCHRONICLE.EntityPreview.EditDescriptionTitle', { name }) || `Edit Description: ${name}`,
         content: `
           <form class="vox-chronicle-edit-description">
             <div class="form-group">
