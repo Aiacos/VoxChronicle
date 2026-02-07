@@ -157,7 +157,10 @@
       "CampaignNotFound": "Campaign not found. Please check your campaign ID.",
       "EntityCreated": "{type} '{name}' created in Kanka",
       "JournalCreated": "Session journal created: {title}",
-      "ViewInKanka": "View in Kanka"
+      "ViewInKanka": "View in Kanka",
+      "TokenExpiring": "Your Kanka API token will expire in {days} days. Generate a new token at app.kanka.io/settings/api",
+      "TokenExpiringUrgent": "Your Kanka API token will expire in {days} days! Please generate a new token soon at app.kanka.io/settings/api",
+      "TokenExpiringCritical": "Your Kanka API token will expire in {days} days! Generate a new token immediately at app.kanka.io/settings/api to avoid service disruption"
     },
 
     "Chronicle": {
