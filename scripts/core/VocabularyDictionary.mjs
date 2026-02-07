@@ -425,6 +425,84 @@ export class VocabularyDictionary {
     return stats;
   }
 
+  /**
+   * Extract terms from Foundry compendiums
+   * Scans world compendiums for actor names and item names
+   *
+   * @returns {Promise<Object>} Object with character_names and items arrays
+   * @example
+   * const suggestions = await dictionary.extractFromFoundryCompendiums();
+   * // Returns: { character_names: ['Goblin', 'Troll'], items: ['Longsword', 'Potion of Healing'] }
+   */
+  async extractFromFoundryCompendiums() {
+    this._logger.debug('Extracting terms from Foundry compendiums...');
+
+    // Check if game.packs is available (Foundry VTT context)
+    if (typeof game === 'undefined' || !game.packs) {
+      this._logger.warn('Foundry VTT game.packs not available - returning empty results');
+      return {
+        character_names: [],
+        items: []
+      };
+    }
+
+    const results = {
+      character_names: [],
+      items: []
+    };
+
+    try {
+      // Iterate through all packs
+      for (const pack of game.packs) {
+        const metadata = pack.metadata;
+
+        // Only process world compendiums (not module or system packs)
+        const packageType = metadata.packageType || this._getPackageType(pack);
+        if (packageType !== 'world') continue;
+
+        // Get the pack index
+        const index = await this._getPackIndex(pack);
+
+        // Extract names based on compendium type
+        if (metadata.type === 'Actor') {
+          // Add actor names to character_names
+          for (const entry of index) {
+            if (entry.name) {
+              results.character_names.push(entry.name);
+            }
+          }
+        } else if (metadata.type === 'Item') {
+          // Add item names to items
+          for (const entry of index) {
+            if (entry.name) {
+              results.items.push(entry.name);
+            }
+          }
+        }
+      }
+
+      // Remove duplicates
+      results.character_names = [...new Set(results.character_names)];
+      results.items = [...new Set(results.items)];
+
+      // Sort alphabetically
+      results.character_names.sort();
+      results.items.sort();
+
+      this._logger.log(
+        `Extracted ${results.character_names.length} character names and ${results.items.length} items from compendiums`
+      );
+
+      return results;
+    } catch (error) {
+      this._logger.error('Failed to extract terms from compendiums:', error);
+      return {
+        character_names: [],
+        items: []
+      };
+    }
+  }
+
   // ==========================================
   // Private Helper Methods
   // ==========================================
@@ -501,5 +579,53 @@ export class VocabularyDictionary {
         }
       }
     }
+  }
+
+  /**
+   * Get the index for a compendium pack
+   * Similar to CompendiumSearcher but without caching
+   *
+   * @param {Object} pack - The compendium pack
+   * @returns {Promise<Array>} The pack index
+   * @private
+   */
+  async _getPackIndex(pack) {
+    try {
+      // Ensure the index is loaded
+      if (!pack.indexed) {
+        await pack.getIndex();
+      }
+
+      const index = Array.from(pack.index.values());
+      return index;
+    } catch (error) {
+      this._logger.error(`Failed to get index for pack ${pack.collection}:`, error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Determine the package type (world/module/system) of a compendium pack
+   * Fallback for when metadata.packageType is not available
+   *
+   * @param {Object} pack - The compendium pack
+   * @returns {string} The package type ('world', 'module', or 'system')
+   * @private
+   */
+  _getPackageType(pack) {
+    const collection = pack.collection;
+
+    if (collection.startsWith('world.')) {
+      return 'world';
+    }
+
+    // Check if it's a system pack
+    if (typeof game !== 'undefined' && game.system?.id) {
+      if (collection.startsWith(`${game.system.id}.`)) {
+        return 'system';
+      }
+    }
+
+    return 'module';
   }
 }
