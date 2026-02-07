@@ -142,6 +142,9 @@ class VoxChronicle {
         narrativeExporter: this.narrativeExporter
       });
 
+      // Check Kanka API token expiration
+      await this._checkKankaTokenExpiration();
+
       // Mark as initialized
       this.isInitialized = true;
       console.log(`${MODULE_ID} | VoxChronicle services initialized successfully`);
