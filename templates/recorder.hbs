@@ -58,7 +58,8 @@
     <button type="button"
             class="btn-pause"
             data-action="pause-recording"
-            title="{{i18n.pauseRecording}}">
+            title="{{i18n.pauseRecording}}"
+            aria-label="{{i18n.pauseRecording}}">
       <i class="fas fa-pause"></i>
     </button>
     {{/if}}
@@ -68,7 +69,8 @@
     <button type="button"
             class="btn-resume"
             data-action="resume-recording"
-            title="{{i18n.resumeRecording}}">
+            title="{{i18n.resumeRecording}}"
+            aria-label="{{i18n.resumeRecording}}">
       <i class="fas fa-play"></i>
     </button>
     {{/if}}
@@ -89,7 +91,8 @@
     <button type="button"
             class="btn-cancel"
             data-action="cancel-session"
-            title="Cancel Session">
+            title="{{i18n.cancelSession}}"
+            aria-label="{{i18n.cancelSession}}">
       <i class="fas fa-times"></i>
     </button>
     {{/if}}
