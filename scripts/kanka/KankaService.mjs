@@ -98,6 +98,20 @@ const OrganisationType = {
 };
 
 /**
+ * Quest types for Kanka
+ * @enum {string}
+ */
+const QuestType = {
+  MAIN: 'Main Quest',
+  SIDE: 'Side Quest',
+  PERSONAL: 'Personal Quest',
+  BOUNTY: 'Bounty',
+  MISSION: 'Mission',
+  TASK: 'Task',
+  OTHER: ''
+};
+
+/**
  * KankaService class for entity CRUD operations
  *
  * Provides high-level methods for creating, reading, updating, and deleting
@@ -892,6 +906,145 @@ class KankaService extends KankaClient {
   }
 
   // ============================================================================
+  // Quests
+  // ============================================================================
+
+  /**
+   * Create a new quest
+   *
+   * @param {Object} questData - Quest data
+   * @param {string} questData.name - Quest name
+   * @param {string} [questData.entry] - Quest description (HTML/Markdown)
+   * @param {string} [questData.type] - Quest type ('Main Quest', 'Side Quest', etc.)
+   * @param {boolean} [questData.is_completed=false] - Whether quest is completed
+   * @param {boolean} [questData.is_private=false] - Whether quest is private
+   * @param {string|number} [questData.character_id] - Quest giver character ID
+   * @param {string|number} [questData.location_id] - Quest location ID
+   * @param {string|number} [questData.quest_id] - Parent quest ID
+   * @param {Array} [questData.tags] - Tag IDs to associate
+   * @returns {Promise<Object>} Created quest data
+   */
+  async createQuest(questData) {
+    if (!questData?.name) {
+      throw new KankaError(
+        'Quest name is required',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
+
+    const payload = {
+      name: questData.name,
+      entry: questData.entry || '',
+      type: questData.type || QuestType.OTHER,
+      is_private: questData.is_private ?? false
+    };
+
+    // Add optional fields if provided
+    if (questData.is_completed !== undefined) {
+      payload.is_completed = questData.is_completed;
+    }
+    if (questData.character_id) {
+      payload.character_id = questData.character_id;
+    }
+    if (questData.location_id) {
+      payload.location_id = questData.location_id;
+    }
+    if (questData.quest_id) {
+      payload.quest_id = questData.quest_id;
+    }
+    if (questData.tags?.length) {
+      payload.tags = questData.tags;
+    }
+
+    this._logger.log(`Creating quest: ${questData.name}`);
+    const response = await this.post(endpoint, payload);
+    this._logger.log(`Quest created with ID: ${response.data?.id}`);
+
+    return response.data;
+  }
+
+  /**
+   * Get a quest by ID
+   *
+   * @param {string|number} questId - Quest ID
+   * @returns {Promise<Object>} Quest data
+   */
+  async getQuest(questId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
+    this._logger.debug(`Fetching quest: ${questId}`);
+    const response = await this.get(endpoint);
+    return response.data;
+  }
+
+  /**
+   * Update a quest
+   *
+   * @param {string|number} questId - Quest ID
+   * @param {Object} questData - Updated quest data
+   * @returns {Promise<Object>} Updated quest data
+   */
+  async updateQuest(questId, questData) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
+    this._logger.debug(`Updating quest: ${questId}`);
+    const response = await this.put(endpoint, questData);
+    return response.data;
+  }
+
+  /**
+   * Delete a quest
+   *
+   * @param {string|number} questId - Quest ID
+   * @returns {Promise<void>}
+   */
+  async deleteQuest(questId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
+    this._logger.debug(`Deleting quest: ${questId}`);
+    await this.delete(endpoint);
+    this._logger.log(`Quest deleted: ${questId}`);
+  }
+
+  /**
+   * List all quests in the campaign
+   *
+   * @param {Object} [options] - List options
+   * @param {number} [options.page=1] - Page number for pagination
+   * @param {string} [options.type] - Filter by quest type
+   * @param {boolean} [options.is_completed] - Filter by completion status
+   * @param {string|number} [options.quest_id] - Filter by parent quest
+   * @returns {Promise<Object>} Paginated quest list with data and meta
+   */
+  async listQuests(options = {}) {
+    let endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
+
+    const params = [];
+    if (options.page) {
+      params.push(`page=${options.page}`);
+    }
+    if (options.type) {
+      params.push(`type=${encodeURIComponent(options.type)}`);
+    }
+    if (options.is_completed !== undefined) {
+      params.push(`is_completed=${options.is_completed ? 1 : 0}`);
+    }
+    if (options.quest_id) {
+      params.push(`quest_id=${options.quest_id}`);
+    }
+    if (params.length) {
+      endpoint += `?${params.join('&')}`;
+    }
+
+    this._logger.debug('Fetching quests list');
+    const response = await this.get(endpoint);
+    return {
+      data: response.data || [],
+      meta: response.meta || {},
+      links: response.links || {}
+    };
+  }
+
+  // ============================================================================
   // Image Upload
   // ============================================================================
 
@@ -1118,6 +1271,8 @@ class KankaService extends KankaClient {
         return this.createJournal(entityData);
       case KankaEntityType.ORGANISATION:
         return this.createOrganisation(entityData);
+      case KankaEntityType.QUEST:
+        return this.createQuest(entityData);
       default:
         throw new KankaError(
           `Unsupported entity type: ${entityType}`,
@@ -1168,6 +1323,9 @@ class KankaService extends KankaClient {
             case KankaEntityType.ORGANISATION:
               entity = await this.createOrganisation(entityData);
               break;
+            case KankaEntityType.QUEST:
+              entity = await this.createQuest(entityData);
+              break;
             default:
               throw new KankaError(
                 `Unsupported entity type: ${entityType}`,
@@ -1196,5 +1354,6 @@ export {
   CharacterType,
   LocationType,
   ItemType,
-  OrganisationType
+  OrganisationType,
+  QuestType
 };
