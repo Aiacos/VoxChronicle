@@ -24,7 +24,12 @@
   {{!-- Progress bar (shown during processing) --}}
   {{#if hasProgress}}
   <div class="recorder-progress">
-    <div class="progress-bar">
+    <div class="progress-bar"
+         role="progressbar"
+         aria-valuenow="{{progress.progress}}"
+         aria-valuemin="0"
+         aria-valuemax="100"
+         aria-label="{{progress.message}}">
       <div class="progress-fill" style="width: {{progress.progress}}%"></div>
     </div>
     <span class="progress-text">{{progress.message}}</span>
