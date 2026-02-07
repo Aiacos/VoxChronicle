@@ -81,7 +81,10 @@
       "NoAudioSupport": "Il tuo browser non supporta la registrazione audio.",
       "RecordingStarted": "Registrazione avviata",
       "RecordingStopped": "Registrazione fermata",
-      "RecordingFailed": "Registrazione fallita"
+      "RecordingFailed": "Registrazione fallita",
+      "Segments": "Segmenti:",
+      "Speakers": "Parlanti:",
+      "CancelSession": "Annulla Sessione"
     },
 
     "Transcription": {
@@ -108,7 +111,18 @@
       "Reset": "Reimposta Etichette",
       "AutoDetect": "Rileva Automaticamente dagli Utenti",
       "Saved": "Etichette parlanti salvate",
-      "Placeholder": "Inserisci nome..."
+      "Placeholder": "Inserisci nome...",
+      "QuickAssign": "Assegnazione Rapida",
+      "QuickAssignPlaceholder": "Assegna rapidamente...",
+      "ResetConfirm": "Sei sicuro di voler reimpostare tutte le etichette dei parlanti?",
+      "LabelsReset": "Etichette parlanti reimpostate",
+      "NoGameUsers": "Nessun utente di gioco disponibile per il rilevamento automatico",
+      "SaveFailed": "Salvataggio etichette parlanti fallito",
+      "HelpTitle": "Aiuto",
+      "HelpSpeakerIDs": "Questi sono assegnati automaticamente dal servizio di trascrizione (SPEAKER_00, SPEAKER_01, ecc.).",
+      "HelpKnownSpeakers": "I parlanti con l'icona {icon} sono stati rilevati in una sessione di trascrizione precedente.",
+      "HelpQuickAssign": "Usa il menu a tendina per assegnare rapidamente il nome di un utente di gioco a uno slot parlante.",
+      "HelpAutoDetect": "Riempie automaticamente gli slot parlanti vuoti con i nomi degli utenti di gioco in ordine."
     },
 
     "EntityExtraction": {
@@ -149,7 +163,11 @@
       "PartialSuccess": "{created} di {total} entità create. Alcune sono fallite.",
       "Failed": "Creazione entità fallita",
       "RelationshipsCreated": "{count} relazione/i create su Kanka",
-      "RelationshipsFailed": "{count} relazione/i non sono state create"
+      "RelationshipsFailed": "{count} relazione/i non sono state create",
+      "ConfidenceLabel": "Confidenza:",
+      "EditDialogTitle": "Modifica Descrizione: {name}",
+      "ViewGraph": "Visualizza Grafo Relazioni",
+      "FailedCount": "{count} fallite"
     },
 
     "ImageGeneration": {
