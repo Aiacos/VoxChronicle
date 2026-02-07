@@ -133,12 +133,12 @@
   {{#if sessionSummary}}
   <div class="recorder-session-summary">
     <div class="summary-item">
-      <span class="summary-label">Segments:</span>
+      <span class="summary-label">{{i18n.segments}}</span>
       <span class="summary-value">{{sessionSummary.segmentCount}}</span>
     </div>
     {{#if sessionSummary.speakerCount}}
     <div class="summary-item">
-      <span class="summary-label">Speakers:</span>
+      <span class="summary-label">{{i18n.speakers}}</span>
       <span class="summary-value">{{sessionSummary.speakerCount}}</span>
     </div>
     {{/if}}
