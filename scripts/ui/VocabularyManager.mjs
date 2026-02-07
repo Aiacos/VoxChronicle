@@ -149,6 +149,7 @@ export class VocabularyManager extends Application {
         removeTerm: game.i18n?.localize('VOXCHRONICLE.Vocabulary.RemoveTerm') || 'Remove',
         clearCategory: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearCategory') || 'Clear Category',
         clearAll: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearAll') || 'Clear All',
+        suggestFoundry: game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestFoundry') || 'Suggest from Foundry',
         importDict: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Import') || 'Import Dictionary',
         exportDict: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Export') || 'Export Dictionary',
         termPlaceholder: game.i18n?.localize('VOXCHRONICLE.Vocabulary.TermPlaceholder') || 'Enter term...',
@@ -197,6 +198,9 @@ export class VocabularyManager extends Application {
 
     // Clear all button
     html.find('.clear-all-btn').on('click', this._onClearAll.bind(this));
+
+    // Suggest from Foundry button
+    html.find('.suggest-foundry-btn').on('click', this._onSuggestFromFoundry.bind(this));
 
     // Import button
     html.find('.import-btn').on('click', this._onImport.bind(this));
@@ -486,6 +490,230 @@ export class VocabularyManager extends Application {
       );
     } catch (error) {
       this._logger.error('Failed to export dictionary:', error);
+      ui.notifications.error(
+        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
+        `Error: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Collect vocabulary suggestions from Foundry world data
+   * @returns {Object} Suggestions object with character_names and items arrays
+   * @private
+   */
+  _collectFoundrySuggestions() {
+    const suggestions = {
+      [VocabularyCategory.CHARACTER_NAMES]: [],
+      [VocabularyCategory.ITEMS]: []
+    };
+
+    try {
+      // Collect actor names (characters and NPCs)
+      if (game.actors) {
+        game.actors.forEach(actor => {
+          if (actor.name && actor.name.trim()) {
+            suggestions[VocabularyCategory.CHARACTER_NAMES].push(actor.name.trim());
+          }
+        });
+      }
+
+      // Collect item names
+      if (game.items) {
+        game.items.forEach(item => {
+          if (item.name && item.name.trim()) {
+            suggestions[VocabularyCategory.ITEMS].push(item.name.trim());
+          }
+        });
+      }
+
+      // Remove duplicates and sort
+      suggestions[VocabularyCategory.CHARACTER_NAMES] = [
+        ...new Set(suggestions[VocabularyCategory.CHARACTER_NAMES])
+      ].sort();
+
+      suggestions[VocabularyCategory.ITEMS] = [
+        ...new Set(suggestions[VocabularyCategory.ITEMS])
+      ].sort();
+
+      this._logger.debug('Collected Foundry suggestions:', {
+        characterCount: suggestions[VocabularyCategory.CHARACTER_NAMES].length,
+        itemCount: suggestions[VocabularyCategory.ITEMS].length
+      });
+
+      return suggestions;
+    } catch (error) {
+      this._logger.error('Failed to collect Foundry suggestions:', error);
+      return suggestions;
+    }
+  }
+
+  /**
+   * Handle suggesting terms from Foundry world data
+   * @param {Event} event - The click event
+   * @private
+   */
+  async _onSuggestFromFoundry(event) {
+    event.preventDefault();
+
+    try {
+      // Collect suggestions
+      const suggestions = this._collectFoundrySuggestions();
+
+      const characterCount = suggestions[VocabularyCategory.CHARACTER_NAMES].length;
+      const itemCount = suggestions[VocabularyCategory.ITEMS].length;
+      const totalCount = characterCount + itemCount;
+
+      if (totalCount === 0) {
+        ui.notifications.warn(
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoSuggestions') ||
+          'No actors or items found in your world'
+        );
+        return;
+      }
+
+      // Build suggestions HTML
+      let suggestionsHtml = '<form><div style="max-height: 400px; overflow-y: auto;">';
+
+      // Character names section
+      if (characterCount > 0) {
+        suggestionsHtml += `
+          <div class="form-group">
+            <label style="font-weight: bold; margin-bottom: 0.5em; display: block;">
+              <i class="fas fa-user"></i>
+              ${game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCharacters') || 'Character Names'}
+              (${characterCount})
+            </label>
+            <div style="margin-left: 1em;">
+              <label style="margin-bottom: 0.5em; display: block;">
+                <input type="checkbox" name="select-all-characters" />
+                ${game.i18n?.localize('VOXCHRONICLE.Vocabulary.SelectAll') || 'Select All'}
+              </label>
+        `;
+
+        suggestions[VocabularyCategory.CHARACTER_NAMES].forEach(name => {
+          // Check if term already exists
+          const exists = this._dictionary.hasTerm(VocabularyCategory.CHARACTER_NAMES, name);
+          const disabled = exists ? 'disabled checked' : '';
+          const style = exists ? 'opacity: 0.5;' : '';
+
+          suggestionsHtml += `
+            <label style="display: block; margin-bottom: 0.25em; ${style}">
+              <input type="checkbox"
+                     name="character"
+                     value="${name}"
+                     ${disabled} />
+              ${name}
+              ${exists ? '<em>(already added)</em>' : ''}
+            </label>
+          `;
+        });
+
+        suggestionsHtml += '</div></div>';
+      }
+
+      // Items section
+      if (itemCount > 0) {
+        suggestionsHtml += `
+          <div class="form-group">
+            <label style="font-weight: bold; margin-bottom: 0.5em; display: block;">
+              <i class="fas fa-gem"></i>
+              ${game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryItems') || 'Items & Artifacts'}
+              (${itemCount})
+            </label>
+            <div style="margin-left: 1em;">
+              <label style="margin-bottom: 0.5em; display: block;">
+                <input type="checkbox" name="select-all-items" />
+                ${game.i18n?.localize('VOXCHRONICLE.Vocabulary.SelectAll') || 'Select All'}
+              </label>
+        `;
+
+        suggestions[VocabularyCategory.ITEMS].forEach(name => {
+          // Check if term already exists
+          const exists = this._dictionary.hasTerm(VocabularyCategory.ITEMS, name);
+          const disabled = exists ? 'disabled checked' : '';
+          const style = exists ? 'opacity: 0.5;' : '';
+
+          suggestionsHtml += `
+            <label style="display: block; margin-bottom: 0.25em; ${style}">
+              <input type="checkbox"
+                     name="item"
+                     value="${name}"
+                     ${disabled} />
+              ${name}
+              ${exists ? '<em>(already added)</em>' : ''}
+            </label>
+          `;
+        });
+
+        suggestionsHtml += '</div></div>';
+      }
+
+      suggestionsHtml += '</div></form>';
+
+      // Show dialog
+      new Dialog({
+        title: game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestFoundryTitle') ||
+          'Suggest from Foundry',
+        content: suggestionsHtml,
+        buttons: {
+          add: {
+            icon: '<i class="fas fa-plus"></i>',
+            label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSelected') || 'Add Selected',
+            callback: async (html) => {
+              let addedCount = 0;
+
+              // Add selected character names
+              html.find('input[name="character"]:checked:not(:disabled)').each((i, el) => {
+                const term = $(el).val();
+                if (this._dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, term)) {
+                  addedCount++;
+                }
+              });
+
+              // Add selected items
+              html.find('input[name="item"]:checked:not(:disabled)').each((i, el) => {
+                const term = $(el).val();
+                if (this._dictionary.addTerm(VocabularyCategory.ITEMS, term)) {
+                  addedCount++;
+                }
+              });
+
+              if (addedCount > 0) {
+                ui.notifications.info(
+                  game.i18n?.format('VOXCHRONICLE.Vocabulary.SuggestAddedCount', { count: addedCount }) ||
+                  `Added ${addedCount} term${addedCount !== 1 ? 's' : ''}`
+                );
+                this.render(false);
+              } else {
+                ui.notifications.warn(
+                  game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoTermsSelected') ||
+                  'No terms selected'
+                );
+              }
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: game.i18n?.localize('VOXCHRONICLE.Button.Cancel') || 'Cancel'
+          }
+        },
+        default: 'add',
+        render: (html) => {
+          // Handle "select all" checkboxes
+          html.find('input[name="select-all-characters"]').on('change', function() {
+            const checked = $(this).is(':checked');
+            html.find('input[name="character"]:not(:disabled)').prop('checked', checked);
+          });
+
+          html.find('input[name="select-all-items"]').on('change', function() {
+            const checked = $(this).is(':checked');
+            html.find('input[name="item"]:not(:disabled)').prop('checked', checked);
+          });
+        }
+      }).render(true);
+    } catch (error) {
+      this._logger.error('Failed to suggest from Foundry:', error);
       ui.notifications.error(
         game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
         `Error: ${error.message}`

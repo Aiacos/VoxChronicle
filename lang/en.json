@@ -155,7 +155,14 @@
       "EmptyImport": "Please paste JSON data",
       "ImportStats": "Imported: {added} added, {skipped} skipped",
       "CopyToClipboard": "Copy to Clipboard",
-      "CopiedToClipboard": "Dictionary copied to clipboard"
+      "CopiedToClipboard": "Dictionary copied to clipboard",
+      "SuggestFoundry": "Suggest from Foundry",
+      "SuggestFoundryTitle": "Suggest from Foundry",
+      "NoSuggestions": "No actors or items found in your world",
+      "SelectAll": "Select All",
+      "AddSelected": "Add Selected",
+      "SuggestAddedCount": "Added {count} term(s)",
+      "NoTermsSelected": "No terms selected"
     },
 
     "EntityExtraction": {

@@ -155,7 +155,14 @@
       "EmptyImport": "Per favore incolla i dati JSON",
       "ImportStats": "Importati: {added} aggiunti, {skipped} saltati",
       "CopyToClipboard": "Copia negli Appunti",
-      "CopiedToClipboard": "Dizionario copiato negli appunti"
+      "CopiedToClipboard": "Dizionario copiato negli appunti",
+      "SuggestFoundry": "Suggerisci da Foundry",
+      "SuggestFoundryTitle": "Suggerisci da Foundry",
+      "NoSuggestions": "Nessun attore o oggetto trovato nel tuo mondo",
+      "SelectAll": "Seleziona Tutto",
+      "AddSelected": "Aggiungi Selezionati",
+      "SuggestAddedCount": "Aggiunti {count} termine/i",
+      "NoTermsSelected": "Nessun termine selezionato"
     },
 
     "EntityExtraction": {
