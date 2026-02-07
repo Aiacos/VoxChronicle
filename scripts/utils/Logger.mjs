@@ -9,6 +9,7 @@
  */
 
 import { MODULE_ID } from '../main.mjs';
+import { SensitiveDataFilter } from './SensitiveDataFilter.mjs';
 
 /**
  * Log levels enumeration
@@ -270,39 +271,52 @@ class Logger {
    * Create a child logger with a sub-module prefix
    *
    * @param {string} subModule - The sub-module name
+   * @param {boolean|Object} [options=false] - Sanitization options
+   *   - If boolean: enable/disable sanitization
+   *   - If object: { sanitize: boolean }
    * @returns {Object} A logger object with the same methods but prefixed with sub-module
    */
-  static createChild(subModule) {
+  static createChild(subModule, options = false) {
     const childPrefix = `${MODULE_ID}:${subModule} |`;
+
+    // Handle options parameter (boolean or object)
+    const sanitize = typeof options === 'boolean' ? options : (options?.sanitize || false);
+
+    // Helper to sanitize arguments if enabled
+    const maybeSanitize = (args) => {
+      return sanitize ? SensitiveDataFilter.sanitizeArgs(args) : args;
+    };
+
     return {
       debug: (...args) => {
         if (Logger._shouldLog(LogLevel.DEBUG) && Logger._debugEnabled) {
-          console.debug(`${childPrefix} [DEBUG]`, ...args);
+          console.debug(`${childPrefix} [DEBUG]`, ...maybeSanitize(args));
         }
       },
       info: (...args) => {
         if (Logger._shouldLog(LogLevel.INFO)) {
-          console.info(`${childPrefix} [INFO]`, ...args);
+          console.info(`${childPrefix} [INFO]`, ...maybeSanitize(args));
         }
       },
       log: (...args) => {
         if (Logger._shouldLog(LogLevel.LOG)) {
-          console.log(`${childPrefix}`, ...args);
+          console.log(`${childPrefix}`, ...maybeSanitize(args));
         }
       },
       warn: (...args) => {
         if (Logger._shouldLog(LogLevel.WARN)) {
-          console.warn(`${childPrefix} [WARN]`, ...args);
+          console.warn(`${childPrefix} [WARN]`, ...maybeSanitize(args));
         }
       },
       error: (...args) => {
         if (Logger._shouldLog(LogLevel.ERROR)) {
-          console.error(`${childPrefix} [ERROR]`, ...args);
+          console.error(`${childPrefix} [ERROR]`, ...maybeSanitize(args));
         }
       },
       group: (label, collapsed = true) => {
         const groupMethod = collapsed ? console.groupCollapsed : console.group;
-        groupMethod(`${childPrefix} ${label}`);
+        const sanitizedLabel = sanitize ? SensitiveDataFilter.sanitizeString(label) : label;
+        groupMethod(`${childPrefix} ${sanitizedLabel}`);
       },
       groupEnd: () => console.groupEnd(),
       time: (label) => Logger.time(`${subModule}:${label}`),
