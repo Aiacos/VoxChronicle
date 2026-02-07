@@ -14,6 +14,7 @@
 
 import { Logger } from '../utils/Logger.mjs';
 import { OpenAIClient, OpenAIError, OpenAIErrorType } from '../ai/OpenAIClient.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Chronicle format types
@@ -549,18 +550,18 @@ class NarrativeExporter {
 
     // Header section
     if (isRich && this._campaignName) {
-      parts.push(`<p><em>${this._escapeHtml(this._campaignName)}</em></p>`);
+      parts.push(`<p><em>${escapeHtml(this._campaignName)}</em></p>`);
     }
 
     // Summary section
     if (sessionData.summary && (format === ChronicleFormat.SUMMARY || format === ChronicleFormat.FULL)) {
       parts.push('<h2>Summary</h2>');
-      parts.push(`<p>${this._escapeHtml(sessionData.summary)}</p>`);
+      parts.push(`<p>${escapeHtml(sessionData.summary)}</p>`);
     } else if (format === ChronicleFormat.SUMMARY || format === ChronicleFormat.FULL) {
       // Generate basic summary
       const summary = this.generateSummary(sessionData.segments || []);
       parts.push('<h2>Summary</h2>');
-      parts.push(`<p>${this._escapeHtml(summary)}</p>`);
+      parts.push(`<p>${escapeHtml(summary)}</p>`);
     }
 
     // Salient moments section
@@ -568,9 +569,9 @@ class NarrativeExporter {
       parts.push('<h2>Key Moments</h2>');
       parts.push('<ul>');
       sessionData.moments.forEach(moment => {
-        parts.push(`<li><strong>${this._escapeHtml(moment.title)}</strong>`);
+        parts.push(`<li><strong>${escapeHtml(moment.title)}</strong>`);
         if (moment.context) {
-          parts.push(`<br><em>"${this._escapeHtml(moment.context)}"</em>`);
+          parts.push(`<br><em>"${escapeHtml(moment.context)}"</em>`);
         }
         parts.push('</li>');
       });
@@ -601,7 +602,7 @@ class NarrativeExporter {
     // Narrative section (if provided)
     if (format === ChronicleFormat.NARRATIVE && sessionData.narrative) {
       parts.push('<h2>Session Narrative</h2>');
-      parts.push(`<div class="narrative">${this._escapeHtml(sessionData.narrative)}</div>`);
+      parts.push(`<div class="narrative">${escapeHtml(sessionData.narrative)}</div>`);
     }
 
     // Footer
@@ -632,8 +633,8 @@ class NarrativeExporter {
     lines.push('<div class="transcript">');
 
     groupedSegments.forEach(segment => {
-      const speaker = this._escapeHtml(segment.speaker || 'Unknown');
-      const text = this._escapeHtml((segment.text || '').trim());
+      const speaker = escapeHtml(segment.speaker || 'Unknown');
+      const text = escapeHtml((segment.text || '').trim());
 
       lines.push('<p class="dialogue">');
 
@@ -672,9 +673,9 @@ class NarrativeExporter {
       sections.push('<ul>');
       entities.characters.forEach(char => {
         const typeLabel = char.isNPC ? 'NPC' : 'PC';
-        sections.push(`<li><strong>${this._escapeHtml(char.name)}</strong> (${typeLabel})`);
+        sections.push(`<li><strong>${escapeHtml(char.name)}</strong> (${typeLabel})`);
         if (char.description) {
-          sections.push(` - ${this._escapeHtml(char.description)}`);
+          sections.push(` - ${escapeHtml(char.description)}`);
         }
         sections.push('</li>');
       });
@@ -686,12 +687,12 @@ class NarrativeExporter {
       sections.push('<h3>Locations</h3>');
       sections.push('<ul>');
       entities.locations.forEach(loc => {
-        sections.push(`<li><strong>${this._escapeHtml(loc.name)}</strong>`);
+        sections.push(`<li><strong>${escapeHtml(loc.name)}</strong>`);
         if (loc.type) {
-          sections.push(` (${this._escapeHtml(loc.type)})`);
+          sections.push(` (${escapeHtml(loc.type)})`);
         }
         if (loc.description) {
-          sections.push(` - ${this._escapeHtml(loc.description)}`);
+          sections.push(` - ${escapeHtml(loc.description)}`);
         }
         sections.push('</li>');
       });
@@ -703,12 +704,12 @@ class NarrativeExporter {
       sections.push('<h3>Items</h3>');
       sections.push('<ul>');
       entities.items.forEach(item => {
-        sections.push(`<li><strong>${this._escapeHtml(item.name)}</strong>`);
+        sections.push(`<li><strong>${escapeHtml(item.name)}</strong>`);
         if (item.type) {
-          sections.push(` (${this._escapeHtml(item.type)})`);
+          sections.push(` (${escapeHtml(item.type)})`);
         }
         if (item.description) {
-          sections.push(` - ${this._escapeHtml(item.description)}`);
+          sections.push(` - ${escapeHtml(item.description)}`);
         }
         sections.push('</li>');
       });
@@ -1007,29 +1008,6 @@ class NarrativeExporter {
     }
 
     return `${minutes}:${String(secs).padStart(2, '0')}`;
-  }
-
-  /**
-   * Escape HTML special characters
-   *
-   * @param {string} text - Text to escape
-   * @returns {string} Escaped text
-   * @private
-   */
-  _escapeHtml(text) {
-    if (!text) {
-      return '';
-    }
-
-    const escapeMap = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
-    };
-
-    return String(text).replace(/[&<>"']/g, char => escapeMap[char]);
   }
 
   /**

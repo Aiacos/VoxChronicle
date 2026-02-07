@@ -15,6 +15,7 @@ import { Logger } from '../utils/Logger.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 import { Settings } from '../core/Settings.mjs';
 import { SessionState } from '../orchestration/SessionOrchestrator.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Recording UI state enum
@@ -657,7 +658,7 @@ class RecorderControls extends Application {
       <div class="vox-chronicle-recorder">
         <div class="recorder-status ${data.statusClass}">
           <span class="status-indicator"></span>
-          <span class="status-text">${data.statusText}</span>
+          <span class="status-text">${escapeHtml(data.statusText)}</span>
         </div>
 
         <div class="recorder-duration">
@@ -670,7 +671,7 @@ class RecorderControls extends Application {
             <div class="progress-bar">
               <div class="progress-fill" style="width: ${data.progress.progress}%"></div>
             </div>
-            <span class="progress-text">${data.progress.message}</span>
+            <span class="progress-text">${escapeHtml(data.progress.message)}</span>
           </div>
         ` : ''}
 

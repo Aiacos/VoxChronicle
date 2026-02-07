@@ -14,6 +14,7 @@ import { MODULE_ID } from '../main.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { Settings } from '../core/Settings.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Entity selection state enum
@@ -719,12 +720,12 @@ class EntityPreview extends Application {
   async _showEditDialog(name, currentDescription) {
     return new Promise((resolve) => {
       new Dialog({
-        title: `Edit Description: ${name}`,
+        title: `Edit Description: ${escapeHtml(name)}`,
         content: `
           <form class="vox-chronicle-edit-description">
             <div class="form-group">
               <label>${game.i18n?.localize('VOXCHRONICLE.EntityPreview.Description') || 'Description'}</label>
-              <textarea name="description" rows="6" style="width: 100%;">${currentDescription || ''}</textarea>
+              <textarea name="description" rows="6" style="width: 100%;">${escapeHtml(currentDescription || '')}</textarea>
             </div>
           </form>
         `,
@@ -906,29 +907,29 @@ class EntityPreview extends Application {
       const entityRows = entities.map(entity => `
         <div class="entity-row ${entity.selected ? 'selected' : ''}">
           <div class="entity-select">
-            <input type="checkbox" data-entity-key="${entity.key}"
+            <input type="checkbox" data-entity-key="${escapeHtml(entity.key)}"
               ${entity.selected ? 'checked' : ''} />
           </div>
           <div class="entity-info">
-            <div class="entity-name">${entity.name}</div>
-            <div class="entity-type">${entity.typeLabel}</div>
-            <div class="entity-description">${entity.description || ''}</div>
+            <div class="entity-name">${escapeHtml(entity.name)}</div>
+            <div class="entity-type">${escapeHtml(entity.typeLabel)}</div>
+            <div class="entity-description">${escapeHtml(entity.description || '')}</div>
           </div>
           <div class="entity-actions">
             <button type="button" data-action="edit-description"
-              data-entity-type="${type}" data-entity-index="${entity.index}"
-              title="${data.i18n.editDescription}">
+              data-entity-type="${escapeHtml(type)}" data-entity-index="${entity.index}"
+              title="${escapeHtml(data.i18n.editDescription)}">
               <i class="fas fa-edit"></i>
             </button>
             <button type="button" data-action="generate-portrait"
-              data-entity-type="${type}" data-entity-index="${entity.index}"
-              title="${data.i18n.generatePortrait}">
+              data-entity-type="${escapeHtml(type)}" data-entity-index="${entity.index}"
+              title="${escapeHtml(data.i18n.generatePortrait)}">
               <i class="fas fa-image"></i>
             </button>
           </div>
           ${entity.imageUrl ? `
             <div class="entity-preview-image">
-              <img src="${entity.imageUrl}" alt="${entity.name}" />
+              <img src="${escapeHtml(entity.imageUrl)}" alt="${escapeHtml(entity.name)}" />
             </div>
           ` : ''}
         </div>
@@ -951,7 +952,7 @@ class EntityPreview extends Application {
     // Build progress section
     const progressSection = data.hasProgress ? `
       <div class="entity-preview-progress">
-        <div class="progress-message">${data.progress.message}</div>
+        <div class="progress-message">${escapeHtml(data.progress.message)}</div>
         <div class="progress-bar">
           <div class="progress-fill" style="width: ${(data.progress.current / data.progress.total) * 100}%"></div>
         </div>
@@ -963,12 +964,12 @@ class EntityPreview extends Application {
     const resultsSection = data.hasResults ? `
       <div class="entity-preview-results ${data.isError ? 'error' : 'success'}">
         <div class="results-summary">
-          ${data.createdCount > 0 ? `<div class="created-count"><i class="fas fa-check"></i> ${data.i18n.created}</div>` : ''}
+          ${data.createdCount > 0 ? `<div class="created-count"><i class="fas fa-check"></i> ${escapeHtml(data.i18n.created)}</div>` : ''}
           ${data.failedCount > 0 ? `<div class="failed-count"><i class="fas fa-times"></i> ${data.failedCount} failed</div>` : ''}
         </div>
         ${data.failedCount > 0 ? `
           <div class="failed-entities">
-            ${data.results.failed.map(f => `<div class="failed-entity">${f.type}: ${f.name} - ${f.error}</div>`).join('')}
+            ${data.results.failed.map(f => `<div class="failed-entity">${escapeHtml(f.type)}: ${escapeHtml(f.name)} - ${escapeHtml(f.error)}</div>`).join('')}
           </div>
         ` : ''}
       </div>

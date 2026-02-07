@@ -14,6 +14,7 @@
 import { MODULE_ID } from '../main.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { Settings } from '../core/Settings.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Default speaker ID patterns used by OpenAI diarization
@@ -446,20 +447,20 @@ class SpeakerLabeling extends FormApplication {
     const speakerRows = data.speakers.map(speaker => `
       <div class="speaker-row ${speaker.isKnown ? 'known' : ''}">
         <div class="speaker-id">
-          <span class="speaker-id-text">${speaker.id}</span>
+          <span class="speaker-id-text">${escapeHtml(speaker.id)}</span>
           ${speaker.isKnown ? '<i class="fas fa-check-circle known-indicator" title="Detected in session"></i>' : ''}
         </div>
         <div class="speaker-label">
-          <input type="text" name="speaker-${speaker.id}" value="${speaker.label}" placeholder="${speaker.placeholder}" />
-          <button type="button" class="btn-clear" data-action="clear-label" data-speaker-id="${speaker.id}" title="Clear">
+          <input type="text" name="speaker-${escapeHtml(speaker.id)}" value="${escapeHtml(speaker.label)}" placeholder="${escapeHtml(speaker.placeholder)}" />
+          <button type="button" class="btn-clear" data-action="clear-label" data-speaker-id="${escapeHtml(speaker.id)}" title="Clear">
             <i class="fas fa-times"></i>
           </button>
         </div>
         ${data.hasGameUsers ? `
           <div class="quick-assign">
-            <select data-action="quick-assign" data-speaker-id="${speaker.id}">
+            <select data-action="quick-assign" data-speaker-id="${escapeHtml(speaker.id)}">
               <option value="">Quick assign...</option>
-              ${data.gameUsers.map(u => `<option value="${u.isGM ? `GM (${u.name})` : u.name}">${u.isGM ? '👑 ' : ''}${u.name}</option>`).join('')}
+              ${data.gameUsers.map(u => `<option value="${escapeHtml(u.isGM ? `GM (${u.name})` : u.name)}">${u.isGM ? '👑 ' : ''}${escapeHtml(u.name)}</option>`).join('')}
             </select>
           </div>
         ` : ''}
