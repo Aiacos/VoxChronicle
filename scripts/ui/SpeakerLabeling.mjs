@@ -269,7 +269,9 @@ class SpeakerLabeling extends FormApplication {
 
     } catch (error) {
       this._logger.error('Failed to save speaker labels:', error);
-      ui.notifications?.error('Failed to save speaker labels');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.SaveFailed') || 'Failed to save speaker labels'
+      );
     }
   }
 
@@ -284,7 +286,7 @@ class SpeakerLabeling extends FormApplication {
     // Confirm reset
     const confirmed = await Dialog.confirm({
       title: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Reset') || 'Reset Labels',
-      content: '<p>Are you sure you want to reset all speaker labels?</p>',
+      content: `<p>${game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.ResetConfirm') || 'Are you sure you want to reset all speaker labels?'}</p>`,
       yes: () => true,
       no: () => false,
       defaultYes: false
@@ -295,7 +297,9 @@ class SpeakerLabeling extends FormApplication {
       await Settings.setSpeakerLabels({});
       this.render(false);
 
-      ui.notifications?.info('Speaker labels reset');
+      ui.notifications?.info(
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.LabelsReset') || 'Speaker labels reset'
+      );
       this._logger.log('Speaker labels reset');
     }
   }
@@ -311,7 +315,9 @@ class SpeakerLabeling extends FormApplication {
 
     const gameUsers = this._getGameUsers();
     if (gameUsers.length === 0) {
-      ui.notifications?.warn('No game users available for auto-detection');
+      ui.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.NoGameUsers') || 'No game users available for auto-detection'
+      );
       return;
     }
 
