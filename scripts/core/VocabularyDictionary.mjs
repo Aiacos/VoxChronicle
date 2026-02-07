@@ -1,0 +1,435 @@
+/**
+ * VocabularyDictionary - Custom Vocabulary Management Service
+ *
+ * Manages campaign-specific vocabulary terms for improved transcription accuracy.
+ * Stores terms in categories (character names, locations, items, general terms, custom)
+ * and provides methods for CRUD operations, import/export, and prompt generation.
+ *
+ * @class VocabularyDictionary
+ * @module vox-chronicle
+ */
+
+import { Logger } from '../utils/Logger.mjs';
+import { MODULE_ID } from '../main.mjs';
+
+/**
+ * Vocabulary category types
+ * @enum {string}
+ */
+export const VocabularyCategory = {
+  CHARACTER_NAMES: 'character_names',
+  LOCATION_NAMES: 'location_names',
+  ITEMS: 'items',
+  TERMS: 'terms',
+  CUSTOM: 'custom'
+};
+
+/**
+ * Default dictionary structure
+ * @constant {Object}
+ */
+const DEFAULT_DICTIONARY = {
+  [VocabularyCategory.CHARACTER_NAMES]: [],
+  [VocabularyCategory.LOCATION_NAMES]: [],
+  [VocabularyCategory.ITEMS]: [],
+  [VocabularyCategory.TERMS]: [],
+  [VocabularyCategory.CUSTOM]: []
+};
+
+/**
+ * Maximum number of terms to include in transcription prompt
+ * OpenAI has token limits, so we cap the vocabulary size
+ * @constant {number}
+ */
+const MAX_PROMPT_TERMS = 50;
+
+/**
+ * VocabularyDictionary class for managing custom vocabulary
+ *
+ * @example
+ * const dictionary = new VocabularyDictionary();
+ * dictionary.addTerm('character_names', 'Aarakocra');
+ * const prompt = dictionary.generatePrompt();
+ */
+export class VocabularyDictionary {
+  /**
+   * Logger instance for this class
+   * @type {Object}
+   * @private
+   */
+  _logger = Logger.createChild('VocabularyDictionary');
+
+  /**
+   * Create a new VocabularyDictionary instance
+   */
+  constructor() {
+    this._logger.debug('VocabularyDictionary initialized');
+  }
+
+  /**
+   * Get all terms from a specific category
+   *
+   * @param {string} category - The vocabulary category
+   * @returns {Array<string>} Array of terms in the category
+   */
+  getTerms(category) {
+    this._validateCategory(category);
+
+    const dictionary = this._getDictionary();
+    return [...(dictionary[category] || [])];
+  }
+
+  /**
+   * Get all terms from all categories
+   *
+   * @returns {Object} Dictionary object with all categories and terms
+   */
+  getAllTerms() {
+    return this._getDictionary();
+  }
+
+  /**
+   * Add a term to a specific category
+   *
+   * @param {string} category - The vocabulary category
+   * @param {string} term - The term to add
+   * @returns {Promise<boolean>} True if term was added, false if it already existed
+   */
+  async addTerm(category, term) {
+    this._validateCategory(category);
+
+    if (!term || typeof term !== 'string') {
+      throw new Error('Term must be a non-empty string');
+    }
+
+    const trimmedTerm = term.trim();
+    if (!trimmedTerm) {
+      throw new Error('Term cannot be empty or whitespace');
+    }
+
+    const dictionary = this._getDictionary();
+
+    // Check if term already exists (case-insensitive)
+    const exists = dictionary[category].some(
+      existing => existing.toLowerCase() === trimmedTerm.toLowerCase()
+    );
+
+    if (exists) {
+      this._logger.debug(`Term "${trimmedTerm}" already exists in ${category}`);
+      return false;
+    }
+
+    // Add term to category
+    dictionary[category].push(trimmedTerm);
+
+    // Save to settings
+    await this._saveDictionary(dictionary);
+
+    this._logger.log(`Added term "${trimmedTerm}" to ${category}`);
+    return true;
+  }
+
+  /**
+   * Remove a term from a specific category
+   *
+   * @param {string} category - The vocabulary category
+   * @param {string} term - The term to remove
+   * @returns {Promise<boolean>} True if term was removed, false if it didn't exist
+   */
+  async removeTerm(category, term) {
+    this._validateCategory(category);
+
+    if (!term || typeof term !== 'string') {
+      throw new Error('Term must be a non-empty string');
+    }
+
+    const dictionary = this._getDictionary();
+
+    // Find and remove term (case-insensitive)
+    const originalLength = dictionary[category].length;
+    dictionary[category] = dictionary[category].filter(
+      existing => existing.toLowerCase() !== term.toLowerCase()
+    );
+
+    const wasRemoved = dictionary[category].length < originalLength;
+
+    if (wasRemoved) {
+      await this._saveDictionary(dictionary);
+      this._logger.log(`Removed term "${term}" from ${category}`);
+    } else {
+      this._logger.debug(`Term "${term}" not found in ${category}`);
+    }
+
+    return wasRemoved;
+  }
+
+  /**
+   * Clear all terms from a specific category
+   *
+   * @param {string} category - The vocabulary category to clear
+   * @returns {Promise<number>} Number of terms removed
+   */
+  async clearCategory(category) {
+    this._validateCategory(category);
+
+    const dictionary = this._getDictionary();
+    const removedCount = dictionary[category].length;
+
+    dictionary[category] = [];
+    await this._saveDictionary(dictionary);
+
+    this._logger.log(`Cleared ${removedCount} terms from ${category}`);
+    return removedCount;
+  }
+
+  /**
+   * Clear all terms from all categories
+   *
+   * @returns {Promise<number>} Total number of terms removed
+   */
+  async clearAll() {
+    const dictionary = this._getDictionary();
+
+    let totalRemoved = 0;
+    for (const category of Object.keys(DEFAULT_DICTIONARY)) {
+      totalRemoved += dictionary[category]?.length || 0;
+    }
+
+    await this._saveDictionary(DEFAULT_DICTIONARY);
+
+    this._logger.log(`Cleared all vocabulary (${totalRemoved} terms)`);
+    return totalRemoved;
+  }
+
+  /**
+   * Export the entire dictionary as JSON
+   *
+   * @returns {string} JSON string of the dictionary
+   */
+  exportDictionary() {
+    const dictionary = this._getDictionary();
+
+    this._logger.log('Exporting vocabulary dictionary');
+
+    return JSON.stringify(dictionary, null, 2);
+  }
+
+  /**
+   * Import a dictionary from JSON
+   *
+   * @param {string} json - JSON string containing dictionary data
+   * @param {boolean} [merge=false] - If true, merge with existing terms; if false, replace
+   * @returns {Promise<Object>} Import statistics (added, skipped, total)
+   */
+  async importDictionary(json, merge = false) {
+    if (!json || typeof json !== 'string') {
+      throw new Error('JSON must be a non-empty string');
+    }
+
+    let importedData;
+    try {
+      importedData = JSON.parse(json);
+    } catch (error) {
+      throw new Error(`Invalid JSON: ${error.message}`);
+    }
+
+    // Validate structure
+    this._validateDictionaryStructure(importedData);
+
+    const stats = {
+      added: 0,
+      skipped: 0,
+      total: 0
+    };
+
+    if (merge) {
+      // Merge with existing terms
+      for (const category of Object.keys(DEFAULT_DICTIONARY)) {
+        if (importedData[category]) {
+          for (const term of importedData[category]) {
+            const added = await this.addTerm(category, term);
+            if (added) {
+              stats.added++;
+            } else {
+              stats.skipped++;
+            }
+            stats.total++;
+          }
+        }
+      }
+    } else {
+      // Replace entire dictionary
+      await this._saveDictionary(importedData);
+
+      // Count all terms
+      for (const category of Object.keys(DEFAULT_DICTIONARY)) {
+        const count = importedData[category]?.length || 0;
+        stats.added += count;
+        stats.total += count;
+      }
+    }
+
+    this._logger.log(
+      `Imported vocabulary: ${stats.added} added, ${stats.skipped} skipped (merge=${merge})`
+    );
+
+    return stats;
+  }
+
+  /**
+   * Generate a prompt string for transcription that includes vocabulary terms
+   * Limits to top N most relevant terms to stay within API limits
+   *
+   * @param {number} [maxTerms=50] - Maximum number of terms to include
+   * @returns {string} Formatted prompt string for transcription API
+   */
+  generatePrompt(maxTerms = MAX_PROMPT_TERMS) {
+    const dictionary = this._getDictionary();
+
+    // Collect all terms from all categories
+    const allTerms = [];
+
+    for (const [category, terms] of Object.entries(dictionary)) {
+      if (Array.isArray(terms) && terms.length > 0) {
+        allTerms.push(...terms);
+      }
+    }
+
+    if (allTerms.length === 0) {
+      return '';
+    }
+
+    // Limit to max terms (take first N for now; could be improved with frequency/priority)
+    const selectedTerms = allTerms.slice(0, maxTerms);
+
+    // Format as natural language prompt
+    const prompt = `Common terms in this recording: ${selectedTerms.join(', ')}. Please transcribe these terms accurately.`;
+
+    this._logger.debug(`Generated prompt with ${selectedTerms.length} terms`);
+
+    return prompt;
+  }
+
+  /**
+   * Get count of terms in a category
+   *
+   * @param {string} category - The vocabulary category
+   * @returns {number} Number of terms in the category
+   */
+  getTermCount(category) {
+    this._validateCategory(category);
+
+    const dictionary = this._getDictionary();
+    return dictionary[category]?.length || 0;
+  }
+
+  /**
+   * Get total count of all terms across all categories
+   *
+   * @returns {number} Total number of terms
+   */
+  getTotalTermCount() {
+    const dictionary = this._getDictionary();
+
+    let total = 0;
+    for (const category of Object.keys(DEFAULT_DICTIONARY)) {
+      total += dictionary[category]?.length || 0;
+    }
+
+    return total;
+  }
+
+  /**
+   * Check if a term exists in a category
+   *
+   * @param {string} category - The vocabulary category
+   * @param {string} term - The term to check
+   * @returns {boolean} True if term exists (case-insensitive)
+   */
+  hasTerm(category, term) {
+    this._validateCategory(category);
+
+    const dictionary = this._getDictionary();
+    return dictionary[category].some(
+      existing => existing.toLowerCase() === term.toLowerCase()
+    );
+  }
+
+  // ==========================================
+  // Private Helper Methods
+  // ==========================================
+
+  /**
+   * Get the dictionary from Foundry settings
+   *
+   * @returns {Object} The current dictionary
+   * @private
+   */
+  _getDictionary() {
+    const dictionary = game.settings.get(MODULE_ID, 'customVocabularyDictionary');
+
+    // Ensure all categories exist
+    for (const category of Object.keys(DEFAULT_DICTIONARY)) {
+      if (!Array.isArray(dictionary[category])) {
+        dictionary[category] = [];
+      }
+    }
+
+    return dictionary;
+  }
+
+  /**
+   * Save the dictionary to Foundry settings
+   *
+   * @param {Object} dictionary - The dictionary to save
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _saveDictionary(dictionary) {
+    await game.settings.set(MODULE_ID, 'customVocabularyDictionary', dictionary);
+  }
+
+  /**
+   * Validate that a category is valid
+   *
+   * @param {string} category - The category to validate
+   * @throws {Error} If category is invalid
+   * @private
+   */
+  _validateCategory(category) {
+    const validCategories = Object.values(VocabularyCategory);
+
+    if (!validCategories.includes(category)) {
+      throw new Error(
+        `Invalid category "${category}". Must be one of: ${validCategories.join(', ')}`
+      );
+    }
+  }
+
+  /**
+   * Validate dictionary structure for import
+   *
+   * @param {Object} data - The data to validate
+   * @throws {Error} If structure is invalid
+   * @private
+   */
+  _validateDictionaryStructure(data) {
+    if (typeof data !== 'object' || data === null) {
+      throw new Error('Dictionary must be an object');
+    }
+
+    for (const category of Object.keys(DEFAULT_DICTIONARY)) {
+      if (data[category] && !Array.isArray(data[category])) {
+        throw new Error(`Category "${category}" must be an array`);
+      }
+
+      if (data[category]) {
+        for (const term of data[category]) {
+          if (typeof term !== 'string') {
+            throw new Error(`All terms in "${category}" must be strings`);
+          }
+        }
+      }
+    }
+  }
+}
