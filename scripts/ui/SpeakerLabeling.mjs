@@ -171,12 +171,25 @@ class SpeakerLabeling extends FormApplication {
           'Assign names to the speakers detected in the transcription.',
         speakerId: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.SpeakerId') || 'Speaker ID',
         playerName: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.PlayerName') || 'Player/Character Name',
+        quickAssign: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.QuickAssign') || 'Quick Assign',
+        quickAssignPlaceholder: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.QuickAssignPlaceholder') || 'Quick assign...',
         gameMaster: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.GameMaster') || 'Game Master',
         player: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Player') || 'Player',
+        clear: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Clear') || 'Clear',
+        detectedInSession: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.DetectedInSession') || 'Detected in session',
         save: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Save') || 'Save Labels',
         reset: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Reset') || 'Reset Labels',
         autoDetect: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.AutoDetect') || 'Auto-Detect from Users',
-        saved: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Saved') || 'Speaker labels saved'
+        saved: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Saved') || 'Speaker labels saved',
+        help: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Help') || 'Help',
+        helpSpeakerIds: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpSpeakerIds') ||
+          '<strong>Speaker IDs:</strong> These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).',
+        helpKnownSpeakers: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpKnownSpeakers') ||
+          '<strong>Known speakers:</strong> Speakers with a <i class="fas fa-check-circle"></i> icon were detected in a previous transcription session.',
+        helpQuickAssign: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpQuickAssign') ||
+          '<strong>Quick Assign:</strong> Use the dropdown to quickly assign a game user\'s name to a speaker slot.',
+        helpAutoDetect: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpAutoDetect') ||
+          '<strong>Auto-Detect:</strong> Automatically fills empty speaker slots with game user names in order.'
       }
     };
   }
@@ -442,24 +455,24 @@ class SpeakerLabeling extends FormApplication {
    * @returns {string} Inline HTML content
    * @private
    */
-  _renderFallbackContent() {
-    const data = this.getData();
+  async _renderFallbackContent() {
+    const data = await this.getData();
     const speakerRows = data.speakers.map(speaker => `
       <div class="speaker-row ${speaker.isKnown ? 'known' : ''}">
         <div class="speaker-id">
           <span class="speaker-id-text">${escapeHtml(speaker.id)}</span>
-          ${speaker.isKnown ? '<i class="fas fa-check-circle known-indicator" title="Detected in session"></i>' : ''}
+          ${speaker.isKnown ? `<i class="fas fa-check-circle known-indicator" title="${escapeHtml(data.i18n.detectedInSession)}"></i>` : ''}
         </div>
         <div class="speaker-label">
           <input type="text" name="speaker-${escapeHtml(speaker.id)}" value="${escapeHtml(speaker.label)}" placeholder="${escapeHtml(speaker.placeholder)}" />
-          <button type="button" class="btn-clear" data-action="clear-label" data-speaker-id="${escapeHtml(speaker.id)}" title="Clear">
+          <button type="button" class="btn-clear" data-action="clear-label" data-speaker-id="${escapeHtml(speaker.id)}" title="${escapeHtml(data.i18n.clear)}">
             <i class="fas fa-times"></i>
           </button>
         </div>
         ${data.hasGameUsers ? `
           <div class="quick-assign">
             <select data-action="quick-assign" data-speaker-id="${escapeHtml(speaker.id)}">
-              <option value="">Quick assign...</option>
+              <option value="">${escapeHtml(data.i18n.quickAssignPlaceholder)}</option>
               ${data.gameUsers.map(u => `<option value="${escapeHtml(u.isGM ? `GM (${u.name})` : u.name)}">${u.isGM ? '👑 ' : ''}${escapeHtml(u.name)}</option>`).join('')}
             </select>
           </div>
@@ -476,7 +489,7 @@ class SpeakerLabeling extends FormApplication {
         <div class="speaker-labels-header">
           <div class="header-speaker-id">${data.i18n.speakerId}</div>
           <div class="header-player-name">${data.i18n.playerName}</div>
-          ${data.hasGameUsers ? '<div class="header-quick-assign">Quick Assign</div>' : ''}
+          ${data.hasGameUsers ? `<div class="header-quick-assign">${escapeHtml(data.i18n.quickAssign)}</div>` : ''}
         </div>
 
         <div class="speaker-labels-list">
