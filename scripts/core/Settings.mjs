@@ -399,13 +399,13 @@ class Settings {
   static async validateOpenAIKey() {
     // Check if API key is configured
     if (!Settings.isOpenAIConfigured()) {
-      ui.notifications?.error('VoxChronicle: OpenAI API key is not configured.');
+      ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.OpenAIKeyNotConfigured'));
       return false;
     }
 
     try {
       // Show loading notification
-      const loadingNotif = ui.notifications?.info('VoxChronicle: Validating OpenAI API key...', { permanent: true });
+      const loadingNotif = ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.ValidatingOpenAI'), { permanent: true });
 
       // Import VoxChronicle dynamically to avoid circular dependencies
       const { VoxChronicle } = await import('./VoxChronicle.mjs');
@@ -424,10 +424,10 @@ class Settings {
 
         // Show result
         if (isValid) {
-          ui.notifications?.info('VoxChronicle: OpenAI API key is valid!');
+          ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.OpenAIKeyValid'));
           return true;
         } else {
-          ui.notifications?.error('VoxChronicle: Invalid OpenAI API key. Please check your settings.');
+          ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.OpenAIKeyInvalid'));
           return false;
         }
       }
@@ -440,14 +440,14 @@ class Settings {
 
       // Show result notification
       if (isValid) {
-        ui.notifications?.info('VoxChronicle: OpenAI API key is valid!');
+        ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.OpenAIKeyValid'));
         return true;
       } else {
-        ui.notifications?.error('VoxChronicle: Invalid OpenAI API key. Please check your settings.');
+        ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.OpenAIKeyInvalid'));
         return false;
       }
     } catch (error) {
-      ui.notifications?.error(`VoxChronicle: Error validating OpenAI API key: ${error.message}`);
+      ui.notifications?.error(game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', { error: error.message }));
       console.error(`${MODULE_ID} | OpenAI API key validation error:`, error);
       return false;
     }
@@ -463,13 +463,13 @@ class Settings {
   static async validateKankaToken() {
     // Check if API token is configured
     if (!Settings.isKankaConfigured()) {
-      ui.notifications?.error('VoxChronicle: Kanka API token or campaign ID is not configured.');
+      ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenNotConfigured'));
       return false;
     }
 
     try {
       // Show loading notification
-      const loadingNotif = ui.notifications?.info('VoxChronicle: Validating Kanka API token...', { permanent: true });
+      const loadingNotif = ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.ValidatingKanka'), { permanent: true });
 
       // Import VoxChronicle dynamically to avoid circular dependencies
       const { VoxChronicle } = await import('./VoxChronicle.mjs');
@@ -488,10 +488,10 @@ class Settings {
 
         // Show result
         if (isValid) {
-          ui.notifications?.info('VoxChronicle: Kanka API token is valid!');
+          ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenValid'));
           return true;
         } else {
-          ui.notifications?.error('VoxChronicle: Invalid Kanka API token. Please check your settings.');
+          ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenInvalid'));
           return false;
         }
       }
@@ -504,14 +504,14 @@ class Settings {
 
       // Show result notification
       if (isValid) {
-        ui.notifications?.info('VoxChronicle: Kanka API token is valid!');
+        ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenValid'));
         return true;
       } else {
-        ui.notifications?.error('VoxChronicle: Invalid Kanka API token. Please check your settings.');
+        ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenInvalid'));
         return false;
       }
     } catch (error) {
-      ui.notifications?.error(`VoxChronicle: Error validating Kanka API token: ${error.message}`);
+      ui.notifications?.error(game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', { error: error.message }));
       console.error(`${MODULE_ID} | Kanka API token validation error:`, error);
       return false;
     }

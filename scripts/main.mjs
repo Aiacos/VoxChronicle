@@ -16,6 +16,10 @@ const MODULE_ID = 'vox-chronicle';
 // Import core classes for module initialization
 import { Settings } from './core/Settings.mjs';
 import { VoxChronicle } from './core/VoxChronicle.mjs';
+import { Logger } from './utils/Logger.mjs';
+
+// Create logger instance for main module
+const logger = Logger.createChild('main');
 
 /**
  * Singleton reference to the RecorderControls Application
@@ -227,21 +231,25 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
 
       try {
-        // TODO: Call validation handler (will be implemented in subtask-1-2)
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Placeholder
+        // Call actual validation method
+        const isValid = await Settings.validateOpenAIKey();
 
-        // Success state
-        icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
-        ui.notifications?.info('OpenAI API key validated successfully');
+        // Update icon based on result
+        if (isValid) {
+          icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
+        } else {
+          icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
+        }
 
+        // Reset button after 2 seconds
         setTimeout(() => {
-          icon.removeClass('fa-check').addClass('fa-plug');
+          icon.removeClass('fa-check fa-times').addClass('fa-plug');
           button.prop('disabled', false);
         }, 2000);
       } catch (error) {
-        // Error state
+        // Error state for unexpected exceptions
         icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        ui.notifications?.error(`OpenAI validation failed: ${error.message}`);
+        console.error(`${MODULE_ID} | OpenAI validation error:`, error);
 
         setTimeout(() => {
           icon.removeClass('fa-times').addClass('fa-plug');
@@ -250,7 +258,7 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       }
     });
 
-    console.log(`${MODULE_ID} | Validation button injected for OpenAI API key`);
+    logger.info('Validation button injected for OpenAI API key');
   }
 
   // Inject validation button for Kanka API token
@@ -274,21 +282,25 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
 
       try {
-        // TODO: Call validation handler (will be implemented in subtask-1-2)
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Placeholder
+        // Call actual validation method
+        const isValid = await Settings.validateKankaToken();
 
-        // Success state
-        icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
-        ui.notifications?.info('Kanka API token validated successfully');
+        // Update icon based on result
+        if (isValid) {
+          icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
+        } else {
+          icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
+        }
 
+        // Reset button after 2 seconds
         setTimeout(() => {
-          icon.removeClass('fa-check').addClass('fa-plug');
+          icon.removeClass('fa-check fa-times').addClass('fa-plug');
           button.prop('disabled', false);
         }, 2000);
       } catch (error) {
-        // Error state
+        // Error state for unexpected exceptions
         icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        ui.notifications?.error(`Kanka validation failed: ${error.message}`);
+        console.error(`${MODULE_ID} | Kanka validation error:`, error);
 
         setTimeout(() => {
           icon.removeClass('fa-times').addClass('fa-plug');
@@ -297,7 +309,7 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       }
     });
 
-    console.log(`${MODULE_ID} | Validation button injected for Kanka API token`);
+    logger.info('Validation button injected for Kanka API token');
   }
 });
 
