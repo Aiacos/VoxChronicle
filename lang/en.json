@@ -385,6 +385,8 @@
       "Title": "VoxChronicle",
       "Recorder": "Session Recorder",
       "SpeakerLabels": "Speaker Labels",
+      "Vocabulary": "Vocabulary Dictionary",
+      "RelationshipGraph": "Relationship Graph",
       "Settings": "Module Settings"
     },
 

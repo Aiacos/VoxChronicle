@@ -18,6 +18,7 @@ import { ImageGenerationService } from '../ai/ImageGenerationService.mjs';
 import { KankaService } from '../kanka/KankaService.mjs';
 import { EntityExtractor } from '../ai/EntityExtractor.mjs';
 import { NarrativeExporter } from '../kanka/NarrativeExporter.mjs';
+import { VocabularyDictionary } from './VocabularyDictionary.mjs';
 
 /**
  * Main VoxChronicle singleton class
@@ -144,6 +145,10 @@ class VoxChronicle {
 
       // Check Kanka API token expiration
       await this._checkKankaTokenExpiration();
+
+      // Initialize vocabulary dictionary with default D&D terms if empty
+      const vocabularyDictionary = new VocabularyDictionary();
+      await vocabularyDictionary.initialize();
 
       // Mark as initialized
       this.isInitialized = true;

@@ -130,11 +130,23 @@ Hooks.on('getSceneControlButtons', (controls) => {
             speakerLabeling.render(true, { focus: true });
           }
         },
+        vocabulary: {
+          name: 'vocabulary',
+          icon: 'fa-solid fa-book',
+          title: 'VOXCHRONICLE.Controls.Vocabulary',
+          order: 2,
+          button: true,
+          onChange: async () => {
+            const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
+            const vocabularyManager = new VocabularyManager();
+            vocabularyManager.render(true, { focus: true });
+          }
+        },
         relationshipGraph: {
           name: 'relationshipGraph',
           icon: 'fa-solid fa-project-diagram',
           title: 'VOXCHRONICLE.Controls.RelationshipGraph',
-          order: 2,
+          order: 3,
           button: true,
           onChange: async () => {
             const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
@@ -146,7 +158,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
           name: 'settings',
           icon: 'fa-solid fa-cog',
           title: 'VOXCHRONICLE.Controls.Settings',
-          order: 3,
+          order: 4,
           button: true,
           onChange: () => {
             const app = new SettingsConfig();
@@ -187,6 +199,17 @@ Hooks.on('getSceneControlButtons', (controls) => {
             const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
             const speakerLabeling = new SpeakerLabeling();
             speakerLabeling.render(true, { focus: true });
+          }
+        },
+        {
+          name: 'vocabulary',
+          title: 'VOXCHRONICLE.Controls.Vocabulary',
+          icon: 'fas fa-book',
+          button: true,
+          onClick: async () => {
+            const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
+            const vocabularyManager = new VocabularyManager();
+            vocabularyManager.render(true, { focus: true });
           }
         },
         {
