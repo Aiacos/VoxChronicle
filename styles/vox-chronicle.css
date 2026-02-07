@@ -810,10 +810,19 @@ form .form-group .vox-chronicle-validate-button {
   display: flex;
   flex-direction: column;
   gap: var(--vox-spacing-sm);
+  max-height: 2000px;
+  overflow: hidden;
+  opacity: 1;
+  transition: max-height var(--vox-transition-slow),
+              opacity var(--vox-transition-slow),
+              padding var(--vox-transition-slow);
 }
 
 .vox-chronicle-entity-preview .entity-section.collapsed .section-content {
-  display: none;
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* Entity row */
