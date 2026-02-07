@@ -16,6 +16,7 @@
 
 import { Logger } from '../utils/Logger.mjs';
 import { RateLimiter } from '../utils/RateLimiter.mjs';
+import { SensitiveDataFilter } from '../utils/SensitiveDataFilter.mjs';
 
 /**
  * Kanka API error types enumeration
@@ -465,7 +466,9 @@ class KankaClient {
       fetchOptions.body = options.body;
     }
 
-    this._logger.debug(`Making ${method} request to ${endpoint}`);
+    // Sanitize URL in debug logs to prevent exposing sensitive query parameters
+    const sanitizedUrl = SensitiveDataFilter.sanitizeUrl(url);
+    this._logger.debug(`Making ${method} request to ${sanitizedUrl}`);
 
     // Execute request with rate limiting and retry logic
     return this._rateLimiter.executeWithRetry(async () => {
@@ -495,7 +498,9 @@ class KankaClient {
         // Parse and return JSON response
         // Kanka wraps data in { data: ... } for most endpoints
         const data = await response.json();
-        this._logger.debug(`Request to ${endpoint} completed successfully`);
+        // Sanitize endpoint to prevent exposing sensitive query parameters
+        const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
+        this._logger.debug(`Request to ${sanitizedEndpoint} completed successfully`);
         return data;
 
       } catch (error) {
@@ -504,19 +509,23 @@ class KankaClient {
 
         // Handle abort/timeout
         if (error.name === 'AbortError') {
+          // Sanitize endpoint to prevent exposing sensitive query parameters
+          const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
           throw new KankaError(
-            `Request to ${endpoint} timed out after ${this._timeout}ms`,
+            `Request to ${sanitizedEndpoint} timed out after ${this._timeout}ms`,
             KankaErrorType.TIMEOUT_ERROR
           );
         }
 
         // Handle network errors
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          // Sanitize error message to prevent exposing sensitive data
+          const sanitizedError = SensitiveDataFilter.sanitizeString(error.message);
           throw new KankaError(
             'Network error. Please check your internet connection.',
             KankaErrorType.NETWORK_ERROR,
             null,
-            { originalError: error.message }
+            { originalError: sanitizedError }
           );
         }
 
@@ -526,11 +535,16 @@ class KankaClient {
         }
 
         // Wrap unknown errors
+        // Sanitize error message and details to prevent exposing sensitive data
+        const sanitizedMessage = SensitiveDataFilter.sanitizeString(
+          error.message || 'Unknown error occurred'
+        );
+        const sanitizedError = SensitiveDataFilter.sanitizeObject(error);
         throw new KankaError(
-          error.message || 'Unknown error occurred',
+          sanitizedMessage,
           KankaErrorType.API_ERROR,
           null,
-          { originalError: error }
+          { originalError: sanitizedError }
         );
       }
     });
@@ -680,7 +694,9 @@ class KankaClient {
         return false;
       }
       // Other errors might be temporary, log but don't invalidate
-      this._logger.warn('API token validation check failed:', error.message);
+      // Sanitize error message to prevent exposing sensitive data
+      const sanitizedMessage = SensitiveDataFilter.sanitizeString(error.message);
+      this._logger.warn('API token validation check failed:', sanitizedMessage);
       return true; // Assume valid if error is not auth-related
     }
   }
