@@ -82,6 +82,22 @@ const ItemType = {
 };
 
 /**
+ * Organisation types for Kanka
+ * @enum {string}
+ */
+const OrganisationType = {
+  GUILD: 'Guild',
+  COMPANY: 'Company',
+  GOVERNMENT: 'Government',
+  MILITARY: 'Military',
+  RELIGIOUS: 'Religious',
+  CRIMINAL: 'Criminal',
+  FACTION: 'Faction',
+  FAMILY: 'Family',
+  OTHER: ''
+};
+
+/**
  * KankaService class for entity CRUD operations
  *
  * Provides high-level methods for creating, reading, updating, and deleting
@@ -749,6 +765,133 @@ class KankaService extends KankaClient {
   }
 
   // ============================================================================
+  // Organisations
+  // ============================================================================
+
+  /**
+   * Create a new organisation
+   *
+   * @param {Object} organisationData - Organisation data
+   * @param {string} organisationData.name - Organisation name
+   * @param {string} [organisationData.entry] - Organisation description (HTML/Markdown)
+   * @param {string} [organisationData.type] - Organisation type ('Guild', 'Military', etc.)
+   * @param {boolean} [organisationData.is_private=false] - Whether organisation is private
+   * @param {string|number} [organisationData.location_id] - Headquarters location ID
+   * @param {string|number} [organisationData.organisation_id] - Parent organisation ID
+   * @param {Array} [organisationData.tags] - Tag IDs to associate
+   * @returns {Promise<Object>} Created organisation data
+   */
+  async createOrganisation(organisationData) {
+    if (!organisationData?.name) {
+      throw new KankaError(
+        'Organisation name is required',
+        KankaErrorType.VALIDATION_ERROR
+      );
+    }
+
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
+
+    const payload = {
+      name: organisationData.name,
+      entry: organisationData.entry || '',
+      type: organisationData.type || OrganisationType.OTHER,
+      is_private: organisationData.is_private ?? false
+    };
+
+    // Add optional fields if provided
+    if (organisationData.location_id) {
+      payload.location_id = organisationData.location_id;
+    }
+    if (organisationData.organisation_id) {
+      payload.organisation_id = organisationData.organisation_id;
+    }
+    if (organisationData.tags?.length) {
+      payload.tags = organisationData.tags;
+    }
+
+    this._logger.log(`Creating organisation: ${organisationData.name}`);
+    const response = await this.post(endpoint, payload);
+    this._logger.log(`Organisation created with ID: ${response.data?.id}`);
+
+    return response.data;
+  }
+
+  /**
+   * Get an organisation by ID
+   *
+   * @param {string|number} organisationId - Organisation ID
+   * @returns {Promise<Object>} Organisation data
+   */
+  async getOrganisation(organisationId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`Fetching organisation: ${organisationId}`);
+    const response = await this.get(endpoint);
+    return response.data;
+  }
+
+  /**
+   * Update an organisation
+   *
+   * @param {string|number} organisationId - Organisation ID
+   * @param {Object} organisationData - Updated organisation data
+   * @returns {Promise<Object>} Updated organisation data
+   */
+  async updateOrganisation(organisationId, organisationData) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`Updating organisation: ${organisationId}`);
+    const response = await this.put(endpoint, organisationData);
+    return response.data;
+  }
+
+  /**
+   * Delete an organisation
+   *
+   * @param {string|number} organisationId - Organisation ID
+   * @returns {Promise<void>}
+   */
+  async deleteOrganisation(organisationId) {
+    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`Deleting organisation: ${organisationId}`);
+    await this.delete(endpoint);
+    this._logger.log(`Organisation deleted: ${organisationId}`);
+  }
+
+  /**
+   * List all organisations in the campaign
+   *
+   * @param {Object} [options] - List options
+   * @param {number} [options.page=1] - Page number for pagination
+   * @param {string} [options.type] - Filter by organisation type
+   * @param {string|number} [options.organisation_id] - Filter by parent organisation
+   * @returns {Promise<Object>} Paginated organisation list with data and meta
+   */
+  async listOrganisations(options = {}) {
+    let endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
+
+    const params = [];
+    if (options.page) {
+      params.push(`page=${options.page}`);
+    }
+    if (options.type) {
+      params.push(`type=${encodeURIComponent(options.type)}`);
+    }
+    if (options.organisation_id) {
+      params.push(`organisation_id=${options.organisation_id}`);
+    }
+    if (params.length) {
+      endpoint += `?${params.join('&')}`;
+    }
+
+    this._logger.debug('Fetching organisations list');
+    const response = await this.get(endpoint);
+    return {
+      data: response.data || [],
+      meta: response.meta || {},
+      links: response.links || {}
+    };
+  }
+
+  // ============================================================================
   // Image Upload
   // ============================================================================
 
@@ -973,6 +1116,8 @@ class KankaService extends KankaClient {
         return this.createItem(entityData);
       case KankaEntityType.JOURNAL:
         return this.createJournal(entityData);
+      case KankaEntityType.ORGANISATION:
+        return this.createOrganisation(entityData);
       default:
         throw new KankaError(
           `Unsupported entity type: ${entityType}`,
@@ -1020,6 +1165,9 @@ class KankaService extends KankaClient {
             case KankaEntityType.JOURNAL:
               entity = await this.createJournal(entityData);
               break;
+            case KankaEntityType.ORGANISATION:
+              entity = await this.createOrganisation(entityData);
+              break;
             default:
               throw new KankaError(
                 `Unsupported entity type: ${entityType}`,
@@ -1047,5 +1195,6 @@ export {
   KankaEntityType,
   CharacterType,
   LocationType,
-  ItemType
+  ItemType,
+  OrganisationType
 };
