@@ -63,7 +63,7 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { KankaService, KankaEntityType, CharacterType, LocationType, ItemType } from '../../scripts/kanka/KankaService.mjs';
+import { KankaService, KankaEntityType, CharacterType, LocationType, ItemType, OrganisationType } from '../../scripts/kanka/KankaService.mjs';
 import { KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
 
 /**
@@ -141,6 +141,21 @@ function createMockItem(overrides = {}) {
     type: 'Weapon',
     is_private: false,
     entity_id: 444,
+    ...overrides
+  };
+}
+
+/**
+ * Create a mock organisation entity
+ */
+function createMockOrganisation(overrides = {}) {
+  return {
+    id: 555,
+    name: 'The Shadow Guild',
+    entry: '<p>A secretive thieves guild...</p>',
+    type: 'Guild',
+    is_private: false,
+    entity_id: 666,
     ...overrides
   };
 }
@@ -510,6 +525,139 @@ describe('KankaService', () => {
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.parent_location_id).toBe(999);
+    });
+  });
+
+  // ============================================================================
+  // Organisation CRUD Tests
+  // ============================================================================
+
+  describe('createOrganisation', () => {
+    it('should create an organisation with required fields', async () => {
+      const mockOrganisation = createMockOrganisation();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisation)),
+        headers: new Headers()
+      });
+
+      const result = await service.createOrganisation({
+        name: 'The Shadow Guild',
+        entry: 'A secretive thieves guild'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.name).toBe('The Shadow Guild');
+      expect(body.type).toBe(''); // Default type (OTHER)
+
+      expect(result.id).toBe(555);
+    });
+
+    it('should include organisation-specific optional fields', async () => {
+      const mockOrganisation = createMockOrganisation({ type: 'Military' });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisation)),
+        headers: new Headers()
+      });
+
+      await service.createOrganisation({
+        name: 'The Iron Legion',
+        type: 'Military',
+        location_id: 111,
+        organisation_id: 222,
+        is_private: true
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.type).toBe('Military');
+      expect(body.location_id).toBe(111);
+      expect(body.organisation_id).toBe(222);
+      expect(body.is_private).toBe(true);
+    });
+
+    it('should throw error without organisation name', async () => {
+      await expect(service.createOrganisation({ entry: 'Description' })).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('listOrganisations', () => {
+    it('should list organisations with filters', async () => {
+      const mockOrganisations = [createMockOrganisation()];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisations)),
+        headers: new Headers()
+      });
+
+      const result = await service.listOrganisations({ type: 'Guild', organisation_id: 999 });
+
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('type=Guild');
+      expect(url).toContain('organisation_id=999');
+      expect(result.data).toHaveLength(1);
+    });
+  });
+
+  describe('getOrganisation', () => {
+    it('should fetch a single organisation by ID', async () => {
+      const mockOrganisation = createMockOrganisation();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockOrganisation)),
+        headers: new Headers()
+      });
+
+      const result = await service.getOrganisation(555);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(result.id).toBe(555);
+      expect(result.name).toBe('The Shadow Guild');
+    });
+  });
+
+  describe('updateOrganisation', () => {
+    it('should update an organisation', async () => {
+      const updatedOrganisation = createMockOrganisation({ name: 'The Shadow Guild - Updated' });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(updatedOrganisation)),
+        headers: new Headers()
+      });
+
+      const result = await service.updateOrganisation(555, {
+        name: 'The Shadow Guild - Updated'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/organisations/555');
+      expect(options.method).toBe('PUT');
+      expect(result.name).toBe('The Shadow Guild - Updated');
+    });
+  });
+
+  describe('deleteOrganisation', () => {
+    it('should delete an organisation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+        headers: new Headers()
+      });
+
+      await service.deleteOrganisation(555);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/organisations/555');
+      expect(options.method).toBe('DELETE');
     });
   });
 
