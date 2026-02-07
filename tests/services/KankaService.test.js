@@ -63,7 +63,7 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { KankaService, KankaEntityType, CharacterType, LocationType, ItemType, OrganisationType } from '../../scripts/kanka/KankaService.mjs';
+import { KankaService, KankaEntityType, CharacterType, LocationType, ItemType, OrganisationType, QuestType } from '../../scripts/kanka/KankaService.mjs';
 import { KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
 
 /**
@@ -156,6 +156,22 @@ function createMockOrganisation(overrides = {}) {
     type: 'Guild',
     is_private: false,
     entity_id: 666,
+    ...overrides
+  };
+}
+
+/**
+ * Create a mock quest entity
+ */
+function createMockQuest(overrides = {}) {
+  return {
+    id: 777,
+    name: 'The Lost Artifact',
+    entry: '<p>Find the ancient artifact...</p>',
+    type: 'Main Quest',
+    is_completed: false,
+    is_private: false,
+    entity_id: 888,
     ...overrides
   };
 }
@@ -657,6 +673,146 @@ describe('KankaService', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain('/organisations/555');
+      expect(options.method).toBe('DELETE');
+    });
+  });
+
+  // ============================================================================
+  // Quest CRUD Tests
+  // ============================================================================
+
+  describe('createQuest', () => {
+    it('should create a quest with required fields', async () => {
+      const mockQuest = createMockQuest();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuest)),
+        headers: new Headers()
+      });
+
+      const result = await service.createQuest({
+        name: 'The Lost Artifact',
+        entry: 'Find the ancient artifact'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.name).toBe('The Lost Artifact');
+      expect(body.type).toBe(''); // Default type (OTHER)
+
+      expect(result.id).toBe(777);
+    });
+
+    it('should include quest-specific optional fields', async () => {
+      const mockQuest = createMockQuest({ type: 'Side Quest', is_completed: true });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuest)),
+        headers: new Headers()
+      });
+
+      await service.createQuest({
+        name: 'Bounty Hunt',
+        type: 'Side Quest',
+        character_id: 789,
+        location_id: 111,
+        quest_id: 999,
+        is_completed: true,
+        is_private: true
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.type).toBe('Side Quest');
+      expect(body.character_id).toBe(789);
+      expect(body.location_id).toBe(111);
+      expect(body.quest_id).toBe(999);
+      expect(body.is_completed).toBe(true);
+      expect(body.is_private).toBe(true);
+    });
+
+    it('should throw error without quest name', async () => {
+      await expect(service.createQuest({ entry: 'Description' })).rejects.toThrow(KankaError);
+    });
+  });
+
+  describe('listQuests', () => {
+    it('should list quests with filters', async () => {
+      const mockQuests = [createMockQuest()];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuests)),
+        headers: new Headers()
+      });
+
+      const result = await service.listQuests({ type: 'Main Quest', is_completed: false, quest_id: 999 });
+
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toContain('type=Main%20Quest');
+      expect(url).toContain('is_completed=0');
+      expect(url).toContain('quest_id=999');
+      expect(result.data).toHaveLength(1);
+    });
+  });
+
+  describe('getQuest', () => {
+    it('should fetch a single quest by ID', async () => {
+      const mockQuest = createMockQuest();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(mockQuest)),
+        headers: new Headers()
+      });
+
+      const result = await service.getQuest(777);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(result.id).toBe(777);
+      expect(result.name).toBe('The Lost Artifact');
+    });
+  });
+
+  describe('updateQuest', () => {
+    it('should update a quest', async () => {
+      const updatedQuest = createMockQuest({ name: 'The Lost Artifact - Updated', is_completed: true });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(createMockKankaResponse(updatedQuest)),
+        headers: new Headers()
+      });
+
+      const result = await service.updateQuest(777, {
+        name: 'The Lost Artifact - Updated',
+        is_completed: true
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/quests/777');
+      expect(options.method).toBe('PUT');
+      expect(result.name).toBe('The Lost Artifact - Updated');
+      expect(result.is_completed).toBe(true);
+    });
+  });
+
+  describe('deleteQuest', () => {
+    it('should delete a quest', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+        headers: new Headers()
+      });
+
+      await service.deleteQuest(777);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toContain('/quests/777');
       expect(options.method).toBe('DELETE');
     });
   });
