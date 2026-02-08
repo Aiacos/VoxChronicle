@@ -12,6 +12,9 @@ releases/
 .security-key
 logs/security/
 
+# Test coverage
+coverage/
+
 # Dependencies
 node_modules/
 package-lock.json

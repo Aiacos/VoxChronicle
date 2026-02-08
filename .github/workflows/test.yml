@@ -1,0 +1,131 @@
+name: Test Suite
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Generate coverage report
+        run: npm run test:coverage
+        if: matrix.node-version == '20.x'
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: matrix.node-version == '20.x'
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+
+      - name: Check coverage threshold
+        if: matrix.node-version == '20.x'
+        run: |
+          # Extract coverage percentages from coverage summary
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo "Error: No coverage summary found"
+            exit 1
+          fi
+
+          echo "Coverage summary found, checking thresholds..."
+
+          # Define minimum coverage thresholds (80% for core services)
+          THRESHOLD=80
+
+          # Extract total coverage percentages using node
+          LINES=$(node -p "const data = require('./coverage/coverage-summary.json'); data.total.lines.pct")
+          STATEMENTS=$(node -p "const data = require('./coverage/coverage-summary.json'); data.total.statements.pct")
+          FUNCTIONS=$(node -p "const data = require('./coverage/coverage-summary.json'); data.total.functions.pct")
+          BRANCHES=$(node -p "const data = require('./coverage/coverage-summary.json'); data.total.branches.pct")
+
+          echo "Coverage Results:"
+          echo "  Lines:      ${LINES}%"
+          echo "  Statements: ${STATEMENTS}%"
+          echo "  Functions:  ${FUNCTIONS}%"
+          echo "  Branches:   ${BRANCHES}%"
+          echo ""
+          echo "Minimum Threshold: ${THRESHOLD}%"
+
+          # Check if any metric falls below threshold
+          FAILED=0
+          if (( $(echo "$LINES < $THRESHOLD" | bc -l) )); then
+            echo "❌ Line coverage (${LINES}%) is below threshold (${THRESHOLD}%)"
+            FAILED=1
+          fi
+          if (( $(echo "$STATEMENTS < $THRESHOLD" | bc -l) )); then
+            echo "❌ Statement coverage (${STATEMENTS}%) is below threshold (${THRESHOLD}%)"
+            FAILED=1
+          fi
+          if (( $(echo "$FUNCTIONS < $THRESHOLD" | bc -l) )); then
+            echo "❌ Function coverage (${FUNCTIONS}%) is below threshold (${THRESHOLD}%)"
+            FAILED=1
+          fi
+          if (( $(echo "$BRANCHES < $THRESHOLD" | bc -l) )); then
+            echo "❌ Branch coverage (${BRANCHES}%) is below threshold (${THRESHOLD}%)"
+            FAILED=1
+          fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "Coverage threshold check failed!"
+            exit 1
+          else
+            echo ""
+            echo "✅ All coverage metrics meet or exceed the threshold!"
+          fi
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Validate module syntax
+        run: npm run validate

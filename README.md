@@ -3,6 +3,7 @@
 ![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v11--v12-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Tests](https://img.shields.io/github/workflow/status/Aiacos/VoxChronicle/Test%20Suite)
 
 Auto-transcribe your tabletop RPG sessions and publish chronicles to [Kanka](https://kanka.io) with AI-generated content and portraits.
 
