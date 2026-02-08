@@ -321,26 +321,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated journal list with data and meta
    */
   async listJournals(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching journals list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.JOURNAL, options);
   }
 
   // ============================================================================
@@ -416,29 +397,12 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated character list with data and meta
    */
   async listCharacters(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
+    // Convert boolean is_dead to 0/1 for API compatibility
+    const apiOptions = { ...options };
+    if (apiOptions.is_dead !== undefined) {
+      apiOptions.is_dead = apiOptions.is_dead ? 1 : 0;
     }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.is_dead !== undefined) {
-      params.push(`is_dead=${options.is_dead ? 1 : 0}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching characters list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.CHARACTER, apiOptions);
   }
 
   // ============================================================================
@@ -502,29 +466,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated location list with data and meta
    */
   async listLocations(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.parent_location_id) {
-      params.push(`parent_location_id=${options.parent_location_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching locations list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.LOCATION, options);
   }
 
   // ============================================================================
@@ -591,29 +533,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated item list with data and meta
    */
   async listItems(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.character_id) {
-      params.push(`character_id=${options.character_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching items list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.ITEM, options);
   }
 
   // ============================================================================
@@ -684,29 +604,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated organisation list with data and meta
    */
   async listOrganisations(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.organisation_id) {
-      params.push(`organisation_id=${options.organisation_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching organisations list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.ORGANISATION, options);
   }
 
   // ============================================================================
@@ -780,32 +678,12 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated quest list with data and meta
    */
   async listQuests(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
+    // Convert boolean is_completed to 0/1 for API compatibility
+    const apiOptions = { ...options };
+    if (apiOptions.is_completed !== undefined) {
+      apiOptions.is_completed = apiOptions.is_completed ? 1 : 0;
     }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.is_completed !== undefined) {
-      params.push(`is_completed=${options.is_completed ? 1 : 0}`);
-    }
-    if (options.quest_id) {
-      params.push(`quest_id=${options.quest_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching quests list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.QUEST, apiOptions);
   }
 
   // ============================================================================
