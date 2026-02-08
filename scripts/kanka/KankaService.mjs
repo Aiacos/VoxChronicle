@@ -12,6 +12,7 @@
  */
 
 import { KankaClient, KankaError, KankaErrorType } from './KankaClient.mjs';
+import { KankaEntityManager } from './KankaEntityManager.mjs';
 import { Logger } from '../utils/Logger.mjs';
 
 /**
@@ -142,6 +143,13 @@ class KankaService extends KankaClient {
   _campaignId = '';
 
   /**
+   * Entity manager for generic CRUD operations
+   * @type {KankaEntityManager}
+   * @private
+   */
+  _entityManager = null;
+
+  /**
    * Create a new KankaService instance
    *
    * @param {string} apiToken - Kanka API token
@@ -152,6 +160,7 @@ class KankaService extends KankaClient {
     super(apiToken, options);
     this._campaignId = campaignId || '';
     this._logger = Logger.createChild('KankaService');
+    this._entityManager = new KankaEntityManager(this, campaignId);
     this._logger.debug(`KankaService initialized for campaign: ${campaignId}`);
   }
 
@@ -184,6 +193,7 @@ class KankaService extends KankaClient {
    */
   setCampaignId(campaignId) {
     this._campaignId = campaignId || '';
+    this._entityManager.setCampaignId(campaignId);
     this._logger.debug(`Campaign ID updated: ${campaignId}`);
   }
 
@@ -262,44 +272,13 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created journal data
    */
   async createJournal(journalData) {
-    if (!journalData?.name) {
-      throw new KankaError(
-        'Journal name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL);
-
-    const payload = {
-      name: journalData.name,
-      entry: journalData.entry || '',
-      type: journalData.type || 'Session Chronicle',
-      is_private: journalData.is_private ?? false
+    // Set default type if not provided
+    const dataWithDefaults = {
+      ...journalData,
+      type: journalData?.type || 'Session Chronicle'
     };
 
-    // Add optional fields if provided
-    if (journalData.date) {
-      payload.date = journalData.date;
-    }
-    if (journalData.location_id) {
-      payload.location_id = journalData.location_id;
-    }
-    if (journalData.character_id) {
-      payload.character_id = journalData.character_id;
-    }
-    if (journalData.journal_id) {
-      payload.journal_id = journalData.journal_id;
-    }
-    if (journalData.tags?.length) {
-      payload.tags = journalData.tags;
-    }
-
-    this._logger.log(`Creating journal: ${journalData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Journal created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.JOURNAL, dataWithDefaults);
   }
 
   /**
@@ -396,53 +375,13 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created character data
    */
   async createCharacter(characterData) {
-    if (!characterData?.name) {
-      throw new KankaError(
-        'Character name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER);
-
-    const payload = {
-      name: characterData.name,
-      entry: characterData.entry || '',
-      type: characterData.type || CharacterType.NPC,
-      is_private: characterData.is_private ?? false
+    // Set default type if not provided
+    const dataWithDefaults = {
+      ...characterData,
+      type: characterData?.type || CharacterType.NPC
     };
 
-    // Add optional fields if provided
-    if (characterData.title) {
-      payload.title = characterData.title;
-    }
-    if (characterData.age) {
-      payload.age = characterData.age;
-    }
-    if (characterData.sex) {
-      payload.sex = characterData.sex;
-    }
-    if (characterData.pronouns) {
-      payload.pronouns = characterData.pronouns;
-    }
-    if (characterData.is_dead !== undefined) {
-      payload.is_dead = characterData.is_dead;
-    }
-    if (characterData.location_id) {
-      payload.location_id = characterData.location_id;
-    }
-    if (characterData.family_id) {
-      payload.family_id = characterData.family_id;
-    }
-    if (characterData.tags?.length) {
-      payload.tags = characterData.tags;
-    }
-
-    this._logger.log(`Creating character: ${characterData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Character created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.CHARACTER, dataWithDefaults);
   }
 
   /**
@@ -537,35 +476,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created location data
    */
   async createLocation(locationData) {
-    if (!locationData?.name) {
-      throw new KankaError(
-        'Location name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION);
-
-    const payload = {
-      name: locationData.name,
-      entry: locationData.entry || '',
-      type: locationData.type || '',
-      is_private: locationData.is_private ?? false
-    };
-
-    // Add optional fields if provided
-    if (locationData.parent_location_id) {
-      payload.parent_location_id = locationData.parent_location_id;
-    }
-    if (locationData.tags?.length) {
-      payload.tags = locationData.tags;
-    }
-
-    this._logger.log(`Creating location: ${locationData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Location created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.LOCATION, locationData);
   }
 
   /**
@@ -663,44 +574,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created item data
    */
   async createItem(itemData) {
-    if (!itemData?.name) {
-      throw new KankaError(
-        'Item name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM);
-
-    const payload = {
-      name: itemData.name,
-      entry: itemData.entry || '',
-      type: itemData.type || '',
-      is_private: itemData.is_private ?? false
-    };
-
-    // Add optional fields if provided
-    if (itemData.price) {
-      payload.price = itemData.price;
-    }
-    if (itemData.size) {
-      payload.size = itemData.size;
-    }
-    if (itemData.location_id) {
-      payload.location_id = itemData.location_id;
-    }
-    if (itemData.character_id) {
-      payload.character_id = itemData.character_id;
-    }
-    if (itemData.tags?.length) {
-      payload.tags = itemData.tags;
-    }
-
-    this._logger.log(`Creating item: ${itemData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Item created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.ITEM, itemData);
   }
 
   /**
@@ -796,38 +670,13 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created organisation data
    */
   async createOrganisation(organisationData) {
-    if (!organisationData?.name) {
-      throw new KankaError(
-        'Organisation name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
-
-    const payload = {
-      name: organisationData.name,
-      entry: organisationData.entry || '',
-      type: organisationData.type || OrganisationType.OTHER,
-      is_private: organisationData.is_private ?? false
+    // Set default type if not provided
+    const dataWithDefaults = {
+      ...organisationData,
+      type: organisationData?.type || OrganisationType.OTHER
     };
 
-    // Add optional fields if provided
-    if (organisationData.location_id) {
-      payload.location_id = organisationData.location_id;
-    }
-    if (organisationData.organisation_id) {
-      payload.organisation_id = organisationData.organisation_id;
-    }
-    if (organisationData.tags?.length) {
-      payload.tags = organisationData.tags;
-    }
-
-    this._logger.log(`Creating organisation: ${organisationData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Organisation created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.ORGANISATION, dataWithDefaults);
   }
 
   /**
@@ -925,44 +774,13 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created quest data
    */
   async createQuest(questData) {
-    if (!questData?.name) {
-      throw new KankaError(
-        'Quest name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
-
-    const payload = {
-      name: questData.name,
-      entry: questData.entry || '',
-      type: questData.type || QuestType.OTHER,
-      is_private: questData.is_private ?? false
+    // Set default type if not provided
+    const dataWithDefaults = {
+      ...questData,
+      type: questData?.type || QuestType.OTHER
     };
 
-    // Add optional fields if provided
-    if (questData.is_completed !== undefined) {
-      payload.is_completed = questData.is_completed;
-    }
-    if (questData.character_id) {
-      payload.character_id = questData.character_id;
-    }
-    if (questData.location_id) {
-      payload.location_id = questData.location_id;
-    }
-    if (questData.quest_id) {
-      payload.quest_id = questData.quest_id;
-    }
-    if (questData.tags?.length) {
-      payload.tags = questData.tags;
-    }
-
-    this._logger.log(`Creating quest: ${questData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Quest created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.QUEST, dataWithDefaults);
   }
 
   /**
