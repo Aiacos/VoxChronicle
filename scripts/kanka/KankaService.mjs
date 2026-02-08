@@ -12,6 +12,7 @@
  */
 
 import { KankaClient, KankaError, KankaErrorType } from './KankaClient.mjs';
+import { KankaEntityManager } from './KankaEntityManager.mjs';
 import { Logger } from '../utils/Logger.mjs';
 
 /**
@@ -142,6 +143,13 @@ class KankaService extends KankaClient {
   _campaignId = '';
 
   /**
+   * Entity manager for generic CRUD operations
+   * @type {KankaEntityManager}
+   * @private
+   */
+  _entityManager = null;
+
+  /**
    * Create a new KankaService instance
    *
    * @param {string} apiToken - Kanka API token
@@ -152,6 +160,7 @@ class KankaService extends KankaClient {
     super(apiToken, options);
     this._campaignId = campaignId || '';
     this._logger = Logger.createChild('KankaService');
+    this._entityManager = new KankaEntityManager(this, campaignId);
     this._logger.debug(`KankaService initialized for campaign: ${campaignId}`);
   }
 
@@ -184,6 +193,7 @@ class KankaService extends KankaClient {
    */
   setCampaignId(campaignId) {
     this._campaignId = campaignId || '';
+    this._entityManager.setCampaignId(campaignId);
     this._logger.debug(`Campaign ID updated: ${campaignId}`);
   }
 
@@ -249,57 +259,52 @@ class KankaService extends KankaClient {
   /**
    * Create a new journal entry (session chronicle)
    *
+   * High-level convenience method for creating journal entries. Automatically sets
+   * the type to 'Session Chronicle' if not specified, making it ideal for recording
+   * game session narratives.
+   *
    * @param {Object} journalData - Journal data
-   * @param {string} journalData.name - Journal title
-   * @param {string} [journalData.entry] - Journal content (HTML/Markdown)
-   * @param {string} [journalData.type] - Journal type (e.g., 'Session Chronicle')
-   * @param {string} [journalData.date] - Date of the session (YYYY-MM-DD format)
-   * @param {boolean} [journalData.is_private=false] - Whether journal is private
-   * @param {string|number} [journalData.location_id] - Associated location ID
-   * @param {string|number} [journalData.character_id] - Associated character ID
-   * @param {string|number} [journalData.journal_id] - Parent journal ID
-   * @param {Array} [journalData.tags] - Tag IDs to associate
-   * @returns {Promise<Object>} Created journal data
+   * @param {string} journalData.name - Journal title (e.g., "Session 1: The Tavern Meeting")
+   * @param {string} [journalData.entry] - Journal content (HTML/Markdown supported)
+   * @param {string} [journalData.type='Session Chronicle'] - Journal type/category
+   * @param {string} [journalData.date] - Date of the session (YYYY-MM-DD format, e.g., "2024-01-15")
+   * @param {boolean} [journalData.is_private=false] - Whether journal is private (hidden from players)
+   * @param {string|number} [journalData.location_id] - Associated location ID (where events occurred)
+   * @param {string|number} [journalData.character_id] - Associated character ID (main protagonist)
+   * @param {string|number} [journalData.journal_id] - Parent journal ID (for organizing multi-part sessions)
+   * @param {Array<number>} [journalData.tags] - Tag IDs to associate (for categorization)
+   * @returns {Promise<Object>} Created journal data from Kanka API
+   * @throws {KankaError} If validation fails or API request fails
+   *
+   * @example
+   * // Create a session chronicle with minimal data
+   * const journal = await service.createJournal({
+   *   name: 'Session 1: The Adventure Begins',
+   *   entry: 'The party met in a tavern...',
+   *   date: '2024-01-15'
+   * });
+   *
+   * @example
+   * // Create with full context
+   * const journal = await service.createJournal({
+   *   name: 'Session 5: The Dragon\'s Lair',
+   *   entry: '<h2>The Battle</h2><p>Epic fight...</p>',
+   *   type: 'Session Chronicle',
+   *   date: '2024-02-15',
+   *   location_id: 456,
+   *   tags: [1, 2, 3]
+   * });
    */
   async createJournal(journalData) {
-    if (!journalData?.name) {
-      throw new KankaError(
-        'Journal name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL);
-
-    const payload = {
-      name: journalData.name,
-      entry: journalData.entry || '',
-      type: journalData.type || 'Session Chronicle',
-      is_private: journalData.is_private ?? false
+    // Apply default type for session chronicles if not specified
+    // This makes it easier for callers who just want to record sessions
+    const dataWithDefaults = {
+      ...journalData,
+      type: journalData?.type || 'Session Chronicle'
     };
 
-    // Add optional fields if provided
-    if (journalData.date) {
-      payload.date = journalData.date;
-    }
-    if (journalData.location_id) {
-      payload.location_id = journalData.location_id;
-    }
-    if (journalData.character_id) {
-      payload.character_id = journalData.character_id;
-    }
-    if (journalData.journal_id) {
-      payload.journal_id = journalData.journal_id;
-    }
-    if (journalData.tags?.length) {
-      payload.tags = journalData.tags;
-    }
-
-    this._logger.log(`Creating journal: ${journalData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Journal created with ID: ${response.data?.id}`);
-
-    return response.data;
+    // Delegate to entity manager for generic CRUD handling
+    return this._entityManager.create(KankaEntityType.JOURNAL, dataWithDefaults);
   }
 
   /**
@@ -309,10 +314,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Journal data
    */
   async getJournal(journalId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL, journalId);
-    this._logger.debug(`Fetching journal: ${journalId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.JOURNAL, journalId);
   }
 
   /**
@@ -323,10 +325,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated journal data
    */
   async updateJournal(journalId, journalData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL, journalId);
-    this._logger.debug(`Updating journal: ${journalId}`);
-    const response = await this.put(endpoint, journalData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.JOURNAL, journalId, journalData);
   }
 
   /**
@@ -336,10 +335,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteJournal(journalId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL, journalId);
-    this._logger.debug(`Deleting journal: ${journalId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Journal deleted: ${journalId}`);
+    return this._entityManager.delete(KankaEntityType.JOURNAL, journalId);
   }
 
   /**
@@ -351,26 +347,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated journal list with data and meta
    */
   async listJournals(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching journals list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.JOURNAL, options);
   }
 
   // ============================================================================
@@ -380,69 +357,58 @@ class KankaService extends KankaClient {
   /**
    * Create a new character
    *
+   * High-level convenience method for creating characters (NPCs, PCs, monsters, etc.).
+   * Automatically sets the type to 'NPC' if not specified, which is the most common
+   * use case for VoxChronicle's entity extraction from session transcripts.
+   *
    * @param {Object} characterData - Character data
-   * @param {string} characterData.name - Character name
-   * @param {string} [characterData.entry] - Character description (HTML/Markdown)
-   * @param {string} [characterData.type] - Character type ('NPC', 'PC', etc.)
-   * @param {string} [characterData.title] - Character title/role
-   * @param {string} [characterData.age] - Character age
+   * @param {string} characterData.name - Character name (e.g., "Elara the Wise")
+   * @param {string} [characterData.entry] - Character description/backstory (HTML/Markdown supported)
+   * @param {string} [characterData.type='NPC'] - Character type ('NPC', 'PC', 'Monster', 'Deity', or '')
+   * @param {string} [characterData.title] - Character title/role (e.g., "Archmage of the Silver Tower")
+   * @param {string} [characterData.age] - Character age (as string, e.g., "142" or "Adult")
    * @param {string} [characterData.sex] - Character sex/gender
-   * @param {string} [characterData.pronouns] - Character pronouns
-   * @param {boolean} [characterData.is_dead=false] - Whether character is dead
-   * @param {boolean} [characterData.is_private=false] - Whether character is private
-   * @param {string|number} [characterData.location_id] - Current location ID
-   * @param {string|number} [characterData.family_id] - Family ID
-   * @param {Array} [characterData.tags] - Tag IDs to associate
-   * @returns {Promise<Object>} Created character data
+   * @param {string} [characterData.pronouns] - Character pronouns (e.g., "she/her", "they/them")
+   * @param {boolean} [characterData.is_dead=false] - Whether character is deceased
+   * @param {boolean} [characterData.is_private=false] - Whether character is private (hidden from players)
+   * @param {string|number} [characterData.location_id] - Current location ID (where character is now)
+   * @param {string|number} [characterData.family_id] - Family ID (for noble houses, dynasties, etc.)
+   * @param {Array<number>} [characterData.tags] - Tag IDs to associate (for categorization)
+   * @returns {Promise<Object>} Created character data from Kanka API
+   * @throws {KankaError} If validation fails or API request fails
+   *
+   * @example
+   * // Create a simple NPC
+   * const character = await service.createCharacter({
+   *   name: 'Elara the Wise',
+   *   entry: 'A powerful wizard who aids the party',
+   *   title: 'Archmage'
+   * });
+   *
+   * @example
+   * // Create a detailed character with all fields
+   * const character = await service.createCharacter({
+   *   name: 'Thorin Ironhammer',
+   *   entry: '<p>A dwarf warrior...</p>',
+   *   type: 'PC',
+   *   title: 'Champion of the Mountain King',
+   *   age: '87',
+   *   sex: 'Male',
+   *   pronouns: 'he/him',
+   *   location_id: 456,
+   *   family_id: 789
+   * });
    */
   async createCharacter(characterData) {
-    if (!characterData?.name) {
-      throw new KankaError(
-        'Character name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER);
-
-    const payload = {
-      name: characterData.name,
-      entry: characterData.entry || '',
-      type: characterData.type || CharacterType.NPC,
-      is_private: characterData.is_private ?? false
+    // Apply default type 'NPC' if not specified
+    // This is the most common case for entities extracted from transcripts
+    const dataWithDefaults = {
+      ...characterData,
+      type: characterData?.type || CharacterType.NPC
     };
 
-    // Add optional fields if provided
-    if (characterData.title) {
-      payload.title = characterData.title;
-    }
-    if (characterData.age) {
-      payload.age = characterData.age;
-    }
-    if (characterData.sex) {
-      payload.sex = characterData.sex;
-    }
-    if (characterData.pronouns) {
-      payload.pronouns = characterData.pronouns;
-    }
-    if (characterData.is_dead !== undefined) {
-      payload.is_dead = characterData.is_dead;
-    }
-    if (characterData.location_id) {
-      payload.location_id = characterData.location_id;
-    }
-    if (characterData.family_id) {
-      payload.family_id = characterData.family_id;
-    }
-    if (characterData.tags?.length) {
-      payload.tags = characterData.tags;
-    }
-
-    this._logger.log(`Creating character: ${characterData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Character created with ID: ${response.data?.id}`);
-
-    return response.data;
+    // Delegate to entity manager for generic CRUD handling
+    return this._entityManager.create(KankaEntityType.CHARACTER, dataWithDefaults);
   }
 
   /**
@@ -452,10 +418,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Character data
    */
   async getCharacter(characterId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER, characterId);
-    this._logger.debug(`Fetching character: ${characterId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.CHARACTER, characterId);
   }
 
   /**
@@ -466,10 +429,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated character data
    */
   async updateCharacter(characterId, characterData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER, characterId);
-    this._logger.debug(`Updating character: ${characterId}`);
-    const response = await this.put(endpoint, characterData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.CHARACTER, characterId, characterData);
   }
 
   /**
@@ -479,10 +439,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteCharacter(characterId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER, characterId);
-    this._logger.debug(`Deleting character: ${characterId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Character deleted: ${characterId}`);
+    return this._entityManager.delete(KankaEntityType.CHARACTER, characterId);
   }
 
   /**
@@ -495,29 +452,12 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated character list with data and meta
    */
   async listCharacters(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
+    // Convert boolean is_dead to 0/1 for API compatibility
+    const apiOptions = { ...options };
+    if (apiOptions.is_dead !== undefined) {
+      apiOptions.is_dead = apiOptions.is_dead ? 1 : 0;
     }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.is_dead !== undefined) {
-      params.push(`is_dead=${options.is_dead ? 1 : 0}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching characters list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.CHARACTER, apiOptions);
   }
 
   // ============================================================================
@@ -537,35 +477,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created location data
    */
   async createLocation(locationData) {
-    if (!locationData?.name) {
-      throw new KankaError(
-        'Location name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION);
-
-    const payload = {
-      name: locationData.name,
-      entry: locationData.entry || '',
-      type: locationData.type || '',
-      is_private: locationData.is_private ?? false
-    };
-
-    // Add optional fields if provided
-    if (locationData.parent_location_id) {
-      payload.parent_location_id = locationData.parent_location_id;
-    }
-    if (locationData.tags?.length) {
-      payload.tags = locationData.tags;
-    }
-
-    this._logger.log(`Creating location: ${locationData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Location created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.LOCATION, locationData);
   }
 
   /**
@@ -575,10 +487,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Location data
    */
   async getLocation(locationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION, locationId);
-    this._logger.debug(`Fetching location: ${locationId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.LOCATION, locationId);
   }
 
   /**
@@ -589,10 +498,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated location data
    */
   async updateLocation(locationId, locationData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION, locationId);
-    this._logger.debug(`Updating location: ${locationId}`);
-    const response = await this.put(endpoint, locationData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.LOCATION, locationId, locationData);
   }
 
   /**
@@ -602,10 +508,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteLocation(locationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION, locationId);
-    this._logger.debug(`Deleting location: ${locationId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Location deleted: ${locationId}`);
+    return this._entityManager.delete(KankaEntityType.LOCATION, locationId);
   }
 
   /**
@@ -618,29 +521,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated location list with data and meta
    */
   async listLocations(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.parent_location_id) {
-      params.push(`parent_location_id=${options.parent_location_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching locations list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.LOCATION, options);
   }
 
   // ============================================================================
@@ -663,44 +544,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created item data
    */
   async createItem(itemData) {
-    if (!itemData?.name) {
-      throw new KankaError(
-        'Item name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM);
-
-    const payload = {
-      name: itemData.name,
-      entry: itemData.entry || '',
-      type: itemData.type || '',
-      is_private: itemData.is_private ?? false
-    };
-
-    // Add optional fields if provided
-    if (itemData.price) {
-      payload.price = itemData.price;
-    }
-    if (itemData.size) {
-      payload.size = itemData.size;
-    }
-    if (itemData.location_id) {
-      payload.location_id = itemData.location_id;
-    }
-    if (itemData.character_id) {
-      payload.character_id = itemData.character_id;
-    }
-    if (itemData.tags?.length) {
-      payload.tags = itemData.tags;
-    }
-
-    this._logger.log(`Creating item: ${itemData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Item created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.ITEM, itemData);
   }
 
   /**
@@ -710,10 +554,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Item data
    */
   async getItem(itemId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM, itemId);
-    this._logger.debug(`Fetching item: ${itemId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.ITEM, itemId);
   }
 
   /**
@@ -724,10 +565,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated item data
    */
   async updateItem(itemId, itemData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM, itemId);
-    this._logger.debug(`Updating item: ${itemId}`);
-    const response = await this.put(endpoint, itemData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.ITEM, itemId, itemData);
   }
 
   /**
@@ -737,10 +575,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteItem(itemId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM, itemId);
-    this._logger.debug(`Deleting item: ${itemId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Item deleted: ${itemId}`);
+    return this._entityManager.delete(KankaEntityType.ITEM, itemId);
   }
 
   /**
@@ -753,29 +588,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated item list with data and meta
    */
   async listItems(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.character_id) {
-      params.push(`character_id=${options.character_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching items list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.ITEM, options);
   }
 
   // ============================================================================
@@ -796,38 +609,13 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created organisation data
    */
   async createOrganisation(organisationData) {
-    if (!organisationData?.name) {
-      throw new KankaError(
-        'Organisation name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
-
-    const payload = {
-      name: organisationData.name,
-      entry: organisationData.entry || '',
-      type: organisationData.type || OrganisationType.OTHER,
-      is_private: organisationData.is_private ?? false
+    // Set default type if not provided
+    const dataWithDefaults = {
+      ...organisationData,
+      type: organisationData?.type || OrganisationType.OTHER
     };
 
-    // Add optional fields if provided
-    if (organisationData.location_id) {
-      payload.location_id = organisationData.location_id;
-    }
-    if (organisationData.organisation_id) {
-      payload.organisation_id = organisationData.organisation_id;
-    }
-    if (organisationData.tags?.length) {
-      payload.tags = organisationData.tags;
-    }
-
-    this._logger.log(`Creating organisation: ${organisationData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Organisation created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.ORGANISATION, dataWithDefaults);
   }
 
   /**
@@ -837,10 +625,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Organisation data
    */
   async getOrganisation(organisationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
-    this._logger.debug(`Fetching organisation: ${organisationId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.ORGANISATION, organisationId);
   }
 
   /**
@@ -851,10 +636,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated organisation data
    */
   async updateOrganisation(organisationId, organisationData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
-    this._logger.debug(`Updating organisation: ${organisationId}`);
-    const response = await this.put(endpoint, organisationData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.ORGANISATION, organisationId, organisationData);
   }
 
   /**
@@ -864,10 +646,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteOrganisation(organisationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
-    this._logger.debug(`Deleting organisation: ${organisationId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Organisation deleted: ${organisationId}`);
+    return this._entityManager.delete(KankaEntityType.ORGANISATION, organisationId);
   }
 
   /**
@@ -880,29 +659,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated organisation list with data and meta
    */
   async listOrganisations(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
-    }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.organisation_id) {
-      params.push(`organisation_id=${options.organisation_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching organisations list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.ORGANISATION, options);
   }
 
   // ============================================================================
@@ -925,44 +682,13 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Created quest data
    */
   async createQuest(questData) {
-    if (!questData?.name) {
-      throw new KankaError(
-        'Quest name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
-    }
-
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
-
-    const payload = {
-      name: questData.name,
-      entry: questData.entry || '',
-      type: questData.type || QuestType.OTHER,
-      is_private: questData.is_private ?? false
+    // Set default type if not provided
+    const dataWithDefaults = {
+      ...questData,
+      type: questData?.type || QuestType.OTHER
     };
 
-    // Add optional fields if provided
-    if (questData.is_completed !== undefined) {
-      payload.is_completed = questData.is_completed;
-    }
-    if (questData.character_id) {
-      payload.character_id = questData.character_id;
-    }
-    if (questData.location_id) {
-      payload.location_id = questData.location_id;
-    }
-    if (questData.quest_id) {
-      payload.quest_id = questData.quest_id;
-    }
-    if (questData.tags?.length) {
-      payload.tags = questData.tags;
-    }
-
-    this._logger.log(`Creating quest: ${questData.name}`);
-    const response = await this.post(endpoint, payload);
-    this._logger.log(`Quest created with ID: ${response.data?.id}`);
-
-    return response.data;
+    return this._entityManager.create(KankaEntityType.QUEST, dataWithDefaults);
   }
 
   /**
@@ -972,10 +698,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Quest data
    */
   async getQuest(questId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
-    this._logger.debug(`Fetching quest: ${questId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.QUEST, questId);
   }
 
   /**
@@ -986,10 +709,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated quest data
    */
   async updateQuest(questId, questData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
-    this._logger.debug(`Updating quest: ${questId}`);
-    const response = await this.put(endpoint, questData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.QUEST, questId, questData);
   }
 
   /**
@@ -999,10 +719,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteQuest(questId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
-    this._logger.debug(`Deleting quest: ${questId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Quest deleted: ${questId}`);
+    return this._entityManager.delete(KankaEntityType.QUEST, questId);
   }
 
   /**
@@ -1016,32 +733,12 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Paginated quest list with data and meta
    */
   async listQuests(options = {}) {
-    let endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST);
-
-    const params = [];
-    if (options.page) {
-      params.push(`page=${options.page}`);
+    // Convert boolean is_completed to 0/1 for API compatibility
+    const apiOptions = { ...options };
+    if (apiOptions.is_completed !== undefined) {
+      apiOptions.is_completed = apiOptions.is_completed ? 1 : 0;
     }
-    if (options.type) {
-      params.push(`type=${encodeURIComponent(options.type)}`);
-    }
-    if (options.is_completed !== undefined) {
-      params.push(`is_completed=${options.is_completed ? 1 : 0}`);
-    }
-    if (options.quest_id) {
-      params.push(`quest_id=${options.quest_id}`);
-    }
-    if (params.length) {
-      endpoint += `?${params.join('&')}`;
-    }
-
-    this._logger.debug('Fetching quests list');
-    const response = await this.get(endpoint);
-    return {
-      data: response.data || [],
-      meta: response.meta || {},
-      links: response.links || {}
-    };
+    return this._entityManager.list(KankaEntityType.QUEST, apiOptions);
   }
 
   // ============================================================================
@@ -1051,17 +748,45 @@ class KankaService extends KankaClient {
   /**
    * Upload an image to an entity (portrait/header image)
    *
-   * IMPORTANT: OpenAI DALL-E image URLs expire in 60 minutes.
-   * Always download and upload images immediately after generation.
+   * Downloads the image if a URL is provided, then uploads it to Kanka as the entity's
+   * portrait/image. Supports both URL strings (e.g., DALL-E generated images) and
+   * Blob objects (e.g., user-uploaded files).
    *
-   * @param {string} entityType - Entity type from KankaEntityType
-   * @param {string|number} entityId - Entity ID
-   * @param {string|Blob} imageSource - Image URL or Blob
+   * CRITICAL WARNINGS:
+   * - OpenAI DALL-E image URLs expire in 60 minutes - download immediately!
+   * - Image uploads use multipart/form-data and count as 1 API call against rate limits
+   * - Large images may take time to upload depending on connection speed
+   *
+   * @param {string} entityType - Entity type from KankaEntityType enum
+   * @param {string|number} entityId - Entity ID (must exist in Kanka)
+   * @param {string|Blob} imageSource - Image URL or Blob object
    * @param {Object} [options] - Upload options
-   * @param {string} [options.filename='portrait.png'] - Filename for the upload
-   * @returns {Promise<Object>} Updated entity data with image
+   * @param {string} [options.filename='portrait.png'] - Filename (used for MIME type detection)
+   * @returns {Promise<Object>} Updated entity data with image URL from Kanka
+   * @throws {KankaError} If validation fails, download fails, or upload fails
+   *
+   * @example
+   * // Upload DALL-E generated image to a character
+   * const dalleUrl = 'https://oaidalleapiprodscus.blob.core.windows.net/...';
+   * const updated = await service.uploadImage(
+   *   KankaEntityType.CHARACTER,
+   *   123,
+   *   dalleUrl
+   * );
+   * console.log('Image URL:', updated.image_full); // Kanka's hosted URL
+   *
+   * @example
+   * // Upload custom image from Blob
+   * const blob = new Blob([imageData], { type: 'image/png' });
+   * const updated = await service.uploadImage(
+   *   KankaEntityType.LOCATION,
+   *   456,
+   *   blob,
+   *   { filename: 'castle.png' }
+   * );
    */
   async uploadImage(entityType, entityId, imageSource, options = {}) {
+    // Validate required parameters
     if (!entityType || !entityId) {
       throw new KankaError(
         'Entity type and ID are required for image upload',
@@ -1071,8 +796,10 @@ class KankaService extends KankaClient {
 
     let imageBlob;
 
-    // If imageSource is a URL, download it first
+    // Handle different image source types: URL string or Blob object
     if (typeof imageSource === 'string') {
+      // Image source is a URL - download it first
+      // This is critical for DALL-E images which expire in 60 minutes
       this._logger.debug(`Downloading image from URL: ${imageSource.substring(0, 50)}...`);
 
       try {
@@ -1090,6 +817,7 @@ class KankaService extends KankaClient {
         );
       }
     } else if (imageSource instanceof Blob) {
+      // Image source is already a Blob - use directly
       imageBlob = imageSource;
     } else {
       throw new KankaError(
@@ -1098,10 +826,12 @@ class KankaService extends KankaClient {
       );
     }
 
-    // Determine filename
+    // Determine filename for the upload
+    // Kanka uses this for MIME type detection and display
     const filename = options.filename || 'portrait.png';
 
-    // Create FormData for upload
+    // Create FormData for multipart/form-data upload
+    // Kanka API requires multipart form data for image uploads
     const formData = new FormData();
     formData.append('image', imageBlob, filename);
 
@@ -1242,11 +972,35 @@ class KankaService extends KankaClient {
   /**
    * Create an entity only if it doesn't already exist
    *
-   * @param {string} entityType - Entity type from KankaEntityType
-   * @param {Object} entityData - Entity data with at least 'name' property
-   * @returns {Promise<Object>} Created or existing entity data
+   * Searches for an existing entity by name (case-insensitive exact match) and returns
+   * it if found. Otherwise, creates a new entity. This is useful for avoiding duplicates
+   * when importing entities from session transcripts.
+   *
+   * IMPORTANT: This method requires 2 API calls if entity doesn't exist:
+   * 1. Search by name (1 call)
+   * 2. Create if not found (1 call)
+   * Use sparingly to conserve rate limits.
+   *
+   * @param {string} entityType - Entity type from KankaEntityType enum
+   * @param {Object} entityData - Entity data with at least 'name' property (all other fields optional)
+   * @returns {Promise<Object>} Created or existing entity data (with _alreadyExisted flag if found)
+   * @throws {KankaError} If validation fails or API request fails
+   *
+   * @example
+   * // Try to create character, get existing if name matches
+   * const character = await service.createIfNotExists(
+   *   KankaEntityType.CHARACTER,
+   *   { name: 'Elara', type: 'NPC', entry: 'A wizard...' }
+   * );
+   *
+   * if (character._alreadyExisted) {
+   *   console.log('Entity already exists:', character.id);
+   * } else {
+   *   console.log('Created new entity:', character.id);
+   * }
    */
   async createIfNotExists(entityType, entityData) {
+    // Validate required name field
     if (!entityData?.name) {
       throw new KankaError(
         'Entity name is required',
@@ -1254,14 +1008,19 @@ class KankaService extends KankaClient {
       );
     }
 
-    // Check if already exists
+    // Search for existing entity by name (case-insensitive exact match)
+    // This makes 1 API call to search
     const existing = await this.findExistingEntity(entityData.name, entityType);
     if (existing) {
       this._logger.debug(`Entity already exists: ${entityData.name} (ID: ${existing.id})`);
+      // Add flag to indicate this was found, not created
+      // Callers can use this to track duplicates
       return { ...existing, _alreadyExisted: true };
     }
 
-    // Create based on entity type
+    // Entity doesn't exist - create it using the appropriate typed method
+    // This ensures defaults (like type='NPC' for characters) are applied
+    // This makes 1 additional API call
     switch (entityType) {
       case KankaEntityType.CHARACTER:
         return this.createCharacter(entityData);
@@ -1286,29 +1045,69 @@ class KankaService extends KankaClient {
   /**
    * Batch create multiple entities of the same type
    *
-   * Note: Entities are created sequentially to respect rate limits.
-   * Use with caution for large batches.
+   * Creates multiple entities sequentially with progress tracking and error handling.
+   * This is useful for importing entities extracted from session transcripts or other
+   * bulk operations.
    *
-   * @param {string} entityType - Entity type from KankaEntityType
-   * @param {Array<Object>} entitiesData - Array of entity data objects
+   * IMPORTANT NOTES:
+   * - Entities are created sequentially (not parallel) to respect rate limits
+   * - Free tier: 30 req/min, Premium: 90 req/min
+   * - With skipExisting=true, each entity requires 2 API calls (search + create)
+   * - Large batches may take significant time (e.g., 20 entities = ~40 API calls = 1-2 minutes)
+   * - Individual failures are caught and returned as error objects (see return format)
+   *
+   * @param {string} entityType - Entity type from KankaEntityType enum
+   * @param {Array<Object>} entitiesData - Array of entity data objects (each must have 'name' field)
    * @param {Object} [options] - Batch options
-   * @param {boolean} [options.skipExisting=true] - Skip entities that already exist
-   * @param {Function} [options.onProgress] - Progress callback (current, total, entity)
-   * @returns {Promise<Array<Object>>} Created entities
+   * @param {boolean} [options.skipExisting=true] - Skip entities that already exist (requires name search)
+   * @param {Function} [options.onProgress] - Progress callback: (current, total, entity) => void
+   * @returns {Promise<Array<Object>>} Array of created entities (may include error objects for failures)
+   * @throws {KankaError} Only throws for critical errors; individual entity failures are in results
+   *
+   * @example
+   * // Batch create NPCs from transcript with progress tracking
+   * const npcs = [
+   *   { name: 'Elara', type: 'NPC', entry: 'A wise wizard...' },
+   *   { name: 'Thorin', type: 'NPC', entry: 'A brave warrior...' }
+   * ];
+   *
+   * const results = await service.batchCreate(
+   *   KankaEntityType.CHARACTER,
+   *   npcs,
+   *   {
+   *     skipExisting: true,
+   *     onProgress: (current, total, entity) => {
+   *       console.log(`Progress: ${current}/${total}`);
+   *       if (entity) console.log(`Created: ${entity.name}`);
+   *     }
+   *   }
+   * );
+   *
+   * // Check for errors in results
+   * const errors = results.filter(r => r._error);
+   * const success = results.filter(r => !r._error);
+   * console.log(`Created ${success.length}, Failed ${errors.length}`);
    */
   async batchCreate(entityType, entitiesData, options = {}) {
     const skipExisting = options.skipExisting ?? true;
     const onProgress = options.onProgress || (() => {});
     const results = [];
 
+    // Process entities sequentially to respect rate limits
+    // Note: This is intentionally not parallelized to avoid rate limit errors
     for (let i = 0; i < entitiesData.length; i++) {
       const entityData = entitiesData[i];
 
       try {
         let entity;
+
         if (skipExisting) {
+          // Use createIfNotExists to avoid duplicates
+          // This requires 1 additional API call per entity (search by name)
           entity = await this.createIfNotExists(entityType, entityData);
         } else {
+          // Create without checking for duplicates (faster but may create duplicates)
+          // Use the appropriate typed method to ensure defaults are applied
           switch (entityType) {
             case KankaEntityType.CHARACTER:
               entity = await this.createCharacter(entityData);
@@ -1336,10 +1135,15 @@ class KankaService extends KankaClient {
           }
         }
 
+        // Add successful entity to results
         results.push(entity);
         onProgress(i + 1, entitiesData.length, entity);
       } catch (error) {
+        // Log error but continue processing remaining entities
+        // This ensures one failure doesn't block the entire batch
         this._logger.error(`Failed to create entity ${entityData.name}: ${error.message}`);
+
+        // Add error object to results so caller can identify failures
         results.push({ _error: error.message, name: entityData.name });
         onProgress(i + 1, entitiesData.length, null);
       }
