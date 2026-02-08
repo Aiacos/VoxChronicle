@@ -140,6 +140,28 @@ class Settings {
     });
 
     // ==========================================
+    // Vocabulary Dictionary Settings
+    // ==========================================
+
+    // Custom Vocabulary Dictionary (world-wide)
+    // Stores campaign-specific terms for improved transcription accuracy
+    // Categories: character_names, location_names, items, terms, custom
+    game.settings.register(MODULE_ID, 'customVocabularyDictionary', {
+      name: 'VOXCHRONICLE.Settings.VocabularyDictionary',
+      hint: 'VOXCHRONICLE.Settings.VocabularyDictionaryHint',
+      scope: 'world',
+      config: false,  // Hidden from config menu - managed via UI
+      type: Object,
+      default: {
+        character_names: [],
+        location_names: [],
+        items: [],
+        terms: [],
+        custom: []
+      }
+    });
+
+    // ==========================================
     // Audio Settings
     // ==========================================
 

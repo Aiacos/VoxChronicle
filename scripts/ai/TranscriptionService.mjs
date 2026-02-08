@@ -13,6 +13,7 @@ import { OpenAIClient, OpenAIError, OpenAIErrorType } from './OpenAIClient.mjs';
 import { AudioChunker } from '../audio/AudioChunker.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { AudioUtils } from '../utils/AudioUtils.mjs';
+import { VocabularyDictionary } from '../core/VocabularyDictionary.mjs';
 
 /**
  * Transcription model options
@@ -150,6 +151,22 @@ class TranscriptionService extends OpenAIClient {
     // Validate audio blob
     if (!AudioUtils.isValidAudioBlob(audioBlob)) {
       this._logger.warn('Audio blob may not be valid, attempting transcription anyway');
+    }
+
+    // If no custom prompt provided, generate one from vocabulary dictionary
+    if (!options.prompt) {
+      try {
+        const vocabularyDict = new VocabularyDictionary();
+        const vocabularyPrompt = vocabularyDict.generatePrompt();
+
+        if (vocabularyPrompt) {
+          options.prompt = vocabularyPrompt;
+          this._logger.debug('Using vocabulary dictionary for transcription prompt');
+        }
+      } catch (error) {
+        // Don't fail transcription if vocabulary dictionary fails
+        this._logger.warn('Failed to generate vocabulary prompt, continuing without it:', error.message);
+      }
     }
 
     // Check if audio exceeds size limit and needs chunking
@@ -388,7 +405,10 @@ class TranscriptionService extends OpenAIClient {
       speakers: speakers,
       language: result.language,
       duration: result.duration,
-      raw: result
+      raw: result,
+      // Preserve chunking metadata if present
+      ...(result.chunked !== undefined && { chunked: result.chunked }),
+      ...(result.chunkCount !== undefined && { chunkCount: result.chunkCount })
     };
   }
 
