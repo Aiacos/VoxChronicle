@@ -522,7 +522,7 @@ class NarrativeExporter {
       const text = (segment.text || '').trim();
 
       if (includeTimestamps && segment.start !== undefined) {
-        const timestamp = this._formatTimestamp(segment.start);
+        const timestamp = AudioUtils.formatDuration(segment.start);
         return `[${timestamp}] **${speaker}:** ${text}`;
       }
 
@@ -640,7 +640,7 @@ class NarrativeExporter {
       lines.push('<p class="dialogue">');
 
       if (includeTimestamps && segment.start !== undefined) {
-        const timestamp = this._formatTimestamp(segment.start);
+        const timestamp = AudioUtils.formatDuration(segment.start);
         lines.push(`<span class="timestamp">[${timestamp}]</span> `);
       }
 
@@ -990,25 +990,6 @@ class NarrativeExporter {
     }
 
     return null;
-  }
-
-  /**
-   * Format timestamp as MM:SS or HH:MM:SS
-   *
-   * @param {number} seconds - Timestamp in seconds
-   * @returns {string} Formatted timestamp
-   * @private
-   */
-  _formatTimestamp(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) {
-      return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    }
-
-    return `${minutes}:${String(secs).padStart(2, '0')}`;
   }
 
   /**
