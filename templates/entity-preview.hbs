@@ -107,14 +107,22 @@
                       data-action="generate-portrait"
                       data-entity-type="characters"
                       data-entity-index="{{index}}"
+                      {{#if isGeneratingImage}}disabled{{/if}}
                       title="{{../i18n.generatePortrait}}">
-                <i class="fas fa-image"></i>
+                <i class="fas {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
               </button>
             </div>
-            {{#if imageUrl}}
-            <div class="entity-preview-image">
-              <img src="{{imageUrl}}" alt="{{name}}" />
+            {{#if isGeneratingImage}}
+            <div class="entity-image-placeholder">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span class="placeholder-text">{{../i18n.generating}}</span>
             </div>
+            {{else}}
+              {{#if imageUrl}}
+              <div class="entity-preview-image">
+                <img src="{{imageUrl}}" alt="{{name}}" />
+              </div>
+              {{/if}}
             {{/if}}
           </div>
           {{/each}}
@@ -159,14 +167,22 @@
                       data-action="generate-portrait"
                       data-entity-type="locations"
                       data-entity-index="{{index}}"
+                      {{#if isGeneratingImage}}disabled{{/if}}
                       title="{{../i18n.generatePortrait}}">
-                <i class="fas fa-image"></i>
+                <i class="fas {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
               </button>
             </div>
-            {{#if imageUrl}}
-            <div class="entity-preview-image">
-              <img src="{{imageUrl}}" alt="{{name}}" />
+            {{#if isGeneratingImage}}
+            <div class="entity-image-placeholder">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span class="placeholder-text">{{../i18n.generating}}</span>
             </div>
+            {{else}}
+              {{#if imageUrl}}
+              <div class="entity-preview-image">
+                <img src="{{imageUrl}}" alt="{{name}}" />
+              </div>
+              {{/if}}
             {{/if}}
           </div>
           {{/each}}
@@ -211,14 +227,22 @@
                       data-action="generate-portrait"
                       data-entity-type="items"
                       data-entity-index="{{index}}"
+                      {{#if isGeneratingImage}}disabled{{/if}}
                       title="{{../i18n.generatePortrait}}">
-                <i class="fas fa-image"></i>
+                <i class="fas {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
               </button>
             </div>
-            {{#if imageUrl}}
-            <div class="entity-preview-image">
-              <img src="{{imageUrl}}" alt="{{name}}" />
+            {{#if isGeneratingImage}}
+            <div class="entity-image-placeholder">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span class="placeholder-text">{{../i18n.generating}}</span>
             </div>
+            {{else}}
+              {{#if imageUrl}}
+              <div class="entity-preview-image">
+                <img src="{{imageUrl}}" alt="{{name}}" />
+              </div>
+              {{/if}}
             {{/if}}
           </div>
           {{/each}}
