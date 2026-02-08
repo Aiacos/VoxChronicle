@@ -568,7 +568,7 @@ describe('VoxChronicle', () => {
     });
 
     it('should show urgent warning when token expires in 31-60 days', async () => {
-      const daysAgo = 364 - 45; // 45 days remaining
+      const daysAgo = 364 - 45; // 45 days remaining (approximately)
       const timestamp = Date.now() - (daysAgo * 24 * 60 * 60 * 1000);
 
       setupFoundryMocks({
@@ -578,12 +578,13 @@ describe('VoxChronicle', () => {
       const instance = VoxChronicle.getInstance();
       await instance.initialize();
 
+      // Accept 44 or 45 days due to fractional day calculations
       expect(ui.notifications.warn).toHaveBeenCalledWith(
-        expect.stringContaining('45'),
+        expect.stringMatching(/4[45] days/),
         { permanent: true }
       );
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('45 days (URGENT)')
+        expect.stringMatching(/4[45] days \(URGENT\)/)
       );
     });
 

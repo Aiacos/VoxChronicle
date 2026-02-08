@@ -839,25 +839,13 @@ describe('WhisperBackend', () => {
       const audioBlob = createMockAudioBlob();
       const customBackend = new WhisperBackend(DEFAULT_WHISPER_URL, { maxRetries: 2 });
 
-      // Mock setTimeout to avoid actual delays
-      vi.useFakeTimers();
+      // Mock _delay to avoid actual delays
+      vi.spyOn(customBackend, '_delay').mockResolvedValue();
 
       mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
-      const transcribePromise = customBackend.transcribe(audioBlob);
-
-      // Fast-forward through all retry delays
-      await vi.runAllTimersAsync();
-
-      try {
-        await transcribePromise;
-        expect.fail('Should have thrown error');
-      } catch (error) {
-        expect(error).toBeInstanceOf(WhisperError);
-        expect(mockFetch).toHaveBeenCalledTimes(3); // Initial + 2 retries
-      } finally {
-        vi.useRealTimers();
-      }
+      await expect(customBackend.transcribe(audioBlob)).rejects.toBeInstanceOf(WhisperError);
+      expect(mockFetch).toHaveBeenCalledTimes(3); // Initial + 2 retries
     });
 
     it('should not retry when maxRetries is 0', async () => {
