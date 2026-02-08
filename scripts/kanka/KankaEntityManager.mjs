@@ -132,26 +132,42 @@ class KankaEntityManager {
   /**
    * Create a new entity
    *
+   * Creates any type of Kanka entity with a generic interface. This method handles
+   * the common fields (name, entry, is_private, type) and automatically passes through
+   * all entity-specific fields to the API.
+   *
    * @param {string} entityType - Entity type (e.g., 'journals', 'characters', 'locations', 'items')
    * @param {Object} entityData - Entity data
    * @param {string} entityData.name - Entity name (required for all entities)
-   * @param {string} [entityData.entry] - Entity description/entry
-   * @param {string} [entityData.type] - Entity type/subtype
-   * @param {boolean} [entityData.is_private] - Whether entity is private
-   * @param {...*} [entityData.*] - Additional entity-specific fields
-   * @returns {Promise<Object>} Created entity data
+   * @param {string} [entityData.entry] - Entity description/entry (HTML/Markdown supported)
+   * @param {string} [entityData.type] - Entity type/subtype (e.g., 'NPC' for characters, 'City' for locations)
+   * @param {boolean} [entityData.is_private] - Whether entity is private (default: false)
+   * @param {...*} [entityData.*] - Additional entity-specific fields (e.g., age, location_id, parent_location_id)
+   * @returns {Promise<Object>} Created entity data from Kanka API
    * @throws {KankaError} If validation fails or API request fails
    *
    * @example
+   * // Create a journal entry
    * const journal = await manager.create('journals', {
    *   name: 'Session 1 Chronicle',
    *   entry: 'The party met in a tavern...',
    *   type: 'Session Chronicle',
    *   date: '2024-01-15'
    * });
+   *
+   * @example
+   * // Create a character with entity-specific fields
+   * const character = await manager.create('characters', {
+   *   name: 'Elara the Wise',
+   *   entry: 'A powerful wizard...',
+   *   type: 'NPC',
+   *   age: '142',
+   *   title: 'Archmage of the Silver Tower',
+   *   location_id: 456
+   * });
    */
   async create(entityType, entityData) {
-    // Validate required fields
+    // Validate required fields - all Kanka entities require a name
     if (!entityData?.name) {
       throw new KankaError(
         `Entity name is required for ${entityType}`,
@@ -161,34 +177,43 @@ class KankaEntityManager {
 
     const endpoint = this._buildCampaignEndpoint(entityType);
 
-    // Build base payload with common fields
+    // Build base payload with common fields that exist on all entity types
+    // Note: is_private defaults to false per Kanka API specification
     const payload = {
       name: entityData.name,
       entry: entityData.entry || '',
       is_private: entityData.is_private ?? false
     };
 
-    // Add type if provided (some entities use it, some don't)
+    // Add type field if provided
+    // Note: Not all entity types support this field (e.g., maps don't use 'type')
     if (entityData.type !== undefined) {
       payload.type = entityData.type;
     }
 
-    // Copy all other fields from entityData to payload
-    // This handles entity-specific fields like character.age, location.parent_location_id, etc.
+    // Copy all other entity-specific fields from entityData to payload
+    // This handles fields like:
+    // - Characters: age, sex, title, pronouns, is_dead, family_id, location_id
+    // - Locations: parent_location_id, map_id
+    // - Items: price, size, character_id, location_id
+    // - Journals: date, location_id, character_id, journal_id (parent)
+    // - Tags: arrays of tag IDs for categorization
     for (const [key, value] of Object.entries(entityData)) {
-      // Skip fields we've already handled or fields that shouldn't be sent
+      // Skip fields we've already processed to avoid duplication
       if (key === 'name' || key === 'entry' || key === 'is_private' || key === 'type') {
         continue;
       }
 
-      // Only include non-null, non-undefined values
+      // Only include fields with actual values (skip null/undefined)
       if (value !== null && value !== undefined) {
-        // Special handling for arrays (like tags) - only include if not empty
+        // Special handling for arrays (like tags array) - only include if not empty
+        // Empty arrays would be rejected by the API or cause unnecessary data
         if (Array.isArray(value)) {
           if (value.length > 0) {
             payload[key] = value;
           }
         } else {
+          // Include all other non-null values (strings, numbers, booleans, objects)
           payload[key] = value;
         }
       }
@@ -324,27 +349,32 @@ class KankaEntityManager {
    * Downloads the image if a URL is provided, then uploads it as a portrait/image
    * for the specified entity. Kanka accepts images via multipart form data.
    *
+   * IMPORTANT: OpenAI DALL-E image URLs expire in 60 minutes. Always download
+   * and upload AI-generated images immediately after generation.
+   *
    * @param {string} entityType - Entity type (e.g., 'characters', 'locations', 'items')
    * @param {string|number} entityId - Entity ID
-   * @param {string|Blob} imageSource - Image URL or Blob
+   * @param {string|Blob} imageSource - Image URL or Blob object
    * @param {Object} [options] - Upload options
-   * @param {string} [options.filename='portrait.png'] - Filename for the upload
-   * @returns {Promise<Object>} Updated entity data with image
-   * @throws {KankaError} If validation fails or upload fails
+   * @param {string} [options.filename='portrait.png'] - Filename for the upload (used for MIME type detection)
+   * @returns {Promise<Object>} Updated entity data with image URL from Kanka
+   * @throws {KankaError} If validation fails, download fails, or upload fails
    *
    * @example
-   * // Upload from URL
+   * // Upload from URL (typical for DALL-E generated images)
    * const updated = await manager.uploadImage('characters', 123,
-   *   'https://example.com/portrait.jpg'
+   *   'https://oaidalleapiprodscus.blob.core.windows.net/...'
    * );
    *
-   * // Upload from Blob
+   * @example
+   * // Upload from Blob (for custom images)
    * const blob = new Blob([imageData], { type: 'image/png' });
    * const updated = await manager.uploadImage('characters', 123, blob, {
    *   filename: 'custom-name.png'
    * });
    */
   async uploadImage(entityType, entityId, imageSource, options = {}) {
+    // Validate required parameters
     if (!entityType || !entityId) {
       throw new KankaError(
         'Entity type and ID are required for image upload',
@@ -354,8 +384,11 @@ class KankaEntityManager {
 
     let imageBlob;
 
-    // If imageSource is a URL, download it first
+    // Handle different image source types: URL string or Blob object
     if (typeof imageSource === 'string') {
+      // Image source is a URL - download it first
+      // This is common for DALL-E generated images which must be downloaded
+      // before their URL expires (60 minute expiration)
       this._logger.debug(`Downloading image from URL: ${imageSource.substring(0, 50)}...`);
 
       try {
@@ -373,6 +406,7 @@ class KankaEntityManager {
         );
       }
     } else if (imageSource instanceof Blob) {
+      // Image source is already a Blob - use directly
       imageBlob = imageSource;
     } else {
       throw new KankaError(
@@ -381,14 +415,16 @@ class KankaEntityManager {
       );
     }
 
-    // Determine filename
+    // Determine filename for the upload
+    // Kanka uses this for MIME type detection and display
     const filename = options.filename || 'portrait.png';
 
-    // Create FormData for upload
+    // Create FormData for multipart/form-data upload
+    // Kanka API requires multipart form data for image uploads
     const formData = new FormData();
     formData.append('image', imageBlob, filename);
 
-    // Build endpoint for image upload
+    // Build endpoint - uses the standard entity endpoint with PUT/POST
     const endpoint = this._buildCampaignEndpoint(entityType, entityId);
 
     this._logger.log(`Uploading image to ${entityType}: ${entityId}`);
@@ -405,25 +441,37 @@ class KankaEntityManager {
   /**
    * Search for entities by name in the campaign
    *
-   * @param {string} query - Search query (searches in entity names)
-   * @param {string} [entityType] - Limit search to specific entity type
-   * @returns {Promise<Array>} Matching entities
+   * Performs a name-based search across entity types. If entityType is specified,
+   * searches only that type (1 API call). If entityType is omitted, searches across
+   * all common entity types (multiple API calls - use sparingly due to rate limits).
+   *
+   * IMPORTANT: Searching all entity types makes 6 API calls. Use specific entity
+   * type when possible to conserve rate limits (30/min free, 90/min premium).
+   *
+   * @param {string} query - Search query (searches in entity names, partial matches supported)
+   * @param {string} [entityType] - Limit search to specific entity type (e.g., 'characters', 'locations')
+   * @returns {Promise<Array>} Matching entities (with entity_type added for multi-type searches)
    * @throws {KankaError} If API request fails
    *
    * @example
-   * // Search all entity types
-   * const results = await manager.searchEntities('Dragon');
-   *
-   * // Search only characters
+   * // Search only characters (1 API call - recommended)
    * const characters = await manager.searchEntities('Dragon', 'characters');
+   *
+   * @example
+   * // Search all entity types (6 API calls - use sparingly!)
+   * const results = await manager.searchEntities('Dragon');
+   * // Results include entity_type field: { ...entity, entity_type: 'characters' }
    */
   async searchEntities(query, entityType = null) {
+    // Return early if query is empty to avoid unnecessary API calls
     if (!query || query.trim().length === 0) {
       return [];
     }
 
+    // Build query parameters for Kanka API name filter
     const params = [`name=${encodeURIComponent(query)}`];
 
+    // If entity type is specified, search only that type (single API call)
     if (entityType) {
       const endpoint = this._buildCampaignEndpoint(entityType);
       this._logger.debug(`Searching ${entityType} for: ${query}`);
@@ -431,27 +479,32 @@ class KankaEntityManager {
       return response.data || [];
     }
 
-    // If no specific entity type, search across common types
-    // Note: This requires multiple API calls, so use with caution
+    // No specific entity type - search across common types
+    // WARNING: This requires multiple API calls and counts against rate limits
+    // Free tier: 30 req/min, Premium: 90 req/min
     this._logger.debug(`Searching all entities for: ${query}`);
     const results = [];
 
+    // Common entity types to search (excludes less common types like families, events, maps)
+    // This is a balance between coverage and API usage
     const types = [
-      'characters',
-      'locations',
-      'items',
-      'journals',
-      'organisations',
-      'quests'
+      'characters',    // NPCs, PCs, monsters
+      'locations',     // Places, cities, dungeons
+      'items',         // Weapons, armor, artifacts
+      'journals',      // Session chronicles, notes
+      'organisations', // Guilds, factions, governments
+      'quests'         // Missions, tasks, bounties
     ];
 
-    // Search each entity type
+    // Search each entity type sequentially
+    // Note: We continue even if one type fails to maximize results
     for (const type of types) {
       try {
         const endpoint = this._buildCampaignEndpoint(type);
         const response = await this._client.get(`${endpoint}?${params.join('&')}`);
         if (response.data?.length) {
-          // Add entity type to each result for identification
+          // Add entity_type field to each result so caller can distinguish types
+          // This is important because different types may have same names
           const typedResults = response.data.map(entity => ({
             ...entity,
             entity_type: type
@@ -460,6 +513,7 @@ class KankaEntityManager {
         }
       } catch (error) {
         // Log error but continue searching other types
+        // This prevents one failure from blocking all results
         this._logger.warn(`Failed to search ${type}: ${error.message}`);
       }
     }
