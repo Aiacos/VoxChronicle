@@ -20,7 +20,7 @@
     <div class="header-speaker-id">{{i18n.speakerId}}</div>
     <div class="header-player-name">{{i18n.playerName}}</div>
     {{#if hasGameUsers}}
-    <div class="header-quick-assign">Quick Assign</div>
+    <div class="header-quick-assign">{{i18n.quickAssign}}</div>
     {{/if}}
   </div>
 
@@ -32,7 +32,7 @@
       <div class="speaker-id">
         <span class="speaker-id-text">{{id}}</span>
         {{#if isKnown}}
-        <i class="fas fa-check-circle known-indicator" title="Detected in session"></i>
+        <i class="fas fa-check-circle known-indicator" title="{{../i18n.detectedInSession}}"></i>
         {{/if}}
       </div>
 
@@ -56,7 +56,7 @@
       {{#if ../hasGameUsers}}
       <div class="quick-assign">
         <select data-action="quick-assign" data-speaker-id="{{id}}">
-          <option value="">Quick assign...</option>
+          <option value="">{{../i18n.quickAssignPlaceholder}}</option>
           {{#each ../gameUsers}}
           <option value="{{#if isGM}}GM ({{name}}){{else}}{{name}}{{/if}}">
             {{#if isGM}}&#128081; {{/if}}{{name}}
@@ -106,12 +106,12 @@
   {{!-- Help section --}}
   <div class="form-help">
     <details>
-      <summary><i class="fas fa-question-circle"></i> Help</summary>
+      <summary><i class="fas fa-question-circle"></i> {{i18n.help}}</summary>
       <div class="help-content">
-        <p><strong>Speaker IDs:</strong> These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).</p>
-        <p><strong>Known speakers:</strong> Speakers with a <i class="fas fa-check-circle"></i> icon were detected in a previous transcription session.</p>
-        <p><strong>Quick Assign:</strong> Use the dropdown to quickly assign a game user's name to a speaker slot.</p>
-        <p><strong>Auto-Detect:</strong> Automatically fills empty speaker slots with game user names in order.</p>
+        <p>{{{i18n.helpSpeakerIds}}}</p>
+        <p>{{{i18n.helpKnownSpeakers}}}</p>
+        <p>{{{i18n.helpQuickAssign}}}</p>
+        <p>{{{i18n.helpAutoDetect}}}</p>
       </div>
     </details>
   </div>

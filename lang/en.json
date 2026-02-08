@@ -91,6 +91,9 @@
       "RecordingStarted": "Recording started",
       "RecordingStopped": "Recording stopped",
       "RecordingFailed": "Recording failed",
+      "Segments": "Segments:",
+      "Speakers": "Speakers:",
+      "CancelSession": "Cancel Session",
       "TranscriptionMode": "Transcription Mode",
       "ModeAPI": "API",
       "ModeLocal": "Local",
@@ -127,7 +130,20 @@
       "Reset": "Reset Labels",
       "AutoDetect": "Auto-Detect from Users",
       "Saved": "Speaker labels saved",
-      "Placeholder": "Enter name..."
+      "Placeholder": "Enter name...",
+      "QuickAssign": "Quick Assign",
+      "QuickAssignPlaceholder": "Quick assign...",
+      "ResetConfirm": "Are you sure you want to reset all speaker labels?",
+      "LabelsReset": "Speaker labels reset",
+      "NoGameUsers": "No game users available for auto-detection",
+      "SaveFailed": "Failed to save speaker labels",
+      "Clear": "Clear",
+      "DetectedInSession": "Detected in session",
+      "HelpTitle": "Help",
+      "HelpSpeakerIds": "These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).",
+      "HelpKnownSpeakers": "Speakers with a {icon} icon were detected in a previous transcription session.",
+      "HelpQuickAssign": "Use the dropdown to quickly assign a game user's name to a speaker slot.",
+      "HelpAutoDetect": "Automatically fills empty speaker slots with game user names in order."
     },
 
     "EntityExtraction": {
@@ -168,7 +184,11 @@
       "PartialSuccess": "{created} of {total} entities created. Some failed.",
       "Failed": "Failed to create entities",
       "RelationshipsCreated": "{count} relationship(s) created in Kanka",
-      "RelationshipsFailed": "{count} relationship(s) failed to create"
+      "RelationshipsFailed": "{count} relationship(s) failed to create",
+      "ConfidenceLabel": "Confidence:",
+      "EditDialogTitle": "Edit Description: {name}",
+      "ViewGraph": "View Relationship Graph",
+      "FailedCount": "{count} failed"
     },
 
     "ImageGeneration": {

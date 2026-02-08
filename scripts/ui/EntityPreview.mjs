@@ -400,6 +400,9 @@ class EntityPreview extends Application {
           total: this._results.created.length + this._results.failed.length
         }) || `${this._results.created.length} of ${this._results.created.length + this._results.failed.length} entities created`,
         failed: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Failed') || 'Failed to create entities',
+        failedCountLabel: game.i18n?.format('VOXCHRONICLE.EntityPreview.FailedCount', { count: this._results.failed.length }) ||
+          `${this._results.failed.length} failed`,
+        confidenceLabel: game.i18n?.localize('VOXCHRONICLE.EntityPreview.ConfidenceLabel') || 'Confidence:',
         close: game.i18n?.localize('VOXCHRONICLE.Buttons.Close') || 'Close',
         retry: game.i18n?.localize('VOXCHRONICLE.Buttons.Retry') || 'Retry',
         notConfigured: game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
@@ -947,7 +950,7 @@ class EntityPreview extends Application {
   async _showEditDialog(name, currentDescription) {
     return new Promise((resolve) => {
       new Dialog({
-        title: `Edit Description: ${name}`,
+        title: game.i18n?.format('VOXCHRONICLE.EntityPreview.EditDialogTitle', { name }) || `Edit Description: ${name}`,
         content: `
           <form class="vox-chronicle-edit-description">
             <div class="form-group">

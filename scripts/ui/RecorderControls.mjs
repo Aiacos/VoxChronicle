@@ -402,8 +402,11 @@ class RecorderControls extends Application {
         stopRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.StopRecording') || 'Stop Recording',
         pauseRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.PauseRecording') || 'Pause Recording',
         resumeRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.ResumeRecording') || 'Resume Recording',
+        cancelSession: game.i18n?.localize('VOXCHRONICLE.Recorder.CancelSession') || 'Cancel Session',
         duration: game.i18n?.localize('VOXCHRONICLE.Recorder.Duration') || 'Duration',
         status: game.i18n?.localize('VOXCHRONICLE.Recorder.Status') || 'Status',
+        segments: game.i18n?.localize('VOXCHRONICLE.Recorder.Segments') || 'Segments:',
+        speakers: game.i18n?.localize('VOXCHRONICLE.Recorder.Speakers') || 'Speakers:',
         notConfigured: game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
           'Please configure your API keys in module settings.',
         settings: game.i18n?.localize('VOXCHRONICLE.Buttons.Settings') || 'Settings',
