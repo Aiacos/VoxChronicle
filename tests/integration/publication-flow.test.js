@@ -165,6 +165,7 @@ function createMockSessionData() {
       {
         success: true,
         url: 'https://example.com/generated-gandalf-portrait.png',
+        entityType: 'character',
         meta: {
           characterName: 'Gandalf'
         }
@@ -296,19 +297,8 @@ describe('Publication Flow Integration', () => {
 
     // Mock global fetch
     mockFetch = vi.fn((url, options) => {
-      const method = options?.method || 'GET';
-
-      // Image upload - check FIRST before other POST operations (uses FormData)
-      if (url.includes('/1.0/campaigns/') && method === 'POST' && options?.body instanceof FormData) {
-        return Promise.resolve({
-          ok: true,
-          headers: createMockHeaders(),
-          json: () => Promise.resolve(mockResponses.imageUpload)
-        });
-      }
-
       // Kanka API - Journal creation
-      if (url.includes('/1.0/campaigns/') && url.includes('/journals') && method === 'POST') {
+      if (url.includes('/1.0/campaigns/') && url.includes('/journals') && options?.method === 'POST') {
         return Promise.resolve({
           ok: true,
           headers: createMockHeaders(),
@@ -318,25 +308,44 @@ describe('Publication Flow Integration', () => {
 
       // Kanka API - Character operations
       if (url.includes('/1.0/campaigns/') && url.includes('/characters')) {
-        if (method === 'POST') {
-          // Create operation
+        if (url.includes('?') || options?.method === 'GET') {
+          // List operation (check for duplicates)
+          return Promise.resolve({
+            ok: true,
+            headers: createMockHeaders(),
+            json: () => Promise.resolve(mockResponses.listEmpty)
+          });
+        }
+        if (options?.method === 'POST') {
+          // Check if this is an image upload (has FormData body) or entity creation (has JSON body)
+          if (options?.body instanceof FormData) {
+            // Image upload
+            return Promise.resolve({
+              ok: true,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve(mockResponses.imageUpload)
+            });
+          }
+          // Entity creation
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
             json: () => Promise.resolve(mockResponses.characterCreate)
           });
         }
-        // List/search operation (GET with or without query string)
-        return Promise.resolve({
-          ok: true,
-          headers: createMockHeaders(),
-          json: () => Promise.resolve(mockResponses.listEmpty)
-        });
       }
 
       // Kanka API - Location operations
       if (url.includes('/1.0/campaigns/') && url.includes('/locations')) {
-        if (method === 'POST') {
+        if (url.includes('?') || options?.method === 'GET') {
+          // List operation (check for duplicates)
+          return Promise.resolve({
+            ok: true,
+            headers: createMockHeaders(),
+            json: () => Promise.resolve(mockResponses.listEmpty)
+          });
+        }
+        if (options?.method === 'POST') {
           // Create operation
           return Promise.resolve({
             ok: true,
@@ -344,17 +353,19 @@ describe('Publication Flow Integration', () => {
             json: () => Promise.resolve(mockResponses.locationCreate)
           });
         }
-        // List/search operation
-        return Promise.resolve({
-          ok: true,
-          headers: createMockHeaders(),
-          json: () => Promise.resolve(mockResponses.listEmpty)
-        });
       }
 
       // Kanka API - Item operations
       if (url.includes('/1.0/campaigns/') && url.includes('/items')) {
-        if (method === 'POST') {
+        if (url.includes('?') || options?.method === 'GET') {
+          // List operation (check for duplicates)
+          return Promise.resolve({
+            ok: true,
+            headers: createMockHeaders(),
+            json: () => Promise.resolve(mockResponses.listEmpty)
+          });
+        }
+        if (options?.method === 'POST') {
           // Create operation
           return Promise.resolve({
             ok: true,
@@ -362,12 +373,6 @@ describe('Publication Flow Integration', () => {
             json: () => Promise.resolve(mockResponses.itemCreate)
           });
         }
-        // List/search operation
-        return Promise.resolve({
-          ok: true,
-          headers: createMockHeaders(),
-          json: () => Promise.resolve(mockResponses.listEmpty)
-        });
       }
 
       // Image download (from OpenAI)
@@ -443,7 +448,7 @@ describe('Publication Flow Integration', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it.skip('should upload images for characters', async () => {
+    it('should upload images for characters', async () => {
       const result = await orchestrator.publishToKanka({
         uploadImages: true
       });
@@ -459,7 +464,9 @@ describe('Publication Flow Integration', () => {
       expect(imageFetchCalls.length).toBeGreaterThan(0);
 
       const imageUploadCalls = mockFetch.mock.calls.filter(call =>
-        call[0].includes('/entities/') && call[0].includes('/image')
+        call[0].includes('/1.0/campaigns/') &&
+        call[0].includes('/characters/') &&
+        call[1]?.body instanceof FormData
       );
       expect(imageUploadCalls.length).toBeGreaterThan(0);
     });
@@ -527,7 +534,8 @@ describe('Publication Flow Integration', () => {
 
       // Verify no image upload API calls were made
       const imageUploadCalls = mockFetch.mock.calls.filter(call =>
-        call[0].includes('/entities/') && call[0].includes('/image')
+        call[0].includes('/1.0/campaigns/') &&
+        call[1]?.body instanceof FormData
       );
       expect(imageUploadCalls).toHaveLength(0);
     });
@@ -537,8 +545,6 @@ describe('Publication Flow Integration', () => {
     it('should detect and skip existing entities', async () => {
       // Mock duplicate detection - character already exists
       mockFetch.mockImplementation((url, options) => {
-        const method = options?.method || 'GET';
-
         if (url.includes('/characters') && url.includes('?')) {
           // Return existing character
           return Promise.resolve({
@@ -572,7 +578,7 @@ describe('Publication Flow Integration', () => {
         }
 
         // Location creation
-        if (url.includes('/locations') && method === 'POST') {
+        if (url.includes('/locations') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -581,7 +587,7 @@ describe('Publication Flow Integration', () => {
         }
 
         // Item creation
-        if (url.includes('/items') && method === 'POST') {
+        if (url.includes('/items') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -590,7 +596,7 @@ describe('Publication Flow Integration', () => {
         }
 
         // Journal creation
-        if (url.includes('/journals') && method === 'POST') {
+        if (url.includes('/journals') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -602,8 +608,7 @@ describe('Publication Flow Integration', () => {
           ok: false,
           status: 404,
           headers: createMockHeaders(),
-          json: () => Promise.resolve({ error: 'Not found' }),
-          text: () => Promise.resolve(JSON.stringify({ error: 'Not found' }))
+          json: () => Promise.resolve({ error: 'Not found' })
         });
       });
 
@@ -631,6 +636,7 @@ describe('Publication Flow Integration', () => {
           ok: false,
           status: 401,
           statusText: 'Unauthorized',
+          headers: createMockHeaders(),
           json: () => Promise.resolve({
             error: 'Invalid API token'
           })
@@ -646,6 +652,7 @@ describe('Publication Flow Integration', () => {
           ok: false,
           status: 429,
           statusText: 'Too Many Requests',
+          headers: createMockHeaders(),
           json: () => Promise.resolve({
             error: 'Rate limit exceeded'
           })
@@ -659,23 +666,21 @@ describe('Publication Flow Integration', () => {
       let callCount = 0;
 
       mockFetch.mockImplementation((url, options) => {
-        const method = options?.method || 'GET';
         callCount++;
 
         // First character creation fails
-        if (url.includes('/characters') && method === 'POST' && callCount === 2) {
+        if (url.includes('/characters') && options?.method === 'POST' && callCount === 2) {
           return Promise.resolve({
             ok: false,
             status: 500,
             statusText: 'Internal Server Error',
             headers: createMockHeaders(),
-            json: () => Promise.resolve({ error: 'Server error' }),
-            text: () => Promise.resolve(JSON.stringify({ error: 'Server error' }))
+            json: () => Promise.resolve({ error: 'Server error' })
           });
         }
 
-        // Duplicate checks succeed (GET requests with query strings)
-        if (url.includes('?') && method === 'GET') {
+        // Duplicate checks succeed
+        if (url.includes('?') && (!options?.method || options?.method === 'GET')) {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -684,7 +689,7 @@ describe('Publication Flow Integration', () => {
         }
 
         // Location creation succeeds
-        if (url.includes('/locations') && method === 'POST') {
+        if (url.includes('/locations') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -693,7 +698,7 @@ describe('Publication Flow Integration', () => {
         }
 
         // Item creation succeeds
-        if (url.includes('/items') && method === 'POST') {
+        if (url.includes('/items') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -702,7 +707,7 @@ describe('Publication Flow Integration', () => {
         }
 
         // Journal creation succeeds
-        if (url.includes('/journals') && method === 'POST') {
+        if (url.includes('/journals') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -714,8 +719,7 @@ describe('Publication Flow Integration', () => {
           ok: false,
           status: 404,
           headers: createMockHeaders(),
-          json: () => Promise.resolve({ error: 'Not found' }),
-          text: () => Promise.resolve(JSON.stringify({ error: 'Not found' }))
+          json: () => Promise.resolve({ error: 'Not found' })
         });
       });
 
@@ -734,8 +738,6 @@ describe('Publication Flow Integration', () => {
 
     it('should handle image upload errors gracefully', async () => {
       mockFetch.mockImplementation((url, options) => {
-        const method = options?.method || 'GET';
-
         // Entity creation succeeds
         if (url.includes('/characters') && url.includes('?')) {
           return Promise.resolve({
@@ -745,7 +747,18 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/characters') && method === 'POST') {
+        if (url.includes('/characters') && options?.method === 'POST') {
+          // Check if this is an image upload (FormData) - should fail
+          if (options?.body instanceof FormData) {
+            return Promise.resolve({
+              ok: false,
+              status: 500,
+              statusText: 'Internal Server Error',
+              headers: createMockHeaders(),
+              json: () => Promise.resolve({ error: 'Upload failed' })
+            });
+          }
+          // Entity creation - should succeed
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -761,7 +774,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/locations') && method === 'POST') {
+        if (url.includes('/locations') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -777,7 +790,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/items') && method === 'POST') {
+        if (url.includes('/items') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -785,7 +798,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/journals') && method === 'POST') {
+        if (url.includes('/journals') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -802,24 +815,11 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        // Image upload fails (check for FormData POST to campaigns endpoint)
-        if (method === 'POST' && options?.body instanceof FormData) {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-            headers: createMockHeaders(),
-            json: () => Promise.resolve({ error: 'Upload failed' }),
-            text: () => Promise.resolve(JSON.stringify({ error: 'Upload failed' }))
-          });
-        }
-
         return Promise.resolve({
           ok: false,
           status: 404,
           headers: createMockHeaders(),
-          json: () => Promise.resolve({ error: 'Not found' }),
-          text: () => Promise.resolve(JSON.stringify({ error: 'Not found' }))
+          json: () => Promise.resolve({ error: 'Not found' })
         });
       });
 
@@ -849,8 +849,7 @@ describe('Publication Flow Integration', () => {
       const apiCalls = [];
 
       mockFetch.mockImplementation((url, options) => {
-        const method = options?.method || 'GET';
-        apiCalls.push({ url, method });
+        apiCalls.push({ url, method: options?.method || 'GET' });
 
         // Return appropriate mock responses
         if (url.includes('/characters') && url.includes('?')) {
@@ -861,7 +860,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/characters') && method === 'POST') {
+        if (url.includes('/characters') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -877,7 +876,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/locations') && method === 'POST') {
+        if (url.includes('/locations') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -893,7 +892,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/items') && method === 'POST') {
+        if (url.includes('/items') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -901,7 +900,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/journals') && method === 'POST') {
+        if (url.includes('/journals') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -1018,8 +1017,7 @@ describe('Publication Flow Integration', () => {
       const apiCalls = [];
 
       mockFetch.mockImplementation((url, options) => {
-        const method = options?.method || 'GET';
-        apiCalls.push({ url, method });
+        apiCalls.push({ url, method: options?.method || 'GET' });
 
         // Return appropriate responses
         if (url.includes('?')) {
@@ -1030,7 +1028,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/characters') && method === 'POST') {
+        if (url.includes('/characters') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -1038,7 +1036,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/locations') && method === 'POST') {
+        if (url.includes('/locations') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -1046,7 +1044,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/items') && method === 'POST') {
+        if (url.includes('/items') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -1054,7 +1052,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/journals') && method === 'POST') {
+        if (url.includes('/journals') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),

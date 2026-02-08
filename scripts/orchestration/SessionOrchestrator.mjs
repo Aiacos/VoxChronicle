@@ -1,51 +1,30 @@
 /**
- * SessionOrchestrator - Complete Session Workflow Management
+ * SessionOrchestrator - Complete RPG Session Workflow Management
  *
- * Central orchestrator that manages the complete VoxChronicle session workflow:
- * 1. Start/stop audio recording
- * 2. Process transcription with speaker diarization
- * 3. Extract entities and identify salient moments
- * 4. Generate AI images for entities and scenes
- * 5. Publish chronicles and entities to Kanka
+ * Orchestrates RPG session processing from recording through transcription,
+ * entity extraction, image generation, and publication to Kanka.io.
  *
  * @class SessionOrchestrator
- * @module vox-chronicle
  */
-
 import { Logger } from '../utils/Logger.mjs';
-import { WhisperError, WhisperErrorType } from '../ai/WhisperBackend.mjs';
-import { LocalWhisperService } from '../ai/LocalWhisperService.mjs';
-import { TranscriptionService } from '../ai/TranscriptionService.mjs';
+import { TranscriptionProcessor } from './TranscriptionProcessor.mjs';
+import { EntityProcessor } from './EntityProcessor.mjs';
+import { ImageProcessor } from './ImageProcessor.mjs';
+import { KankaPublisher } from './KankaPublisher.mjs';
 
-/**
- * Session workflow states
- * @enum {string}
- */
+/** Session workflow states */
 const SessionState = {
-  /** No active session */
   IDLE: 'idle',
-  /** Recording in progress */
   RECORDING: 'recording',
-  /** Recording paused */
   PAUSED: 'paused',
-  /** Processing audio/transcription */
   PROCESSING: 'processing',
-  /** Extracting entities */
   EXTRACTING: 'extracting',
-  /** Generating images */
   GENERATING_IMAGES: 'generating_images',
-  /** Publishing to Kanka */
   PUBLISHING: 'publishing',
-  /** Session complete */
   COMPLETE: 'complete',
-  /** Error occurred */
   ERROR: 'error'
 };
 
-/**
- * Default options for session processing
- * @constant {Object}
- */
 const DEFAULT_SESSION_OPTIONS = {
   autoExtractEntities: true,
   autoExtractRelationships: true,
@@ -59,117 +38,40 @@ const DEFAULT_SESSION_OPTIONS = {
 };
 
 /**
- * SessionOrchestrator class for managing complete session workflows
+ * SessionOrchestrator class for managing complete RPG session workflows
  *
  * @example
- * const orchestrator = new SessionOrchestrator({
- *   audioRecorder,
- *   transcriptionService,
- *   entityExtractor,
- *   imageGenerationService,
- *   kankaService,
- *   narrativeExporter
- * });
- *
+ * const orchestrator = new SessionOrchestrator(services, options);
  * await orchestrator.startSession({ title: 'Session 1' });
- * // ... recording ...
- * const result = await orchestrator.stopSession();
- * await orchestrator.publishToKanka();
  */
 class SessionOrchestrator {
-  /**
-   * Logger instance for this class
-   * @type {Object}
-   * @private
-   */
   _logger = Logger.createChild('SessionOrchestrator');
-
-  /**
-   * Audio recording service
-   * @type {Object|null}
-   * @private
-   */
   _audioRecorder = null;
-
-  /**
-   * Transcription service
-   * @type {Object|null}
-   * @private
-   */
   _transcriptionService = null;
-
-  /**
-   * Entity extraction service
-   * @type {Object|null}
-   * @private
-   */
   _entityExtractor = null;
-
-  /**
-   * Image generation service
-   * @type {Object|null}
-   * @private
-   */
   _imageGenerationService = null;
-
-  /**
-   * Kanka API service
-   * @type {Object|null}
-   * @private
-   */
   _kankaService = null;
-
-  /**
-   * Narrative exporter for chronicle formatting
-   * @type {Object|null}
-   * @private
-   */
   _narrativeExporter = null;
-
-  /**
-   * Current session state
-   * @type {string}
-   * @private
-   */
   _state = SessionState.IDLE;
-
-  /**
-   * Current session data
-   * @type {SessionData|null}
-   * @private
-   */
   _currentSession = null;
-
-  /**
-   * Event callbacks
-   * @type {Object}
-   * @private
-   */
   _callbacks = {
     onStateChange: null,
     onProgress: null,
     onError: null,
     onSessionComplete: null
   };
-
-  /**
-   * Transcription configuration for fallback support
-   * @type {Object|null}
-   * @private
-   */
   _transcriptionConfig = null;
+  _transcriptionProcessor = null;
+  _entityProcessor = null;
+  _imageProcessor = null;
+  _kankaPublisher = null;
+  _options = {};
 
   /**
    * Create a new SessionOrchestrator instance
    *
-   * @param {Object} services - Required services
-   * @param {Object} services.audioRecorder - AudioRecorder instance
-   * @param {Object} services.transcriptionService - TranscriptionService instance
-   * @param {Object} [services.entityExtractor] - EntityExtractor instance
-   * @param {Object} [services.imageGenerationService] - ImageGenerationService instance
-   * @param {Object} [services.kankaService] - KankaService instance
-   * @param {Object} [services.narrativeExporter] - NarrativeExporter instance
-   * @param {Object} [options] - Configuration options
+   * @param {Object} [services={}] - Service instances (audioRecorder, transcriptionService, entityExtractor, imageGenerationService, kankaService, narrativeExporter)
+   * @param {Object} [options={}] - Configuration options (see DEFAULT_SESSION_OPTIONS)
    */
   constructor(services = {}, options = {}) {
     this._audioRecorder = services.audioRecorder || null;
@@ -178,123 +80,94 @@ class SessionOrchestrator {
     this._imageGenerationService = services.imageGenerationService || null;
     this._kankaService = services.kankaService || null;
     this._narrativeExporter = services.narrativeExporter || null;
-
     this._options = { ...DEFAULT_SESSION_OPTIONS, ...options };
-
+    this._initializeProcessors();
     this._logger.debug('SessionOrchestrator initialized');
   }
 
-  // ============================================================================
-  // State Management
-  // ============================================================================
+  _initializeProcessors() {
+    this._transcriptionProcessor = this._transcriptionService
+      ? new TranscriptionProcessor({
+          transcriptionService: this._transcriptionService,
+          config: this._transcriptionConfig
+        })
+      : null;
 
-  /**
-   * Get the current session state
-   * @returns {string} Current state from SessionState enum
-   */
-  get state() {
-    return this._state;
+    this._entityProcessor = this._entityExtractor
+      ? new EntityProcessor({
+          entityExtractor: this._entityExtractor,
+          kankaService: this._kankaService
+        })
+      : null;
+
+    this._imageProcessor = this._imageGenerationService
+      ? new ImageProcessor({
+          imageGenerationService: this._imageGenerationService,
+          options: {
+            maxImagesPerSession: this._options.maxImagesPerSession,
+            imageQuality: this._options.imageQuality
+          }
+        })
+      : null;
+
+    this._kankaPublisher = this._kankaService
+      ? new KankaPublisher(
+          this._kankaService,
+          this._narrativeExporter,
+          { chronicleFormat: this._options.chronicleFormat }
+        )
+      : null;
+
+    this._logger.debug('Processors initialized');
   }
 
-  /**
-   * Check if a session is active (recording or processing)
-   * @returns {boolean} True if session is active
-   */
+  get state() { return this._state; }
+  get currentSession() { return this._currentSession; }
   get isSessionActive() {
     return this._state !== SessionState.IDLE &&
            this._state !== SessionState.COMPLETE &&
            this._state !== SessionState.ERROR;
   }
-
-  /**
-   * Check if currently recording
-   * @returns {boolean} True if recording
-   */
   get isRecording() {
     return this._state === SessionState.RECORDING ||
            this._state === SessionState.PAUSED;
   }
 
   /**
-   * Get the current session data
-   * @returns {SessionData|null} Current session or null
-   */
-  get currentSession() {
-    return this._currentSession;
-  }
-
-  /**
    * Set event callback handlers
    *
-   * @param {Object} callbacks - Callback handlers
-   * @param {Function} [callbacks.onStateChange] - Called when state changes
-   * @param {Function} [callbacks.onProgress] - Called during processing with progress updates
-   * @param {Function} [callbacks.onError] - Called when an error occurs
-   * @param {Function} [callbacks.onSessionComplete] - Called when session completes
+   * @param {Object} callbacks - Callback functions (onStateChange, onProgress, onError, onSessionComplete)
    */
   setCallbacks(callbacks) {
     this._callbacks = { ...this._callbacks, ...callbacks };
   }
 
-  /**
-   * Update state and notify listeners
-   *
-   * @param {string} newState - New state from SessionState enum
-   * @param {Object} [data] - Additional data to pass with state change
-   * @private
-   */
   _updateState(newState, data = {}) {
     const oldState = this._state;
     this._state = newState;
-
     this._logger.debug(`State changed: ${oldState} -> ${newState}`);
-
     if (this._callbacks.onStateChange) {
       this._callbacks.onStateChange(newState, oldState, data);
     }
   }
 
-  /**
-   * Report progress to listeners
-   *
-   * @param {string} stage - Current processing stage
-   * @param {number} progress - Progress percentage (0-100)
-   * @param {string} [message] - Optional status message
-   * @private
-   */
   _reportProgress(stage, progress, message = '') {
     if (this._callbacks.onProgress) {
-      this._callbacks.onProgress({
-        stage,
-        progress,
-        message,
-        state: this._state,
-        session: this._currentSession
-      });
+      this._callbacks.onProgress({ stage, progress, message, state: this._state, session: this._currentSession });
     }
   }
-
-  // ============================================================================
-  // Session Lifecycle
-  // ============================================================================
 
   /**
    * Start a new recording session
    *
-   * @param {Object} [sessionOptions] - Session configuration
-   * @param {string} [sessionOptions.title] - Session title
-   * @param {string} [sessionOptions.date] - Session date (YYYY-MM-DD)
-   * @param {Object} [sessionOptions.speakerMap] - Speaker ID to name mapping
-   * @param {string} [sessionOptions.language] - Transcription language code
-   * @param {Object} [sessionOptions.recordingOptions] - Audio recording options
+   * @param {Object} [sessionOptions={}] - Session configuration (title, date, speakerMap, language, recordingOptions)
    * @returns {Promise<void>}
-   * @throws {Error} If session cannot be started
+   * @throws {Error} If session already active or audio recorder not configured
    */
   async startSession(sessionOptions = {}) {
     if (this.isSessionActive) {
       throw new Error('A session is already active. Stop or cancel the current session first.');
     }
-
     if (!this._audioRecorder) {
       throw new Error('Audio recorder not configured. Cannot start session.');
     }
@@ -302,7 +175,6 @@ class SessionOrchestrator {
     this._logger.log('Starting new session...');
 
     try {
-      // Initialize session data
       this._currentSession = {
         id: this._generateSessionId(),
         title: sessionOptions.title || `Session ${new Date().toLocaleDateString()}`,
@@ -322,12 +194,9 @@ class SessionOrchestrator {
         errors: []
       };
 
-      // Start audio recording
       await this._audioRecorder.startRecording(sessionOptions.recordingOptions || {});
-
       this._updateState(SessionState.RECORDING, { session: this._currentSession });
       this._logger.log(`Session started: ${this._currentSession.title}`);
-
     } catch (error) {
       this._logger.error('Failed to start session:', error);
       this._handleError(error, 'startSession');
@@ -336,41 +205,33 @@ class SessionOrchestrator {
   }
 
   /**
-   * Stop the current recording session and process the audio
+   * Stop the current recording session and optionally process the audio
    *
-   * @param {Object} [options] - Stop options
-   * @param {boolean} [options.processImmediately=true] - Process transcription immediately
-   * @returns {Promise<SessionData>} The session data with audio blob
-   * @throws {Error} If no recording is in progress
+   * @param {Object} [options={}] - Stop options (processImmediately)
+   * @returns {Promise<Object>} Current session data
+   * @throws {Error} If no recording in progress
    */
   async stopSession(options = {}) {
     if (!this.isRecording) {
       throw new Error('No recording in progress to stop.');
     }
 
-    const processImmediately = options.processImmediately ?? true;
-
     this._logger.log('Stopping session...');
 
     try {
-      // Stop audio recording
       const audioBlob = await this._audioRecorder.stopRecording();
-
-      // Update session data
       this._currentSession.endTime = Date.now();
       this._currentSession.audioBlob = audioBlob;
 
       this._logger.log(`Recording stopped. Duration: ${this._getSessionDuration()}s`);
 
-      // Process immediately if requested
-      if (processImmediately) {
+      if (options.processImmediately ?? true) {
         await this.processTranscription();
       } else {
         this._updateState(SessionState.IDLE, { session: this._currentSession });
       }
 
       return this._currentSession;
-
     } catch (error) {
       this._logger.error('Failed to stop session:', error);
       this._handleError(error, 'stopSession');
@@ -378,17 +239,10 @@ class SessionOrchestrator {
     }
   }
 
-  /**
-   * Pause the current recording
-   *
-   * @returns {void}
-   * @throws {Error} If not recording
-   */
   pauseRecording() {
     if (this._state !== SessionState.RECORDING) {
       throw new Error('Cannot pause - not currently recording.');
     }
-
     if (this._audioRecorder?.pause) {
       this._audioRecorder.pause();
       this._updateState(SessionState.PAUSED);
@@ -396,17 +250,10 @@ class SessionOrchestrator {
     }
   }
 
-  /**
-   * Resume a paused recording
-   *
-   * @returns {void}
-   * @throws {Error} If not paused
-   */
   resumeRecording() {
     if (this._state !== SessionState.PAUSED) {
       throw new Error('Cannot resume - recording is not paused.');
     }
-
     if (this._audioRecorder?.resume) {
       this._audioRecorder.resume();
       this._updateState(SessionState.RECORDING);
@@ -414,49 +261,29 @@ class SessionOrchestrator {
     }
   }
 
-  /**
-   * Cancel the current session without saving
-   *
-   * @returns {void}
-   */
   cancelSession() {
-    if (!this.isSessionActive) {
-      return;
-    }
-
+    if (!this.isSessionActive) return;
     this._logger.log('Cancelling session...');
-
-    // Stop recording if active
     if (this._audioRecorder?.cancel) {
       this._audioRecorder.cancel();
     }
-
-    // Clear session data
     this._currentSession = null;
     this._updateState(SessionState.IDLE);
-
     this._logger.log('Session cancelled');
   }
-
-  // ============================================================================
-  // Transcription Processing
-  // ============================================================================
 
   /**
    * Process transcription for the current session
    *
-   * @param {Object} [options] - Processing options
-   * @param {Object} [options.speakerMap] - Override speaker mapping
-   * @param {string} [options.language] - Override language
-   * @returns {Promise<TranscriptionResult>} Transcription result
-   * @throws {Error} If no audio to process
+   * @param {Object} [options={}] - Transcription options (speakerMap, language)
+   * @returns {Promise<Object>} Transcription result
+   * @throws {Error} If no audio blob available or transcription service not configured
    */
   async processTranscription(options = {}) {
     if (!this._currentSession?.audioBlob) {
       throw new Error('No audio blob available for transcription.');
     }
-
-    if (!this._transcriptionService) {
+    if (!this._transcriptionProcessor) {
       throw new Error('Transcription service not configured.');
     }
 
@@ -464,93 +291,33 @@ class SessionOrchestrator {
     this._updateState(SessionState.PROCESSING);
 
     try {
-      const speakerMap = options.speakerMap || this._currentSession.speakerMap || {};
-      const language = options.language || this._currentSession.language;
-
-      // Determine current transcription mode
-      const isLocalService = this._transcriptionService instanceof LocalWhisperService;
-      const mode = this._transcriptionConfig?.mode || (isLocalService ? 'local' : 'api');
-
-      this._reportProgress('transcription', 0, `Starting transcription (${mode} mode)...`);
-
-      // Transcribe with speaker diarization
-      let transcriptResult;
-      try {
-        transcriptResult = await this._transcriptionService.transcribe(
-          this._currentSession.audioBlob,
-          {
-            speakerMap,
-            language,
-            onProgress: (progress) => {
-              this._reportProgress('transcription', progress.progress,
-                `Transcribing chunk ${progress.currentChunk}/${progress.totalChunks}`);
-            }
-          }
-        );
-      } catch (transcriptionError) {
-        // Handle fallback for auto mode
-        if (isLocalService && mode === 'auto') {
-          this._logger.warn('Local transcription failed, attempting fallback to API...', transcriptionError.message);
-
-          // Check if we have API key for fallback
-          if (!this._transcriptionConfig?.openaiApiKey) {
-            throw new Error(
-              'Local transcription failed and no OpenAI API key configured for fallback. ' +
-              `Error: ${transcriptionError.message}`
-            );
-          }
-
-          this._reportProgress('transcription', 0, 'Falling back to API transcription...');
-
-          // Create API service for fallback
-          const apiService = new TranscriptionService(this._transcriptionConfig.openaiApiKey);
-
-          this._logger.log('Using OpenAI API as fallback');
-
-          // Retry with API service
-          transcriptResult = await apiService.transcribe(
-            this._currentSession.audioBlob,
-            {
-              speakerMap,
-              language,
-              onProgress: (progress) => {
-                this._reportProgress('transcription', progress.progress,
-                  `Transcribing chunk ${progress.currentChunk}/${progress.totalChunks} (API fallback)`);
-              }
-            }
-          );
-
-          this._logger.log('Fallback to API transcription successful');
-        } else {
-          // Re-throw if not in auto mode or not a local service error
-          throw transcriptionError;
+      const transcriptResult = await this._transcriptionProcessor.processTranscription(
+        this._currentSession.audioBlob,
+        {
+          speakerMap: options.speakerMap || this._currentSession.speakerMap || {},
+          language: options.language || this._currentSession.language,
+          onProgress: (progress, message) => this._reportProgress('transcription', progress, message)
         }
-      }
+      );
 
       this._currentSession.transcript = transcriptResult;
-      this._reportProgress('transcription', 100, 'Transcription complete');
-
       this._logger.log(`Transcription complete: ${transcriptResult.segments?.length || 0} segments`);
 
-      // Extract entities if enabled
-      if (this._options.autoExtractEntities && this._entityExtractor) {
+      if (this._options.autoExtractEntities && this._entityProcessor) {
         await this._extractEntities();
       }
 
-      // Generate images if enabled
-      if (this._options.autoGenerateImages && this._imageGenerationService) {
+      if (this._options.autoGenerateImages && this._imageProcessor) {
         await this._generateImages();
       }
 
       this._updateState(SessionState.COMPLETE, { session: this._currentSession });
 
-      // Notify completion
       if (this._callbacks.onSessionComplete) {
         this._callbacks.onSessionComplete(this._currentSession);
       }
 
       return transcriptResult;
-
     } catch (error) {
       this._logger.error('Transcription failed:', error);
       this._handleError(error, 'processTranscription');
@@ -558,332 +325,167 @@ class SessionOrchestrator {
     }
   }
 
-  // ============================================================================
-  // Entity Extraction
-  // ============================================================================
-
-  /**
-   * Extract entities from the transcription
-   *
-   * @param {Object} [options] - Extraction options
-   * @returns {Promise<Object>} Extracted entities
-   * @private
-   */
   async _extractEntities(options = {}) {
     if (!this._currentSession?.transcript?.text) {
       this._logger.warn('No transcript text available for entity extraction');
       return null;
     }
-
-    if (!this._entityExtractor) {
-      this._logger.warn('Entity extractor not configured');
+    if (!this._entityProcessor) {
+      this._logger.warn('Entity processor not configured');
       return null;
     }
 
     this._logger.log('Extracting entities...');
     this._updateState(SessionState.EXTRACTING);
-    this._reportProgress('extraction', 0, 'Extracting entities from transcript...');
 
-    try {
-      // Get existing entities from Kanka to avoid duplicates
-      let existingEntities = [];
-      if (this._kankaService) {
-        try {
-          existingEntities = await this._getExistingKankaEntities();
-        } catch (error) {
-          this._logger.warn('Could not fetch existing Kanka entities:', error.message);
-        }
+    const extractionResult = await this._entityProcessor.extractEntities(
+      this._currentSession.transcript.text,
+      {
+        ...options,
+        onProgress: (progress, message) => this._reportProgress('extraction', progress, message)
       }
+    );
 
-      // Extract entities and salient moments
-      const extractionResult = await this._entityExtractor.extractAll(
-        this._currentSession.transcript.text,
-        {
-          existingEntities,
-          ...options
-        }
-      );
-
-      this._currentSession.entities = {
-        characters: extractionResult.characters || [],
-        locations: extractionResult.locations || [],
-        items: extractionResult.items || []
-      };
-      this._currentSession.moments = extractionResult.moments || [];
-
-      this._reportProgress('extraction', 100, 'Entity extraction complete');
-
-      this._logger.log(
-        `Extracted ${extractionResult.totalCount || 0} entities, ` +
-        `${this._currentSession.moments.length} salient moments`
-      );
-
-      // Extract relationships if enabled
-      if (this._options.autoExtractRelationships && this._entityExtractor.extractRelationships) {
-        await this._extractRelationships(extractionResult);
-      }
-
-      return extractionResult;
-
-    } catch (error) {
-      this._logger.error('Entity extraction failed:', error);
+    if (!extractionResult) {
       this._currentSession.errors.push({
         stage: 'extraction',
-        error: error.message,
+        error: 'Entity extraction failed',
         timestamp: Date.now()
       });
-      // Don't throw - extraction failure shouldn't stop the workflow
       return null;
     }
+
+    this._currentSession.entities = {
+      characters: extractionResult.characters || [],
+      locations: extractionResult.locations || [],
+      items: extractionResult.items || []
+    };
+    this._currentSession.moments = extractionResult.moments || [];
+
+    this._logger.log(
+      `Extracted ${extractionResult.totalCount || 0} entities, ` +
+      `${this._currentSession.moments.length} salient moments`
+    );
+
+    if (this._options.autoExtractRelationships) {
+      await this._extractRelationships(extractionResult);
+    }
+
+    return extractionResult;
   }
 
-  /**
-   * Extract relationships from the transcription
-   *
-   * @param {Object} extractionResult - Entity extraction result
-   * @returns {Promise<Array>} Extracted relationships
-   * @private
-   */
   async _extractRelationships(extractionResult) {
-    if (!this._currentSession?.transcript?.text) {
-      this._logger.warn('No transcript text available for relationship extraction');
-      return null;
-    }
-
-    if (!this._entityExtractor?.extractRelationships) {
-      this._logger.warn('Entity extractor does not support relationship extraction');
+    if (!this._currentSession?.transcript?.text || !this._entityProcessor) {
+      this._logger.warn('Cannot extract relationships - missing transcript or processor');
       return null;
     }
 
     this._logger.log('Extracting relationships...');
-    this._reportProgress('extraction', 0, 'Extracting relationships from transcript...');
 
-    try {
-      // Build flat list of all entities
-      const allEntities = [
-        ...(extractionResult.characters || []),
-        ...(extractionResult.locations || []),
-        ...(extractionResult.items || [])
-      ];
+    const allEntities = [
+      ...(extractionResult.characters || []),
+      ...(extractionResult.locations || []),
+      ...(extractionResult.items || [])
+    ];
 
-      if (allEntities.length === 0) {
-        this._logger.debug('No entities to extract relationships for');
-        return [];
+    if (allEntities.length === 0) {
+      this._logger.debug('No entities to extract relationships for');
+      return [];
+    }
+
+    const relationships = await this._entityProcessor.extractRelationships(
+      this._currentSession.transcript.text,
+      extractionResult,
+      {
+        campaignContext: this._currentSession.title,
+        minConfidence: 5,
+        onProgress: (progress, message) => this._reportProgress('extraction', progress, message)
       }
+    );
 
-      // Extract relationships
-      const relationships = await this._entityExtractor.extractRelationships(
-        this._currentSession.transcript.text,
-        allEntities,
-        {
-          campaignContext: this._currentSession.title,
-          minConfidence: 5
-        }
-      );
-
-      this._currentSession.relationships = relationships || [];
-
-      this._reportProgress('extraction', 100, 'Relationship extraction complete');
-
-      this._logger.log(`Extracted ${relationships?.length || 0} relationships`);
-
-      return relationships;
-
-    } catch (error) {
-      this._logger.error('Relationship extraction failed:', error);
+    if (relationships) {
+      this._currentSession.relationships = relationships;
+      this._logger.log(`Extracted ${relationships.length} relationships`);
+    } else {
       this._currentSession.errors.push({
         stage: 'relationship_extraction',
-        error: error.message,
+        error: 'Relationship extraction failed',
         timestamp: Date.now()
       });
-      // Don't throw - relationship extraction failure shouldn't stop the workflow
-      return [];
-    }
-  }
-
-  /**
-   * Get list of existing entity names from Kanka
-   *
-   * @returns {Promise<string[]>} Array of entity names
-   * @private
-   */
-  async _getExistingKankaEntities() {
-    const names = [];
-
-    try {
-      // Fetch first page of each entity type
-      const [characters, locations, items] = await Promise.all([
-        this._kankaService.listCharacters({ page: 1 }),
-        this._kankaService.listLocations({ page: 1 }),
-        this._kankaService.listItems({ page: 1 })
-      ]);
-
-      if (characters?.data) {
-        names.push(...characters.data.map(c => c.name));
-      }
-      if (locations?.data) {
-        names.push(...locations.data.map(l => l.name));
-      }
-      if (items?.data) {
-        names.push(...items.data.map(i => i.name));
-      }
-
-    } catch (error) {
-      this._logger.warn('Failed to fetch existing entities:', error.message);
     }
 
-    return names;
+    return relationships || [];
   }
 
-  // ============================================================================
-  // Image Generation
-  // ============================================================================
-
-  /**
-   * Generate images for entities and moments
-   *
-   * @returns {Promise<Array>} Generated image results
-   * @private
-   */
   async _generateImages() {
-    if (!this._imageGenerationService) {
-      this._logger.warn('Image generation service not configured');
+    if (!this._imageProcessor) {
+      this._logger.warn('Image processor not configured');
       return [];
     }
 
-    const maxImages = this._options.maxImagesPerSession || 5;
-    const requests = [];
-
-    // Build image generation requests from moments
-    if (this._currentSession.moments?.length > 0) {
-      for (const moment of this._currentSession.moments.slice(0, maxImages)) {
-        if (moment.imagePrompt) {
-          requests.push({
-            entityType: 'scene',
-            description: moment.imagePrompt,
-            options: { quality: this._options.imageQuality },
-            meta: { momentId: moment.id, title: moment.title }
-          });
-        }
-      }
-    }
-
-    // Add character portraits if we have room
-    const remainingSlots = maxImages - requests.length;
-    if (remainingSlots > 0 && this._currentSession.entities?.characters?.length > 0) {
-      const npcs = this._currentSession.entities.characters
-        .filter(c => c.isNPC)
-        .slice(0, remainingSlots);
-
-      for (const character of npcs) {
-        requests.push({
-          entityType: 'character',
-          description: `${character.name}: ${character.description}`,
-          options: { quality: this._options.imageQuality },
-          meta: { characterName: character.name }
-        });
-      }
-    }
-
-    if (requests.length === 0) {
-      this._logger.debug('No image generation requests');
-      return [];
-    }
-
-    this._logger.log(`Generating ${requests.length} images...`);
+    this._logger.log('Generating images...');
     this._updateState(SessionState.GENERATING_IMAGES);
-    this._reportProgress('images', 0, `Generating ${requests.length} images...`);
 
-    try {
-      const results = await this._imageGenerationService.generateBatch(
-        requests,
-        (progress) => {
-          this._reportProgress('images', progress.progress,
-            `Generating image ${progress.current}/${progress.total}`);
-        }
-      );
+    const results = await this._imageProcessor.generateImages(
+      this._currentSession.moments || [],
+      this._currentSession.entities || {},
+      {
+        maxImagesPerSession: this._options.maxImagesPerSession,
+        imageQuality: this._options.imageQuality,
+        onProgress: (progress, message) => this._reportProgress('images', progress, message)
+      }
+    );
 
-      // Store results with metadata
-      this._currentSession.images = results.map((result, index) => ({
-        ...result,
-        meta: requests[index]?.meta || {}
-      }));
-
-      this._reportProgress('images', 100, 'Image generation complete');
+    if (results && results.length > 0) {
+      this._currentSession.images = results;
       this._logger.log(`Generated ${results.filter(r => r.success !== false).length} images`);
-
-      return results;
-
-    } catch (error) {
-      this._logger.error('Image generation failed:', error);
+    } else {
       this._currentSession.errors.push({
         stage: 'image_generation',
-        error: error.message,
+        error: 'Image generation failed',
         timestamp: Date.now()
       });
-      return [];
     }
-  }
 
-  // ============================================================================
-  // Kanka Publishing
-  // ============================================================================
+    return results;
+  }
 
   /**
    * Publish the session to Kanka
-   * Creates journal entry (chronicle) and optionally entities with images
    *
-   * @param {Object} [options] - Publishing options
-   * @param {boolean} [options.createEntities=true] - Create character/location/item entities
-   * @param {boolean} [options.uploadImages=true] - Upload generated images to entities
-   * @param {boolean} [options.createChronicle=true] - Create journal entry
-   * @returns {Promise<KankaPublishResult>} Publishing results
-   * @throws {Error} If publishing fails
+   * @param {Object} [options={}] - Publishing options (createEntities, uploadImages, createChronicle)
+   * @returns {Promise<Object>} Publishing results
+   * @throws {Error} If no session data or Kanka service not configured
    */
   async publishToKanka(options = {}) {
     if (!this._currentSession) {
       throw new Error('No session data available to publish.');
     }
-
-    if (!this._kankaService) {
+    if (!this._kankaPublisher) {
       throw new Error('Kanka service not configured.');
     }
 
-    const createEntities = options.createEntities ?? true;
-    const uploadImages = options.uploadImages ?? true;
-    const createChronicle = options.createChronicle ?? true;
-
     this._logger.log('Publishing to Kanka...');
     this._updateState(SessionState.PUBLISHING);
-    this._reportProgress('publishing', 0, 'Preparing Kanka export...');
-
-    const results = {
-      journal: null,
-      characters: [],
-      locations: [],
-      items: [],
-      images: [],
-      errors: []
-    };
 
     try {
-      // Create entities first (so we can link them to the journal)
-      if (createEntities && this._currentSession.entities) {
-        await this._createKankaEntities(results, uploadImages);
-      }
-
-      // Create chronicle journal
-      if (createChronicle) {
-        await this._createKankaChronicle(results);
-      }
+      const results = await this._kankaPublisher.publishSession(
+        this._currentSession,
+        {
+          createEntities: options.createEntities ?? true,
+          uploadImages: options.uploadImages ?? true,
+          createChronicle: options.createChronicle ?? true,
+          onProgress: (progress, message) => this._reportProgress('publishing', progress, message)
+        }
+      );
 
       this._currentSession.kankaResults = results;
-      this._reportProgress('publishing', 100, 'Publishing complete');
+      if (results.journal) {
+        this._currentSession.chronicle = results.journal;
+      }
 
       this._logger.log('Published to Kanka successfully');
-
       return results;
-
     } catch (error) {
       this._logger.error('Publishing failed:', error);
       this._handleError(error, 'publishToKanka');
@@ -891,283 +493,38 @@ class SessionOrchestrator {
     }
   }
 
-  /**
-   * Create entities in Kanka
-   *
-   * @param {Object} results - Results object to populate
-   * @param {boolean} uploadImages - Whether to upload images
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _createKankaEntities(results, uploadImages) {
-    const entities = this._currentSession.entities;
-
-    // Create characters
-    if (entities.characters?.length > 0) {
-      this._reportProgress('publishing', 20, 'Creating characters...');
-
-      for (const character of entities.characters) {
-        try {
-          const created = await this._kankaService.createIfNotExists('characters', {
-            name: character.name,
-            entry: character.description,
-            type: character.isNPC ? 'NPC' : 'PC'
-          });
-
-          if (!created._alreadyExisted) {
-            results.characters.push(created);
-
-            // Upload portrait if available
-            if (uploadImages) {
-              const portrait = this._findImageForEntity('character', character.name);
-              if (portrait?.url) {
-                try {
-                  await this._kankaService.uploadCharacterImage(created.id, portrait.url);
-                  results.images.push({ entityId: created.id, entityType: 'character' });
-                } catch (imgError) {
-                  this._logger.warn(`Failed to upload portrait for ${character.name}:`, imgError.message);
-                }
-              }
-            }
-          }
-        } catch (error) {
-          results.errors.push({ entity: character.name, type: 'character', error: error.message });
-        }
-      }
-    }
-
-    // Create locations
-    if (entities.locations?.length > 0) {
-      this._reportProgress('publishing', 40, 'Creating locations...');
-
-      for (const location of entities.locations) {
-        try {
-          const created = await this._kankaService.createIfNotExists('locations', {
-            name: location.name,
-            entry: location.description,
-            type: location.type
-          });
-
-          if (!created._alreadyExisted) {
-            results.locations.push(created);
-          }
-        } catch (error) {
-          results.errors.push({ entity: location.name, type: 'location', error: error.message });
-        }
-      }
-    }
-
-    // Create items
-    if (entities.items?.length > 0) {
-      this._reportProgress('publishing', 60, 'Creating items...');
-
-      for (const item of entities.items) {
-        try {
-          const created = await this._kankaService.createIfNotExists('items', {
-            name: item.name,
-            entry: item.description,
-            type: item.type
-          });
-
-          if (!created._alreadyExisted) {
-            results.items.push(created);
-          }
-        } catch (error) {
-          results.errors.push({ entity: item.name, type: 'item', error: error.message });
-        }
-      }
-    }
-  }
-
-  /**
-   * Create chronicle journal in Kanka
-   *
-   * @param {Object} results - Results object to populate
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _createKankaChronicle(results) {
-    this._reportProgress('publishing', 80, 'Creating chronicle...');
-
-    // Format chronicle using NarrativeExporter if available
-    let chronicleData;
-
-    if (this._narrativeExporter) {
-      chronicleData = this._narrativeExporter.export({
-        title: this._currentSession.title,
-        date: this._currentSession.date,
-        segments: this._currentSession.transcript?.segments || [],
-        entities: this._currentSession.entities,
-        moments: this._currentSession.moments
-      }, {
-        format: this._options.chronicleFormat,
-        includeEntities: true,
-        includeMoments: true,
-        includeTimestamps: false
-      });
-    } else {
-      // Basic chronicle without NarrativeExporter
-      chronicleData = {
-        name: this._currentSession.title,
-        entry: this._formatBasicChronicle(),
-        type: 'Session Chronicle',
-        date: this._currentSession.date
-      };
-    }
-
-    try {
-      const journal = await this._kankaService.createJournal(chronicleData);
-      results.journal = journal;
-
-      this._currentSession.chronicle = journal;
-      this._logger.log(`Chronicle created: ${journal.name} (ID: ${journal.id})`);
-
-    } catch (error) {
-      results.errors.push({ entity: chronicleData.name, type: 'journal', error: error.message });
-      throw error;
-    }
-  }
-
-  /**
-   * Format a basic chronicle without NarrativeExporter
-   *
-   * @returns {string} Basic HTML chronicle content
-   * @private
-   */
-  _formatBasicChronicle() {
-    const parts = [];
-    const session = this._currentSession;
-
-    // Header
-    parts.push(`<h2>${session.title}</h2>`);
-    parts.push(`<p><em>Date: ${session.date}</em></p>`);
-
-    // Summary of entities
-    if (session.entities) {
-      const entityCount =
-        (session.entities.characters?.length || 0) +
-        (session.entities.locations?.length || 0) +
-        (session.entities.items?.length || 0);
-
-      if (entityCount > 0) {
-        parts.push(`<p>This session introduced ${entityCount} new entities.</p>`);
-      }
-    }
-
-    // Basic transcript
-    if (session.transcript?.segments?.length > 0) {
-      parts.push('<h3>Transcript</h3>');
-      parts.push('<div class="transcript">');
-
-      for (const segment of session.transcript.segments.slice(0, 50)) {
-        const speaker = segment.speaker || 'Unknown';
-        const text = segment.text || '';
-        parts.push(`<p><strong>${speaker}:</strong> ${text}</p>`);
-      }
-
-      if (session.transcript.segments.length > 50) {
-        parts.push(`<p><em>... and ${session.transcript.segments.length - 50} more segments</em></p>`);
-      }
-
-      parts.push('</div>');
-    }
-
-    parts.push('<hr>');
-    parts.push('<p><em>Generated by VoxChronicle</em></p>');
-
-    return parts.join('\n');
-  }
-
-  /**
-   * Find a generated image for an entity
-   *
-   * @param {string} entityType - Entity type
-   * @param {string} entityName - Entity name
-   * @returns {Object|null} Image result or null
-   * @private
-   */
-  _findImageForEntity(entityType, entityName) {
-    if (!this._currentSession.images?.length) {
-      return null;
-    }
-
-    return this._currentSession.images.find(img => {
-      if (img.success === false) return false;
-      if (img.entityType !== entityType) return false;
-      if (img.meta?.characterName === entityName) return true;
-      return false;
-    }) || null;
-  }
-
-  // ============================================================================
-  // Service Management
-  // ============================================================================
-
-  /**
-   * Update service instances
-   *
-   * @param {Object} services - Service instances to update
-   */
   setServices(services) {
-    if (services.audioRecorder !== undefined) {
-      this._audioRecorder = services.audioRecorder;
-    }
-    if (services.transcriptionService !== undefined) {
-      this._transcriptionService = services.transcriptionService;
-    }
-    if (services.entityExtractor !== undefined) {
-      this._entityExtractor = services.entityExtractor;
-    }
-    if (services.imageGenerationService !== undefined) {
-      this._imageGenerationService = services.imageGenerationService;
-    }
-    if (services.kankaService !== undefined) {
-      this._kankaService = services.kankaService;
-    }
-    if (services.narrativeExporter !== undefined) {
-      this._narrativeExporter = services.narrativeExporter;
-    }
+    if (services.audioRecorder !== undefined) this._audioRecorder = services.audioRecorder;
+    if (services.transcriptionService !== undefined) this._transcriptionService = services.transcriptionService;
+    if (services.entityExtractor !== undefined) this._entityExtractor = services.entityExtractor;
+    if (services.imageGenerationService !== undefined) this._imageGenerationService = services.imageGenerationService;
+    if (services.kankaService !== undefined) this._kankaService = services.kankaService;
+    if (services.narrativeExporter !== undefined) this._narrativeExporter = services.narrativeExporter;
 
+    this._initializeProcessors();
     this._logger.debug('Services updated');
   }
 
-  /**
-   * Update options
-   *
-   * @param {Object} options - Options to update
-   */
   setOptions(options) {
     this._options = { ...this._options, ...options };
     this._logger.debug('Options updated');
   }
 
-  /**
-   * Set transcription configuration for fallback support
-   *
-   * @param {Object} config - Transcription configuration
-   * @param {string} config.mode - Transcription mode ('api', 'local', or 'auto')
-   * @param {string} [config.openaiApiKey] - OpenAI API key for fallback
-   * @param {string} [config.whisperBackendUrl] - Whisper backend URL
-   */
   setTranscriptionConfig(config) {
     this._transcriptionConfig = config;
+    if (this._transcriptionService) {
+      this._transcriptionProcessor = new TranscriptionProcessor({
+        transcriptionService: this._transcriptionService,
+        config: this._transcriptionConfig
+      });
+    }
     this._logger.debug('Transcription config updated for fallback support');
   }
 
-  /**
-   * Get current options
-   *
-   * @returns {Object} Current options
-   */
   getOptions() {
     return { ...this._options };
   }
 
-  /**
-   * Check if all required services are configured
-   *
-   * @returns {Object} Service status
-   */
   getServicesStatus() {
     return {
       audioRecorder: !!this._audioRecorder,
@@ -1182,76 +539,37 @@ class SessionOrchestrator {
     };
   }
 
-  // ============================================================================
-  // Utility Methods
-  // ============================================================================
-
-  /**
-   * Generate a unique session ID
-   *
-   * @returns {string} Session ID
-   * @private
-   */
   _generateSessionId() {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substring(2, 8);
     return `session-${timestamp}-${random}`;
   }
 
-  /**
-   * Get session duration in seconds
-   *
-   * @returns {number} Duration in seconds
-   * @private
-   */
   _getSessionDuration() {
     if (!this._currentSession?.startTime) return 0;
     const endTime = this._currentSession.endTime || Date.now();
     return Math.floor((endTime - this._currentSession.startTime) / 1000);
   }
 
-  /**
-   * Handle and log errors
-   *
-   * @param {Error} error - Error object
-   * @param {string} stage - Stage where error occurred
-   * @private
-   */
   _handleError(error, stage) {
     this._updateState(SessionState.ERROR, { error, stage });
-
     if (this._currentSession) {
-      this._currentSession.errors.push({
-        stage,
-        error: error.message,
-        timestamp: Date.now()
-      });
+      this._currentSession.errors.push({ stage, error: error.message, timestamp: Date.now() });
     }
-
     if (this._callbacks.onError) {
       this._callbacks.onError(error, stage);
     }
   }
 
-  /**
-   * Reset orchestrator to idle state
-   * Clears current session data
-   */
   reset() {
     if (this._audioRecorder?.cancel) {
       this._audioRecorder.cancel();
     }
-
     this._currentSession = null;
     this._state = SessionState.IDLE;
     this._logger.debug('Orchestrator reset');
   }
 
-  /**
-   * Get a summary of the current session
-   *
-   * @returns {Object|null} Session summary or null
-   */
   getSessionSummary() {
     if (!this._currentSession) return null;
 
@@ -1278,39 +596,4 @@ class SessionOrchestrator {
   }
 }
 
-/**
- * @typedef {Object} SessionData
- * @property {string} id - Unique session identifier
- * @property {string} title - Session title
- * @property {string} date - Session date (YYYY-MM-DD)
- * @property {number} startTime - Session start timestamp
- * @property {number|null} endTime - Session end timestamp
- * @property {Object} speakerMap - Speaker ID to name mapping
- * @property {string|null} language - Transcription language
- * @property {Blob|null} audioBlob - Recorded audio blob
- * @property {Object|null} transcript - Transcription result
- * @property {Object|null} entities - Extracted entities
- * @property {Array|null} relationships - Extracted relationships between entities
- * @property {Array|null} moments - Salient moments
- * @property {Array} images - Generated images
- * @property {Object|null} chronicle - Created Kanka journal
- * @property {Object|null} kankaResults - Full Kanka publishing results
- * @property {Array} errors - Array of errors encountered
- */
-
-/**
- * @typedef {Object} KankaPublishResult
- * @property {Object|null} journal - Created journal entry
- * @property {Array} characters - Created character entities
- * @property {Array} locations - Created location entities
- * @property {Array} items - Created item entities
- * @property {Array} images - Uploaded images
- * @property {Array} errors - Publishing errors
- */
-
-// Export all classes and enums
-export {
-  SessionOrchestrator,
-  SessionState,
-  DEFAULT_SESSION_OPTIONS
-};
+export { SessionOrchestrator, SessionState, DEFAULT_SESSION_OPTIONS };

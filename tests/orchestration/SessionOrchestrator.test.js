@@ -1149,7 +1149,7 @@ describe('SessionOrchestrator', () => {
       expect(orchestrator.currentSession.errors).toHaveLength(1);
       expect(orchestrator.currentSession.errors[0]).toMatchObject({
         stage: 'extraction',
-        error: 'Extraction failed',
+        error: 'Entity extraction failed',
         timestamp: expect.any(Number)
       });
     });
