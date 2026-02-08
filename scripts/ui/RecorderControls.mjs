@@ -12,6 +12,7 @@
 
 import { MODULE_ID } from '../main.mjs';
 import { Logger } from '../utils/Logger.mjs';
+import { AudioUtils } from '../utils/AudioUtils.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 import { Settings } from '../core/Settings.mjs';
 import { SessionState } from '../orchestration/SessionOrchestrator.mjs';
