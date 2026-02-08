@@ -247,23 +247,6 @@ class RecorderControls extends Application {
   }
 
   /**
-   * Format duration as HH:MM:SS
-   * @param {number} seconds - Duration in seconds
-   * @returns {string} Formatted duration string
-   * @private
-   */
-  _formatDuration(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  /**
    * Check local backend health status
    * @returns {Promise<string>} Health status: 'connected', 'checking', or 'unavailable'
    * @private
@@ -299,7 +282,7 @@ class RecorderControls extends Application {
     const configStatus = Settings.getConfigurationStatus();
 
     const duration = this._getRecordingDuration();
-    const formattedDuration = this._formatDuration(duration);
+    const formattedDuration = AudioUtils.formatDuration(duration);
 
     // Get transcription mode information
     const transcriptionMode = game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto';
@@ -600,8 +583,8 @@ class RecorderControls extends Application {
 
       ui.notifications?.info(
         game.i18n?.format('VOXCHRONICLE.Notifications.RecordingStopped', {
-          duration: this._formatDuration(duration)
-        }) || `Recording stopped (${this._formatDuration(duration)})`
+          duration: AudioUtils.formatDuration(duration)
+        }) || `Recording stopped (${AudioUtils.formatDuration(duration)})`
       );
 
       this._logger.log('Recording stopped successfully');
