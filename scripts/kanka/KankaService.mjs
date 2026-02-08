@@ -288,10 +288,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Journal data
    */
   async getJournal(journalId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL, journalId);
-    this._logger.debug(`Fetching journal: ${journalId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.JOURNAL, journalId);
   }
 
   /**
@@ -302,10 +299,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated journal data
    */
   async updateJournal(journalId, journalData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL, journalId);
-    this._logger.debug(`Updating journal: ${journalId}`);
-    const response = await this.put(endpoint, journalData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.JOURNAL, journalId, journalData);
   }
 
   /**
@@ -315,10 +309,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteJournal(journalId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.JOURNAL, journalId);
-    this._logger.debug(`Deleting journal: ${journalId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Journal deleted: ${journalId}`);
+    return this._entityManager.delete(KankaEntityType.JOURNAL, journalId);
   }
 
   /**
@@ -391,10 +382,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Character data
    */
   async getCharacter(characterId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER, characterId);
-    this._logger.debug(`Fetching character: ${characterId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.CHARACTER, characterId);
   }
 
   /**
@@ -405,10 +393,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated character data
    */
   async updateCharacter(characterId, characterData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER, characterId);
-    this._logger.debug(`Updating character: ${characterId}`);
-    const response = await this.put(endpoint, characterData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.CHARACTER, characterId, characterData);
   }
 
   /**
@@ -418,10 +403,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteCharacter(characterId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.CHARACTER, characterId);
-    this._logger.debug(`Deleting character: ${characterId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Character deleted: ${characterId}`);
+    return this._entityManager.delete(KankaEntityType.CHARACTER, characterId);
   }
 
   /**
@@ -486,10 +468,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Location data
    */
   async getLocation(locationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION, locationId);
-    this._logger.debug(`Fetching location: ${locationId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.LOCATION, locationId);
   }
 
   /**
@@ -500,10 +479,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated location data
    */
   async updateLocation(locationId, locationData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION, locationId);
-    this._logger.debug(`Updating location: ${locationId}`);
-    const response = await this.put(endpoint, locationData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.LOCATION, locationId, locationData);
   }
 
   /**
@@ -513,10 +489,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteLocation(locationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.LOCATION, locationId);
-    this._logger.debug(`Deleting location: ${locationId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Location deleted: ${locationId}`);
+    return this._entityManager.delete(KankaEntityType.LOCATION, locationId);
   }
 
   /**
@@ -584,10 +557,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Item data
    */
   async getItem(itemId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM, itemId);
-    this._logger.debug(`Fetching item: ${itemId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.ITEM, itemId);
   }
 
   /**
@@ -598,10 +568,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated item data
    */
   async updateItem(itemId, itemData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM, itemId);
-    this._logger.debug(`Updating item: ${itemId}`);
-    const response = await this.put(endpoint, itemData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.ITEM, itemId, itemData);
   }
 
   /**
@@ -611,10 +578,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteItem(itemId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ITEM, itemId);
-    this._logger.debug(`Deleting item: ${itemId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Item deleted: ${itemId}`);
+    return this._entityManager.delete(KankaEntityType.ITEM, itemId);
   }
 
   /**
@@ -686,10 +650,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Organisation data
    */
   async getOrganisation(organisationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
-    this._logger.debug(`Fetching organisation: ${organisationId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.ORGANISATION, organisationId);
   }
 
   /**
@@ -700,10 +661,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated organisation data
    */
   async updateOrganisation(organisationId, organisationData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
-    this._logger.debug(`Updating organisation: ${organisationId}`);
-    const response = await this.put(endpoint, organisationData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.ORGANISATION, organisationId, organisationData);
   }
 
   /**
@@ -713,10 +671,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteOrganisation(organisationId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.ORGANISATION, organisationId);
-    this._logger.debug(`Deleting organisation: ${organisationId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Organisation deleted: ${organisationId}`);
+    return this._entityManager.delete(KankaEntityType.ORGANISATION, organisationId);
   }
 
   /**
@@ -790,10 +745,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Quest data
    */
   async getQuest(questId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
-    this._logger.debug(`Fetching quest: ${questId}`);
-    const response = await this.get(endpoint);
-    return response.data;
+    return this._entityManager.get(KankaEntityType.QUEST, questId);
   }
 
   /**
@@ -804,10 +756,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<Object>} Updated quest data
    */
   async updateQuest(questId, questData) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
-    this._logger.debug(`Updating quest: ${questId}`);
-    const response = await this.put(endpoint, questData);
-    return response.data;
+    return this._entityManager.update(KankaEntityType.QUEST, questId, questData);
   }
 
   /**
@@ -817,10 +766,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteQuest(questId) {
-    const endpoint = this._buildCampaignEndpoint(KankaEntityType.QUEST, questId);
-    this._logger.debug(`Deleting quest: ${questId}`);
-    await this.delete(endpoint);
-    this._logger.log(`Quest deleted: ${questId}`);
+    return this._entityManager.delete(KankaEntityType.QUEST, questId);
   }
 
   /**
