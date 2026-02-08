@@ -101,6 +101,44 @@ class Settings {
       default: ''
     });
 
+    // Transcription Mode (world-wide)
+    // Choose between API-based, local whisper, or automatic mode
+    game.settings.register(MODULE_ID, 'transcriptionMode', {
+      name: 'VOXCHRONICLE.Settings.TranscriptionMode',
+      hint: 'VOXCHRONICLE.Settings.TranscriptionModeHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        'api': 'VOXCHRONICLE.Settings.TranscriptionModeAPI',
+        'local': 'VOXCHRONICLE.Settings.TranscriptionModeLocal',
+        'auto': 'VOXCHRONICLE.Settings.TranscriptionModeAuto'
+      },
+      default: 'auto'
+    });
+
+    // Whisper Backend URL (world-wide)
+    // URL for local whisper.cpp backend
+    game.settings.register(MODULE_ID, 'whisperBackendUrl', {
+      name: 'VOXCHRONICLE.Settings.WhisperBackendUrl',
+      hint: 'VOXCHRONICLE.Settings.WhisperBackendUrlHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'http://localhost:8080'
+    });
+
+    // Show Transcription Mode Indicator (client-side)
+    // Display current transcription mode in the UI
+    game.settings.register(MODULE_ID, 'showTranscriptionModeIndicator', {
+      name: 'VOXCHRONICLE.Settings.ShowTranscriptionModeIndicator',
+      hint: 'VOXCHRONICLE.Settings.ShowTranscriptionModeIndicatorHint',
+      scope: 'client',
+      config: true,
+      type: Boolean,
+      default: true
+    });
+
     // ==========================================
     // Audio Settings
     // ==========================================

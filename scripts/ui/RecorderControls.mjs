@@ -263,6 +263,30 @@ class RecorderControls extends Application {
   }
 
   /**
+   * Check local backend health status
+   * @returns {Promise<string>} Health status: 'connected', 'checking', or 'unavailable'
+   * @private
+   */
+  async _checkLocalBackendHealth() {
+    const vox = VoxChronicle.getInstance();
+    const transcriptionService = vox.transcriptionService;
+
+    // Check if service has a health check method (LocalWhisperService does)
+    if (transcriptionService && typeof transcriptionService.checkHealth === 'function') {
+      try {
+        const isHealthy = await transcriptionService.checkHealth();
+        return isHealthy ? 'connected' : 'unavailable';
+      } catch (error) {
+        this._logger.debug('Local backend health check failed:', error);
+        return 'unavailable';
+      }
+    }
+
+    // If no health check method, assume unavailable
+    return 'unavailable';
+  }
+
+  /**
    * Get data for the template
    * @param {Object} options - Render options
    * @returns {Object} Template data
@@ -275,6 +299,42 @@ class RecorderControls extends Application {
 
     const duration = this._getRecordingDuration();
     const formattedDuration = this._formatDuration(duration);
+
+    // Get transcription mode information
+    const transcriptionMode = game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto';
+    const showModeIndicator = game.settings?.get(MODULE_ID, 'showTranscriptionModeIndicator') !== false;
+
+    // Get mode display info
+    let modeLabel, modeTooltip, modeClass, healthStatus, healthClass;
+    switch (transcriptionMode) {
+      case 'api':
+        modeLabel = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeAPI') || 'API';
+        modeTooltip = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipAPI') || 'Using OpenAI cloud service';
+        modeClass = 'mode-api';
+        healthStatus = null; // No health status for API mode
+        break;
+      case 'local':
+        modeLabel = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeLocal') || 'Local';
+        modeTooltip = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipLocal') || 'Using local Whisper backend';
+        modeClass = 'mode-local';
+        // Check local backend health
+        healthStatus = await this._checkLocalBackendHealth();
+        healthClass = healthStatus === 'connected' ? 'health-connected' :
+                      healthStatus === 'checking' ? 'health-checking' :
+                      'health-unavailable';
+        break;
+      case 'auto':
+      default:
+        modeLabel = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeAuto') || 'Auto';
+        modeTooltip = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipAuto') || 'Automatic mode';
+        modeClass = 'mode-auto';
+        // Check local backend health for auto mode
+        healthStatus = await this._checkLocalBackendHealth();
+        healthClass = healthStatus === 'connected' ? 'health-connected' :
+                      healthStatus === 'checking' ? 'health-checking' :
+                      'health-unavailable';
+        break;
+    }
 
     // Get status text
     let statusText;
@@ -327,6 +387,14 @@ class RecorderControls extends Application {
       isOpenAIConfigured: configStatus.openai,
       isKankaConfigured: configStatus.kanka,
       lastError: this._lastError,
+      // Transcription mode indicator
+      showModeIndicator,
+      transcriptionMode,
+      modeLabel,
+      modeTooltip,
+      modeClass,
+      healthStatus,
+      healthClass,
       // Localization strings
       i18n: {
         title: game.i18n?.localize('VOXCHRONICLE.Recorder.Title') || 'Session Recorder',
@@ -338,7 +406,12 @@ class RecorderControls extends Application {
         status: game.i18n?.localize('VOXCHRONICLE.Recorder.Status') || 'Status',
         notConfigured: game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
           'Please configure your API keys in module settings.',
-        settings: game.i18n?.localize('VOXCHRONICLE.Buttons.Settings') || 'Settings'
+        settings: game.i18n?.localize('VOXCHRONICLE.Buttons.Settings') || 'Settings',
+        cancelSession: game.i18n?.localize('VOXCHRONICLE.Recorder.CancelSession') || 'Cancel Session',
+        transcriptionMode: game.i18n?.localize('VOXCHRONICLE.Recorder.TranscriptionMode') || 'Transcription Mode',
+        localBackendConnected: game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendConnected') || 'Local backend connected',
+        localBackendChecking: game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendChecking') || 'Checking local backend...',
+        localBackendUnavailable: game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendUnavailable') || 'Local backend unavailable'
       }
     };
   }

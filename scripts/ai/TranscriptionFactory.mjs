@@ -1,0 +1,292 @@
+/**
+ * TranscriptionFactory - Factory for Transcription Service Selection
+ *
+ * Creates the appropriate transcription service based on configuration mode:
+ * - 'api': Use OpenAI TranscriptionService (cloud-based)
+ * - 'local': Use LocalWhisperService (privacy-focused, offline)
+ * - 'auto': Try local first, fallback to API if unavailable
+ *
+ * This factory pattern enables seamless switching between transcription
+ * backends without changing orchestration code.
+ *
+ * @class TranscriptionFactory
+ * @module vox-chronicle
+ */
+
+import { TranscriptionService } from './TranscriptionService.mjs';
+import { LocalWhisperService } from './LocalWhisperService.mjs';
+import { Logger } from '../utils/Logger.mjs';
+
+/**
+ * Transcription mode enumeration
+ * @enum {string}
+ */
+const TranscriptionMode = {
+  /** Use OpenAI API only (requires internet, API key) */
+  API: 'api',
+  /** Use local Whisper backend only (privacy-focused, offline) */
+  LOCAL: 'local',
+  /** Try local first, fallback to API if unavailable */
+  AUTO: 'auto'
+};
+
+/**
+ * TranscriptionFactory class
+ * Provides static factory methods for creating transcription services
+ */
+class TranscriptionFactory {
+  /**
+   * Logger instance for this class
+   * @type {Object}
+   * @private
+   */
+  static _logger = Logger.createChild('TranscriptionFactory');
+
+  /**
+   * Create a transcription service based on mode
+   *
+   * @param {Object} config - Configuration object
+   * @param {string} config.mode - Transcription mode ('api', 'local', or 'auto')
+   * @param {string} [config.openaiApiKey] - OpenAI API key (required for 'api' and 'auto' modes)
+   * @param {string} [config.whisperBackendUrl] - Local Whisper backend URL (required for 'local' and 'auto' modes)
+   * @param {Object} [config.options] - Additional options for the service
+   * @param {string} [config.options.defaultLanguage] - Default transcription language
+   * @param {Object} [config.options.defaultSpeakerMap] - Default speaker ID to name mapping
+   * @param {number} [config.options.timeout] - Request timeout in milliseconds
+   * @returns {Promise<Object>} Transcription service instance
+   * @throws {Error} If configuration is invalid or required parameters are missing
+   *
+   * @example
+   * // Create API-based service
+   * const service = await TranscriptionFactory.create({
+   *   mode: 'api',
+   *   openaiApiKey: 'sk-...'
+   * });
+   *
+   * @example
+   * // Create local service
+   * const service = await TranscriptionFactory.create({
+   *   mode: 'local',
+   *   whisperBackendUrl: 'http://localhost:8080'
+   * });
+   *
+   * @example
+   * // Create auto-fallback service
+   * const service = await TranscriptionFactory.create({
+   *   mode: 'auto',
+   *   openaiApiKey: 'sk-...',
+   *   whisperBackendUrl: 'http://localhost:8080'
+   * });
+   */
+  static async create(config) {
+    if (!config || typeof config !== 'object') {
+      throw new Error('TranscriptionFactory.create() requires a configuration object');
+    }
+
+    const mode = config.mode || TranscriptionMode.API;
+    const options = config.options || {};
+
+    this._logger.debug(`Creating transcription service with mode: ${mode}`);
+
+    switch (mode) {
+      case TranscriptionMode.API:
+        return this._createApiService(config.openaiApiKey, options);
+
+      case TranscriptionMode.LOCAL:
+        return this._createLocalService(config.whisperBackendUrl, options);
+
+      case TranscriptionMode.AUTO:
+        return this._createAutoService(config.openaiApiKey, config.whisperBackendUrl, options);
+
+      default:
+        this._logger.warn(`Unknown transcription mode: ${mode}, falling back to 'api'`);
+        return this._createApiService(config.openaiApiKey, options);
+    }
+  }
+
+  /**
+   * Create OpenAI API-based transcription service
+   *
+   * @param {string} apiKey - OpenAI API key
+   * @param {Object} [options] - Service options
+   * @returns {TranscriptionService} OpenAI transcription service
+   * @throws {Error} If API key is missing
+   * @private
+   */
+  static _createApiService(apiKey, options = {}) {
+    if (!apiKey) {
+      throw new Error('OpenAI API key is required for API transcription mode');
+    }
+
+    this._logger.log('Creating OpenAI TranscriptionService');
+
+    return new TranscriptionService(apiKey, options);
+  }
+
+  /**
+   * Create local Whisper-based transcription service
+   *
+   * @param {string} backendUrl - Whisper backend URL
+   * @param {Object} [options] - Service options
+   * @returns {LocalWhisperService} Local Whisper transcription service
+   * @throws {Error} If backend URL is missing
+   * @private
+   */
+  static _createLocalService(backendUrl, options = {}) {
+    if (!backendUrl) {
+      throw new Error('Whisper backend URL is required for local transcription mode');
+    }
+
+    this._logger.log(`Creating LocalWhisperService with backend: ${backendUrl}`);
+
+    return new LocalWhisperService(backendUrl, options);
+  }
+
+  /**
+   * Create auto-fallback transcription service
+   * Tries local first, falls back to API if local is unavailable
+   *
+   * @param {string} apiKey - OpenAI API key
+   * @param {string} backendUrl - Whisper backend URL
+   * @param {Object} [options] - Service options
+   * @returns {Promise<Object>} Transcription service (local or API)
+   * @throws {Error} If both services are unavailable
+   * @private
+   */
+  static async _createAutoService(apiKey, backendUrl, options = {}) {
+    this._logger.log('Auto mode: checking local Whisper backend availability...');
+
+    // Try local service first
+    if (backendUrl) {
+      try {
+        const localService = new LocalWhisperService(backendUrl, options);
+
+        // Perform health check with short timeout
+        const isHealthy = await localService.healthCheck({
+          timeout: 3000,
+          useCache: false
+        });
+
+        if (isHealthy) {
+          this._logger.log('Local Whisper backend is available, using local service');
+          return localService;
+        } else {
+          this._logger.warn('Local Whisper backend health check failed, falling back to API');
+        }
+      } catch (error) {
+        this._logger.warn(`Failed to create local service: ${error.message}, falling back to API`);
+      }
+    } else {
+      this._logger.warn('No Whisper backend URL configured, falling back to API');
+    }
+
+    // Fallback to API service
+    if (!apiKey) {
+      throw new Error(
+        'Auto mode failed: local backend unavailable and no OpenAI API key configured. ' +
+        'Please configure either a local Whisper backend or an OpenAI API key.'
+      );
+    }
+
+    this._logger.log('Falling back to OpenAI TranscriptionService');
+    return new TranscriptionService(apiKey, options);
+  }
+
+  /**
+   * Check if a local Whisper backend is available
+   *
+   * @param {string} backendUrl - Whisper backend URL
+   * @param {Object} [options] - Health check options
+   * @returns {Promise<boolean>} True if backend is healthy
+   *
+   * @example
+   * const isAvailable = await TranscriptionFactory.checkLocalBackend('http://localhost:8080');
+   * if (isAvailable) {
+   *   console.log('Local backend is ready');
+   * }
+   */
+  static async checkLocalBackend(backendUrl, options = {}) {
+    if (!backendUrl) {
+      return false;
+    }
+
+    try {
+      const localService = new LocalWhisperService(backendUrl);
+      return await localService.healthCheck(options);
+    } catch (error) {
+      this._logger.debug(`Backend check failed: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Get the recommended mode based on available configuration
+   *
+   * @param {Object} config - Configuration to evaluate
+   * @param {string} [config.openaiApiKey] - OpenAI API key
+   * @param {string} [config.whisperBackendUrl] - Whisper backend URL
+   * @returns {string} Recommended mode ('api', 'local', or 'auto')
+   *
+   * @example
+   * const mode = TranscriptionFactory.getRecommendedMode({
+   *   openaiApiKey: 'sk-...',
+   *   whisperBackendUrl: 'http://localhost:8080'
+   * });
+   * // Returns 'auto' since both are available
+   */
+  static getRecommendedMode(config) {
+    const hasApiKey = Boolean(config.openaiApiKey);
+    const hasBackendUrl = Boolean(config.whisperBackendUrl);
+
+    if (hasApiKey && hasBackendUrl) {
+      return TranscriptionMode.AUTO;
+    } else if (hasBackendUrl) {
+      return TranscriptionMode.LOCAL;
+    } else if (hasApiKey) {
+      return TranscriptionMode.API;
+    } else {
+      this._logger.warn('No transcription backend configured');
+      return TranscriptionMode.API; // Default, will fail at creation
+    }
+  }
+
+  /**
+   * Get available transcription modes
+   *
+   * @returns {Array<Object>} List of available modes with descriptions
+   */
+  static getAvailableModes() {
+    return [
+      {
+        id: TranscriptionMode.API,
+        name: 'API Only',
+        description: 'Use OpenAI cloud API (requires internet and API key)',
+        requiresApiKey: true,
+        requiresBackend: false,
+        supportsOffline: false
+      },
+      {
+        id: TranscriptionMode.LOCAL,
+        name: 'Local Whisper',
+        description: 'Use local Whisper backend (privacy-focused, works offline)',
+        requiresApiKey: false,
+        requiresBackend: true,
+        supportsOffline: true
+      },
+      {
+        id: TranscriptionMode.AUTO,
+        name: 'Auto (Local + API Fallback)',
+        description: 'Try local first, fallback to API if unavailable (recommended)',
+        requiresApiKey: true,
+        requiresBackend: true,
+        supportsOffline: true
+      }
+    ];
+  }
+}
+
+// Export class and enums
+export {
+  TranscriptionFactory,
+  TranscriptionMode
+};

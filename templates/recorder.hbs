@@ -15,6 +15,25 @@
     <span class="status-text">{{statusText}}</span>
   </div>
 
+  {{!-- Transcription Mode Indicator --}}
+  {{#if showModeIndicator}}
+  <div class="recorder-mode-indicator">
+    <span class="mode-label">{{i18n.transcriptionMode}}:</span>
+    <span class="mode-badge {{modeClass}} {{healthClass}}" title="{{modeTooltip}}">
+      {{modeLabel}}
+      {{#if healthStatus}}
+        {{#if (eq healthStatus "connected")}}
+          <i class="fas fa-check-circle health-icon" title="{{i18n.localBackendConnected}}"></i>
+        {{else if (eq healthStatus "checking")}}
+          <i class="fas fa-spinner fa-pulse health-icon" title="{{i18n.localBackendChecking}}"></i>
+        {{else}}
+          <i class="fas fa-exclamation-circle health-icon" title="{{i18n.localBackendUnavailable}}"></i>
+        {{/if}}
+      {{/if}}
+    </span>
+  </div>
+  {{/if}}
+
   {{!-- Duration display --}}
   <div class="recorder-duration">
     <span class="duration-label">{{i18n.duration}}:</span>

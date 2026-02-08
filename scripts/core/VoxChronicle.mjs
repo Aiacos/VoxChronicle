@@ -13,7 +13,7 @@
 import { MODULE_ID } from '../main.mjs';
 import { SessionOrchestrator } from '../orchestration/SessionOrchestrator.mjs';
 import { AudioRecorder } from '../audio/AudioRecorder.mjs';
-import { TranscriptionService } from '../ai/TranscriptionService.mjs';
+import { TranscriptionFactory } from '../ai/TranscriptionFactory.mjs';
 import { ImageGenerationService } from '../ai/ImageGenerationService.mjs';
 import { KankaService } from '../kanka/KankaService.mjs';
 import { EntityExtractor } from '../ai/EntityExtractor.mjs';
@@ -104,8 +104,12 @@ class VoxChronicle {
         noiseSuppression: this._getSetting('noiseSuppression') ?? true
       };
 
+      // Get transcription mode settings
+      const transcriptionMode = this._getSetting('transcriptionMode') || 'auto';
+      const whisperBackendUrl = this._getSetting('whisperBackendUrl');
+
       // Validate and warn about missing settings
-      if (!openaiApiKey) {
+      if (!openaiApiKey && transcriptionMode !== 'local') {
         console.warn(`${MODULE_ID} | OpenAI API key not configured`);
       }
       if (!kankaApiToken || !kankaCampaignId) {
@@ -115,9 +119,20 @@ class VoxChronicle {
       // Initialize audio recorder (always available)
       this.audioRecorder = new AudioRecorder(audioSettings);
 
-      // Initialize OpenAI services (if API key configured)
+      // Initialize transcription service using factory
+      try {
+        this.transcriptionService = await TranscriptionFactory.create({
+          mode: transcriptionMode,
+          openaiApiKey: openaiApiKey,
+          whisperBackendUrl: whisperBackendUrl
+        });
+        console.log(`${MODULE_ID} | Transcription service initialized with mode: ${transcriptionMode}`);
+      } catch (error) {
+        console.warn(`${MODULE_ID} | Failed to create transcription service: ${error.message}`);
+      }
+
+      // Initialize other OpenAI services (if API key configured)
       if (openaiApiKey) {
-        this.transcriptionService = new TranscriptionService(openaiApiKey);
         this.imageGenerationService = new ImageGenerationService(openaiApiKey);
         this.entityExtractor = new EntityExtractor(openaiApiKey);
       }
@@ -140,6 +155,13 @@ class VoxChronicle {
         imageGenerationService: this.imageGenerationService,
         kankaService: this.kankaService,
         narrativeExporter: this.narrativeExporter
+      });
+
+      // Set transcription config for auto-mode fallback support
+      this.sessionOrchestrator.setTranscriptionConfig({
+        mode: transcriptionMode,
+        openaiApiKey: openaiApiKey,
+        whisperBackendUrl: whisperBackendUrl
       });
 
       // Check Kanka API token expiration

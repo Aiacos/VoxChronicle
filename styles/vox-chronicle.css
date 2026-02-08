@@ -256,6 +256,78 @@ form .form-group .vox-chronicle-validate-button {
   letter-spacing: 2px;
 }
 
+/* Transcription mode indicator */
+.vox-chronicle-recorder .recorder-mode-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--vox-spacing-xs) var(--vox-spacing-md);
+  background: var(--vox-bg-dark);
+  border-radius: var(--vox-radius-sm);
+}
+
+.vox-chronicle-recorder .mode-label {
+  color: var(--vox-text-dim);
+  font-size: 0.9em;
+}
+
+.vox-chronicle-recorder .mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+  padding: 2px var(--vox-spacing-sm);
+  border-radius: var(--vox-radius-sm);
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all var(--vox-transition);
+  cursor: help;
+}
+
+/* Mode badge colors */
+.vox-chronicle-recorder .mode-badge.mode-api {
+  background: rgba(76, 201, 240, 0.2);
+  color: var(--vox-processing);
+  border: 1px solid var(--vox-processing);
+}
+
+.vox-chronicle-recorder .mode-badge.mode-local {
+  background: rgba(6, 214, 160, 0.2);
+  color: var(--vox-success);
+  border: 1px solid var(--vox-success);
+}
+
+.vox-chronicle-recorder .mode-badge.mode-auto {
+  background: rgba(252, 163, 17, 0.2);
+  color: var(--vox-warning);
+  border: 1px solid var(--vox-warning);
+}
+
+/* Health status icons */
+.vox-chronicle-recorder .health-icon {
+  font-size: 0.9em;
+  margin-left: 2px;
+}
+
+.vox-chronicle-recorder .health-connected .health-icon {
+  color: var(--vox-success);
+}
+
+.vox-chronicle-recorder .health-checking .health-icon {
+  color: var(--vox-warning);
+}
+
+.vox-chronicle-recorder .health-unavailable .health-icon {
+  color: var(--vox-error);
+}
+
+/* Mode badge hover effect */
+.vox-chronicle-recorder .mode-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 /* Progress bar */
 .vox-chronicle-recorder .recorder-progress {
   display: flex;
@@ -663,84 +735,6 @@ form .form-group .vox-chronicle-validate-button {
   background: var(--vox-primary-dark);
 }
 
-/* Help section */
-.vox-chronicle-speaker-labeling .form-help {
-  margin-top: var(--vox-spacing-md);
-  padding-top: var(--vox-spacing-md);
-  border-top: 1px solid var(--vox-border);
-}
-
-.vox-chronicle-speaker-labeling .form-help details {
-  background: var(--vox-bg-light);
-  border-radius: var(--vox-radius-md);
-  overflow: hidden;
-}
-
-.vox-chronicle-speaker-labeling .form-help summary {
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-dark);
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--vox-text);
-  list-style: none;
-  transition: background-color var(--vox-transition);
-}
-
-.vox-chronicle-speaker-labeling .form-help summary::-webkit-details-marker {
-  display: none;
-}
-
-.vox-chronicle-speaker-labeling .form-help summary:hover {
-  background: var(--vox-bg-hover);
-}
-
-.vox-chronicle-speaker-labeling .form-help summary i {
-  transition: transform var(--vox-transition-slow);
-}
-
-.vox-chronicle-speaker-labeling .form-help details[open] summary i {
-  transform: rotate(90deg);
-}
-
-.vox-chronicle-speaker-labeling .form-help .help-content {
-  padding: var(--vox-spacing-md);
-  max-height: 500px;
-  overflow: hidden;
-  opacity: 1;
-  transition: max-height var(--vox-transition-slow),
-              opacity var(--vox-transition-slow),
-              padding var(--vox-transition-slow);
-}
-
-.vox-chronicle-speaker-labeling .form-help details:not([open]) .help-content {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.vox-chronicle-speaker-labeling .form-help .help-content p {
-  margin: 0 0 var(--vox-spacing-sm) 0;
-  color: var(--vox-text-dim);
-  line-height: 1.5;
-}
-
-.vox-chronicle-speaker-labeling .form-help .help-content p:last-child {
-  margin-bottom: 0;
-}
-
-.vox-chronicle-speaker-labeling .form-help .help-content p strong {
-  color: var(--vox-text);
-  font-weight: 600;
-}
-
-.vox-chronicle-speaker-labeling .form-help .help-content i {
-  font-size: 0.9em;
-}
-
 /* ==========================================================================
    Entity Preview Component
    ========================================================================== */
@@ -888,19 +882,10 @@ form .form-group .vox-chronicle-validate-button {
   display: flex;
   flex-direction: column;
   gap: var(--vox-spacing-sm);
-  max-height: 2000px;
-  overflow: hidden;
-  opacity: 1;
-  transition: max-height var(--vox-transition-slow),
-              opacity var(--vox-transition-slow),
-              padding var(--vox-transition-slow);
 }
 
 .vox-chronicle-entity-preview .entity-section.collapsed .section-content {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  display: none;
 }
 
 /* Entity row */

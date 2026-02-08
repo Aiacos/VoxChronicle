@@ -13,6 +13,9 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
+import { WhisperError, WhisperErrorType } from '../ai/WhisperBackend.mjs';
+import { LocalWhisperService } from '../ai/LocalWhisperService.mjs';
+import { TranscriptionService } from '../ai/TranscriptionService.mjs';
 
 /**
  * Session workflow states
@@ -148,6 +151,13 @@ class SessionOrchestrator {
     onError: null,
     onSessionComplete: null
   };
+
+  /**
+   * Transcription configuration for fallback support
+   * @type {Object|null}
+   * @private
+   */
+  _transcriptionConfig = null;
 
   /**
    * Create a new SessionOrchestrator instance
@@ -457,20 +467,65 @@ class SessionOrchestrator {
       const speakerMap = options.speakerMap || this._currentSession.speakerMap || {};
       const language = options.language || this._currentSession.language;
 
-      this._reportProgress('transcription', 0, 'Starting transcription...');
+      // Determine current transcription mode
+      const isLocalService = this._transcriptionService instanceof LocalWhisperService;
+      const mode = this._transcriptionConfig?.mode || (isLocalService ? 'local' : 'api');
+
+      this._reportProgress('transcription', 0, `Starting transcription (${mode} mode)...`);
 
       // Transcribe with speaker diarization
-      const transcriptResult = await this._transcriptionService.transcribe(
-        this._currentSession.audioBlob,
-        {
-          speakerMap,
-          language,
-          onProgress: (progress) => {
-            this._reportProgress('transcription', progress.progress,
-              `Transcribing chunk ${progress.currentChunk}/${progress.totalChunks}`);
+      let transcriptResult;
+      try {
+        transcriptResult = await this._transcriptionService.transcribe(
+          this._currentSession.audioBlob,
+          {
+            speakerMap,
+            language,
+            onProgress: (progress) => {
+              this._reportProgress('transcription', progress.progress,
+                `Transcribing chunk ${progress.currentChunk}/${progress.totalChunks}`);
+            }
           }
+        );
+      } catch (transcriptionError) {
+        // Handle fallback for auto mode
+        if (isLocalService && mode === 'auto') {
+          this._logger.warn('Local transcription failed, attempting fallback to API...', transcriptionError.message);
+
+          // Check if we have API key for fallback
+          if (!this._transcriptionConfig?.openaiApiKey) {
+            throw new Error(
+              'Local transcription failed and no OpenAI API key configured for fallback. ' +
+              `Error: ${transcriptionError.message}`
+            );
+          }
+
+          this._reportProgress('transcription', 0, 'Falling back to API transcription...');
+
+          // Create API service for fallback
+          const apiService = new TranscriptionService(this._transcriptionConfig.openaiApiKey);
+
+          this._logger.log('Using OpenAI API as fallback');
+
+          // Retry with API service
+          transcriptResult = await apiService.transcribe(
+            this._currentSession.audioBlob,
+            {
+              speakerMap,
+              language,
+              onProgress: (progress) => {
+                this._reportProgress('transcription', progress.progress,
+                  `Transcribing chunk ${progress.currentChunk}/${progress.totalChunks} (API fallback)`);
+              }
+            }
+          );
+
+          this._logger.log('Fallback to API transcription successful');
+        } else {
+          // Re-throw if not in auto mode or not a local service error
+          throw transcriptionError;
         }
-      );
+      }
 
       this._currentSession.transcript = transcriptResult;
       this._reportProgress('transcription', 100, 'Transcription complete');
@@ -1084,6 +1139,19 @@ class SessionOrchestrator {
   setOptions(options) {
     this._options = { ...this._options, ...options };
     this._logger.debug('Options updated');
+  }
+
+  /**
+   * Set transcription configuration for fallback support
+   *
+   * @param {Object} config - Transcription configuration
+   * @param {string} config.mode - Transcription mode ('api', 'local', or 'auto')
+   * @param {string} [config.openaiApiKey] - OpenAI API key for fallback
+   * @param {string} [config.whisperBackendUrl] - Whisper backend URL
+   */
+  setTranscriptionConfig(config) {
+    this._transcriptionConfig = config;
+    this._logger.debug('Transcription config updated for fallback support');
   }
 
   /**

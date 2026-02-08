@@ -7,25 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
-
-## [1.0.5] - 2026-02-07
-
 ### Added
-- **Foundry VTT v13 Compatibility**: Full support for Foundry VTT v13 with backward compatibility for v11 and v12
-- Verified compatibility of scene controls, UI components, settings system, and hooks in v13
 
-### Changed
-- **WebRTC Audio Capture**: Updated `AudioRecorder.mjs` to support v13's `localStream` property while maintaining backward compatibility with v11/v12's `getLocalStream()` method
-- Updated `module.json` compatibility metadata to verify v13 support
-- Updated `package.json` foundry metadata to reflect v13 compatibility
-- Updated README.md to reflect v11, v12, and v13 support
+#### Offline Transcription Mode
+- **Local Whisper Backend**: Support for privacy-focused local transcription using Whisper running on user's machine
+- **Transcription Mode Selection**: New setting to choose between API, Local, or Auto (with fallback) transcription modes
+- **WhisperBackend Abstraction**: HTTP client for communicating with local Whisper server (whisper.cpp, faster-whisper, etc.)
+- **LocalWhisperService**: Full-featured local transcription service matching OpenAI API interface
+- **TranscriptionFactory**: Factory pattern for creating appropriate transcription service based on mode
+- **Auto Mode with Fallback**: Automatically falls back to OpenAI API if local backend unavailable
+- **Mode Indicator UI**: Visual badge in recorder controls showing current transcription mode (API/Local/Auto)
+- **Health Status Monitoring**: Real-time health checks for local backend with visual status indicators
+- **Whisper Backend URL Setting**: Configurable endpoint for local Whisper server (default: http://localhost:8080)
+- **Mode Indicator Toggle**: Client-side setting to show/hide transcription mode indicator
 
-### Technical Notes
-- Scene controls implementation already compatible with v13's object-based structure
-- All UI components (RecorderControls, SpeakerLabeling, EntityPreview) using Application v1 pattern remain fully supported in v13
-- Settings API and hooks system unchanged in v13 - no code changes required
-- WebRTC API change handled with backward-compatible detection: `avClient.localStream || avClient.getLocalStream?.()`
+#### Documentation
+- **WHISPER_SETUP.md**: Comprehensive setup guide for local Whisper backend
+  - Installation instructions for Windows, macOS, and Linux
+  - Multiple installation methods (pre-built binaries, source builds, Docker)
+  - Model selection guide with performance/quality tradeoffs
+  - GPU acceleration configuration (CUDA, Metal, OpenCL)
+  - Background service setup for all platforms
+  - Troubleshooting section with common issues and solutions
+  - Alternative backend options (faster-whisper, WhisperX, remote servers)
+- **README.md Updates**:
+  - Offline transcription mode feature description
+  - Optional OpenAI API key clarification
+  - Setup section for both cloud and offline modes
+  - Cost considerations with $0 transcription examples
+  - Offline-specific troubleshooting guidance
+
+#### Localization
+- English (en.json) translations for offline mode settings and UI
+- Italian (it.json) translations for offline mode settings and UI
+
+### Technical Details
+- Local backend communication via HTTP with health checks and retry logic
+- Response format normalization to match OpenAI diarized JSON structure
+- Audio chunking support for large files (25MB+ limit handling)
+- Graceful degradation when local backend unavailable in auto mode
+- Progress callbacks report current mode and fallback status
 
 ## [1.0.0] - 2026-02-06
 
@@ -113,6 +134,5 @@ Initial release of VoxChronicle - the Foundry VTT session transcription and Kank
 - Comprehensive error handling with user-friendly notifications
 - Full JSDoc documentation in source files
 
-[Unreleased]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.5...HEAD
-[1.0.5]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.0...v1.0.5
+[Unreleased]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/voxchronicle/vox-chronicle/releases/tag/v1.0.0

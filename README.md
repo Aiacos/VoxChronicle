@@ -1,6 +1,6 @@
 # VoxChronicle
 
-![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v11--v13-informational)
+![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v11--v12-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 
@@ -11,6 +11,7 @@ Auto-transcribe your tabletop RPG sessions and publish chronicles to [Kanka](htt
 - **Audio Recording**: Capture session audio from Foundry VTT's built-in voice chat or browser microphone (for Discord users)
 - **Speaker Diarization**: Automatically identify and distinguish between different speakers (GM and players)
 - **AI Transcription**: Convert recorded audio to text using OpenAI's GPT-4o transcription with timestamps
+- **Offline Transcription Mode**: Use local Whisper models for privacy-focused, zero-cost transcription (see [Whisper Setup Guide](docs/WHISPER_SETUP.md))
 - **Entity Extraction**: Automatically detect NPCs, locations, and items mentioned during play
 - **AI Image Generation**: Generate portraits for characters and images for locations using DALL-E 3
 - **Kanka Integration**: Seamlessly create journal entries, characters, locations, and items in your Kanka campaign
@@ -19,8 +20,8 @@ Auto-transcribe your tabletop RPG sessions and publish chronicles to [Kanka](htt
 
 ## Requirements
 
-- **Foundry VTT** v11, v12, or v13
-- **OpenAI API Key** - Required for transcription and image generation
+- **Foundry VTT** v11 or v12
+- **OpenAI API Key** - Required for cloud transcription and image generation (optional if using offline mode - see [Whisper Setup](docs/WHISPER_SETUP.md))
 - **Kanka Account** - Required for publishing chronicles (free tier supported)
 - **Modern Browser** with microphone access support
 
@@ -96,13 +97,34 @@ Navigate to **Settings** > **Module Settings** > **VoxChronicle**
 
 > **Note**: Tokens expire after 364 days. VoxChronicle will warn you when renewal is needed.
 
-### 3. Configure Audio Settings
+### 3. Configure Transcription Mode (Optional)
+
+VoxChronicle supports both cloud-based (OpenAI) and offline transcription:
+
+#### Cloud Transcription (Default)
+- Uses OpenAI's GPT-4o API
+- Requires API key and internet connection
+- Supports speaker diarization
+- Costs $0.006/minute
+
+#### Offline Transcription
+- Uses local Whisper models via whisper.cpp server
+- Zero cost, fully private
+- No API key required
+- Requires separate setup - see [Whisper Setup Guide](docs/WHISPER_SETUP.md)
+
+To enable offline mode:
+1. Set up a whisper.cpp server (see [setup guide](docs/WHISPER_SETUP.md))
+2. In module settings, set **Transcription Mode** to "Offline (Whisper)"
+3. Enter your **Whisper Server URL** (e.g., `http://localhost:8080`)
+
+### 4. Configure Audio Settings
 
 - **Audio Source**: Choose between Foundry VTT WebRTC or browser microphone
 - **Echo Cancellation**: Recommended for speaker audio setups
 - **Noise Suppression**: Recommended for noisy environments
 
-### 4. Configure Speaker Labels
+### 5. Configure Speaker Labels
 
 1. Go to **Settings** > **Module Settings** > **VoxChronicle**
 2. Click **Configure Speakers**
@@ -131,7 +153,9 @@ Navigate to **Settings** > **Module Settings** > **VoxChronicle**
 
 After recording stops:
 
-1. **Transcription**: Audio is sent to OpenAI for transcription with speaker diarization
+1. **Transcription**: Audio is processed using your selected mode:
+   - **Cloud Mode**: Sent to OpenAI for transcription with speaker diarization
+   - **Offline Mode**: Sent to your local Whisper server for private transcription
 2. **Entity Extraction**: AI analyzes the transcript for NPCs, locations, and items
 3. **Review**: You can review extracted entities before creating them
 4. **Image Generation**: Optionally generate AI portraits for entities
@@ -153,6 +177,8 @@ After recording stops:
 | OpenAI API Key | Client | Your OpenAI API key for transcription and images |
 | Kanka API Token | World | Kanka personal access token |
 | Campaign ID | World | Your Kanka campaign ID |
+| Transcription Mode | World | Cloud (OpenAI) or Offline (Whisper) |
+| Whisper Server URL | World | URL of your whisper.cpp server (for offline mode) |
 | Transcription Language | World | Language hint for improved accuracy |
 | Audio Source | World | Foundry VTT or microphone capture |
 | Echo Cancellation | World | Enable audio echo cancellation |
@@ -164,20 +190,27 @@ After recording stops:
 
 ## Cost Considerations
 
-VoxChronicle uses the OpenAI API which has usage-based pricing:
+VoxChronicle can use the OpenAI API which has usage-based pricing:
 
 | Service | Model | Cost |
 |---------|-------|------|
-| Transcription | GPT-4o Transcribe | $0.006/minute |
+| Transcription (Cloud) | GPT-4o Transcribe | $0.006/minute |
+| Transcription (Offline) | Whisper (local) | **Free** |
 | Image Generation | DALL-E 3 (Standard) | $0.04/image |
 | Image Generation | DALL-E 3 (HD) | $0.08/image |
 
-**Example**: A 3-hour session with 5 generated images:
+**Example** (Cloud Mode): A 3-hour session with 5 generated images:
 - Transcription: 180 minutes × $0.006 = $1.08
 - Images: 5 × $0.04 = $0.20
 - **Total**: ~$1.28
 
+**Example** (Offline Mode): A 3-hour session with 5 generated images:
+- Transcription: **$0.00** (uses local Whisper)
+- Images: 5 × $0.04 = $0.20
+- **Total**: ~$0.20
+
 **Tips for Cost Management**:
+- **Use offline transcription mode** for zero-cost transcription (see [Whisper Setup](docs/WHISPER_SETUP.md))
 - Pause recording during breaks
 - Limit the number of generated images per session
 - Use Standard quality images instead of HD
@@ -250,10 +283,18 @@ The module automatically handles rate limiting with queuing and exponential back
 
 ### Transcription Fails
 
+**For Cloud Mode (OpenAI):**
 1. Verify your OpenAI API key is valid
 2. Check your OpenAI account has sufficient credits
 3. For long recordings, ensure audio is under 25MB per chunk (handled automatically)
 4. Check browser console for specific error messages
+
+**For Offline Mode (Whisper):**
+1. Verify your Whisper server is running (test with `curl http://localhost:8080`)
+2. Check the Whisper Server URL setting is correct
+3. Ensure the server has the model loaded
+4. Review server logs for errors
+5. See [Whisper Setup Guide](docs/WHISPER_SETUP.md) for troubleshooting
 
 ### Kanka Publishing Fails
 
