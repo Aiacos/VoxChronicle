@@ -471,18 +471,8 @@ describe('RecorderControls', () => {
       expect(duration).toBeLessThanOrEqual(6);
     });
 
-    it('should format duration as MM:SS for under 1 hour', () => {
-      expect(recorder._formatDuration(0)).toBe('00:00');
-      expect(recorder._formatDuration(45)).toBe('00:45');
-      expect(recorder._formatDuration(90)).toBe('01:30');
-      expect(recorder._formatDuration(3599)).toBe('59:59');
-    });
-
-    it('should format duration as HH:MM:SS for 1 hour or more', () => {
-      expect(recorder._formatDuration(3600)).toBe('01:00:00');
-      expect(recorder._formatDuration(3661)).toBe('01:01:01');
-      expect(recorder._formatDuration(7384)).toBe('02:03:04');
-    });
+    // Note: Duration formatting is now handled by AudioUtils.formatDuration
+    // and is fully tested in tests/utils/AudioUtils.test.js
   });
 
   describe('Local Backend Health Check', () => {

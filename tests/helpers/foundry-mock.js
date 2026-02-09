@@ -34,6 +34,10 @@ export function createMockSettings(initialSettings = {}) {
       }
     }),
 
+    registerMenu: vi.fn((module, key, config) => {
+      // Mock registerMenu for settings menus (like VoxChronicleConfig)
+    }),
+
     get: vi.fn((module, key) => {
       const fullKey = `${module}.${key}`;
       return settingsStore.get(fullKey);
