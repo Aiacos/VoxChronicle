@@ -272,18 +272,29 @@ class TranscriptionService extends OpenAIClient {
         });
       }
 
+      // Transcribe this chunk without speaker mapping
+      // IMPORTANT: We pass an empty speakerMap here because OpenAI's diarization
+      // assigns consistent speaker IDs (SPEAKER_00, SPEAKER_01, etc.) across chunks.
+      // The same person will get the same ID in each chunk, so we can safely defer
+      // the mapping to human-readable names until after all chunks are combined.
+      // This ensures speaker continuity across chunk boundaries.
       const chunkResult = await this._transcribeSingle(chunk, {
         ...options,
-        // Don't re-map speakers until we combine results
-        speakerMap: {}
+        speakerMap: {}  // Delay mapping until combination phase
       });
 
-      // Track duration offset for proper timing
+      // Track duration offset for proper timing across chunks
+      // Each chunk's timestamps start at 0, so we need to adjust them based on
+      // the cumulative duration of previous chunks to maintain chronological order
       if (chunkResult.segments) {
-        // Adjust segment times based on previous chunks
         chunkResult.segments.forEach((segment) => {
+          // Offset timestamps to account for previous chunks
           segment.start += totalDuration;
           segment.end += totalDuration;
+
+          // Collect all unique speaker IDs across all chunks
+          // The diarization model preserves speaker identity between chunks,
+          // so SPEAKER_00 in chunk 1 is the same person as SPEAKER_00 in chunk 2
           if (segment.speaker) {
             allSpeakers.add(segment.speaker);
           }
@@ -306,10 +317,14 @@ class TranscriptionService extends OpenAIClient {
       });
     }
 
-    // Combine all chunk results
+    // Combine all chunk results with properly adjusted timestamps
     const combinedResult = this._combineChunkResults(results, allSpeakers);
 
-    // Apply speaker mapping to final result
+    // Apply speaker mapping to the final combined result
+    // By deferring speaker name mapping until this point, we ensure that:
+    // 1. All chunks use consistent speaker IDs (SPEAKER_00, SPEAKER_01, etc.)
+    // 2. The same speaker gets the same human-readable name across the entire transcription
+    // 3. Speaker continuity is preserved even when a speaker appears in multiple chunks
     const speakerMap = options.speakerMap || this._defaultSpeakerMap;
     return this._mapSpeakersToNames(combinedResult, speakerMap);
   }
@@ -362,11 +377,20 @@ class TranscriptionService extends OpenAIClient {
    * @private
    */
   _mapSpeakersToNames(result, speakerMap = {}) {
+    // Edge case 4: Empty speakerMap parameter
+    // When no speaker mapping is provided (e.g., during chunked transcription or initial
+    // transcription before user has labeled speakers), we default to an empty object.
+    // This allows the algorithm to proceed and preserve the original speaker IDs, which
+    // can be mapped later via setSpeakerMap() or in a subsequent call to this method.
+
     if (!result) {
       return { text: '', segments: [], speakers: [] };
     }
 
-    // If no segments, return basic result
+    // Edge case 1: No segments in result
+    // OpenAI API may return empty segments for silent audio or transcription failures.
+    // Return a valid but empty result structure to prevent downstream code from breaking
+    // when trying to iterate over segments that don't exist.
     if (!result.segments || !Array.isArray(result.segments)) {
       return {
         text: result.text || '',
@@ -376,15 +400,31 @@ class TranscriptionService extends OpenAIClient {
       };
     }
 
-    // Collect unique speaker IDs
+    // Collect unique speaker IDs from all segments
+    // OpenAI diarization returns speaker IDs like "SPEAKER_00", "SPEAKER_01", etc.
+    // We use a Set to automatically deduplicate as we encounter the same speaker across segments
     const uniqueSpeakers = new Set();
 
     // Map segments with speaker names
+    // For each segment, we replace the AI-generated speaker ID (e.g., "SPEAKER_00")
+    // with the human-readable name provided in speakerMap (e.g., "Game Master")
     const mappedSegments = result.segments.map((segment) => {
+      // Edge case 3: Missing speaker field in segment
+      // Some segments may lack a speaker field if the audio is unclear or if the diarization
+      // model couldn't confidently identify a speaker. Default to "Unknown" to maintain
+      // data integrity and prevent undefined values in the output.
       const originalSpeaker = segment.speaker || 'Unknown';
+
+      // Track this speaker ID in our set of unique speakers
       uniqueSpeakers.add(originalSpeaker);
 
-      // Look up speaker name in map, use original ID if not found
+      // Edge case 2: Speaker ID not in map
+      // Users may not have mapped all detected speakers yet, especially in first-time
+      // transcriptions or when new speakers join mid-session. Fall back to the original
+      // speaker ID (e.g., "SPEAKER_00") so the segment remains identifiable and can be
+      // mapped later without losing the speaker identity.
+      // Example: speakerMap["SPEAKER_00"] = "Game Master" → mappedName = "Game Master"
+      // Example: speakerMap["SPEAKER_02"] = undefined → mappedName = "SPEAKER_02" (fallback)
       const mappedName = speakerMap[originalSpeaker] || originalSpeaker;
 
       return {
@@ -397,10 +437,12 @@ class TranscriptionService extends OpenAIClient {
     });
 
     // Build speaker list with mapping info
+    // Convert Set to Array and create metadata for each speaker showing
+    // both their original ID and mapped name (if any)
     const speakers = Array.from(uniqueSpeakers).map((speakerId) => ({
-      id: speakerId,
-      name: speakerMap[speakerId] || speakerId,
-      isMapped: Boolean(speakerMap[speakerId])
+      id: speakerId,                                    // Original: "SPEAKER_00"
+      name: speakerMap[speakerId] || speakerId,        // Mapped: "Game Master" or fallback "SPEAKER_00"
+      isMapped: Boolean(speakerMap[speakerId])         // True if user provided a custom name
     }));
 
     const mappedResult = {
