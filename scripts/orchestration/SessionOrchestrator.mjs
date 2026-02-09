@@ -70,7 +70,8 @@ class SessionOrchestrator {
   /**
    * Create a new SessionOrchestrator instance
    *
-   * @param {object} [services={}] - Service instances (audioRecorder, transcriptionService, entityExtractor, imageGenerationService, kankaService, narrativeExporter)
+   * @param {object} [services={}] - Service instances (audioRecorder, transcriptionService,
+   * entityExtractor, imageGenerationService, kankaService, narrativeExporter)
    * @param {object} [options={}] - Configuration options (see DEFAULT_SESSION_OPTIONS)
    */
   constructor(services = {}, options = {}) {
@@ -88,32 +89,32 @@ class SessionOrchestrator {
   _initializeProcessors() {
     this._transcriptionProcessor = this._transcriptionService
       ? new TranscriptionProcessor({
-        transcriptionService: this._transcriptionService,
-        config: this._transcriptionConfig
-      })
+          transcriptionService: this._transcriptionService,
+          config: this._transcriptionConfig
+        })
       : null;
 
     this._entityProcessor = this._entityExtractor
       ? new EntityProcessor({
-        entityExtractor: this._entityExtractor,
-        kankaService: this._kankaService
-      })
+          entityExtractor: this._entityExtractor,
+          kankaService: this._kankaService
+        })
       : null;
 
     this._imageProcessor = this._imageGenerationService
       ? new ImageProcessor({
-        imageGenerationService: this._imageGenerationService,
-        options: {
-          maxImagesPerSession: this._options.maxImagesPerSession,
-          imageQuality: this._options.imageQuality
-        }
-      })
+          imageGenerationService: this._imageGenerationService,
+          options: {
+            maxImagesPerSession: this._options.maxImagesPerSession,
+            imageQuality: this._options.imageQuality
+          }
+        })
       : null;
 
     this._kankaPublisher = this._kankaService
       ? new KankaPublisher(this._kankaService, this._narrativeExporter, {
-        chronicleFormat: this._options.chronicleFormat
-      })
+          chronicleFormat: this._options.chronicleFormat
+        })
       : null;
 
     this._logger.debug('Processors initialized');
@@ -504,11 +505,17 @@ class SessionOrchestrator {
 
   setServices(services) {
     if (services.audioRecorder !== undefined) this._audioRecorder = services.audioRecorder;
-    if (services.transcriptionService !== undefined) {this._transcriptionService = services.transcriptionService;}
+    if (services.transcriptionService !== undefined) {
+      this._transcriptionService = services.transcriptionService;
+    }
     if (services.entityExtractor !== undefined) this._entityExtractor = services.entityExtractor;
-    if (services.imageGenerationService !== undefined) {this._imageGenerationService = services.imageGenerationService;}
+    if (services.imageGenerationService !== undefined) {
+      this._imageGenerationService = services.imageGenerationService;
+    }
     if (services.kankaService !== undefined) this._kankaService = services.kankaService;
-    if (services.narrativeExporter !== undefined) {this._narrativeExporter = services.narrativeExporter;}
+    if (services.narrativeExporter !== undefined) {
+      this._narrativeExporter = services.narrativeExporter;
+    }
 
     this._initializeProcessors();
     this._logger.debug('Services updated');

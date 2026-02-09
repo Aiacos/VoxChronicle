@@ -309,7 +309,7 @@ export class VocabularyDictionary {
     // Collect all terms from all categories
     const allTerms = [];
 
-    for (const [category, terms] of Object.entries(dictionary)) {
+    for (const [_category, terms] of Object.entries(dictionary)) {
       if (Array.isArray(terms) && terms.length > 0) {
         allTerms.push(...terms);
       }
@@ -380,7 +380,7 @@ export class VocabularyDictionary {
    * @returns {Promise<object>} Statistics about loaded terms (loaded, total, skipped)
    */
   async loadDefaults() {
-    const dictionary = this._getDictionary();
+    const _dictionary = this._getDictionary();
 
     // Check if dictionary is already populated
     const totalTerms = this.getTotalTermCount();

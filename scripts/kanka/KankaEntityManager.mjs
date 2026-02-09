@@ -293,10 +293,8 @@ class KankaEntityManager {
    * @param {string|number} [options.character_id] - Filter by character ID
    * @param {boolean} [options.is_private] - Filter by privacy status
    * @param {...*} [options.*] - Additional entity-specific filters
-   * @returns {Promise<object>} Paginated entity list with data, meta, and links
-   * @returns {Array} returns.data - Array of entities
-   * @returns {object} returns.meta - Pagination metadata
-   * @returns {object} returns.links - Pagination links
+   * @returns {Promise<object>} Paginated entity list with data (Array of entities),
+   * meta (pagination metadata), and links (pagination links)
    * @throws {KankaError} If API request fails
    *
    * @example

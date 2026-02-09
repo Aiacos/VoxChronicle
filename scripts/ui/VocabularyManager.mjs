@@ -495,7 +495,7 @@ export class VocabularyManager extends Application {
                   game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopiedToClipboard') ||
                     'Dictionary copied to clipboard'
                 );
-              } catch (err) {
+              } catch {
                 // Fallback for older browsers
                 document.execCommand('copy');
                 ui.notifications.info(

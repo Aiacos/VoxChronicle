@@ -193,7 +193,7 @@ class VoxChronicle {
   _getSetting(key) {
     try {
       return game.settings.get(MODULE_ID, key);
-    } catch (error) {
+    } catch {
       // Setting not registered yet or doesn't exist
       return null;
     }
@@ -321,10 +321,10 @@ class VoxChronicle {
    * Process a completed recording session
    * Transcribes audio, extracts entities, and prepares for Kanka export
    *
-   * @param {Blob} audioBlob - The recorded audio blob
+   * @param {Blob} _audioBlob - The recorded audio blob
    * @returns {Promise<object>} The processed session data
    */
-  async processSession(audioBlob) {
+  async processSession(_audioBlob) {
     if (!this.transcriptionService) {
       throw new Error('Transcription service not initialized');
     }
@@ -332,8 +332,8 @@ class VoxChronicle {
     console.log(`${MODULE_ID} | Processing recording session...`);
 
     // Get speaker labels from settings
-    const speakerLabels = this._getSetting('speakerLabels') || {};
-    const transcriptionLanguage = this._getSetting('transcriptionLanguage') || null;
+    const _speakerLabels = this._getSetting('speakerLabels') || {};
+    const _transcriptionLanguage = this._getSetting('transcriptionLanguage') || null;
 
     // Transcription and entity extraction will be performed here
     // const transcript = await this.transcriptionService.transcribe(audioBlob, speakerLabels, transcriptionLanguage);
@@ -351,10 +351,10 @@ class VoxChronicle {
   /**
    * Publish a processed session to Kanka
    *
-   * @param {object} sessionData - The processed session data
+   * @param {object} _sessionData - The processed session data
    * @returns {Promise<object>} The created Kanka entities
    */
-  async publishToKanka(sessionData) {
+  async publishToKanka(_sessionData) {
     if (!this.kankaService) {
       throw new Error('Kanka service not initialized');
     }

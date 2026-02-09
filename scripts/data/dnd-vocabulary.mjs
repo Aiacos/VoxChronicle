@@ -6,7 +6,7 @@
 
 /**
  * Common D&D terms organized by category
- * @type {Object.<string, string[]>}
+ * @type {{[key: string]: string[]}}
  */
 export const DND_VOCABULARY = {
   /**

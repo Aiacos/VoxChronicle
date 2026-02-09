@@ -11,7 +11,6 @@
 
 import { Logger } from '../utils/Logger.mjs';
 import { RateLimiter } from '../utils/RateLimiter.mjs';
-import { SensitiveDataFilter } from '../utils/SensitiveDataFilter.mjs';
 
 /**
  * Whisper backend error types enumeration
@@ -456,7 +455,7 @@ class WhisperBackend {
         const text = await response.text();
         return { message: text || response.statusText };
       }
-    } catch (error) {
+    } catch {
       return { message: response.statusText };
     }
   }

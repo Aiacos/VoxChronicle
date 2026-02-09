@@ -13,7 +13,7 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
-import { OpenAIClient, OpenAIError, OpenAIErrorType } from '../ai/OpenAIClient.mjs';
+import { OpenAIClient } from '../ai/OpenAIClient.mjs';
 import { escapeHtml } from '../utils/HtmlUtils.mjs';
 import { AudioUtils } from '../utils/AudioUtils.mjs';
 

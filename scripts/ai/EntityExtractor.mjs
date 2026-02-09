@@ -581,11 +581,11 @@ Return JSON in this exact format:
    * Normalize and validate extraction result
    *
    * @param {object} extracted - Raw extraction result
-   * @param {object} options - Extraction options
+   * @param {object} _options - Extraction options
    * @returns {ExtractionResult} Normalized result
    * @private
    */
-  _normalizeExtractionResult(extracted, options = {}) {
+  _normalizeExtractionResult(extracted, _options = {}) {
     // Ensure arrays exist
     const characters = Array.isArray(extracted.characters) ? extracted.characters : [];
     const locations = Array.isArray(extracted.locations) ? extracted.locations : [];

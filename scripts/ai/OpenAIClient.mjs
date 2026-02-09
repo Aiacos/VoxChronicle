@@ -270,7 +270,7 @@ class OpenAIClient {
           }
         }
       }
-    } catch (parseError) {
+    } catch {
       this._logger.debug('Could not parse error response as JSON');
     }
 

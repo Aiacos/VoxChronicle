@@ -132,10 +132,10 @@ class RecorderControls extends Application {
    * Handle orchestrator state changes
    * @param {string} newState - New session state
    * @param {string} oldState - Previous session state
-   * @param {object} data - Additional state data
+   * @param {object} _data - Additional state data
    * @private
    */
-  _onOrchestratorStateChange(newState, oldState, data) {
+  _onOrchestratorStateChange(newState, oldState, _data) {
     this._logger.debug(`Orchestrator state: ${oldState} -> ${newState}`);
 
     // Map orchestrator state to UI state
@@ -273,10 +273,10 @@ class RecorderControls extends Application {
 
   /**
    * Get data for the template
-   * @param {object} options - Render options
+   * @param {object} _options - Render options
    * @returns {object} Template data
    */
-  async getData(options = {}) {
+  async getData(_options = {}) {
     const vox = VoxChronicle.getInstance();
     const orchestrator = vox.sessionOrchestrator;
     const sessionSummary = orchestrator?.getSessionSummary();
@@ -722,6 +722,7 @@ class RecorderControls extends Application {
   /**
    * Clean up when the application is closed
    * @param {object} options - Close options
+   * @returns {Promise<void>}
    */
   async close(options = {}) {
     this._stopDurationTimer();
@@ -829,7 +830,7 @@ class RecorderControls extends Application {
   async _renderInner(data) {
     try {
       return await super._renderInner(data);
-    } catch (error) {
+    } catch {
       // Template not found, use inline fallback
       this._logger.warn('Template not found, using fallback HTML');
       const html = this._renderFallbackContent();

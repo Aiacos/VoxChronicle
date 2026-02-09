@@ -271,9 +271,9 @@ class Logger {
    * Create a child logger with a sub-module prefix
    *
    * @param {string} subModule - The sub-module name
-   * @param {boolean | object} [options=false] - Sanitization options
-   *   - If boolean: enable/disable sanitization
-   *   - If object: { sanitize: boolean }
+   * @param {boolean | object} [options=false] - Sanitization options.
+   * If boolean: enable/disable sanitization.
+   * If object: { sanitize: boolean }
    * @returns {object} A logger object with the same methods but prefixed with sub-module
    */
   static createChild(subModule, options = false) {

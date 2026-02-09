@@ -164,16 +164,16 @@ export class SensitiveDataFilter {
       const urlObj = typeof url === 'string' ? new URL(url) : url;
 
       // Check and redact sensitive query parameters
-      let modified = false;
+      let _modified = false;
       SENSITIVE_PARAMS.forEach((param) => {
         if (urlObj.searchParams.has(param)) {
           urlObj.searchParams.set(param, REDACTED);
-          modified = true;
+          _modified = true;
         }
       });
 
       return urlObj.toString();
-    } catch (error) {
+    } catch {
       // If URL parsing fails, treat as a string
       return SensitiveDataFilter.sanitizeString(url);
     }
