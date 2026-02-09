@@ -318,6 +318,45 @@ if (audioBlob.size > MAX_CHUNK_SIZE) {
 }
 ```
 
+### GPT-4o Transcribe with Speaker Diarization
+
+**CRITICAL for AI developers modifying TranscriptionService:**
+
+When using GPT-4o's speaker diarization feature:
+
+```javascript
+// REQUIRED: Use gpt-4o-transcribe-diarize model for speaker identification
+formData.append('model', 'gpt-4o-transcribe-diarize');
+formData.append('response_format', 'diarized_json');
+
+// Response includes speaker-labeled segments
+{
+  text: "Full transcript...",
+  segments: [
+    {
+      speaker: "SPEAKER_00",  // Auto-assigned IDs
+      text: "Welcome to our adventure!",
+      start: 0.0,
+      end: 2.5
+    }
+  ]
+}
+
+// IMPORTANT: Speaker IDs (SPEAKER_00, SPEAKER_01, etc.) must be mapped to player names
+const speakerMap = {
+  'SPEAKER_00': 'Game Master',
+  'SPEAKER_01': 'Player 1'
+};
+const mapped = transcriptionService._mapSpeakersToNames(result, speakerMap);
+```
+
+**Key diarization specifics:**
+- Speaker IDs are assigned in order of first appearance (SPEAKER_00, SPEAKER_01, ...)
+- Same physical speaker gets consistent ID throughout single transcription
+- Accuracy decreases with >4 speakers or overlapping speech
+- Use context prompts for better accuracy with character names and terminology
+- See [GPT4O_TRANSCRIBE_API.md](docs/GPT4O_TRANSCRIBE_API.md) for complete diarization documentation
+
 ## Build & Release
 
 ### Build the package
@@ -491,6 +530,7 @@ Check browser console for `VoxChronicle |` prefixed messages.
 
 ## API Reference Quick Links
 
+- **GPT-4o Transcribe (Diarization)**: [GPT4O_TRANSCRIBE_API.md](docs/GPT4O_TRANSCRIBE_API.md) - Comprehensive guide for speaker diarization, chunking, and API specifics
 - **OpenAI Transcription**: [Audio API](https://platform.openai.com/docs/api-reference/audio)
 - **OpenAI Images**: [Images API](https://platform.openai.com/docs/api-reference/images)
 - **Kanka API**: [API Documentation](https://app.kanka.io/docs/1.0)
