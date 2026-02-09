@@ -1,0 +1,247 @@
+{{!--
+  VoxChronicle - Configuration Panel Template
+
+  Handlebars template for the VoxChronicleConfig FormApplication.
+  Provides a dedicated UI for managing VoxChronicle settings including:
+  - OpenAI API key with connection testing
+  - Kanka API token with connection testing
+  - Dynamic Kanka campaign selector
+  - Transcription settings
+  - Image generation settings
+  - Entity extraction settings
+
+  @module vox-chronicle
+  @template config
+--}}
+
+<form class="vox-chronicle-config" autocomplete="off">
+  {{!-- OpenAI Section --}}
+  <section class="config-section">
+    <h2 class="section-header">
+      <i class="fas fa-brain"></i>
+      {{i18n.openaiSection}}
+    </h2>
+
+    <div class="form-group">
+      <label for="openaiApiKey">{{i18n.openaiKeyLabel}}</label>
+      <div class="form-fields">
+        <input type="password"
+               name="openaiApiKey"
+               id="openaiApiKey"
+               value="{{openaiApiKey}}"
+               placeholder="sk-..."
+               autocomplete="new-password" />
+        <button type="button"
+                class="btn-test"
+                data-action="test-openai"
+                title="{{i18n.testConnection}}"
+                {{#if isValidatingOpenAI}}disabled{{/if}}>
+          <i class="fas {{#if isValidatingOpenAI}}fa-spinner fa-spin{{else}}fa-plug{{/if}}"></i>
+        </button>
+      </div>
+      <p class="hint">{{i18n.openaiKeyHint}}</p>
+    </div>
+  </section>
+
+  {{!-- Kanka Section --}}
+  <section class="config-section">
+    <h2 class="section-header">
+      <i class="fas fa-book"></i>
+      {{i18n.kankaSection}}
+    </h2>
+
+    {{!-- Kanka API Token --}}
+    <div class="form-group">
+      <label for="kankaApiToken">{{i18n.kankaTokenLabel}}</label>
+      <div class="form-fields">
+        <input type="password"
+               name="kankaApiToken"
+               id="kankaApiToken"
+               value="{{kankaApiToken}}"
+               placeholder="..."
+               autocomplete="new-password" />
+        <button type="button"
+                class="btn-test"
+                data-action="test-kanka"
+                title="{{i18n.testConnection}}"
+                {{#if isValidatingKanka}}disabled{{/if}}>
+          <i class="fas {{#if isValidatingKanka}}fa-spinner fa-spin{{else}}fa-plug{{/if}}"></i>
+        </button>
+      </div>
+      <p class="hint">{{i18n.kankaTokenHint}}</p>
+    </div>
+
+    {{!-- Kanka Campaign Selector --}}
+    <div class="form-group">
+      <label for="kankaCampaignId">{{i18n.campaignLabel}}</label>
+      <div class="form-fields">
+        <select name="kankaCampaignId"
+                id="kankaCampaignId"
+                {{#unless canSelectCampaign}}disabled{{/unless}}>
+          {{#if isLoadingCampaigns}}
+            <option value="">{{i18n.campaignLoading}}</option>
+          {{else if campaignError}}
+            <option value="">{{i18n.campaignError}}</option>
+          {{else if (not hasKankaToken)}}
+            <option value="">{{i18n.campaignNeedsToken}}</option>
+          {{else if (not hasCampaigns)}}
+            <option value="">{{i18n.campaignNone}}</option>
+          {{else}}
+            <option value="">{{i18n.campaignPlaceholder}}</option>
+            {{#each campaigns}}
+              <option value="{{this.id}}" {{#if (eq (toString this.id) ../kankaCampaignId)}}selected{{/if}}>
+                {{this.name}}
+              </option>
+            {{/each}}
+          {{/if}}
+        </select>
+        <button type="button"
+                class="btn-refresh"
+                data-action="refresh-campaigns"
+                title="{{i18n.refreshCampaigns}}"
+                {{#unless hasKankaToken}}disabled{{/unless}}>
+          <i class="fas fa-sync-alt {{#if isLoadingCampaigns}}fa-spin{{/if}}"></i>
+        </button>
+      </div>
+      <p class="hint">{{i18n.campaignHint}}</p>
+      {{#if campaignError}}
+        <p class="error-message">
+          <i class="fas fa-exclamation-triangle"></i>
+          {{campaignError}}
+        </p>
+      {{/if}}
+    </div>
+  </section>
+
+  {{!-- Transcription Section --}}
+  <section class="config-section">
+    <h2 class="section-header">
+      <i class="fas fa-microphone"></i>
+      {{i18n.transcriptionSection}}
+    </h2>
+
+    {{!-- Transcription Language --}}
+    <div class="form-group">
+      <label for="transcriptionLanguage">{{i18n.languageLabel}}</label>
+      <div class="form-fields">
+        <select name="transcriptionLanguage" id="transcriptionLanguage">
+          {{#each languageOptions}}
+            <option value="{{@key}}" {{#if (eq @key ../transcriptionLanguage)}}selected{{/if}}>
+              {{this}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+      <p class="hint">{{i18n.languageHint}}</p>
+    </div>
+
+    {{!-- Transcription Mode --}}
+    <div class="form-group">
+      <label for="transcriptionMode">{{i18n.modeLabel}}</label>
+      <div class="form-fields">
+        <select name="transcriptionMode" id="transcriptionMode">
+          {{#each modeOptions}}
+            <option value="{{@key}}" {{#if (eq @key ../transcriptionMode)}}selected{{/if}}>
+              {{this}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+      <p class="hint">{{i18n.modeHint}}</p>
+    </div>
+
+    {{!-- Whisper Backend URL --}}
+    <div class="form-group">
+      <label for="whisperBackendUrl">{{i18n.whisperUrlLabel}}</label>
+      <div class="form-fields">
+        <input type="text"
+               name="whisperBackendUrl"
+               id="whisperBackendUrl"
+               value="{{whisperBackendUrl}}" />
+      </div>
+      <p class="hint">{{i18n.whisperUrlHint}}</p>
+    </div>
+  </section>
+
+  {{!-- Image Generation Section --}}
+  <section class="config-section">
+    <h2 class="section-header">
+      <i class="fas fa-image"></i>
+      {{i18n.imageSection}}
+    </h2>
+
+    {{!-- Image Quality --}}
+    <div class="form-group">
+      <label for="imageQuality">{{i18n.qualityLabel}}</label>
+      <div class="form-fields">
+        <select name="imageQuality" id="imageQuality">
+          {{#each qualityOptions}}
+            <option value="{{@key}}" {{#if (eq @key ../imageQuality)}}selected{{/if}}>
+              {{this}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+      <p class="hint">{{i18n.qualityHint}}</p>
+    </div>
+
+    {{!-- Max Images Per Session --}}
+    <div class="form-group">
+      <label for="maxImagesPerSession">{{i18n.maxImagesLabel}}</label>
+      <div class="form-fields">
+        <input type="number"
+               name="maxImagesPerSession"
+               id="maxImagesPerSession"
+               value="{{maxImagesPerSession}}"
+               min="0"
+               max="10"
+               step="1" />
+      </div>
+      <p class="hint">{{i18n.maxImagesHint}}</p>
+    </div>
+  </section>
+
+  {{!-- Entity Extraction Section --}}
+  <section class="config-section">
+    <h2 class="section-header">
+      <i class="fas fa-users"></i>
+      {{i18n.entitySection}}
+    </h2>
+
+    {{!-- Auto-Extract Entities --}}
+    <div class="form-group checkbox-group">
+      <div class="form-fields">
+        <label class="checkbox-label">
+          <input type="checkbox"
+                 name="autoExtractEntities"
+                 id="autoExtractEntities"
+                 {{#if autoExtractEntities}}checked{{/if}} />
+          <span class="checkbox-text">{{i18n.autoExtractLabel}}</span>
+        </label>
+      </div>
+      <p class="hint">{{i18n.autoExtractHint}}</p>
+    </div>
+
+    {{!-- Confirm Entity Creation --}}
+    <div class="form-group checkbox-group">
+      <div class="form-fields">
+        <label class="checkbox-label">
+          <input type="checkbox"
+                 name="confirmEntityCreation"
+                 id="confirmEntityCreation"
+                 {{#if confirmEntityCreation}}checked{{/if}} />
+          <span class="checkbox-text">{{i18n.confirmCreationLabel}}</span>
+        </label>
+      </div>
+      <p class="hint">{{i18n.confirmCreationHint}}</p>
+    </div>
+  </section>
+
+  {{!-- Form Footer with Save Button --}}
+  <footer class="form-footer">
+    <button type="submit" class="btn-save">
+      <i class="fas fa-save"></i>
+      <span>{{i18n.save}}</span>
+    </button>
+  </footer>
+</form>
