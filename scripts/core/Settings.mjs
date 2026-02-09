@@ -355,6 +355,16 @@ class Settings {
       default: []
     });
 
+    // Kanka API Token Creation Timestamp (for expiration tracking)
+    game.settings.register(MODULE_ID, 'kankaApiTokenCreatedAt', {
+      name: 'Kanka Token Created At',
+      hint: 'Timestamp when the Kanka API token was first set',
+      scope: 'world',
+      config: false,
+      type: Number,
+      default: 0
+    });
+
     console.log(`${MODULE_ID} | Settings registered successfully`);
   }
 
