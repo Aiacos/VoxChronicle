@@ -31,11 +31,12 @@ class Settings {
     // ==========================================
 
     // Register the configuration menu that opens VoxChronicleConfig
+    // Using fa-solid prefix for Foundry VTT v13 compatibility
     game.settings.registerMenu(MODULE_ID, 'config', {
       name: 'VOXCHRONICLE.Config.MenuName',
       label: 'VOXCHRONICLE.Config.MenuLabel',
       hint: 'VOXCHRONICLE.Config.MenuHint',
-      icon: 'fas fa-cogs',
+      icon: 'fa-solid fa-cogs',
       type: VoxChronicleConfig,
       restricted: false
     });
@@ -353,6 +354,16 @@ class Settings {
       config: false,
       type: Array,
       default: []
+    });
+
+    // Kanka API Token Creation Timestamp (for expiration tracking)
+    game.settings.register(MODULE_ID, 'kankaApiTokenCreatedAt', {
+      name: 'Kanka Token Created At',
+      hint: 'Timestamp when the Kanka API token was first set',
+      scope: 'world',
+      config: false,
+      type: Number,
+      default: 0
     });
 
     console.log(`${MODULE_ID} | Settings registered successfully`);

@@ -259,10 +259,11 @@ Hooks.on('renderSettingsConfig', (app, html) => {
   const kankaTokenInput = html.find(`input[name="${MODULE_ID}.kankaApiToken"]`);
 
   // Inject validation button for OpenAI API key
+  // Using fa-solid prefix for Foundry VTT v13 compatibility
   if (openAIKeyInput.length > 0) {
     const validateButton = $(`
       <button type="button" class="vox-chronicle-validate-button" data-validation-target="openai">
-        <i class="fas fa-plug"></i> Test Connection
+        <i class="fa-solid fa-plug"></i> Test Connection
       </button>
     `);
 
@@ -310,10 +311,11 @@ Hooks.on('renderSettingsConfig', (app, html) => {
   }
 
   // Inject validation button for Kanka API token
+  // Using fa-solid prefix for Foundry VTT v13 compatibility
   if (kankaTokenInput.length > 0) {
     const validateButton = $(`
       <button type="button" class="vox-chronicle-validate-button" data-validation-target="kanka">
-        <i class="fas fa-plug"></i> Test Connection
+        <i class="fa-solid fa-plug"></i> Test Connection
       </button>
     `);
 
