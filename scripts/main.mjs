@@ -47,7 +47,7 @@ async function getRecorderControls() {
  */
 Hooks.once('init', () => {
   // Log module initialization start
-  console.log(`${MODULE_ID} | Initializing VoxChronicle module`);
+  logger.info('Initializing VoxChronicle module');
 
   // Register module settings
   Settings.registerSettings();
@@ -58,7 +58,7 @@ Hooks.once('init', () => {
     ready: false
   };
 
-  console.log(`${MODULE_ID} | Module settings registered`);
+  logger.info('Module settings registered');
 });
 
 /**
@@ -67,7 +67,7 @@ Hooks.once('init', () => {
  * Use this to initialize services that depend on game data
  */
 Hooks.once('ready', async () => {
-  console.log(`${MODULE_ID} | VoxChronicle module ready`);
+  logger.info('VoxChronicle module ready');
 
   try {
     // Initialize the main VoxChronicle singleton
@@ -77,9 +77,9 @@ Hooks.once('ready', async () => {
     // Mark module as ready
     game[MODULE_ID].ready = true;
 
-    console.log(`${MODULE_ID} | All services initialized successfully`);
+    logger.info('All services initialized successfully');
   } catch (error) {
-    console.error(`${MODULE_ID} | Failed to initialize module:`, error);
+    logger.error('Failed to initialize module:', error);
     ui.notifications?.error(
       'VoxChronicle: Failed to initialize module. Check console for details.'
     );
@@ -243,7 +243,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
     });
   }
 
-  console.log(`${MODULE_ID} | Scene control buttons registered`);
+  logger.info('Scene control buttons registered');
 });
 
 /**
@@ -298,7 +298,7 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       } catch (error) {
         // Error state for unexpected exceptions
         icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        console.error(`${MODULE_ID} | OpenAI validation error:`, error);
+        logger.error('OpenAI validation error:', error);
 
         setTimeout(() => {
           icon.removeClass('fa-times').addClass('fa-plug');
@@ -350,7 +350,7 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       } catch (error) {
         // Error state for unexpected exceptions
         icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        console.error(`${MODULE_ID} | Kanka validation error:`, error);
+        logger.error('Kanka validation error:', error);
 
         setTimeout(() => {
           icon.removeClass('fa-times').addClass('fa-plug');
