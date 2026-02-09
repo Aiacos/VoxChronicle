@@ -265,12 +265,10 @@ describe('WhisperBackend', () => {
     });
 
     it('should try fallback endpoint if /health fails', async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error('Not found'))
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200
-        });
+      mockFetch.mockRejectedValueOnce(new Error('Not found')).mockResolvedValueOnce({
+        ok: true,
+        status: 200
+      });
 
       const result = await backend.healthCheck();
 
@@ -602,7 +600,10 @@ describe('WhisperBackend', () => {
 
     it('should throw timeout error and retry', async () => {
       const audioBlob = createMockAudioBlob();
-      const customBackend = new WhisperBackend(DEFAULT_WHISPER_URL, { timeout: 100, maxRetries: 1 });
+      const customBackend = new WhisperBackend(DEFAULT_WHISPER_URL, {
+        timeout: 100,
+        maxRetries: 1
+      });
 
       mockFetch.mockImplementation((url, options) => {
         return new Promise((resolve, reject) => {
@@ -780,12 +781,9 @@ describe('WhisperBackend', () => {
 
   describe('WhisperError', () => {
     it('should create error with all properties', () => {
-      const error = new WhisperError(
-        'Test error',
-        WhisperErrorType.SERVER_ERROR,
-        500,
-        { detail: 'error details' }
-      );
+      const error = new WhisperError('Test error', WhisperErrorType.SERVER_ERROR, 500, {
+        detail: 'error details'
+      });
 
       expect(error).toBeInstanceOf(Error);
       expect(error.name).toBe('WhisperError');
@@ -813,7 +811,11 @@ describe('WhisperBackend', () => {
       const clientError = new WhisperError('Client', WhisperErrorType.INVALID_REQUEST_ERROR, 400);
       expect(clientError.isRetryable).toBe(false);
 
-      const unsupportedError = new WhisperError('Unsupported', WhisperErrorType.UNSUPPORTED_FORMAT_ERROR, 415);
+      const unsupportedError = new WhisperError(
+        'Unsupported',
+        WhisperErrorType.UNSUPPORTED_FORMAT_ERROR,
+        415
+      );
       expect(unsupportedError.isRetryable).toBe(false);
     });
   });
@@ -870,14 +872,12 @@ describe('WhisperBackend', () => {
       // Mock setTimeout to avoid actual delays
       vi.useFakeTimers();
 
-      mockFetch
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          headers: new Map([['content-type', 'application/json']]),
-          json: () => Promise.resolve(mockResponse)
-        });
+      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Map([['content-type', 'application/json']]),
+        json: () => Promise.resolve(mockResponse)
+      });
 
       const transcribePromise = backend.transcribe(audioBlob);
 

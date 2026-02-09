@@ -9,14 +9,14 @@
  * Audio size constants (in bytes)
  */
 export const AUDIO_SIZES = {
-  TINY: 512,                      // 512 bytes - minimal valid audio
-  SMALL: 1024,                    // 1 KB - small test sample
-  MEDIUM: 50 * 1024,              // 50 KB - typical short recording
-  LARGE: 1024 * 1024,             // 1 MB - longer recording
-  VERY_LARGE: 10 * 1024 * 1024,   // 10 MB - extended session
-  NEAR_LIMIT: 24 * 1024 * 1024,   // 24 MB - just under 25MB limit
-  OVERSIZED: 26 * 1024 * 1024,    // 26 MB - exceeds 25MB limit (requires chunking)
-  HUGE: 50 * 1024 * 1024          // 50 MB - requires multiple chunks
+  TINY: 512, // 512 bytes - minimal valid audio
+  SMALL: 1024, // 1 KB - small test sample
+  MEDIUM: 50 * 1024, // 50 KB - typical short recording
+  LARGE: 1024 * 1024, // 1 MB - longer recording
+  VERY_LARGE: 10 * 1024 * 1024, // 10 MB - extended session
+  NEAR_LIMIT: 24 * 1024 * 1024, // 24 MB - just under 25MB limit
+  OVERSIZED: 26 * 1024 * 1024, // 26 MB - exceeds 25MB limit (requires chunking)
+  HUGE: 50 * 1024 * 1024 // 50 MB - requires multiple chunks
 };
 
 /**
@@ -30,7 +30,7 @@ export const AUDIO_MIME_TYPES = {
   WAV: 'audio/wav',
   OGG: 'audio/ogg',
   MPEG: 'audio/mpeg',
-  INVALID: 'video/mp4'  // Wrong type for audio
+  INVALID: 'video/mp4' // Wrong type for audio
 };
 
 /**
@@ -55,7 +55,7 @@ export function createMockAudioBlob(size = 1024, type = 'audio/webm', fillValue 
  */
 export function createRealisticWebMBlob(size = 1024) {
   // WebM file starts with EBML header: 0x1A45DFA3
-  const header = new Uint8Array([0x1A, 0x45, 0xDF, 0xA3]);
+  const header = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]);
   const remaining = new Uint8Array(size - header.length).fill(0);
 
   const combined = new Uint8Array(size);
@@ -106,7 +106,7 @@ export const INVALID_AUDIO_SAMPLES = {
   empty: new Blob([], { type: AUDIO_MIME_TYPES.WEBM }),
   wrongType: createMockAudioBlob(AUDIO_SIZES.SMALL, AUDIO_MIME_TYPES.INVALID),
   noType: createMockAudioBlob(AUDIO_SIZES.SMALL, ''),
-  corrupted: createMockAudioBlob(AUDIO_SIZES.SMALL, AUDIO_MIME_TYPES.WEBM, 0xFF)
+  corrupted: createMockAudioBlob(AUDIO_SIZES.SMALL, AUDIO_MIME_TYPES.WEBM, 0xff)
 };
 
 // Realistic audio samples with headers
@@ -131,7 +131,11 @@ export const AUDIO_FILE_SAMPLES = {
  * @param {string} type - MIME type
  * @returns {Array<Blob>} Array of audio blob chunks
  */
-export function createAudioChunks(chunkCount = 3, chunkSize = AUDIO_SIZES.LARGE, type = AUDIO_MIME_TYPES.WEBM) {
+export function createAudioChunks(
+  chunkCount = 3,
+  chunkSize = AUDIO_SIZES.LARGE,
+  type = AUDIO_MIME_TYPES.WEBM
+) {
   return Array.from({ length: chunkCount }, (_, i) => {
     // Use different fill values to make chunks distinguishable
     return createMockAudioBlob(chunkSize, type, i);
@@ -157,14 +161,14 @@ export function createProgressiveAudioStream(finalSize = AUDIO_SIZES.LARGE, step
  * Based on typical bitrates: ~16 KB/s for compressed audio
  */
 export const AUDIO_DURATION_ESTIMATES = {
-  [AUDIO_SIZES.TINY]: 0.03,        // ~32ms
-  [AUDIO_SIZES.SMALL]: 0.06,       // ~64ms
-  [AUDIO_SIZES.MEDIUM]: 3.1,       // ~3 seconds
-  [AUDIO_SIZES.LARGE]: 64,         // ~1 minute
-  [AUDIO_SIZES.VERY_LARGE]: 640,   // ~10 minutes
-  [AUDIO_SIZES.NEAR_LIMIT]: 1536,  // ~25 minutes
-  [AUDIO_SIZES.OVERSIZED]: 1664,   // ~27 minutes
-  [AUDIO_SIZES.HUGE]: 3200         // ~53 minutes
+  [AUDIO_SIZES.TINY]: 0.03, // ~32ms
+  [AUDIO_SIZES.SMALL]: 0.06, // ~64ms
+  [AUDIO_SIZES.MEDIUM]: 3.1, // ~3 seconds
+  [AUDIO_SIZES.LARGE]: 64, // ~1 minute
+  [AUDIO_SIZES.VERY_LARGE]: 640, // ~10 minutes
+  [AUDIO_SIZES.NEAR_LIMIT]: 1536, // ~25 minutes
+  [AUDIO_SIZES.OVERSIZED]: 1664, // ~27 minutes
+  [AUDIO_SIZES.HUGE]: 3200 // ~53 minutes
 };
 
 /**

@@ -71,7 +71,8 @@ function createMockImageResponse(options = {}) {
     created: options.created || Date.now(),
     data: [
       {
-        url: options.url || 'https://oaidalleapiprodscus.blob.core.windows.net/private/test-image.png',
+        url:
+          options.url || 'https://oaidalleapiprodscus.blob.core.windows.net/private/test-image.png',
         revised_prompt: options.revisedPrompt || 'A detailed fantasy character portrait'
       }
     ]
@@ -309,8 +310,12 @@ describe('ImageGenerationService', () => {
 
     it('should throw error for invalid description', async () => {
       await expect(service.generatePortrait(EntityType.CHARACTER, '')).rejects.toThrow(OpenAIError);
-      await expect(service.generatePortrait(EntityType.CHARACTER, null)).rejects.toThrow(OpenAIError);
-      await expect(service.generatePortrait(EntityType.CHARACTER, 123)).rejects.toThrow(OpenAIError);
+      await expect(service.generatePortrait(EntityType.CHARACTER, null)).rejects.toThrow(
+        OpenAIError
+      );
+      await expect(service.generatePortrait(EntityType.CHARACTER, 123)).rejects.toThrow(
+        OpenAIError
+      );
     });
 
     it('should handle unknown entity types', async () => {
@@ -438,7 +443,7 @@ describe('ImageGenerationService', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(results).toHaveLength(3);
-      expect(results.every(r => r.success)).toBe(true);
+      expect(results.every((r) => r.success)).toBe(true);
     });
 
     it('should report progress during batch generation', async () => {
@@ -543,13 +548,17 @@ describe('ImageGenerationService', () => {
         statusText: 'Not Found'
       });
 
-      await expect(service.downloadImage('https://example.com/missing.png')).rejects.toThrow(OpenAIError);
+      await expect(service.downloadImage('https://example.com/missing.png')).rejects.toThrow(
+        OpenAIError
+      );
     });
 
     it('should handle network errors', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(service.downloadImage('https://example.com/image.png')).rejects.toThrow(OpenAIError);
+      await expect(service.downloadImage('https://example.com/image.png')).rejects.toThrow(
+        OpenAIError
+      );
     });
   });
 
@@ -712,7 +721,7 @@ describe('ImageGenerationService', () => {
       expect(Array.isArray(sizes)).toBe(true);
       expect(sizes).toHaveLength(3);
 
-      const square = sizes.find(s => s.id === ImageSize.SQUARE);
+      const square = sizes.find((s) => s.id === ImageSize.SQUARE);
       expect(square).toBeDefined();
       expect(square.name).toContain('Square');
       expect(square.aspectRatio).toBe('1:1');
@@ -724,11 +733,11 @@ describe('ImageGenerationService', () => {
       expect(Array.isArray(qualities)).toBe(true);
       expect(qualities).toHaveLength(2);
 
-      const standard = qualities.find(q => q.id === ImageQuality.STANDARD);
+      const standard = qualities.find((q) => q.id === ImageQuality.STANDARD);
       expect(standard).toBeDefined();
       expect(standard.costMultiplier).toBe(1);
 
-      const hd = qualities.find(q => q.id === ImageQuality.HD);
+      const hd = qualities.find((q) => q.id === ImageQuality.HD);
       expect(hd).toBeDefined();
       expect(hd.costMultiplier).toBe(2);
     });
@@ -739,10 +748,10 @@ describe('ImageGenerationService', () => {
       expect(Array.isArray(styles)).toBe(true);
       expect(styles).toHaveLength(2);
 
-      const vivid = styles.find(s => s.id === ImageStyle.VIVID);
+      const vivid = styles.find((s) => s.id === ImageStyle.VIVID);
       expect(vivid).toBeDefined();
 
-      const natural = styles.find(s => s.id === ImageStyle.NATURAL);
+      const natural = styles.find((s) => s.id === ImageStyle.NATURAL);
       expect(natural).toBeDefined();
     });
 
@@ -752,11 +761,11 @@ describe('ImageGenerationService', () => {
       expect(Array.isArray(types)).toBe(true);
       expect(types).toHaveLength(4);
 
-      const character = types.find(t => t.id === EntityType.CHARACTER);
+      const character = types.find((t) => t.id === EntityType.CHARACTER);
       expect(character).toBeDefined();
       expect(character.defaultSize).toBe(ImageSize.SQUARE);
 
-      const location = types.find(t => t.id === EntityType.LOCATION);
+      const location = types.find((t) => t.id === EntityType.LOCATION);
       expect(location).toBeDefined();
       expect(location.defaultSize).toBe(ImageSize.LANDSCAPE);
     });

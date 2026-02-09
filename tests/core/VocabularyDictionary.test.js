@@ -70,11 +70,11 @@ beforeEach(() => {
 
   // Create default empty dictionary
   const defaultDict = {
-    'character_names': [],
-    'location_names': [],
-    'items': [],
-    'terms': [],
-    'custom': []
+    character_names: [],
+    location_names: [],
+    items: [],
+    terms: [],
+    custom: []
   };
 
   // Create mock settings with default dictionary
@@ -274,30 +274,30 @@ describe('VocabularyDictionary', () => {
 
     it('should throw error for invalid category', async () => {
       const dictionary = new VocabularyDictionary();
-      await expect(
-        dictionary.addTerm('invalid_category', 'Term')
-      ).rejects.toThrow('Invalid category');
+      await expect(dictionary.addTerm('invalid_category', 'Term')).rejects.toThrow(
+        'Invalid category'
+      );
     });
 
     it('should throw error for non-string term', async () => {
       const dictionary = new VocabularyDictionary();
-      await expect(
-        dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, 123)
-      ).rejects.toThrow('Term must be a non-empty string');
+      await expect(dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, 123)).rejects.toThrow(
+        'Term must be a non-empty string'
+      );
     });
 
     it('should throw error for empty term', async () => {
       const dictionary = new VocabularyDictionary();
-      await expect(
-        dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, '')
-      ).rejects.toThrow('Term must be a non-empty string');
+      await expect(dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, '')).rejects.toThrow(
+        'Term must be a non-empty string'
+      );
     });
 
     it('should throw error for whitespace-only term', async () => {
       const dictionary = new VocabularyDictionary();
-      await expect(
-        dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, '   ')
-      ).rejects.toThrow('Term cannot be empty or whitespace');
+      await expect(dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, '   ')).rejects.toThrow(
+        'Term cannot be empty or whitespace'
+      );
     });
 
     it('should call settings.set after adding term', async () => {
@@ -340,16 +340,16 @@ describe('VocabularyDictionary', () => {
 
     it('should throw error for invalid category', async () => {
       const dictionary = new VocabularyDictionary();
-      await expect(
-        dictionary.removeTerm('invalid_category', 'Term')
-      ).rejects.toThrow('Invalid category');
+      await expect(dictionary.removeTerm('invalid_category', 'Term')).rejects.toThrow(
+        'Invalid category'
+      );
     });
 
     it('should throw error for non-string term', async () => {
       const dictionary = new VocabularyDictionary();
-      await expect(
-        dictionary.removeTerm(VocabularyCategory.CHARACTER_NAMES, null)
-      ).rejects.toThrow('Term must be a non-empty string');
+      await expect(dictionary.removeTerm(VocabularyCategory.CHARACTER_NAMES, null)).rejects.toThrow(
+        'Term must be a non-empty string'
+      );
     });
 
     it('should call settings.set after removing term', async () => {
@@ -399,9 +399,9 @@ describe('VocabularyDictionary', () => {
 
     it('should throw error for invalid category', async () => {
       const dictionary = new VocabularyDictionary();
-      await expect(
-        dictionary.clearCategory('invalid_category')
-      ).rejects.toThrow('Invalid category');
+      await expect(dictionary.clearCategory('invalid_category')).rejects.toThrow(
+        'Invalid category'
+      );
     });
 
     it('should call settings.set after clearing', async () => {
@@ -550,25 +550,25 @@ describe('VocabularyDictionary', () => {
     it('should throw error for invalid JSON', async () => {
       const dictionary = new VocabularyDictionary();
 
-      await expect(
-        dictionary.importDictionary('not valid json', false)
-      ).rejects.toThrow('Invalid JSON');
+      await expect(dictionary.importDictionary('not valid json', false)).rejects.toThrow(
+        'Invalid JSON'
+      );
     });
 
     it('should throw error for non-string input', async () => {
       const dictionary = new VocabularyDictionary();
 
-      await expect(
-        dictionary.importDictionary(null, false)
-      ).rejects.toThrow('JSON must be a non-empty string');
+      await expect(dictionary.importDictionary(null, false)).rejects.toThrow(
+        'JSON must be a non-empty string'
+      );
     });
 
     it('should throw error for empty string', async () => {
       const dictionary = new VocabularyDictionary();
 
-      await expect(
-        dictionary.importDictionary('', false)
-      ).rejects.toThrow('JSON must be a non-empty string');
+      await expect(dictionary.importDictionary('', false)).rejects.toThrow(
+        'JSON must be a non-empty string'
+      );
     });
 
     it('should validate dictionary structure', async () => {
@@ -578,9 +578,9 @@ describe('VocabularyDictionary', () => {
         character_names: 'not an array'
       };
 
-      await expect(
-        dictionary.importDictionary(JSON.stringify(invalidData), false)
-      ).rejects.toThrow('must be an array');
+      await expect(dictionary.importDictionary(JSON.stringify(invalidData), false)).rejects.toThrow(
+        'must be an array'
+      );
     });
 
     it('should validate term types', async () => {
@@ -594,9 +594,9 @@ describe('VocabularyDictionary', () => {
         custom: []
       };
 
-      await expect(
-        dictionary.importDictionary(JSON.stringify(invalidData), false)
-      ).rejects.toThrow('must be strings');
+      await expect(dictionary.importDictionary(JSON.stringify(invalidData), false)).rejects.toThrow(
+        'must be strings'
+      );
     });
   });
 
@@ -820,9 +820,9 @@ describe('VocabularyDictionary', () => {
       const terms = dictionary.getTerms(VocabularyCategory.TERMS);
 
       // Check for terms from different categories
-      expect(terms.some(t => t === 'Fireball')).toBe(true); // spell
-      expect(terms.some(t => t === 'Goblin')).toBe(true); // creature
-      expect(terms.some(t => t === 'Fighter')).toBe(true); // class
+      expect(terms.some((t) => t === 'Fireball')).toBe(true); // spell
+      expect(terms.some((t) => t === 'Goblin')).toBe(true); // creature
+      expect(terms.some((t) => t === 'Fighter')).toBe(true); // class
     });
   });
 
@@ -913,9 +913,7 @@ describe('VocabularyDictionary', () => {
             packageType: 'system'
           },
           indexed: true,
-          index: new Map([
-            ['spell1', { name: 'System Spell', _id: 'spell1' }]
-          ])
+          index: new Map([['spell1', { name: 'System Spell', _id: 'spell1' }]])
         },
         {
           collection: 'some-module.items',
@@ -924,9 +922,7 @@ describe('VocabularyDictionary', () => {
             packageType: 'module'
           },
           indexed: true,
-          index: new Map([
-            ['item1', { name: 'Module Item', _id: 'item1' }]
-          ])
+          index: new Map([['item1', { name: 'Module Item', _id: 'item1' }]])
         }
       ];
 
@@ -957,7 +953,7 @@ describe('VocabularyDictionary', () => {
       const dictionary = new VocabularyDictionary();
       const results = await dictionary.extractFromFoundryCompendiums();
 
-      expect(results.character_names.filter(n => n === 'Duplicate Name')).toHaveLength(1);
+      expect(results.character_names.filter((n) => n === 'Duplicate Name')).toHaveLength(1);
       expect(results.character_names).toContain('Unique Name');
     });
 
@@ -994,9 +990,7 @@ describe('VocabularyDictionary', () => {
             // No packageType
           },
           indexed: true,
-          index: new Map([
-            ['actor1', { name: 'World Actor', _id: 'actor1' }]
-          ])
+          index: new Map([['actor1', { name: 'World Actor', _id: 'actor1' }]])
         },
         {
           collection: 'dnd5e.monsters',
@@ -1005,9 +999,7 @@ describe('VocabularyDictionary', () => {
             // No packageType
           },
           indexed: true,
-          index: new Map([
-            ['monster1', { name: 'System Monster', _id: 'monster1' }]
-          ])
+          index: new Map([['monster1', { name: 'System Monster', _id: 'monster1' }]])
         }
       ];
 
@@ -1028,11 +1020,9 @@ describe('VocabularyDictionary', () => {
           },
           indexed: false,
           index: new Map(),
-          getIndex: vi.fn(async function() {
+          getIndex: vi.fn(async function () {
             this.indexed = true;
-            this.index = new Map([
-              ['actor1', { name: 'Loaded Actor', _id: 'actor1' }]
-            ]);
+            this.index = new Map([['actor1', { name: 'Loaded Actor', _id: 'actor1' }]]);
             return this.index;
           })
         }

@@ -48,7 +48,9 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
     estimateDuration: vi.fn((blob) => Math.round(blob.size / 16000)),
     getRecorderOptions: vi.fn(() => ({ mimeType: 'audio/webm' })),
     createAudioBlob: vi.fn((chunks, mimeType) => new Blob(chunks, { type: mimeType })),
-    formatDuration: vi.fn((seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`)
+    formatDuration: vi.fn(
+      (seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`
+    )
   },
   MAX_TRANSCRIPTION_SIZE: 25 * 1024 * 1024
 }));
@@ -120,7 +122,10 @@ globalThis.game = {
 };
 
 // Import after mocks are set up
-import { SessionOrchestrator, SessionState } from '../../scripts/orchestration/SessionOrchestrator.mjs';
+import {
+  SessionOrchestrator,
+  SessionState
+} from '../../scripts/orchestration/SessionOrchestrator.mjs';
 
 /**
  * Create a mock audio blob for testing
@@ -344,15 +349,16 @@ describe('Recording Flow Integration', () => {
       if (url.includes('/chat/completions')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({
-            choices: [
-              {
-                message: {
-                  content: JSON.stringify(mockResponses.entityExtractionResponse)
+          json: () =>
+            Promise.resolve({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify(mockResponses.entityExtractionResponse)
+                  }
                 }
-              }
-            ]
-          })
+              ]
+            })
         });
       }
 
@@ -625,8 +631,8 @@ describe('Recording Flow Integration', () => {
 
     it('should apply speaker mapping to transcript', async () => {
       const speakerMap = {
-        'SPEAKER_00': 'Game Master',
-        'SPEAKER_01': 'Player John'
+        SPEAKER_00: 'Game Master',
+        SPEAKER_01: 'Player John'
       };
 
       await orchestrator.startSession();
@@ -702,9 +708,12 @@ describe('Recording Flow Integration', () => {
         if (url.includes('/chat/completions')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              choices: [{ message: { content: JSON.stringify(mockResponses.entityExtractionResponse) } }]
-            })
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  { message: { content: JSON.stringify(mockResponses.entityExtractionResponse) } }
+                ]
+              })
           });
         }
         if (url.includes('/images/generations')) {
@@ -797,9 +806,12 @@ describe('Recording Flow Integration', () => {
         if (url.includes('/chat/completions')) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({
-              choices: [{ message: { content: JSON.stringify(mockResponses.entityExtractionResponse) } }]
-            })
+            json: () =>
+              Promise.resolve({
+                choices: [
+                  { message: { content: JSON.stringify(mockResponses.entityExtractionResponse) } }
+                ]
+              })
           });
         }
         if (url.includes('/images/generations')) {
@@ -815,13 +827,17 @@ describe('Recording Flow Integration', () => {
       await orchestrator.stopSession();
 
       // Verify API call sequence
-      expect(apiCalls.some(call => call.url.includes('/audio/transcriptions'))).toBe(true);
-      expect(apiCalls.some(call => call.url.includes('/chat/completions'))).toBe(true);
-      expect(apiCalls.some(call => call.url.includes('/images/generations'))).toBe(true);
+      expect(apiCalls.some((call) => call.url.includes('/audio/transcriptions'))).toBe(true);
+      expect(apiCalls.some((call) => call.url.includes('/chat/completions'))).toBe(true);
+      expect(apiCalls.some((call) => call.url.includes('/images/generations'))).toBe(true);
 
       // Verify transcription was called before entity extraction
-      const transcriptionIndex = apiCalls.findIndex(call => call.url.includes('/audio/transcriptions'));
-      const entityExtractionIndex = apiCalls.findIndex(call => call.url.includes('/chat/completions'));
+      const transcriptionIndex = apiCalls.findIndex((call) =>
+        call.url.includes('/audio/transcriptions')
+      );
+      const entityExtractionIndex = apiCalls.findIndex((call) =>
+        call.url.includes('/chat/completions')
+      );
       expect(transcriptionIndex).toBeLessThan(entityExtractionIndex);
     });
 
@@ -838,11 +854,22 @@ describe('Recording Flow Integration', () => {
 
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(
-            url.includes('/audio/transcriptions') ? mockResponses.transcriptionResponse :
-            url.includes('/chat/completions') ? { choices: [{ message: { content: JSON.stringify(mockResponses.entityExtractionResponse) } }] } :
-            {}
-          )
+          json: () =>
+            Promise.resolve(
+              url.includes('/audio/transcriptions')
+                ? mockResponses.transcriptionResponse
+                : url.includes('/chat/completions')
+                  ? {
+                      choices: [
+                        {
+                          message: {
+                            content: JSON.stringify(mockResponses.entityExtractionResponse)
+                          }
+                        }
+                      ]
+                    }
+                  : {}
+            )
         });
       });
 
@@ -850,10 +877,8 @@ describe('Recording Flow Integration', () => {
       await orchestrator.stopSession();
 
       // Verify OpenAI endpoints use Bearer token
-      const openaiCalls = authHeaders.filter(h =>
-        h.url.includes('api.openai.com')
-      );
-      openaiCalls.forEach(call => {
+      const openaiCalls = authHeaders.filter((h) => h.url.includes('api.openai.com'));
+      openaiCalls.forEach((call) => {
         expect(call.auth).toMatch(/^Bearer /);
       });
     });
@@ -888,8 +913,8 @@ describe('Recording Flow Integration', () => {
       await orchestrator.stopSession();
 
       expect(progressUpdates.length).toBeGreaterThan(0);
-      expect(progressUpdates.some(p => p.stage === 'transcription')).toBe(true);
-      expect(progressUpdates.some(p => p.stage === 'extraction')).toBe(true);
+      expect(progressUpdates.some((p) => p.stage === 'transcription')).toBe(true);
+      expect(progressUpdates.some((p) => p.stage === 'extraction')).toBe(true);
     });
 
     it('should notify on session completion', async () => {
@@ -917,11 +942,13 @@ describe('Recording Flow Integration', () => {
       });
 
       // Mock a failure
-      mockFetch.mockImplementationOnce(() => Promise.resolve({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error'
-      }));
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error'
+        })
+      );
 
       await orchestrator.startSession();
 

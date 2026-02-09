@@ -34,25 +34,25 @@ class VoxChronicle {
    */
   constructor() {
     // Service references - initialized in initialize()
-    /** @type {Object|null} Audio recording service */
+    /** @type {object | null} Audio recording service */
     this.audioRecorder = null;
 
-    /** @type {Object|null} OpenAI transcription service */
+    /** @type {object | null} OpenAI transcription service */
     this.transcriptionService = null;
 
-    /** @type {Object|null} OpenAI image generation service */
+    /** @type {object | null} OpenAI image generation service */
     this.imageGenerationService = null;
 
-    /** @type {Object|null} Kanka API service */
+    /** @type {object | null} Kanka API service */
     this.kankaService = null;
 
-    /** @type {Object|null} Entity extraction service */
+    /** @type {object | null} Entity extraction service */
     this.entityExtractor = null;
 
-    /** @type {Object|null} Narrative exporter for chronicle formatting */
+    /** @type {object | null} Narrative exporter for chronicle formatting */
     this.narrativeExporter = null;
 
-    /** @type {Object|null} Session orchestrator */
+    /** @type {object | null} Session orchestrator */
     this.sessionOrchestrator = null;
 
     // State tracking
@@ -62,7 +62,7 @@ class VoxChronicle {
     /** @type {boolean} Whether a recording session is active */
     this.isRecording = false;
 
-    /** @type {Object|null} Current session data */
+    /** @type {object | null} Current session data */
     this.currentSession = null;
   }
 
@@ -127,7 +127,9 @@ class VoxChronicle {
           openaiApiKey: openaiApiKey,
           whisperBackendUrl: whisperBackendUrl
         });
-        console.log(`${MODULE_ID} | Transcription service initialized with mode: ${transcriptionMode}`);
+        console.log(
+          `${MODULE_ID} | Transcription service initialized with mode: ${transcriptionMode}`
+        );
       } catch (error) {
         console.warn(`${MODULE_ID} | Failed to create transcription service: ${error.message}`);
       }
@@ -320,7 +322,7 @@ class VoxChronicle {
    * Transcribes audio, extracts entities, and prepares for Kanka export
    *
    * @param {Blob} audioBlob - The recorded audio blob
-   * @returns {Promise<Object>} The processed session data
+   * @returns {Promise<object>} The processed session data
    */
   async processSession(audioBlob) {
     if (!this.transcriptionService) {
@@ -349,8 +351,8 @@ class VoxChronicle {
   /**
    * Publish a processed session to Kanka
    *
-   * @param {Object} sessionData - The processed session data
-   * @returns {Promise<Object>} The created Kanka entities
+   * @param {object} sessionData - The processed session data
+   * @returns {Promise<object>} The created Kanka entities
    */
   async publishToKanka(sessionData) {
     if (!this.kankaService) {
@@ -375,7 +377,7 @@ class VoxChronicle {
   /**
    * Check if all required services are configured and ready
    *
-   * @returns {Object} Status of each service
+   * @returns {object} Status of each service
    */
   getServicesStatus() {
     return {
@@ -392,7 +394,9 @@ class VoxChronicle {
       },
       settings: {
         openaiConfigured: !!this._getSetting('openaiApiKey'),
-        kankaConfigured: !!(this._getSetting('kankaApiToken') && this._getSetting('kankaCampaignId'))
+        kankaConfigured: !!(
+          this._getSetting('kankaApiToken') && this._getSetting('kankaCampaignId')
+        )
       }
     };
   }

@@ -6,7 +6,7 @@
  * by entity type and relationship type.
  *
  * @class RelationshipGraph
- * @extends Application
+ * @augments Application
  * @module vox-chronicle
  */
 
@@ -43,14 +43,14 @@ const GraphMode = {
 class RelationshipGraph extends Application {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('RelationshipGraph');
 
   /**
    * Entities to display in the graph
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _entities = {
@@ -75,14 +75,14 @@ class RelationshipGraph extends Application {
 
   /**
    * vis-network instance
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _network = null;
 
   /**
    * Current filter settings
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _filters = {
@@ -92,7 +92,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Color mapping for entity types
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _entityColors = {
@@ -103,7 +103,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Color mapping for relationship types
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _relationshipColors = {
@@ -121,7 +121,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Get default options for the Application
-   * @returns {Object} Default application options
+   * @returns {object} Default application options
    * @static
    */
   static get defaultOptions() {
@@ -140,8 +140,8 @@ class RelationshipGraph extends Application {
 
   /**
    * Create a new RelationshipGraph instance
-   * @param {Object} [options] - Application options
-   * @param {Object} [options.entities] - Entities to display
+   * @param {object} [options] - Application options
+   * @param {object} [options.entities] - Entities to display
    * @param {Array} [options.relationships] - Relationships to display
    */
   constructor(options = {}) {
@@ -160,7 +160,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Set the entities to display in the graph
-   * @param {Object} entities - Entities object
+   * @param {object} entities - Entities object
    * @param {Array} [entities.characters] - Character entities
    * @param {Array} [entities.locations] - Location entities
    * @param {Array} [entities.items] - Item entities
@@ -225,7 +225,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Get data for rendering the template
-   * @returns {Object} Template data
+   * @returns {object} Template data
    */
   getData() {
     const data = super.getData();
@@ -236,20 +236,38 @@ class RelationshipGraph extends Application {
 
     // Build entity type options for filter
     const entityTypeOptions = [
-      { value: EntityType.ALL, label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.AllEntities') || 'All' },
-      { value: EntityType.CHARACTER, label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.Characters') || 'Characters', count: this._entities.characters.length },
-      { value: EntityType.LOCATION, label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.Locations') || 'Locations', count: this._entities.locations.length },
-      { value: EntityType.ITEM, label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.Items') || 'Items', count: this._entities.items.length }
+      {
+        value: EntityType.ALL,
+        label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.AllEntities') || 'All'
+      },
+      {
+        value: EntityType.CHARACTER,
+        label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.Characters') || 'Characters',
+        count: this._entities.characters.length
+      },
+      {
+        value: EntityType.LOCATION,
+        label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.Locations') || 'Locations',
+        count: this._entities.locations.length
+      },
+      {
+        value: EntityType.ITEM,
+        label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.Items') || 'Items',
+        count: this._entities.items.length
+      }
     ];
 
     // Build relationship type options for filter
     const relationshipTypeOptions = [
-      { value: 'all', label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.AllRelations') || 'All' }
+      {
+        value: 'all',
+        label: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.AllRelations') || 'All'
+      }
     ];
 
     // Add each relationship type
-    Object.values(RelationshipType).forEach(type => {
-      const count = this._relationships.filter(r => r.relationType === type).length;
+    Object.values(RelationshipType).forEach((type) => {
+      const count = this._relationships.filter((r) => r.relationType === type).length;
       if (count > 0) {
         relationshipTypeOptions.push({
           value: type,
@@ -288,8 +306,12 @@ class RelationshipGraph extends Application {
     super.activateListeners(html);
 
     // Filter change handlers
-    html.find('[data-filter="entity-type"]').on('change', this._onEntityTypeFilterChange.bind(this));
-    html.find('[data-filter="relationship-type"]').on('change', this._onRelationshipTypeFilterChange.bind(this));
+    html
+      .find('[data-filter="entity-type"]')
+      .on('change', this._onEntityTypeFilterChange.bind(this));
+    html
+      .find('[data-filter="relationship-type"]')
+      .on('change', this._onRelationshipTypeFilterChange.bind(this));
 
     // Button handlers
     html.find('[data-action="refresh"]').on('click', this._onRefreshClick.bind(this));
@@ -385,12 +407,17 @@ class RelationshipGraph extends Application {
       this._network.on('click', this._onNodeClick.bind(this));
       this._network.on('doubleClick', this._onNodeDoubleClick.bind(this));
 
-      this._logger.debug('Graph initialized successfully', { nodes: nodes.length, edges: edges.length });
-
+      this._logger.debug('Graph initialized successfully', {
+        nodes: nodes.length,
+        edges: edges.length
+      });
     } catch (error) {
       this._logger.error('Failed to initialize graph:', error);
       this._mode = GraphMode.ERROR;
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ErrorInitializing') || 'Failed to initialize graph');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ErrorInitializing') ||
+          'Failed to initialize graph'
+      );
     }
   }
 
@@ -405,7 +432,7 @@ class RelationshipGraph extends Application {
     let waited = 0;
 
     while (typeof vis === 'undefined' && waited < maxWaitTime) {
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
       waited += checkInterval;
     }
 
@@ -416,7 +443,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Build nodes and edges data for the graph
-   * @returns {Object} Object with nodes and edges arrays
+   * @returns {object} Object with nodes and edges arrays
    * @private
    */
   _buildGraphData() {
@@ -439,7 +466,7 @@ class RelationshipGraph extends Application {
         return;
       }
 
-      this._entities[key].forEach(entity => {
+      this._entities[key].forEach((entity) => {
         const name = entity.name || 'Unknown';
         const id = nodeId++;
 
@@ -459,7 +486,10 @@ class RelationshipGraph extends Application {
     // Build edges from relationships
     this._relationships.forEach((relationship, index) => {
       // Skip if filtered out
-      if (this._filters.relationshipType !== 'all' && this._filters.relationshipType !== relationship.relationType) {
+      if (
+        this._filters.relationshipType !== 'all' &&
+        this._filters.relationshipType !== relationship.relationType
+      ) {
         return;
       }
 
@@ -469,13 +499,16 @@ class RelationshipGraph extends Application {
       // Only add edge if both entities exist in the graph
       if (sourceId !== undefined && targetId !== undefined) {
         const relationType = relationship.relationType || RelationshipType.UNKNOWN;
-        const color = this._relationshipColors[relationType] || this._relationshipColors[RelationshipType.UNKNOWN];
+        const color =
+          this._relationshipColors[relationType] ||
+          this._relationshipColors[RelationshipType.UNKNOWN];
 
         edges.push({
           id: `edge-${index}`,
           from: sourceId,
           to: targetId,
-          label: game.i18n?.localize(`VOXCHRONICLE.RelationshipType.${relationType}`) || relationType,
+          label:
+            game.i18n?.localize(`VOXCHRONICLE.RelationshipType.${relationType}`) || relationType,
           title: relationship.description || '', // Tooltip
           color: color,
           value: relationship.confidence || 5 // Edge thickness based on confidence
@@ -532,10 +565,12 @@ class RelationshipGraph extends Application {
       this._network.fit();
 
       this._logger.debug('Graph refreshed', { nodes: nodes.length, edges: edges.length });
-
     } catch (error) {
       this._logger.error('Failed to refresh graph:', error);
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ErrorRefreshing') || 'Failed to refresh graph');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ErrorRefreshing') ||
+          'Failed to refresh graph'
+      );
     }
   }
 
@@ -587,11 +622,16 @@ class RelationshipGraph extends Application {
 
       URL.revokeObjectURL(url);
 
-      ui.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportSuccess') || 'Graph exported successfully');
-
+      ui.notifications?.info(
+        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportSuccess') ||
+          'Graph exported successfully'
+      );
     } catch (error) {
       this._logger.error('Failed to export graph:', error);
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportError') || 'Failed to export graph');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportError') ||
+          'Failed to export graph'
+      );
     }
   }
 
@@ -607,7 +647,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Handle node click event
-   * @param {Object} params - Click event parameters
+   * @param {object} params - Click event parameters
    * @private
    */
   _onNodeClick(params) {
@@ -622,7 +662,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Handle node double-click event
-   * @param {Object} params - Double-click event parameters
+   * @param {object} params - Double-click event parameters
    * @private
    */
   _onNodeDoubleClick(params) {
@@ -644,7 +684,7 @@ class RelationshipGraph extends Application {
 
   /**
    * Clean up when closing the application
-   * @param {Object} [options] - Close options
+   * @param {object} [options] - Close options
    * @returns {Promise<void>}
    */
   async close(options = {}) {

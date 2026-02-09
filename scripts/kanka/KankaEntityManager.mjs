@@ -43,14 +43,14 @@ import { Logger } from '../utils/Logger.mjs';
 class KankaEntityManager {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('KankaEntityManager');
 
   /**
    * KankaClient instance for API requests
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _client = null;
@@ -65,15 +65,12 @@ class KankaEntityManager {
   /**
    * Create a new KankaEntityManager instance
    *
-   * @param {Object} client - KankaClient instance for making API requests
+   * @param {object} client - KankaClient instance for making API requests
    * @param {string} campaignId - Kanka campaign ID
    */
   constructor(client, campaignId) {
     if (!client) {
-      throw new KankaError(
-        'KankaClient instance is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
+      throw new KankaError('KankaClient instance is required', KankaErrorType.VALIDATION_ERROR);
     }
 
     this._client = client;
@@ -137,13 +134,13 @@ class KankaEntityManager {
    * all entity-specific fields to the API.
    *
    * @param {string} entityType - Entity type (e.g., 'journals', 'characters', 'locations', 'items')
-   * @param {Object} entityData - Entity data
+   * @param {object} entityData - Entity data
    * @param {string} entityData.name - Entity name (required for all entities)
    * @param {string} [entityData.entry] - Entity description/entry (HTML/Markdown supported)
    * @param {string} [entityData.type] - Entity type/subtype (e.g., 'NPC' for characters, 'City' for locations)
    * @param {boolean} [entityData.is_private] - Whether entity is private (default: false)
    * @param {...*} [entityData.*] - Additional entity-specific fields (e.g., age, location_id, parent_location_id)
-   * @returns {Promise<Object>} Created entity data from Kanka API
+   * @returns {Promise<object>} Created entity data from Kanka API
    * @throws {KankaError} If validation fails or API request fails
    *
    * @example
@@ -231,7 +228,7 @@ class KankaEntityManager {
    *
    * @param {string} entityType - Entity type (e.g., 'journals', 'characters', 'locations', 'items')
    * @param {string|number} entityId - Entity ID
-   * @returns {Promise<Object>} Entity data
+   * @returns {Promise<object>} Entity data
    * @throws {KankaError} If entity not found or API request fails
    *
    * @example
@@ -249,8 +246,8 @@ class KankaEntityManager {
    *
    * @param {string} entityType - Entity type (e.g., 'journals', 'characters', 'locations', 'items')
    * @param {string|number} entityId - Entity ID
-   * @param {Object} entityData - Updated entity data (partial updates supported)
-   * @returns {Promise<Object>} Updated entity data
+   * @param {object} entityData - Updated entity data (partial updates supported)
+   * @returns {Promise<object>} Updated entity data
    * @throws {KankaError} If entity not found or API request fails
    *
    * @example
@@ -288,7 +285,7 @@ class KankaEntityManager {
    * List entities with optional filtering and pagination
    *
    * @param {string} entityType - Entity type (e.g., 'journals', 'characters', 'locations', 'items')
-   * @param {Object} [options] - List options
+   * @param {object} [options] - List options
    * @param {number} [options.page] - Page number for pagination
    * @param {string} [options.type] - Filter by entity type/subtype
    * @param {string} [options.name] - Filter by name (partial match)
@@ -296,10 +293,10 @@ class KankaEntityManager {
    * @param {string|number} [options.character_id] - Filter by character ID
    * @param {boolean} [options.is_private] - Filter by privacy status
    * @param {...*} [options.*] - Additional entity-specific filters
-   * @returns {Promise<Object>} Paginated entity list with data, meta, and links
+   * @returns {Promise<object>} Paginated entity list with data, meta, and links
    * @returns {Array} returns.data - Array of entities
-   * @returns {Object} returns.meta - Pagination metadata
-   * @returns {Object} returns.links - Pagination links
+   * @returns {object} returns.meta - Pagination metadata
+   * @returns {object} returns.links - Pagination links
    * @throws {KankaError} If API request fails
    *
    * @example
@@ -355,9 +352,9 @@ class KankaEntityManager {
    * @param {string} entityType - Entity type (e.g., 'characters', 'locations', 'items')
    * @param {string|number} entityId - Entity ID
    * @param {string|Blob} imageSource - Image URL or Blob object
-   * @param {Object} [options] - Upload options
+   * @param {object} [options] - Upload options
    * @param {string} [options.filename='portrait.png'] - Filename for the upload (used for MIME type detection)
-   * @returns {Promise<Object>} Updated entity data with image URL from Kanka
+   * @returns {Promise<object>} Updated entity data with image URL from Kanka
    * @throws {KankaError} If validation fails, download fails, or upload fails
    *
    * @example
@@ -488,12 +485,12 @@ class KankaEntityManager {
     // Common entity types to search (excludes less common types like families, events, maps)
     // This is a balance between coverage and API usage
     const types = [
-      'characters',    // NPCs, PCs, monsters
-      'locations',     // Places, cities, dungeons
-      'items',         // Weapons, armor, artifacts
-      'journals',      // Session chronicles, notes
+      'characters', // NPCs, PCs, monsters
+      'locations', // Places, cities, dungeons
+      'items', // Weapons, armor, artifacts
+      'journals', // Session chronicles, notes
       'organisations', // Guilds, factions, governments
-      'quests'         // Missions, tasks, bounties
+      'quests' // Missions, tasks, bounties
     ];
 
     // Search each entity type sequentially
@@ -505,7 +502,7 @@ class KankaEntityManager {
         if (response.data?.length) {
           // Add entity_type field to each result so caller can distinguish types
           // This is important because different types may have same names
-          const typedResults = response.data.map(entity => ({
+          const typedResults = response.data.map((entity) => ({
             ...entity,
             entity_type: type
           }));

@@ -16,7 +16,7 @@ import { Logger } from './Logger.mjs';
 
 /**
  * Rate limit presets for known APIs
- * @enum {Object}
+ * @enum {object}
  */
 const RateLimitPresets = {
   KANKA_FREE: { requestsPerMinute: 30, name: 'Kanka Free' },
@@ -32,7 +32,7 @@ class RateLimiter {
   /**
    * Create a new RateLimiter instance
    *
-   * @param {Object} options - Configuration options
+   * @param {object} options - Configuration options
    * @param {number} [options.requestsPerMinute=30] - Maximum requests per minute
    * @param {number} [options.maxQueueSize=100] - Maximum queue size before rejecting requests
    * @param {number} [options.maxRetries=3] - Maximum retries on rate limit errors
@@ -112,7 +112,7 @@ class RateLimiter {
 
     /**
      * Logger for this instance
-     * @type {Object}
+     * @type {object}
      * @private
      */
     this._logger = Logger.createChild(`RateLimiter:${this._name}`);
@@ -122,7 +122,7 @@ class RateLimiter {
    * Create a RateLimiter from a preset
    *
    * @param {string} presetName - Name of the preset (e.g., 'KANKA_FREE')
-   * @param {Object} [overrides] - Additional options to override preset defaults
+   * @param {object} [overrides] - Additional options to override preset defaults
    * @returns {RateLimiter} A new RateLimiter instance
    */
   static fromPreset(presetName, overrides = {}) {
@@ -195,7 +195,7 @@ class RateLimiter {
    */
   _cleanupOldTimestamps() {
     const oneMinuteAgo = Date.now() - 60000;
-    this._requestTimestamps = this._requestTimestamps.filter(ts => ts > oneMinuteAgo);
+    this._requestTimestamps = this._requestTimestamps.filter((ts) => ts > oneMinuteAgo);
   }
 
   /**
@@ -224,7 +224,7 @@ class RateLimiter {
 
     // Wait until the oldest request expires from the window
     const oldestTimestamp = this._requestTimestamps[0];
-    const waitTime = (oldestTimestamp + 60000) - Date.now();
+    const waitTime = oldestTimestamp + 60000 - Date.now();
     return Math.max(0, waitTime);
   }
 
@@ -311,7 +311,9 @@ class RateLimiter {
         // Check if it's a rate limit error
         if (this._isRateLimitError(error)) {
           if (attempt < maxRetries) {
-            this._logger.warn(`Rate limit hit, retrying in ${backoffMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+            this._logger.warn(
+              `Rate limit hit, retrying in ${backoffMs}ms (attempt ${attempt + 1}/${maxRetries})`
+            );
             await this._delay(backoffMs);
             backoffMs *= 2; // Exponential backoff
           }
@@ -401,7 +403,9 @@ class RateLimiter {
             if (item.retries < this._maxRetries) {
               item.retries++;
               this._queue.unshift(item);
-              this._logger.info(`Re-queued request for retry (attempt ${item.retries}/${this._maxRetries})`);
+              this._logger.info(
+                `Re-queued request for retry (attempt ${item.retries}/${this._maxRetries})`
+              );
             } else {
               item.reject(error);
             }
@@ -423,7 +427,7 @@ class RateLimiter {
    * @private
    */
   _delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -480,7 +484,7 @@ class RateLimiter {
   /**
    * Get current limiter statistics
    *
-   * @returns {Object} Statistics object
+   * @returns {object} Statistics object
    */
   getStats() {
     return {

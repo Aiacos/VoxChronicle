@@ -87,7 +87,11 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { NarrativeExporter, ChronicleFormat, FormattingStyle } from '../../scripts/kanka/NarrativeExporter.mjs';
+import {
+  NarrativeExporter,
+  ChronicleFormat,
+  FormattingStyle
+} from '../../scripts/kanka/NarrativeExporter.mjs';
 import { OpenAIClient } from '../../scripts/ai/OpenAIClient.mjs';
 
 /**
@@ -113,15 +117,9 @@ function createMockSessionData(overrides = {}) {
     date: '2024-01-15',
     segments: createMockSegments(),
     entities: {
-      characters: [
-        { name: 'Grognard', isNPC: true, description: 'A brave warrior' }
-      ],
-      locations: [
-        { name: 'The Rusty Dragon', type: 'Tavern', description: 'A popular inn' }
-      ],
-      items: [
-        { name: 'Magic Sword', type: 'Weapon', description: 'A glowing blade' }
-      ]
+      characters: [{ name: 'Grognard', isNPC: true, description: 'A brave warrior' }],
+      locations: [{ name: 'The Rusty Dragon', type: 'Tavern', description: 'A popular inn' }],
+      items: [{ name: 'Magic Sword', type: 'Weapon', description: 'A glowing blade' }]
     },
     moments: [
       { title: 'First encounter', context: 'The party meets the mysterious figure', dramaScore: 8 }
@@ -815,18 +813,14 @@ describe('NarrativeExporter', () => {
     });
 
     it('should handle segments with unknown speaker', () => {
-      const segments = [
-        { text: 'No speaker', start: 0, end: 2 }
-      ];
+      const segments = [{ text: 'No speaker', start: 0, end: 2 }];
       const transcript = exporter.formatTranscript(segments);
 
       expect(transcript).toContain('**Unknown:**');
     });
 
     it('should trim segment text', () => {
-      const segments = [
-        { speaker: 'GM', text: '  Text with spaces  ', start: 0, end: 2 }
-      ];
+      const segments = [{ speaker: 'GM', text: '  Text with spaces  ', start: 0, end: 2 }];
       const transcript = exporter.formatTranscript(segments);
 
       expect(transcript).toContain('**GM:** Text with spaces');
@@ -944,9 +938,7 @@ describe('NarrativeExporter', () => {
     it('should escape HTML in entities', () => {
       const sessionData = createMockSessionData({
         entities: {
-          characters: [
-            { name: '<script>alert("xss")</script>', isNPC: true }
-          ]
+          characters: [{ name: '<script>alert("xss")</script>', isNPC: true }]
         }
       });
 
@@ -1043,18 +1035,14 @@ describe('NarrativeExporter', () => {
 
   describe('timestamp formatting', () => {
     it('should format timestamps under 1 hour', () => {
-      const segments = [
-        { speaker: 'GM', text: 'Test', start: 125, end: 130 }
-      ];
+      const segments = [{ speaker: 'GM', text: 'Test', start: 125, end: 130 }];
       const transcript = exporter.formatTranscript(segments, { includeTimestamps: true });
 
       expect(transcript).toContain('[2:05]');
     });
 
     it('should format timestamps over 1 hour', () => {
-      const segments = [
-        { speaker: 'GM', text: 'Test', start: 3725, end: 3730 }
-      ];
+      const segments = [{ speaker: 'GM', text: 'Test', start: 3725, end: 3730 }];
       const transcript = exporter.formatTranscript(segments, { includeTimestamps: true });
 
       expect(transcript).toContain('[1:02:05]');

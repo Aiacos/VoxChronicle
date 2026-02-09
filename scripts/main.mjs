@@ -80,7 +80,9 @@ Hooks.once('ready', async () => {
     console.log(`${MODULE_ID} | All services initialized successfully`);
   } catch (error) {
     console.error(`${MODULE_ID} | Failed to initialize module:`, error);
-    ui.notifications?.error('VoxChronicle: Failed to initialize module. Check console for details.');
+    ui.notifications?.error(
+      'VoxChronicle: Failed to initialize module. Check console for details.'
+    );
   }
 });
 

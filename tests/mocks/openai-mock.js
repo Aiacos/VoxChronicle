@@ -55,7 +55,7 @@ export function createMockTranscriptionResponse(options = {}) {
   ];
 
   const segments = options.segments || defaultSegments;
-  const text = options.text || segments.map(s => s.text).join(' ');
+  const text = options.text || segments.map((s) => s.text).join(' ');
 
   return {
     text,
@@ -78,7 +78,8 @@ export function createMockImageGenerationResponse(options = {}) {
     created: Math.floor(Date.now() / 1000),
     data: [
       {
-        url: options.url || 'https://oaidalleapiprodscus.blob.core.windows.net/private/test-image.png',
+        url:
+          options.url || 'https://oaidalleapiprodscus.blob.core.windows.net/private/test-image.png',
         revised_prompt: options.revisedPrompt || 'A detailed fantasy RPG character portrait'
       }
     ]
@@ -249,9 +250,9 @@ export function mockImageGenerationSuccess(responseOptions = {}) {
  */
 export function mockAuthenticationError() {
   const errorResponse = createMockAuthError();
-  return vi.fn().mockResolvedValue(
-    createMockFetchResponse(errorResponse, { ok: false, status: 401 })
-  );
+  return vi
+    .fn()
+    .mockResolvedValue(createMockFetchResponse(errorResponse, { ok: false, status: 401 }));
 }
 
 /**
@@ -278,9 +279,9 @@ export function mockRateLimitError(retryAfter = 60) {
  */
 export function mockServerError() {
   const errorResponse = createMockServerError();
-  return vi.fn().mockResolvedValue(
-    createMockFetchResponse(errorResponse, { ok: false, status: 500 })
-  );
+  return vi
+    .fn()
+    .mockResolvedValue(createMockFetchResponse(errorResponse, { ok: false, status: 500 }));
 }
 
 /**
@@ -289,9 +290,7 @@ export function mockServerError() {
  * @returns {Function} Mock fetch function
  */
 export function mockNetworkError() {
-  return vi.fn().mockRejectedValue(
-    new TypeError('Failed to fetch')
-  );
+  return vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
 }
 
 /**
@@ -322,9 +321,7 @@ export function mockSuccessAfterRetries(failCount, successResponse = {}) {
   return vi.fn().mockImplementation(() => {
     attemptCount++;
     if (attemptCount <= failCount) {
-      return Promise.resolve(
-        createMockFetchResponse(errorResponse, { ok: false, status: 500 })
-      );
+      return Promise.resolve(createMockFetchResponse(errorResponse, { ok: false, status: 500 }));
     }
     return Promise.resolve(createMockFetchResponse(response));
   });
@@ -452,7 +449,7 @@ export function createMockMultiSpeakerTranscription(speakerCount = 2, turnCount 
   let currentTime = 0;
 
   const sampleTexts = [
-    'Welcome everyone to today\'s session.',
+    "Welcome everyone to today's session.",
     'I roll for initiative.',
     'The dragon emerges from the cave.',
     'Can I cast a spell?',
@@ -478,7 +475,7 @@ export function createMockMultiSpeakerTranscription(speakerCount = 2, turnCount 
     currentTime += duration + 0.5; // Add pause between turns
   }
 
-  const fullText = segments.map(s => s.text).join(' ');
+  const fullText = segments.map((s) => s.text).join(' ');
 
   return {
     text: fullText,

@@ -70,7 +70,8 @@ class ApiKeyValidator {
     if (!PATTERNS.OPENAI_KEY.test(trimmedKey)) {
       return {
         valid: false,
-        error: "Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens"
+        error:
+          "Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens"
       };
     }
 

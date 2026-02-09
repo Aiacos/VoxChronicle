@@ -142,7 +142,7 @@ describe('RateLimiter', () => {
         limiter.throttle(async () => 'test3');
 
         // Give time for queue to populate
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(limiter.queueLength).toBeGreaterThan(0);
       });
@@ -303,8 +303,9 @@ describe('RateLimiter', () => {
       limiter.throttle(async () => 'test2');
 
       // This should exceed queue size
-      await expect(limiter.throttle(async () => 'test3'))
-        .rejects.toThrow('Rate limiter queue full (max: 2)');
+      await expect(limiter.throttle(async () => 'test3')).rejects.toThrow(
+        'Rate limiter queue full (max: 2)'
+      );
     });
 
     it('should record request timestamp after execution', async () => {
@@ -583,7 +584,9 @@ describe('RateLimiter', () => {
 
       // Should not resolve immediately
       let resolved = false;
-      waitPromise.then(() => { resolved = true; });
+      waitPromise.then(() => {
+        resolved = true;
+      });
 
       await vi.advanceTimersByTimeAsync(100);
       expect(resolved).toBe(false);
@@ -618,7 +621,8 @@ describe('RateLimiter', () => {
 
     it('should retry on rate limit error', async () => {
       const limiter = new RateLimiter({ initialBackoffMs: 100 });
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce({ status: 429, message: 'Rate limited' })
         .mockResolvedValueOnce('success');
 
@@ -638,10 +642,7 @@ describe('RateLimiter', () => {
       const promise = limiter.executeWithRetry(fn);
 
       // Run timers and check rejection in parallel to avoid unhandled rejection
-      await Promise.all([
-        vi.runAllTimersAsync(),
-        expect(promise).rejects.toThrow('Server error')
-      ]);
+      await Promise.all([vi.runAllTimersAsync(), expect(promise).rejects.toThrow('Server error')]);
       expect(fn).toHaveBeenCalledOnce();
     });
 
@@ -656,10 +657,7 @@ describe('RateLimiter', () => {
       const promise = limiter.executeWithRetry(fn, 2);
 
       // Run timers and check rejection in parallel to avoid unhandled rejection
-      await Promise.all([
-        vi.runAllTimersAsync(),
-        expect(promise).rejects.toMatchObject(error)
-      ]);
+      await Promise.all([vi.runAllTimersAsync(), expect(promise).rejects.toMatchObject(error)]);
       expect(fn).toHaveBeenCalledTimes(3); // Initial + 2 retries
     });
 
@@ -676,7 +674,8 @@ describe('RateLimiter', () => {
         return originalDelay(ms);
       });
 
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce({ status: 429 })
         .mockRejectedValueOnce({ status: 429 })
         .mockResolvedValueOnce('success');
@@ -686,14 +685,15 @@ describe('RateLimiter', () => {
       await promise;
 
       // Check that backoff delays increase exponentially
-      const backoffDelays = delays.filter(d => d >= 100);
+      const backoffDelays = delays.filter((d) => d >= 100);
       expect(backoffDelays.length).toBeGreaterThanOrEqual(2);
       expect(backoffDelays[1]).toBeGreaterThan(backoffDelays[0]);
     });
 
     it('should recognize rate limit error by statusCode', async () => {
       const limiter = new RateLimiter({ initialBackoffMs: 100 });
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce({ statusCode: 429, message: 'Rate limited' })
         .mockResolvedValueOnce('success');
 
@@ -707,7 +707,8 @@ describe('RateLimiter', () => {
 
     it('should recognize rate limit error by message', async () => {
       const limiter = new RateLimiter({ initialBackoffMs: 100 });
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce(new Error('Rate limit exceeded'))
         .mockResolvedValueOnce('success');
 
@@ -721,7 +722,8 @@ describe('RateLimiter', () => {
 
     it('should recognize rate limit error by code', async () => {
       const limiter = new RateLimiter({ initialBackoffMs: 100 });
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce({ code: 'RATE_LIMITED', message: 'Too many requests' })
         .mockResolvedValueOnce('success');
 
@@ -744,10 +746,7 @@ describe('RateLimiter', () => {
       const promise = limiter.executeWithRetry(fn, 1); // Override with 1 retry
 
       // Run timers and check rejection in parallel to avoid unhandled rejection
-      await Promise.all([
-        vi.runAllTimersAsync(),
-        expect(promise).rejects.toMatchObject(error)
-      ]);
+      await Promise.all([vi.runAllTimersAsync(), expect(promise).rejects.toMatchObject(error)]);
       expect(fn).toHaveBeenCalledTimes(2); // Initial + 1 retry
     });
   });

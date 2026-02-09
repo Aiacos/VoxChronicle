@@ -98,45 +98,47 @@ describe('Settings', () => {
       const registerCalls = mockSettings.register.mock.calls;
 
       // API Keys
-      expect(registerCalls.some(call => call[1] === 'openaiApiKey')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'kankaApiToken')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'openaiApiKey')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'kankaApiToken')).toBe(true);
 
       // Campaign Settings
-      expect(registerCalls.some(call => call[1] === 'kankaCampaignId')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'kankaCampaignId')).toBe(true);
 
       // Transcription Settings
-      expect(registerCalls.some(call => call[1] === 'transcriptionLanguage')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'transcriptionMode')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'whisperBackendUrl')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'showTranscriptionModeIndicator')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'transcriptionLanguage')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'transcriptionMode')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'whisperBackendUrl')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'showTranscriptionModeIndicator')).toBe(true);
 
       // Vocabulary Dictionary
-      expect(registerCalls.some(call => call[1] === 'customVocabularyDictionary')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'customVocabularyDictionary')).toBe(true);
 
       // Audio Settings
-      expect(registerCalls.some(call => call[1] === 'audioCaptureSource')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'echoCancellation')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'noiseSuppression')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'audioCaptureSource')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'echoCancellation')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'noiseSuppression')).toBe(true);
 
       // Image Generation Settings
-      expect(registerCalls.some(call => call[1] === 'imageQuality')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'maxImagesPerSession')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'imageQuality')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'maxImagesPerSession')).toBe(true);
 
       // Entity Extraction Settings
-      expect(registerCalls.some(call => call[1] === 'autoExtractEntities')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'confirmEntityCreation')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'autoExtractEntities')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'confirmEntityCreation')).toBe(true);
 
       // Relationship Extraction Settings
-      expect(registerCalls.some(call => call[1] === 'autoExtractRelationships')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'relationshipConfidenceThreshold')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'maxRelationshipsPerSession')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'autoExtractRelationships')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'relationshipConfidenceThreshold')).toBe(
+        true
+      );
+      expect(registerCalls.some((call) => call[1] === 'maxRelationshipsPerSession')).toBe(true);
 
       // Speaker Labeling
-      expect(registerCalls.some(call => call[1] === 'speakerLabels')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'speakerLabels')).toBe(true);
 
       // Session Storage
-      expect(registerCalls.some(call => call[1] === 'pendingSessions')).toBe(true);
-      expect(registerCalls.some(call => call[1] === 'knownSpeakers')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'pendingSessions')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'knownSpeakers')).toBe(true);
 
       // Verify console.log was called
       expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -152,7 +154,7 @@ describe('Settings', () => {
       const registerCalls = mockSettings.register.mock.calls;
 
       // Find openaiApiKey registration
-      const openaiKeyCall = registerCalls.find(call => call[1] === 'openaiApiKey');
+      const openaiKeyCall = registerCalls.find((call) => call[1] === 'openaiApiKey');
       expect(openaiKeyCall).toBeDefined();
       expect(openaiKeyCall[2].scope).toBe('client');
       expect(openaiKeyCall[2].type).toBe(String);
@@ -167,7 +169,7 @@ describe('Settings', () => {
       const registerCalls = mockSettings.register.mock.calls;
 
       // Find kankaApiToken registration
-      const kankaTokenCall = registerCalls.find(call => call[1] === 'kankaApiToken');
+      const kankaTokenCall = registerCalls.find((call) => call[1] === 'kankaApiToken');
       expect(kankaTokenCall).toBeDefined();
       expect(kankaTokenCall[2].scope).toBe('world');
       expect(kankaTokenCall[2].type).toBe(String);
@@ -182,7 +184,7 @@ describe('Settings', () => {
       const registerCalls = mockSettings.register.mock.calls;
 
       // Find transcriptionLanguage registration
-      const languageCall = registerCalls.find(call => call[1] === 'transcriptionLanguage');
+      const languageCall = registerCalls.find((call) => call[1] === 'transcriptionLanguage');
       expect(languageCall).toBeDefined();
       expect(languageCall[2].choices).toBeDefined();
       expect(languageCall[2].choices).toHaveProperty('en');
@@ -197,7 +199,7 @@ describe('Settings', () => {
       const registerCalls = mockSettings.register.mock.calls;
 
       // Find maxImagesPerSession registration
-      const maxImagesCall = registerCalls.find(call => call[1] === 'maxImagesPerSession');
+      const maxImagesCall = registerCalls.find((call) => call[1] === 'maxImagesPerSession');
       expect(maxImagesCall).toBeDefined();
       expect(maxImagesCall[2].type).toBe(Number);
       expect(maxImagesCall[2].range).toBeDefined();
@@ -214,7 +216,7 @@ describe('Settings', () => {
       const registerCalls = mockSettings.register.mock.calls;
 
       // Find openaiApiKey registration
-      const openaiKeyCall = registerCalls.find(call => call[1] === 'openaiApiKey');
+      const openaiKeyCall = registerCalls.find((call) => call[1] === 'openaiApiKey');
       expect(openaiKeyCall).toBeDefined();
       expect(openaiKeyCall[2].onChange).toBeDefined();
       expect(typeof openaiKeyCall[2].onChange).toBe('function');
@@ -575,9 +577,7 @@ describe('Settings', () => {
 
       Settings._onApiKeyChange('openai');
 
-      expect(mockNotifications.info).toHaveBeenCalledWith(
-        expect.stringContaining('OpenAI')
-      );
+      expect(mockNotifications.info).toHaveBeenCalledWith(expect.stringContaining('OpenAI'));
     });
 
     it('should show notification for Kanka key change', async () => {
@@ -585,9 +585,7 @@ describe('Settings', () => {
 
       Settings._onApiKeyChange('kanka');
 
-      expect(mockNotifications.info).toHaveBeenCalledWith(
-        expect.stringContaining('Kanka')
-      );
+      expect(mockNotifications.info).toHaveBeenCalledWith(expect.stringContaining('Kanka'));
     });
 
     it('should not show notification when game is not ready', async () => {
@@ -613,9 +611,7 @@ describe('Settings', () => {
       const result = await Settings.validateOpenAIKey();
 
       expect(result).toBe(false);
-      expect(mockNotifications.error).toHaveBeenCalledWith(
-        'OpenAI API key not configured'
-      );
+      expect(mockNotifications.error).toHaveBeenCalledWith('OpenAI API key not configured');
     });
 
     it('should handle validation errors gracefully', async () => {
@@ -646,9 +642,7 @@ describe('Settings', () => {
       const result = await Settings.validateKankaToken();
 
       expect(result).toBe(false);
-      expect(mockNotifications.error).toHaveBeenCalledWith(
-        'Kanka API token not configured'
-      );
+      expect(mockNotifications.error).toHaveBeenCalledWith('Kanka API token not configured');
     });
 
     it('should handle validation errors gracefully', async () => {

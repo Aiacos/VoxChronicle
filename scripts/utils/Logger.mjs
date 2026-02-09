@@ -215,7 +215,7 @@ class Logger {
   /**
    * Log a table of data (useful for debugging arrays/objects)
    *
-   * @param {Array|Object} data - The data to display as a table
+   * @param {Array | object} data - The data to display as a table
    * @param {Array<string>} [columns] - Optional column names to display
    */
   static table(data, columns) {
@@ -229,7 +229,7 @@ class Logger {
    * Log an object with expandable details
    *
    * @param {string} label - The label for the object
-   * @param {Object} obj - The object to log
+   * @param {object} obj - The object to log
    */
   static dir(label, obj) {
     if (Logger._shouldLog(LogLevel.DEBUG)) {
@@ -271,16 +271,16 @@ class Logger {
    * Create a child logger with a sub-module prefix
    *
    * @param {string} subModule - The sub-module name
-   * @param {boolean|Object} [options=false] - Sanitization options
+   * @param {boolean | object} [options=false] - Sanitization options
    *   - If boolean: enable/disable sanitization
    *   - If object: { sanitize: boolean }
-   * @returns {Object} A logger object with the same methods but prefixed with sub-module
+   * @returns {object} A logger object with the same methods but prefixed with sub-module
    */
   static createChild(subModule, options = false) {
     const childPrefix = `${MODULE_ID}:${subModule} |`;
 
     // Handle options parameter (boolean or object)
-    const sanitize = typeof options === 'boolean' ? options : (options?.sanitize || false);
+    const sanitize = typeof options === 'boolean' ? options : options?.sanitize || false;
 
     // Helper to sanitize arguments if enabled
     const maybeSanitize = (args) => {

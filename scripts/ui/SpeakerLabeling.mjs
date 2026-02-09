@@ -7,7 +7,7 @@
  * player or character.
  *
  * @class SpeakerLabeling
- * @extends FormApplication
+ * @augments FormApplication
  * @module vox-chronicle
  */
 
@@ -38,14 +38,14 @@ const DEFAULT_SPEAKER_IDS = [
 class SpeakerLabeling extends FormApplication {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('SpeakerLabeling');
 
   /**
    * Current speaker labels being edited
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _labels = {};
@@ -59,7 +59,7 @@ class SpeakerLabeling extends FormApplication {
 
   /**
    * Get default options for the FormApplication
-   * @returns {Object} Default application options
+   * @returns {object} Default application options
    * @static
    */
   static get defaultOptions() {
@@ -79,8 +79,8 @@ class SpeakerLabeling extends FormApplication {
 
   /**
    * Create a new SpeakerLabeling instance
-   * @param {Object} [object] - Form data object
-   * @param {Object} [options] - Application options
+   * @param {object} [object] - Form data object
+   * @param {object} [options] - Application options
    */
   constructor(object = {}, options = {}) {
     super(object, options);
@@ -113,7 +113,7 @@ class SpeakerLabeling extends FormApplication {
     const speakerSet = new Set([...this._knownSpeakers, ...DEFAULT_SPEAKER_IDS]);
 
     // Also include any speakers that have labels but aren't in the lists
-    Object.keys(this._labels).forEach(id => speakerSet.add(id));
+    Object.keys(this._labels).forEach((id) => speakerSet.add(id));
 
     return Array.from(speakerSet).sort((a, b) => {
       // Sort by number if they follow SPEAKER_XX pattern
@@ -139,18 +139,19 @@ class SpeakerLabeling extends FormApplication {
 
   /**
    * Get data for the template
-   * @param {Object} options - Render options
-   * @returns {Object} Template data
+   * @param {object} options - Render options
+   * @returns {object} Template data
    */
   async getData(options = {}) {
     const speakerIds = this._getAllSpeakerIds();
 
     // Build speaker entries for the form
-    const speakers = speakerIds.map(id => ({
+    const speakers = speakerIds.map((id) => ({
       id,
       label: this._labels[id] || '',
       isKnown: this._knownSpeakers.includes(id),
-      placeholder: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Placeholder') || 'Enter name...'
+      placeholder:
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Placeholder') || 'Enter name...'
     }));
 
     // Get list of game users for auto-detect suggestions
@@ -160,35 +161,49 @@ class SpeakerLabeling extends FormApplication {
       moduleId: MODULE_ID,
       speakers,
       hasKnownSpeakers: this._knownSpeakers.length > 0,
-      noSpeakersMessage: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.NoSpeakersDetected') ||
+      noSpeakersMessage:
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.NoSpeakersDetected') ||
         'No speakers detected yet. Record a session first.',
       gameUsers,
       hasGameUsers: gameUsers.length > 0,
       // Localization strings
       i18n: {
         title: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Title') || 'Speaker Labeling',
-        description: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Description') ||
+        description:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Description') ||
           'Assign names to the speakers detected in the transcription.',
         speakerId: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.SpeakerId') || 'Speaker ID',
-        playerName: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.PlayerName') || 'Player/Character Name',
-        quickAssign: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.QuickAssign') || 'Quick Assign',
-        quickAssignPlaceholder: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.QuickAssignPlaceholder') || 'Quick assign...',
+        playerName:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.PlayerName') || 'Player/Character Name',
+        quickAssign:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.QuickAssign') || 'Quick Assign',
+        quickAssignPlaceholder:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.QuickAssignPlaceholder') ||
+          'Quick assign...',
         gameMaster: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.GameMaster') || 'Game Master',
         player: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Player') || 'Player',
         clear: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Clear') || 'Clear',
-        detectedInSession: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.DetectedInSession') || 'Detected in session',
+        detectedInSession:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.DetectedInSession') ||
+          'Detected in session',
         save: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Save') || 'Save Labels',
         reset: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Reset') || 'Reset Labels',
-        autoDetect: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.AutoDetect') || 'Auto-Detect from Users',
+        autoDetect:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.AutoDetect') ||
+          'Auto-Detect from Users',
         saved: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Saved') || 'Speaker labels saved',
         help: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Help') || 'Help',
-        helpSpeakerIds: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpSpeakerIds') ||
+        helpSpeakerIds:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpSpeakerIds') ||
           '<strong>Speaker IDs:</strong> These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).',
-        helpKnownSpeakers: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpKnownSpeakers') ||
+        helpKnownSpeakers:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpKnownSpeakers') ||
           '<strong>Known speakers:</strong> Speakers with a <i class="fas fa-check-circle"></i> icon were detected in a previous transcription session.',
-        helpQuickAssign: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpQuickAssign') ||
-          '<strong>Quick Assign:</strong> Use the dropdown to quickly assign a game user\'s name to a speaker slot.',
-        helpAutoDetect: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpAutoDetect') ||
+        helpQuickAssign:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpQuickAssign') ||
+          "<strong>Quick Assign:</strong> Use the dropdown to quickly assign a game user's name to a speaker slot.",
+        helpAutoDetect:
+          game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpAutoDetect') ||
           '<strong>Auto-Detect:</strong> Automatically fills empty speaker slots with game user names in order.'
       }
     };
@@ -202,15 +217,17 @@ class SpeakerLabeling extends FormApplication {
   _getGameUsers() {
     if (!game.users) return [];
 
-    return game.users.map(user => ({
-      id: user.id,
-      name: user.name,
-      isGM: user.isGM
-    })).sort((a, b) => {
-      // GMs first, then alphabetically
-      if (a.isGM !== b.isGM) return a.isGM ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+    return game.users
+      .map((user) => ({
+        id: user.id,
+        name: user.name,
+        isGM: user.isGM
+      }))
+      .sort((a, b) => {
+        // GMs first, then alphabetically
+        if (a.isGM !== b.isGM) return a.isGM ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
   }
 
   /**
@@ -238,7 +255,7 @@ class SpeakerLabeling extends FormApplication {
   /**
    * Handle form submission
    * @param {Event} event - The form submission event
-   * @param {Object} formData - The form data object
+   * @param {object} formData - The form data object
    * @returns {Promise<void>}
    * @protected
    */
@@ -266,11 +283,11 @@ class SpeakerLabeling extends FormApplication {
       );
 
       this._logger.log(`Saved ${Object.keys(newLabels).length} speaker labels`);
-
     } catch (error) {
       this._logger.error('Failed to save speaker labels:', error);
       ui.notifications?.error(
-        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.SaveFailed') || 'Failed to save speaker labels'
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.SaveFailed') ||
+          'Failed to save speaker labels'
       );
     }
   }
@@ -316,7 +333,8 @@ class SpeakerLabeling extends FormApplication {
     const gameUsers = this._getGameUsers();
     if (gameUsers.length === 0) {
       ui.notifications?.warn(
-        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.NoGameUsers') || 'No game users available for auto-detection'
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.NoGameUsers') ||
+          'No game users available for auto-detection'
       );
       return;
     }
@@ -415,7 +433,7 @@ class SpeakerLabeling extends FormApplication {
 
     try {
       const knownSpeakers = Settings.get('knownSpeakers') || [];
-      const newSpeakers = speakerIds.filter(id => id && !knownSpeakers.includes(id));
+      const newSpeakers = speakerIds.filter((id) => id && !knownSpeakers.includes(id));
 
       if (newSpeakers.length > 0) {
         knownSpeakers.push(...newSpeakers);
@@ -449,7 +467,7 @@ class SpeakerLabeling extends FormApplication {
 
     const labels = Settings.getSpeakerLabels();
 
-    return segments.map(segment => ({
+    return segments.map((segment) => ({
       ...segment,
       speaker: labels[segment.speaker] || segment.speaker || 'Unknown Speaker'
     }));
@@ -463,7 +481,9 @@ class SpeakerLabeling extends FormApplication {
    */
   async _renderFallbackContent() {
     const data = await this.getData();
-    const speakerRows = data.speakers.map(speaker => `
+    const speakerRows = data.speakers
+      .map(
+        (speaker) => `
       <div class="speaker-row ${speaker.isKnown ? 'known' : ''}">
         <div class="speaker-id">
           <span class="speaker-id-text">${escapeHtml(speaker.id)}</span>
@@ -475,16 +495,22 @@ class SpeakerLabeling extends FormApplication {
             <i class="fas fa-times"></i>
           </button>
         </div>
-        ${data.hasGameUsers ? `
+        ${
+  data.hasGameUsers
+    ? `
           <div class="quick-assign">
             <select data-action="quick-assign" data-speaker-id="${escapeHtml(speaker.id)}">
               <option value="">${escapeHtml(data.i18n.quickAssignPlaceholder)}</option>
-              ${data.gameUsers.map(u => `<option value="${escapeHtml(u.isGM ? `GM (${u.name})` : u.name)}">${u.isGM ? '👑 ' : ''}${escapeHtml(u.name)}</option>`).join('')}
+              ${data.gameUsers.map((u) => `<option value="${escapeHtml(u.isGM ? `GM (${u.name})` : u.name)}">${u.isGM ? '👑 ' : ''}${escapeHtml(u.name)}</option>`).join('')}
             </select>
           </div>
-        ` : ''}
+        `
+    : ''
+}
       </div>
-    `).join('');
+    `
+      )
+      .join('');
 
     return `
       <form class="vox-chronicle-speaker-labeling">
@@ -519,7 +545,7 @@ class SpeakerLabeling extends FormApplication {
 
   /**
    * Override _renderInner to provide fallback content if template is missing
-   * @param {Object} data - Template data
+   * @param {object} data - Template data
    * @returns {Promise<jQuery>} Rendered inner content
    * @protected
    */
@@ -536,7 +562,4 @@ class SpeakerLabeling extends FormApplication {
 }
 
 // Export the class
-export {
-  SpeakerLabeling,
-  DEFAULT_SPEAKER_IDS
-};
+export { SpeakerLabeling, DEFAULT_SPEAKER_IDS };

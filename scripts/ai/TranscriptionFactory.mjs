@@ -37,7 +37,7 @@ const TranscriptionMode = {
 class TranscriptionFactory {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   static _logger = Logger.createChild('TranscriptionFactory');
@@ -45,15 +45,15 @@ class TranscriptionFactory {
   /**
    * Create a transcription service based on mode
    *
-   * @param {Object} config - Configuration object
+   * @param {object} config - Configuration object
    * @param {string} config.mode - Transcription mode ('api', 'local', or 'auto')
    * @param {string} [config.openaiApiKey] - OpenAI API key (required for 'api' and 'auto' modes)
    * @param {string} [config.whisperBackendUrl] - Local Whisper backend URL (required for 'local' and 'auto' modes)
-   * @param {Object} [config.options] - Additional options for the service
+   * @param {object} [config.options] - Additional options for the service
    * @param {string} [config.options.defaultLanguage] - Default transcription language
-   * @param {Object} [config.options.defaultSpeakerMap] - Default speaker ID to name mapping
+   * @param {object} [config.options.defaultSpeakerMap] - Default speaker ID to name mapping
    * @param {number} [config.options.timeout] - Request timeout in milliseconds
-   * @returns {Promise<Object>} Transcription service instance
+   * @returns {Promise<object>} Transcription service instance
    * @throws {Error} If configuration is invalid or required parameters are missing
    *
    * @example
@@ -108,7 +108,7 @@ class TranscriptionFactory {
    * Create OpenAI API-based transcription service
    *
    * @param {string} apiKey - OpenAI API key
-   * @param {Object} [options] - Service options
+   * @param {object} [options] - Service options
    * @returns {TranscriptionService} OpenAI transcription service
    * @throws {Error} If API key is missing
    * @private
@@ -127,7 +127,7 @@ class TranscriptionFactory {
    * Create local Whisper-based transcription service
    *
    * @param {string} backendUrl - Whisper backend URL
-   * @param {Object} [options] - Service options
+   * @param {object} [options] - Service options
    * @returns {LocalWhisperService} Local Whisper transcription service
    * @throws {Error} If backend URL is missing
    * @private
@@ -148,8 +148,8 @@ class TranscriptionFactory {
    *
    * @param {string} apiKey - OpenAI API key
    * @param {string} backendUrl - Whisper backend URL
-   * @param {Object} [options] - Service options
-   * @returns {Promise<Object>} Transcription service (local or API)
+   * @param {object} [options] - Service options
+   * @returns {Promise<object>} Transcription service (local or API)
    * @throws {Error} If both services are unavailable
    * @private
    */
@@ -184,7 +184,7 @@ class TranscriptionFactory {
     if (!apiKey) {
       throw new Error(
         'Auto mode failed: local backend unavailable and no OpenAI API key configured. ' +
-        'Please configure either a local Whisper backend or an OpenAI API key.'
+          'Please configure either a local Whisper backend or an OpenAI API key.'
       );
     }
 
@@ -196,7 +196,7 @@ class TranscriptionFactory {
    * Check if a local Whisper backend is available
    *
    * @param {string} backendUrl - Whisper backend URL
-   * @param {Object} [options] - Health check options
+   * @param {object} [options] - Health check options
    * @returns {Promise<boolean>} True if backend is healthy
    *
    * @example
@@ -222,7 +222,7 @@ class TranscriptionFactory {
   /**
    * Get the recommended mode based on available configuration
    *
-   * @param {Object} config - Configuration to evaluate
+   * @param {object} config - Configuration to evaluate
    * @param {string} [config.openaiApiKey] - OpenAI API key
    * @param {string} [config.whisperBackendUrl] - Whisper backend URL
    * @returns {string} Recommended mode ('api', 'local', or 'auto')
@@ -253,7 +253,7 @@ class TranscriptionFactory {
   /**
    * Get available transcription modes
    *
-   * @returns {Array<Object>} List of available modes with descriptions
+   * @returns {Array<object>} List of available modes with descriptions
    */
   static getAvailableModes() {
     return [
@@ -286,7 +286,4 @@ class TranscriptionFactory {
 }
 
 // Export class and enums
-export {
-  TranscriptionFactory,
-  TranscriptionMode
-};
+export { TranscriptionFactory, TranscriptionMode };

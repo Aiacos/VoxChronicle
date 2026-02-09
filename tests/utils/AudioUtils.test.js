@@ -39,7 +39,11 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { AudioUtils, SUPPORTED_MIME_TYPES, MAX_TRANSCRIPTION_SIZE } from '../../scripts/utils/AudioUtils.mjs';
+import {
+  AudioUtils,
+  SUPPORTED_MIME_TYPES,
+  MAX_TRANSCRIPTION_SIZE
+} from '../../scripts/utils/AudioUtils.mjs';
 
 describe('AudioUtils', () => {
   let mockMediaRecorder;
@@ -73,8 +77,8 @@ describe('AudioUtils', () => {
 
   describe('getSupportedMimeType - MIME type detection', () => {
     it('should return first supported MIME type', () => {
-      mockMediaRecorder.isTypeSupported.mockImplementation(type =>
-        type === 'audio/webm;codecs=opus'
+      mockMediaRecorder.isTypeSupported.mockImplementation(
+        (type) => type === 'audio/webm;codecs=opus'
       );
 
       const result = AudioUtils.getSupportedMimeType();
@@ -82,9 +86,7 @@ describe('AudioUtils', () => {
     });
 
     it('should return second option if first is not supported', () => {
-      mockMediaRecorder.isTypeSupported.mockImplementation(type =>
-        type === 'audio/webm'
-      );
+      mockMediaRecorder.isTypeSupported.mockImplementation((type) => type === 'audio/webm');
 
       const result = AudioUtils.getSupportedMimeType();
       expect(result).toBe('audio/webm');
@@ -106,7 +108,7 @@ describe('AudioUtils', () => {
 
     it('should check MIME types in correct order', () => {
       const checkedTypes = [];
-      mockMediaRecorder.isTypeSupported.mockImplementation(type => {
+      mockMediaRecorder.isTypeSupported.mockImplementation((type) => {
         checkedTypes.push(type);
         return type === 'audio/ogg';
       });
@@ -153,13 +155,17 @@ describe('AudioUtils', () => {
 
   describe('getAllSupportedTypes - get all supported MIME types', () => {
     it('should return all supported MIME types', () => {
-      mockMediaRecorder.isTypeSupported.mockImplementation(type =>
-        type.includes('webm') || type.includes('ogg')
+      mockMediaRecorder.isTypeSupported.mockImplementation(
+        (type) => type.includes('webm') || type.includes('ogg')
       );
 
       const result = AudioUtils.getAllSupportedTypes();
       expect(result.length).toBeGreaterThan(0);
-      expect(result.every(format => format.mimeType.includes('webm') || format.mimeType.includes('ogg'))).toBe(true);
+      expect(
+        result.every(
+          (format) => format.mimeType.includes('webm') || format.mimeType.includes('ogg')
+        )
+      ).toBe(true);
     });
 
     it('should return empty array if no MIME types are supported', () => {
@@ -177,8 +183,8 @@ describe('AudioUtils', () => {
     });
 
     it('should return format objects with mimeType, extension, and name', () => {
-      mockMediaRecorder.isTypeSupported.mockImplementation(type =>
-        type === 'audio/webm;codecs=opus'
+      mockMediaRecorder.isTypeSupported.mockImplementation(
+        (type) => type === 'audio/webm;codecs=opus'
       );
 
       const result = AudioUtils.getAllSupportedTypes();
@@ -355,7 +361,7 @@ describe('AudioUtils', () => {
 
       // Mock FileReader
       const mockFileReader = {
-        readAsDataURL: vi.fn(function() {
+        readAsDataURL: vi.fn(function () {
           this.result = 'data:audio/webm;base64,dGVzdCBkYXRh';
           this.onloadend();
         }),
@@ -377,7 +383,7 @@ describe('AudioUtils', () => {
 
       // Mock FileReader with error
       const mockFileReader = {
-        readAsDataURL: vi.fn(function() {
+        readAsDataURL: vi.fn(function () {
           this.onerror();
         }),
         result: null,
@@ -387,7 +393,9 @@ describe('AudioUtils', () => {
 
       globalThis.FileReader = vi.fn(() => mockFileReader);
 
-      await expect(AudioUtils.blobToBase64(blob)).rejects.toThrow('Failed to convert blob to base64');
+      await expect(AudioUtils.blobToBase64(blob)).rejects.toThrow(
+        'Failed to convert blob to base64'
+      );
     });
   });
 
@@ -402,7 +410,7 @@ describe('AudioUtils', () => {
 
       // Mock FileReader
       const mockFileReader = {
-        readAsArrayBuffer: vi.fn(function() {
+        readAsArrayBuffer: vi.fn(function () {
           this.result = mockArrayBuffer;
           this.onloadend();
         }),
@@ -424,7 +432,7 @@ describe('AudioUtils', () => {
 
       // Mock FileReader with error
       const mockFileReader = {
-        readAsArrayBuffer: vi.fn(function() {
+        readAsArrayBuffer: vi.fn(function () {
           this.onerror();
         }),
         result: null,
@@ -434,7 +442,9 @@ describe('AudioUtils', () => {
 
       globalThis.FileReader = vi.fn(() => mockFileReader);
 
-      await expect(AudioUtils.blobToArrayBuffer(blob)).rejects.toThrow('Failed to convert blob to ArrayBuffer');
+      await expect(AudioUtils.blobToArrayBuffer(blob)).rejects.toThrow(
+        'Failed to convert blob to ArrayBuffer'
+      );
     });
   });
 
@@ -792,11 +802,9 @@ describe('AudioUtils', () => {
 
       AudioUtils.createAudioElement(blob);
 
-      expect(mockAudio.addEventListener).toHaveBeenCalledWith(
-        'ended',
-        expect.any(Function),
-        { once: true }
-      );
+      expect(mockAudio.addEventListener).toHaveBeenCalledWith('ended', expect.any(Function), {
+        once: true
+      });
     });
 
     it('should revoke object URL when audio ends', () => {
@@ -884,9 +892,7 @@ describe('AudioUtils', () => {
     });
 
     it('should list all supported formats', () => {
-      mockMediaRecorder.isTypeSupported.mockImplementation(type =>
-        type.includes('webm')
-      );
+      mockMediaRecorder.isTypeSupported.mockImplementation((type) => type.includes('webm'));
       globalThis.navigator = {
         mediaDevices: {
           getUserMedia: vi.fn()
@@ -896,7 +902,7 @@ describe('AudioUtils', () => {
       const result = AudioUtils.getBrowserCapabilities();
 
       expect(result.supportedFormats.length).toBeGreaterThan(0);
-      expect(result.supportedFormats.every(f => f.mimeType.includes('webm'))).toBe(true);
+      expect(result.supportedFormats.every((f) => f.mimeType.includes('webm'))).toBe(true);
     });
   });
 
@@ -917,7 +923,7 @@ describe('AudioUtils', () => {
     });
 
     it('SUPPORTED_MIME_TYPES should contain format objects', () => {
-      SUPPORTED_MIME_TYPES.forEach(format => {
+      SUPPORTED_MIME_TYPES.forEach((format) => {
         expect(format).toHaveProperty('mimeType');
         expect(format).toHaveProperty('extension');
         expect(format).toHaveProperty('name');

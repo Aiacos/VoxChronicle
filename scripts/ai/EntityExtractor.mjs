@@ -64,7 +64,7 @@ const DEFAULT_MAX_MOMENTS = 3;
 /**
  * EntityExtractor class for AI-powered entity extraction from transcripts
  *
- * @extends OpenAIClient
+ * @augments OpenAIClient
  * @example
  * const extractor = new EntityExtractor('your-api-key');
  * const entities = await extractor.extractEntities(transcriptText, {
@@ -74,7 +74,7 @@ const DEFAULT_MAX_MOMENTS = 3;
 class EntityExtractor extends OpenAIClient {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('EntityExtractor');
@@ -111,7 +111,7 @@ class EntityExtractor extends OpenAIClient {
    * Create a new EntityExtractor instance
    *
    * @param {string} apiKey - OpenAI API key
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {string} [options.model='gpt-4o'] - Model to use for extraction
    * @param {number} [options.extractionTemperature=0.3] - Temperature for entity extraction
    * @param {number} [options.momentTemperature=0.7] - Temperature for moment identification
@@ -129,7 +129,7 @@ class EntityExtractor extends OpenAIClient {
     this._momentTemperature = options.momentTemperature ?? 0.7;
 
     if (options.knownEntities && Array.isArray(options.knownEntities)) {
-      options.knownEntities.forEach(name => this._knownEntities.add(name.toLowerCase()));
+      options.knownEntities.forEach((name) => this._knownEntities.add(name.toLowerCase()));
     }
 
     this._logger.debug('EntityExtractor initialized');
@@ -140,7 +140,7 @@ class EntityExtractor extends OpenAIClient {
    * Uses GPT-4o to analyze transcript and identify named entities
    *
    * @param {string} transcriptText - The full transcription text
-   * @param {Object} [options] - Extraction options
+   * @param {object} [options] - Extraction options
    * @param {string[]} [options.existingEntities] - Names of entities already in Kanka (to avoid duplicates)
    * @param {boolean} [options.includePlayerCharacters=false] - Whether to include PCs
    * @param {string} [options.campaignContext] - Additional context about the campaign
@@ -172,7 +172,10 @@ class EntityExtractor extends OpenAIClient {
         model: this._model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Extract entities from this RPG session transcript:\n\n${processedText}` }
+          {
+            role: 'user',
+            content: `Extract entities from this RPG session transcript:\n\n${processedText}`
+          }
         ],
         response_format: { type: 'json_object' },
         temperature: this._extractionTemperature
@@ -186,18 +189,14 @@ class EntityExtractor extends OpenAIClient {
 
       this._logger.log(
         `Extracted ${result.characters.length} characters, ` +
-        `${result.locations.length} locations, ${result.items.length} items`
+          `${result.locations.length} locations, ${result.items.length} items`
       );
 
       return result;
-
     } catch (error) {
       if (error instanceof SyntaxError) {
         this._logger.error('Failed to parse extraction response as JSON');
-        throw new OpenAIError(
-          'Entity extraction returned invalid JSON',
-          OpenAIErrorType.API_ERROR
-        );
+        throw new OpenAIError('Entity extraction returned invalid JSON', OpenAIErrorType.API_ERROR);
       }
       this._logger.error('Entity extraction failed:', error.message);
       throw error;
@@ -208,7 +207,7 @@ class EntityExtractor extends OpenAIClient {
    * Identify salient moments for image generation
    *
    * @param {string} transcriptText - The full transcription text
-   * @param {Object} [options] - Identification options
+   * @param {object} [options] - Identification options
    * @param {number} [options.maxMoments=3] - Maximum number of moments to identify
    * @param {string} [options.campaignContext] - Additional context about the campaign
    * @param {string} [options.style] - Preferred visual style for prompts
@@ -234,7 +233,10 @@ class EntityExtractor extends OpenAIClient {
         model: this._model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Identify the most dramatic moments from this session:\n\n${processedText}` }
+          {
+            role: 'user',
+            content: `Identify the most dramatic moments from this session:\n\n${processedText}`
+          }
         ],
         response_format: { type: 'json_object' },
         temperature: this._momentTemperature
@@ -254,7 +256,6 @@ class EntityExtractor extends OpenAIClient {
       this._logger.log(`Identified ${validatedMoments.length} salient moments`);
 
       return validatedMoments;
-
     } catch (error) {
       if (error instanceof SyntaxError) {
         this._logger.error('Failed to parse moments response as JSON');
@@ -273,8 +274,8 @@ class EntityExtractor extends OpenAIClient {
    * Uses GPT-4o to identify and categorize connections between characters, locations, and items
    *
    * @param {string} transcriptText - The full transcription text
-   * @param {Array<Object>} entities - Previously extracted entities to find relationships between
-   * @param {Object} [options] - Extraction options
+   * @param {Array<object>} entities - Previously extracted entities to find relationships between
+   * @param {object} [options] - Extraction options
    * @param {number} [options.minConfidence=5] - Minimum confidence score (1-10) for including relationships
    * @param {string} [options.campaignContext] - Additional context about the campaign
    * @returns {Promise<Array<ExtractedRelationship>>} Array of detected relationships
@@ -303,7 +304,7 @@ class EntityExtractor extends OpenAIClient {
     const processedText = this._truncateTranscript(transcriptText);
 
     // Build entity list for context
-    const entityNames = entities.map(e => e.name).filter(Boolean);
+    const entityNames = entities.map((e) => e.name).filter(Boolean);
 
     const systemPrompt = this._buildRelationshipSystemPrompt(entityNames, options);
 
@@ -314,7 +315,10 @@ class EntityExtractor extends OpenAIClient {
         model: this._model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Analyze relationships between entities in this RPG session transcript:\n\n${processedText}` }
+          {
+            role: 'user',
+            content: `Analyze relationships between entities in this RPG session transcript:\n\n${processedText}`
+          }
         ],
         response_format: { type: 'json_object' },
         temperature: this._extractionTemperature
@@ -329,7 +333,6 @@ class EntityExtractor extends OpenAIClient {
       this._logger.log(`Extracted ${result.length} relationships`);
 
       return result;
-
     } catch (error) {
       if (error instanceof SyntaxError) {
         this._logger.error('Failed to parse relationship response as JSON');
@@ -348,7 +351,7 @@ class EntityExtractor extends OpenAIClient {
    * More efficient than calling both methods separately
    *
    * @param {string} transcriptText - The full transcription text
-   * @param {Object} [options] - Options for both extraction and moment identification
+   * @param {object} [options] - Options for both extraction and moment identification
    * @returns {Promise<CombinedExtractionResult>} Combined results
    */
   async extractAll(transcriptText, options = {}) {
@@ -370,7 +373,7 @@ class EntityExtractor extends OpenAIClient {
    */
   addKnownEntities(names) {
     const nameList = Array.isArray(names) ? names : [names];
-    nameList.forEach(name => {
+    nameList.forEach((name) => {
       if (name && typeof name === 'string') {
         this._knownEntities.add(name.toLowerCase());
       }
@@ -410,14 +413,15 @@ class EntityExtractor extends OpenAIClient {
    * Build the system prompt for entity extraction
    *
    * @param {string[]} existingEntities - Names to ignore
-   * @param {Object} options - Extraction options
+   * @param {object} options - Extraction options
    * @returns {string} System prompt
    * @private
    */
   _buildExtractionSystemPrompt(existingEntities, options = {}) {
-    const ignoreList = existingEntities.length > 0
-      ? `\nIgnore entities that already exist: ${existingEntities.join(', ')}`
-      : '';
+    const ignoreList =
+      existingEntities.length > 0
+        ? `\nIgnore entities that already exist: ${existingEntities.join(', ')}`
+        : '';
 
     const pcInstructions = options.includePlayerCharacters
       ? 'Include both player characters (PCs) and non-player characters (NPCs).'
@@ -457,14 +461,12 @@ Return JSON in this exact format:
    * Build the system prompt for salient moment identification
    *
    * @param {number} maxMoments - Maximum moments to identify
-   * @param {Object} options - Identification options
+   * @param {object} options - Identification options
    * @returns {string} System prompt
    * @private
    */
   _buildMomentsSystemPrompt(maxMoments, options = {}) {
-    const styleGuide = options.style
-      ? `\nVisual style preference: ${options.style}`
-      : '';
+    const styleGuide = options.style ? `\nVisual style preference: ${options.style}` : '';
 
     const campaignContext = options.campaignContext
       ? `\nCampaign context: ${options.campaignContext}`
@@ -496,14 +498,13 @@ Return JSON in this exact format:
    * Build the system prompt for relationship extraction
    *
    * @param {string[]} entityNames - List of entity names to find relationships between
-   * @param {Object} options - Extraction options
+   * @param {object} options - Extraction options
    * @returns {string} System prompt
    * @private
    */
   _buildRelationshipSystemPrompt(entityNames, options = {}) {
-    const entityList = entityNames.length > 0
-      ? `\n\nEntities to analyze: ${entityNames.join(', ')}`
-      : '';
+    const entityList =
+      entityNames.length > 0 ? `\n\nEntities to analyze: ${entityNames.join(', ')}` : '';
 
     const campaignContext = options.campaignContext
       ? `\nCampaign context: ${options.campaignContext}`
@@ -579,8 +580,8 @@ Return JSON in this exact format:
   /**
    * Normalize and validate extraction result
    *
-   * @param {Object} extracted - Raw extraction result
-   * @param {Object} options - Extraction options
+   * @param {object} extracted - Raw extraction result
+   * @param {object} options - Extraction options
    * @returns {ExtractionResult} Normalized result
    * @private
    */
@@ -592,8 +593,8 @@ Return JSON in this exact format:
 
     // Normalize characters
     const normalizedCharacters = characters
-      .filter(c => c && c.name)
-      .map(c => ({
+      .filter((c) => c && c.name)
+      .map((c) => ({
         name: String(c.name).trim(),
         description: String(c.description || '').trim(),
         isNPC: c.isNPC !== false, // Default to NPC
@@ -603,8 +604,8 @@ Return JSON in this exact format:
 
     // Normalize locations
     const normalizedLocations = locations
-      .filter(l => l && l.name)
-      .map(l => ({
+      .filter((l) => l && l.name)
+      .map((l) => ({
         name: String(l.name).trim(),
         description: String(l.description || '').trim(),
         type: String(l.type || 'place').trim(),
@@ -613,8 +614,8 @@ Return JSON in this exact format:
 
     // Normalize items
     const normalizedItems = items
-      .filter(i => i && i.name)
-      .map(i => ({
+      .filter((i) => i && i.name)
+      .map((i) => ({
         name: String(i.name).trim(),
         description: String(i.description || '').trim(),
         type: String(i.type || 'item').trim(),
@@ -633,7 +634,7 @@ Return JSON in this exact format:
   /**
    * Normalize a salient moment
    *
-   * @param {Object} moment - Raw moment data
+   * @param {object} moment - Raw moment data
    * @param {number} index - Moment index
    * @returns {SalientMoment} Normalized moment
    * @private
@@ -655,9 +656,9 @@ Return JSON in this exact format:
   /**
    * Normalize and validate relationship extraction result
    *
-   * @param {Object} extracted - Raw extraction result
+   * @param {object} extracted - Raw extraction result
    * @param {string[]} validEntityNames - List of valid entity names
-   * @param {Object} options - Extraction options
+   * @param {object} options - Extraction options
    * @returns {Array<ExtractedRelationship>} Normalized relationships
    * @private
    */
@@ -668,11 +669,11 @@ Return JSON in this exact format:
     const relationships = Array.isArray(extracted.relationships) ? extracted.relationships : [];
 
     // Create a case-insensitive lookup for valid entity names
-    const validNamesLower = new Set(validEntityNames.map(n => n.toLowerCase()));
+    const validNamesLower = new Set(validEntityNames.map((n) => n.toLowerCase()));
 
     // Normalize and filter relationships
     const normalizedRelationships = relationships
-      .filter(r => r && r.sourceEntity && r.targetEntity)
+      .filter((r) => r && r.sourceEntity && r.targetEntity)
       .map((r, index) => {
         // Normalize entity names
         const source = String(r.sourceEntity).trim();
@@ -682,7 +683,9 @@ Return JSON in this exact format:
         const confidence = Math.min(10, Math.max(1, parseInt(r.confidence, 10) || 5));
 
         // Validate relationship type
-        let relationType = String(r.relationType || '').toLowerCase().trim();
+        let relationType = String(r.relationType || '')
+          .toLowerCase()
+          .trim();
         const validTypes = Object.values(RelationshipType);
         if (!validTypes.includes(relationType)) {
           relationType = RelationshipType.UNKNOWN;
@@ -698,9 +701,9 @@ Return JSON in this exact format:
         };
       })
       // Filter by confidence threshold
-      .filter(r => r.confidence >= minConfidence)
+      .filter((r) => r.confidence >= minConfidence)
       // Filter out relationships where entities aren't in the valid list (case-insensitive)
-      .filter(r => {
+      .filter((r) => {
         const sourceValid = validNamesLower.has(r.sourceEntity.toLowerCase());
         const targetValid = validNamesLower.has(r.targetEntity.toLowerCase());
         if (!sourceValid || !targetValid) {
@@ -712,7 +715,7 @@ Return JSON in this exact format:
         return true;
       })
       // Filter out self-relationships
-      .filter(r => r.sourceEntity.toLowerCase() !== r.targetEntity.toLowerCase());
+      .filter((r) => r.sourceEntity.toLowerCase() !== r.targetEntity.toLowerCase());
 
     return normalizedRelationships;
   }
@@ -750,7 +753,7 @@ Return JSON in this exact format:
   /**
    * Get available extraction models
    *
-   * @returns {Array<Object>} List of available models
+   * @returns {Array<object>} List of available models
    */
   static getAvailableModels() {
     return [
@@ -779,7 +782,7 @@ Return JSON in this exact format:
    * Estimate extraction cost for a transcript
    *
    * @param {string} transcriptText - Transcript text
-   * @returns {Object} Cost estimate
+   * @returns {object} Cost estimate
    */
   estimateCost(transcriptText) {
     if (!transcriptText) {
@@ -791,8 +794,8 @@ Return JSON in this exact format:
     const outputTokens = 500; // Typical output size
 
     // GPT-4o pricing (as of spec)
-    const inputCostPer1M = 2.50;
-    const outputCostPer1M = 10.00;
+    const inputCostPer1M = 2.5;
+    const outputCostPer1M = 10.0;
 
     const inputCost = (inputTokens / 1000000) * inputCostPer1M;
     const outputCost = (outputTokens / 1000000) * outputCostPer1M;
@@ -808,7 +811,7 @@ Return JSON in this exact format:
 }
 
 /**
- * @typedef {Object} ExtractionResult
+ * @typedef {object} ExtractionResult
  * @property {Array<ExtractedCharacter>} characters - Extracted character entities
  * @property {Array<ExtractedLocation>} locations - Extracted location entities
  * @property {Array<ExtractedItem>} items - Extracted item entities
@@ -817,7 +820,7 @@ Return JSON in this exact format:
  */
 
 /**
- * @typedef {Object} ExtractedCharacter
+ * @typedef {object} ExtractedCharacter
  * @property {string} name - Character name
  * @property {string} description - Brief description
  * @property {boolean} isNPC - Whether this is an NPC (vs PC)
@@ -826,7 +829,7 @@ Return JSON in this exact format:
  */
 
 /**
- * @typedef {Object} ExtractedLocation
+ * @typedef {object} ExtractedLocation
  * @property {string} name - Location name
  * @property {string} description - Brief description
  * @property {string} type - Location type (tavern, city, dungeon, etc.)
@@ -834,7 +837,7 @@ Return JSON in this exact format:
  */
 
 /**
- * @typedef {Object} ExtractedItem
+ * @typedef {object} ExtractedItem
  * @property {string} name - Item name
  * @property {string} description - Brief description
  * @property {string} type - Item type (weapon, armor, artifact, etc.)
@@ -842,7 +845,7 @@ Return JSON in this exact format:
  */
 
 /**
- * @typedef {Object} SalientMoment
+ * @typedef {object} SalientMoment
  * @property {string} id - Unique moment identifier
  * @property {string} title - Brief, evocative title
  * @property {string} imagePrompt - Detailed prompt for DALL-E image generation
@@ -851,7 +854,7 @@ Return JSON in this exact format:
  */
 
 /**
- * @typedef {Object} CombinedExtractionResult
+ * @typedef {object} CombinedExtractionResult
  * @property {Array<ExtractedCharacter>} characters - Extracted character entities
  * @property {Array<ExtractedLocation>} locations - Extracted location entities
  * @property {Array<ExtractedItem>} items - Extracted item entities
@@ -861,7 +864,7 @@ Return JSON in this exact format:
  */
 
 /**
- * @typedef {Object} ExtractedRelationship
+ * @typedef {object} ExtractedRelationship
  * @property {string} id - Unique relationship identifier
  * @property {string} sourceEntity - Name of the source entity
  * @property {string} targetEntity - Name of the target entity

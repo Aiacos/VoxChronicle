@@ -59,7 +59,7 @@ const FormattingStyle = {
 class NarrativeExporter {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('NarrativeExporter');
@@ -102,7 +102,7 @@ class NarrativeExporter {
   /**
    * Create a new NarrativeExporter instance
    *
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {string} [options.campaignName] - Campaign name for headers
    * @param {string} [options.defaultStyle='rich'] - Default formatting style
    * @param {string} [options.defaultFormat='full'] - Default chronicle format
@@ -135,14 +135,14 @@ class NarrativeExporter {
   /**
    * Format a complete chronicle from session data
    *
-   * @param {Object} sessionData - Session data to format
+   * @param {object} sessionData - Session data to format
    * @param {string} sessionData.title - Chronicle title
    * @param {string} [sessionData.date] - Session date (YYYY-MM-DD or Date object)
    * @param {Array<TranscriptSegment>} sessionData.segments - Transcript segments with speaker/text
-   * @param {Object} [sessionData.entities] - Extracted entities (characters, locations, items)
+   * @param {object} [sessionData.entities] - Extracted entities (characters, locations, items)
    * @param {Array<SalientMoment>} [sessionData.moments] - Identified salient moments
    * @param {string} [sessionData.summary] - AI-generated summary
-   * @param {Object} [options] - Formatting options
+   * @param {object} [options] - Formatting options
    * @param {string} [options.format] - Chronicle format (transcript, narrative, summary, full)
    * @param {string} [options.style] - Formatting style (minimal, rich, markdown)
    * @param {boolean} [options.includeEntities=true] - Include entity mentions
@@ -161,7 +161,9 @@ class NarrativeExporter {
     const includeMoments = options.includeMoments ?? true;
     const includeTimestamps = options.includeTimestamps ?? false;
 
-    this._logger.log(`Formatting chronicle: ${sessionData.title} (format: ${format}, style: ${style})`);
+    this._logger.log(
+      `Formatting chronicle: ${sessionData.title} (format: ${format}, style: ${style})`
+    );
 
     let content = '';
 
@@ -208,7 +210,7 @@ class NarrativeExporter {
    * Note: For AI-enhanced summaries, use the TranscriptionService integration
    *
    * @param {Array<TranscriptSegment>} segments - Transcript segments
-   * @param {Object} [options] - Summary options
+   * @param {object} [options] - Summary options
    * @param {number} [options.maxLength=500] - Maximum summary length in characters
    * @param {boolean} [options.includeSpeakers=true] - Include speaker mentions
    * @param {number} [options.highlightCount=5] - Number of key points to highlight
@@ -239,7 +241,9 @@ class NarrativeExporter {
     // Opening line with session overview
     const speakerNames = Object.keys(speakerStats);
     if (includeSpeakers && speakerNames.length > 0) {
-      parts.push(`This session featured ${speakerNames.length} participants: ${speakerNames.join(', ')}.`);
+      parts.push(
+        `This session featured ${speakerNames.length} participants: ${speakerNames.join(', ')}.`
+      );
     }
 
     // Add duration info if timestamps available
@@ -259,7 +263,7 @@ class NarrativeExporter {
     const highlights = this._extractHighlights(segments, highlightCount);
     if (highlights.length > 0) {
       parts.push(`\n\nKey moments included:`);
-      highlights.forEach(h => {
+      highlights.forEach((h) => {
         parts.push(`• ${h}`);
       });
     }
@@ -268,7 +272,7 @@ class NarrativeExporter {
 
     // Truncate if too long
     if (summary.length > maxLength) {
-      summary = summary.substring(0, maxLength - 3) + '...';
+      summary = `${summary.substring(0, maxLength - 3)}...`;
     }
 
     return summary;
@@ -282,17 +286,19 @@ class NarrativeExporter {
    * integration to be configured (via TranscriptionService or API key).
    *
    * @param {Array<TranscriptSegment>} segments - Transcript segments
-   * @param {Object} [options] - Summary options
+   * @param {object} [options] - Summary options
    * @param {number} [options.maxLength=1000] - Maximum summary length in characters
    * @param {string} [options.style='narrative'] - Summary style ('narrative', 'bullet', 'formal')
    * @param {string} [options.campaignContext] - Additional context about the campaign
-   * @param {Object} [options.entities] - Known entities to reference
+   * @param {object} [options.entities] - Known entities to reference
    * @returns {Promise<AISummaryResult>} AI-generated summary with metadata
    * @throws {Error} If OpenAI integration is not configured
    */
   async generateAISummary(segments, options = {}) {
     if (!this._aiSummaryEnabled || !this._openAIClient) {
-      throw new Error('AI summary generation requires OpenAI integration. Configure with openAIApiKey or openAIClient option.');
+      throw new Error(
+        'AI summary generation requires OpenAI integration. Configure with openAIApiKey or openAIClient option.'
+      );
     }
 
     if (!segments || !Array.isArray(segments) || segments.length === 0) {
@@ -313,7 +319,12 @@ class NarrativeExporter {
     const transcriptText = this._buildTranscriptText(segments);
 
     // Build the system prompt based on style
-    const systemPrompt = this._buildAISummaryPrompt(style, maxLength, campaignContext, options.entities);
+    const systemPrompt = this._buildAISummaryPrompt(
+      style,
+      maxLength,
+      campaignContext,
+      options.entities
+    );
 
     try {
       const response = await this._openAIClient.post('/chat/completions', {
@@ -338,7 +349,6 @@ class NarrativeExporter {
         segmentCount: segments.length,
         generatedAt: new Date().toISOString()
       };
-
     } catch (error) {
       this._logger.error('AI summary generation failed:', error.message);
 
@@ -363,9 +373,7 @@ class NarrativeExporter {
    */
   _buildTranscriptText(segments) {
     const groupedSegments = this._groupBySpeaker(segments);
-    return groupedSegments
-      .map(seg => `${seg.speaker}: ${seg.text}`)
-      .join('\n\n');
+    return groupedSegments.map((seg) => `${seg.speaker}: ${seg.text}`).join('\n\n');
   }
 
   /**
@@ -374,7 +382,7 @@ class NarrativeExporter {
    * @param {string} style - Summary style
    * @param {number} maxLength - Maximum length
    * @param {string} campaignContext - Campaign context
-   * @param {Object} entities - Known entities
+   * @param {object} entities - Known entities
    * @returns {string} System prompt
    * @private
    */
@@ -398,10 +406,10 @@ class NarrativeExporter {
     if (entities) {
       const entityInfo = [];
       if (entities.characters?.length) {
-        entityInfo.push(`Characters: ${entities.characters.map(c => c.name).join(', ')}`);
+        entityInfo.push(`Characters: ${entities.characters.map((c) => c.name).join(', ')}`);
       }
       if (entities.locations?.length) {
-        entityInfo.push(`Locations: ${entities.locations.map(l => l.name).join(', ')}`);
+        entityInfo.push(`Locations: ${entities.locations.map((l) => l.name).join(', ')}`);
       }
       if (entityInfo.length > 0) {
         prompt += `\n\nKnown entities to reference: ${entityInfo.join('. ')}`;
@@ -443,8 +451,8 @@ class NarrativeExporter {
   /**
    * Export session data to Kanka journal format
    *
-   * @param {Object} sessionData - Complete session data
-   * @param {Object} [options] - Export options
+   * @param {object} sessionData - Complete session data
+   * @param {object} [options] - Export options
    * @returns {KankaJournalData} Data ready for KankaService.createJournal()
    */
   export(sessionData, options = {}) {
@@ -467,8 +475,8 @@ class NarrativeExporter {
   /**
    * Export multiple sessions as a batch
    *
-   * @param {Array<Object>} sessions - Array of session data objects
-   * @param {Object} [options] - Export options for all sessions
+   * @param {Array<object>} sessions - Array of session data objects
+   * @param {object} [options] - Export options for all sessions
    * @returns {Array<KankaJournalData>} Array of journal data ready for batch creation
    */
   exportBatch(sessions, options = {}) {
@@ -478,14 +486,16 @@ class NarrativeExporter {
 
     this._logger.log(`Exporting batch of ${sessions.length} sessions`);
 
-    return sessions.map((session, index) => {
-      try {
-        return this.export(session, options);
-      } catch (error) {
-        this._logger.error(`Failed to export session ${index}: ${error.message}`);
-        return null;
-      }
-    }).filter(Boolean);
+    return sessions
+      .map((session, index) => {
+        try {
+          return this.export(session, options);
+        } catch (error) {
+          this._logger.error(`Failed to export session ${index}: ${error.message}`);
+          return null;
+        }
+      })
+      .filter(Boolean);
   }
 
   // ============================================================================
@@ -496,7 +506,7 @@ class NarrativeExporter {
    * Format transcript segments as readable dialogue
    *
    * @param {Array<TranscriptSegment>} segments - Transcript segments
-   * @param {Object} [options] - Formatting options
+   * @param {object} [options] - Formatting options
    * @param {boolean} [options.includeTimestamps=false] - Include timestamps
    * @param {boolean} [options.groupBySpeaker=true] - Merge consecutive segments from same speaker
    * @returns {string} Formatted transcript text
@@ -517,7 +527,7 @@ class NarrativeExporter {
     }
 
     // Format each segment
-    const lines = formattedSegments.map(segment => {
+    const lines = formattedSegments.map((segment) => {
       const speaker = segment.speaker || 'Unknown';
       const text = (segment.text || '').trim();
 
@@ -539,9 +549,9 @@ class NarrativeExporter {
   /**
    * Format chronicle as HTML content
    *
-   * @param {Object} sessionData - Session data
+   * @param {object} sessionData - Session data
    * @param {string} format - Chronicle format
-   * @param {Object} options - Formatting options
+   * @param {object} options - Formatting options
    * @returns {string} HTML content
    * @private
    */
@@ -555,7 +565,10 @@ class NarrativeExporter {
     }
 
     // Summary section
-    if (sessionData.summary && (format === ChronicleFormat.SUMMARY || format === ChronicleFormat.FULL)) {
+    if (
+      sessionData.summary &&
+      (format === ChronicleFormat.SUMMARY || format === ChronicleFormat.FULL)
+    ) {
       parts.push('<h2>Summary</h2>');
       parts.push(`<p>${escapeHtml(sessionData.summary)}</p>`);
     } else if (format === ChronicleFormat.SUMMARY || format === ChronicleFormat.FULL) {
@@ -569,7 +582,7 @@ class NarrativeExporter {
     if (options.includeMoments && sessionData.moments?.length > 0 && isRich) {
       parts.push('<h2>Key Moments</h2>');
       parts.push('<ul>');
-      sessionData.moments.forEach(moment => {
+      sessionData.moments.forEach((moment) => {
         parts.push(`<li><strong>${escapeHtml(moment.title)}</strong>`);
         if (moment.context) {
           parts.push(`<br><em>"${escapeHtml(moment.context)}"</em>`);
@@ -609,7 +622,9 @@ class NarrativeExporter {
     // Footer
     if (isRich) {
       parts.push('<hr>');
-      parts.push(`<p><em>Chronicle generated by VoxChronicle on ${new Date().toLocaleDateString()}</em></p>`);
+      parts.push(
+        `<p><em>Chronicle generated by VoxChronicle on ${new Date().toLocaleDateString()}</em></p>`
+      );
     }
 
     return parts.join('\n');
@@ -633,7 +648,7 @@ class NarrativeExporter {
 
     lines.push('<div class="transcript">');
 
-    groupedSegments.forEach(segment => {
+    groupedSegments.forEach((segment) => {
       const speaker = escapeHtml(segment.speaker || 'Unknown');
       const text = escapeHtml((segment.text || '').trim());
 
@@ -657,7 +672,7 @@ class NarrativeExporter {
   /**
    * Format entities as HTML list
    *
-   * @param {Object} entities - Extracted entities object
+   * @param {object} entities - Extracted entities object
    * @returns {string} HTML formatted entities list
    * @private
    */
@@ -672,7 +687,7 @@ class NarrativeExporter {
     if (entities.characters?.length > 0) {
       sections.push('<h3>Characters</h3>');
       sections.push('<ul>');
-      entities.characters.forEach(char => {
+      entities.characters.forEach((char) => {
         const typeLabel = char.isNPC ? 'NPC' : 'PC';
         sections.push(`<li><strong>${escapeHtml(char.name)}</strong> (${typeLabel})`);
         if (char.description) {
@@ -687,7 +702,7 @@ class NarrativeExporter {
     if (entities.locations?.length > 0) {
       sections.push('<h3>Locations</h3>');
       sections.push('<ul>');
-      entities.locations.forEach(loc => {
+      entities.locations.forEach((loc) => {
         sections.push(`<li><strong>${escapeHtml(loc.name)}</strong>`);
         if (loc.type) {
           sections.push(` (${escapeHtml(loc.type)})`);
@@ -704,7 +719,7 @@ class NarrativeExporter {
     if (entities.items?.length > 0) {
       sections.push('<h3>Items</h3>');
       sections.push('<ul>');
-      entities.items.forEach(item => {
+      entities.items.forEach((item) => {
         sections.push(`<li><strong>${escapeHtml(item.name)}</strong>`);
         if (item.type) {
           sections.push(` (${escapeHtml(item.type)})`);
@@ -727,9 +742,9 @@ class NarrativeExporter {
   /**
    * Format chronicle as Markdown content
    *
-   * @param {Object} sessionData - Session data
+   * @param {object} sessionData - Session data
    * @param {string} format - Chronicle format
-   * @param {Object} options - Formatting options
+   * @param {object} options - Formatting options
    * @returns {string} Markdown content
    * @private
    */
@@ -743,7 +758,10 @@ class NarrativeExporter {
     }
 
     // Summary section
-    if (sessionData.summary && (format === ChronicleFormat.SUMMARY || format === ChronicleFormat.FULL)) {
+    if (
+      sessionData.summary &&
+      (format === ChronicleFormat.SUMMARY || format === ChronicleFormat.FULL)
+    ) {
       parts.push('## Summary');
       parts.push('');
       parts.push(sessionData.summary);
@@ -760,7 +778,7 @@ class NarrativeExporter {
     if (options.includeMoments && sessionData.moments?.length > 0) {
       parts.push('## Key Moments');
       parts.push('');
-      sessionData.moments.forEach(moment => {
+      sessionData.moments.forEach((moment) => {
         parts.push(`- **${moment.title}**`);
         if (moment.context) {
           parts.push(`  *"${moment.context}"*`);
@@ -811,7 +829,7 @@ class NarrativeExporter {
   /**
    * Format entities as Markdown
    *
-   * @param {Object} entities - Extracted entities
+   * @param {object} entities - Extracted entities
    * @returns {string} Markdown formatted entities
    * @private
    */
@@ -824,7 +842,7 @@ class NarrativeExporter {
 
     if (entities.characters?.length > 0) {
       sections.push('### Characters');
-      entities.characters.forEach(char => {
+      entities.characters.forEach((char) => {
         const typeLabel = char.isNPC ? 'NPC' : 'PC';
         let line = `- **${char.name}** (${typeLabel})`;
         if (char.description) {
@@ -837,7 +855,7 @@ class NarrativeExporter {
 
     if (entities.locations?.length > 0) {
       sections.push('### Locations');
-      entities.locations.forEach(loc => {
+      entities.locations.forEach((loc) => {
         let line = `- **${loc.name}**`;
         if (loc.type) {
           line += ` (${loc.type})`;
@@ -852,7 +870,7 @@ class NarrativeExporter {
 
     if (entities.items?.length > 0) {
       sections.push('### Items');
-      entities.items.forEach(item => {
+      entities.items.forEach((item) => {
         let line = `- **${item.name}**`;
         if (item.type) {
           line += ` (${item.type})`;
@@ -918,7 +936,7 @@ class NarrativeExporter {
    * Analyze speaker statistics from segments
    *
    * @param {Array<TranscriptSegment>} segments - Transcript segments
-   * @returns {Object} Speaker statistics
+   * @returns {object} Speaker statistics
    * @private
    */
   _analyzeSpeakers(segments) {
@@ -955,14 +973,15 @@ class NarrativeExporter {
    */
   _extractHighlights(segments, count) {
     // Simple extraction: pick segments with the most emotional/action words
-    const actionWords = /\b(fight|attack|discover|found|reveal|escape|defeat|kill|save|rescue|cast|spell|magic|dragon|monster|treasure|gold|death|victory)\b/i;
+    const actionWords =
+      /\b(fight|attack|discover|found|reveal|escape|defeat|kill|save|rescue|cast|spell|magic|dragon|monster|treasure|gold|death|victory)\b/i;
 
     const candidates = segments
-      .filter(seg => seg.text && actionWords.test(seg.text))
-      .map(seg => {
+      .filter((seg) => seg.text && actionWords.test(seg.text))
+      .map((seg) => {
         // Truncate long segments
         const text = seg.text.trim();
-        return text.length > 100 ? text.substring(0, 97) + '...' : text;
+        return text.length > 100 ? `${text.substring(0, 97)}...` : text;
       });
 
     return candidates.slice(0, count);
@@ -995,7 +1014,7 @@ class NarrativeExporter {
   /**
    * Count total entities in extraction result
    *
-   * @param {Object} entities - Entities object
+   * @param {object} entities - Entities object
    * @returns {number} Total count
    * @private
    */
@@ -1004,9 +1023,11 @@ class NarrativeExporter {
       return 0;
     }
 
-    return (entities.characters?.length || 0) +
-           (entities.locations?.length || 0) +
-           (entities.items?.length || 0);
+    return (
+      (entities.characters?.length || 0) +
+      (entities.locations?.length || 0) +
+      (entities.items?.length || 0)
+    );
   }
 
   // ============================================================================
@@ -1050,7 +1071,7 @@ class NarrativeExporter {
   /**
    * Get current configuration
    *
-   * @returns {Object} Current configuration
+   * @returns {object} Current configuration
    */
   getConfig() {
     return {
@@ -1062,7 +1083,7 @@ class NarrativeExporter {
 }
 
 /**
- * @typedef {Object} TranscriptSegment
+ * @typedef {object} TranscriptSegment
  * @property {string} speaker - Speaker name/identifier
  * @property {string} text - Spoken text
  * @property {number} [start] - Start timestamp in seconds
@@ -1070,7 +1091,7 @@ class NarrativeExporter {
  */
 
 /**
- * @typedef {Object} SalientMoment
+ * @typedef {object} SalientMoment
  * @property {string} title - Moment title
  * @property {string} [imagePrompt] - DALL-E image prompt
  * @property {string} [context] - Context from transcript
@@ -1078,17 +1099,17 @@ class NarrativeExporter {
  */
 
 /**
- * @typedef {Object} ChronicleResult
+ * @typedef {object} ChronicleResult
  * @property {string} name - Chronicle title
  * @property {string} entry - Formatted content (HTML or Markdown)
  * @property {string} type - Chronicle type (always 'Session Chronicle')
  * @property {string|null} date - Session date in YYYY-MM-DD format
  * @property {boolean} is_private - Whether chronicle is private
- * @property {Object} meta - Metadata about the chronicle
+ * @property {object} meta - Metadata about the chronicle
  */
 
 /**
- * @typedef {Object} KankaJournalData
+ * @typedef {object} KankaJournalData
  * @property {string} name - Journal title
  * @property {string} entry - Journal content
  * @property {string} type - Journal type
@@ -1101,7 +1122,7 @@ class NarrativeExporter {
  */
 
 /**
- * @typedef {Object} AISummaryResult
+ * @typedef {object} AISummaryResult
  * @property {string} summary - The generated summary text
  * @property {boolean} success - Whether AI generation succeeded
  * @property {string} [model] - The AI model used (if successful)
@@ -1113,8 +1134,4 @@ class NarrativeExporter {
  */
 
 // Export all classes and enums
-export {
-  NarrativeExporter,
-  ChronicleFormat,
-  FormattingStyle
-};
+export { NarrativeExporter, ChronicleFormat, FormattingStyle };

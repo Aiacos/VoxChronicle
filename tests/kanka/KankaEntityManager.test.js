@@ -381,15 +381,11 @@ describe('KankaEntityManager', () => {
     });
 
     it('should throw error if entityData is null', async () => {
-      await expect(
-        manager.create('journals', null)
-      ).rejects.toThrow(KankaError);
+      await expect(manager.create('journals', null)).rejects.toThrow(KankaError);
     });
 
     it('should throw error if entityData is undefined', async () => {
-      await expect(
-        manager.create('journals', undefined)
-      ).rejects.toThrow(KankaError);
+      await expect(manager.create('journals', undefined)).rejects.toThrow(KankaError);
     });
 
     it('should throw error if name is empty string', async () => {
@@ -411,10 +407,7 @@ describe('KankaEntityManager', () => {
     });
 
     it('should propagate API errors', async () => {
-      const apiError = new KankaError(
-        'API error',
-        KankaErrorType.API_ERROR
-      );
+      const apiError = new KankaError('API error', KankaErrorType.API_ERROR);
 
       mockPost.mockRejectedValue(apiError);
 
@@ -441,9 +434,7 @@ describe('KankaEntityManager', () => {
 
       const result = await manager.get('characters', 456);
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters/456'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters/456');
 
       expect(result).toEqual(mockEntity);
     });
@@ -455,9 +446,7 @@ describe('KankaEntityManager', () => {
 
       await manager.get('journals', 123);
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/journals/123'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals/123');
     });
 
     it('should handle string entity ID', async () => {
@@ -467,30 +456,23 @@ describe('KankaEntityManager', () => {
 
       await manager.get('locations', '789');
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/locations/789'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/locations/789');
     });
 
     it('should throw error if campaign ID is not configured', async () => {
       const noCampaignManager = new KankaEntityManager(client, '');
 
-      await expect(
-        noCampaignManager.get('journals', 123)
-      ).rejects.toThrow('Campaign ID not configured');
+      await expect(noCampaignManager.get('journals', 123)).rejects.toThrow(
+        'Campaign ID not configured'
+      );
     });
 
     it('should propagate API errors', async () => {
-      const apiError = new KankaError(
-        'Entity not found',
-        KankaErrorType.NOT_FOUND
-      );
+      const apiError = new KankaError('Entity not found', KankaErrorType.NOT_FOUND);
 
       mockGet.mockRejectedValue(apiError);
 
-      await expect(
-        manager.get('characters', 999)
-      ).rejects.toThrow(apiError);
+      await expect(manager.get('characters', 999)).rejects.toThrow(apiError);
     });
   });
 
@@ -513,13 +495,10 @@ describe('KankaEntityManager', () => {
         age: '50'
       });
 
-      expect(mockPut).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters/456',
-        {
-          name: 'Updated Name',
-          age: '50'
-        }
-      );
+      expect(mockPut).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters/456', {
+        name: 'Updated Name',
+        age: '50'
+      });
 
       expect(result).toEqual(mockUpdated);
     });
@@ -533,12 +512,9 @@ describe('KankaEntityManager', () => {
         entry: 'Updated entry only'
       });
 
-      expect(mockPut).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/journals/123',
-        {
-          entry: 'Updated entry only'
-        }
-      );
+      expect(mockPut).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals/123', {
+        entry: 'Updated entry only'
+      });
     });
 
     it('should handle numeric entity ID', async () => {
@@ -570,22 +546,17 @@ describe('KankaEntityManager', () => {
     it('should throw error if campaign ID is not configured', async () => {
       const noCampaignManager = new KankaEntityManager(client, '');
 
-      await expect(
-        noCampaignManager.update('journals', 123, { name: 'Test' })
-      ).rejects.toThrow('Campaign ID not configured');
+      await expect(noCampaignManager.update('journals', 123, { name: 'Test' })).rejects.toThrow(
+        'Campaign ID not configured'
+      );
     });
 
     it('should propagate API errors', async () => {
-      const apiError = new KankaError(
-        'Update failed',
-        KankaErrorType.API_ERROR
-      );
+      const apiError = new KankaError('Update failed', KankaErrorType.API_ERROR);
 
       mockPut.mockRejectedValue(apiError);
 
-      await expect(
-        manager.update('characters', 456, { name: 'Test' })
-      ).rejects.toThrow(apiError);
+      await expect(manager.update('characters', 456, { name: 'Test' })).rejects.toThrow(apiError);
     });
   });
 
@@ -599,9 +570,7 @@ describe('KankaEntityManager', () => {
 
       await manager.delete('items', 456);
 
-      expect(mockDelete).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/items/456'
-      );
+      expect(mockDelete).toHaveBeenCalledWith('/campaigns/test-campaign-123/items/456');
     });
 
     it('should handle numeric entity ID', async () => {
@@ -609,9 +578,7 @@ describe('KankaEntityManager', () => {
 
       await manager.delete('journals', 123);
 
-      expect(mockDelete).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/journals/123'
-      );
+      expect(mockDelete).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals/123');
     });
 
     it('should handle string entity ID', async () => {
@@ -619,30 +586,23 @@ describe('KankaEntityManager', () => {
 
       await manager.delete('characters', '789');
 
-      expect(mockDelete).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters/789'
-      );
+      expect(mockDelete).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters/789');
     });
 
     it('should throw error if campaign ID is not configured', async () => {
       const noCampaignManager = new KankaEntityManager(client, '');
 
-      await expect(
-        noCampaignManager.delete('journals', 123)
-      ).rejects.toThrow('Campaign ID not configured');
+      await expect(noCampaignManager.delete('journals', 123)).rejects.toThrow(
+        'Campaign ID not configured'
+      );
     });
 
     it('should propagate API errors', async () => {
-      const apiError = new KankaError(
-        'Delete failed',
-        KankaErrorType.API_ERROR
-      );
+      const apiError = new KankaError('Delete failed', KankaErrorType.API_ERROR);
 
       mockDelete.mockRejectedValue(apiError);
 
-      await expect(
-        manager.delete('items', 456)
-      ).rejects.toThrow(apiError);
+      await expect(manager.delete('items', 456)).rejects.toThrow(apiError);
     });
   });
 
@@ -662,9 +622,7 @@ describe('KankaEntityManager', () => {
 
       const result = await manager.list('journals');
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/journals'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals');
 
       expect(result.data).toEqual(mockEntities);
       expect(result.meta).toBeDefined();
@@ -677,9 +635,7 @@ describe('KankaEntityManager', () => {
 
       const result = await manager.list('characters', { page: 2 });
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters?page=2'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?page=2');
 
       expect(result.meta.current_page).toBe(2);
     });
@@ -690,9 +646,7 @@ describe('KankaEntityManager', () => {
 
       await manager.list('characters', { type: 'NPC' });
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters?type=NPC'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?type=NPC');
     });
 
     it('should list entities with name filter', async () => {
@@ -701,9 +655,7 @@ describe('KankaEntityManager', () => {
 
       await manager.list('locations', { name: 'Dragon' });
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/locations?name=Dragon'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/locations?name=Dragon');
     });
 
     it('should list entities with multiple filters', async () => {
@@ -767,22 +719,17 @@ describe('KankaEntityManager', () => {
     it('should throw error if campaign ID is not configured', async () => {
       const noCampaignManager = new KankaEntityManager(client, '');
 
-      await expect(
-        noCampaignManager.list('journals')
-      ).rejects.toThrow('Campaign ID not configured');
+      await expect(noCampaignManager.list('journals')).rejects.toThrow(
+        'Campaign ID not configured'
+      );
     });
 
     it('should propagate API errors', async () => {
-      const apiError = new KankaError(
-        'List failed',
-        KankaErrorType.API_ERROR
-      );
+      const apiError = new KankaError('List failed', KankaErrorType.API_ERROR);
 
       mockGet.mockRejectedValue(apiError);
 
-      await expect(
-        manager.list('characters')
-      ).rejects.toThrow(apiError);
+      await expect(manager.list('characters')).rejects.toThrow(apiError);
     });
   });
 
@@ -827,11 +774,7 @@ describe('KankaEntityManager', () => {
 
       mockPostFormData.mockResolvedValue({ data: mockUpdated });
 
-      const result = await manager.uploadImage(
-        'locations',
-        789,
-        mockImageBlob
-      );
+      const result = await manager.uploadImage('locations', 789, mockImageBlob);
 
       expect(mockFetch).not.toHaveBeenCalled();
       expect(mockPostFormData).toHaveBeenCalledWith(
@@ -848,12 +791,7 @@ describe('KankaEntityManager', () => {
 
       mockPostFormData.mockResolvedValue({ data: mockUpdated });
 
-      await manager.uploadImage(
-        'characters',
-        456,
-        mockImageBlob,
-        { filename: 'custom-name.jpg' }
-      );
+      await manager.uploadImage('characters', 456, mockImageBlob, { filename: 'custom-name.jpg' });
 
       expect(mockPostFormData).toHaveBeenCalled();
       const formData = mockPostFormData.mock.calls[0][1];
@@ -874,23 +812,23 @@ describe('KankaEntityManager', () => {
     it('should throw error if entity type is missing', async () => {
       const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
 
-      await expect(
-        manager.uploadImage('', 456, mockImageBlob)
-      ).rejects.toThrow('Entity type and ID are required');
+      await expect(manager.uploadImage('', 456, mockImageBlob)).rejects.toThrow(
+        'Entity type and ID are required'
+      );
     });
 
     it('should throw error if entity ID is missing', async () => {
       const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
 
-      await expect(
-        manager.uploadImage('characters', null, mockImageBlob)
-      ).rejects.toThrow('Entity type and ID are required');
+      await expect(manager.uploadImage('characters', null, mockImageBlob)).rejects.toThrow(
+        'Entity type and ID are required'
+      );
     });
 
     it('should throw error if image source is invalid type', async () => {
-      await expect(
-        manager.uploadImage('characters', 456, 12345)
-      ).rejects.toThrow('Image source must be a URL string or Blob');
+      await expect(manager.uploadImage('characters', 456, 12345)).rejects.toThrow(
+        'Image source must be a URL string or Blob'
+      );
     });
 
     it('should throw error if image download fails', async () => {
@@ -920,23 +858,18 @@ describe('KankaEntityManager', () => {
       const noCampaignManager = new KankaEntityManager(client, '');
       const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
 
-      await expect(
-        noCampaignManager.uploadImage('characters', 456, mockImageBlob)
-      ).rejects.toThrow('Campaign ID not configured');
+      await expect(noCampaignManager.uploadImage('characters', 456, mockImageBlob)).rejects.toThrow(
+        'Campaign ID not configured'
+      );
     });
 
     it('should propagate API errors from upload', async () => {
       const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-      const apiError = new KankaError(
-        'Upload failed',
-        KankaErrorType.API_ERROR
-      );
+      const apiError = new KankaError('Upload failed', KankaErrorType.API_ERROR);
 
       mockPostFormData.mockRejectedValue(apiError);
 
-      await expect(
-        manager.uploadImage('characters', 456, mockImageBlob)
-      ).rejects.toThrow(apiError);
+      await expect(manager.uploadImage('characters', 456, mockImageBlob)).rejects.toThrow(apiError);
     });
   });
 
@@ -955,20 +888,14 @@ describe('KankaEntityManager', () => {
 
       const result = await manager.searchEntities('Dragon', 'characters');
 
-      expect(mockGet).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters?name=Dragon'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?name=Dragon');
 
       expect(result).toEqual(mockResults);
     });
 
     it('should search all entity types when no type specified', async () => {
-      const mockCharacters = [
-        createMockEntity('character', { id: 1, name: 'Dragon Slayer' })
-      ];
-      const mockLocations = [
-        createMockEntity('location', { id: 2, name: "Dragon's Lair" })
-      ];
+      const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      const mockLocations = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
 
       mockGet
         .mockResolvedValueOnce({ data: mockCharacters })
@@ -988,9 +915,7 @@ describe('KankaEntityManager', () => {
 
       await manager.searchEntities('Test & Special', 'journals');
 
-      expect(mockGet).toHaveBeenCalledWith(
-        expect.stringContaining('name=Test%20%26%20Special')
-      );
+      expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('name=Test%20%26%20Special'));
     });
 
     it('should return empty array for empty query', async () => {
@@ -1015,9 +940,7 @@ describe('KankaEntityManager', () => {
     });
 
     it('should continue searching other types if one fails', async () => {
-      const mockCharacters = [
-        createMockEntity('character', { id: 1, name: 'Dragon Slayer' })
-      ];
+      const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
 
       mockGet
         .mockResolvedValueOnce({ data: mockCharacters })
@@ -1037,13 +960,11 @@ describe('KankaEntityManager', () => {
         createMockEntity('character', { id: 2 })
       ];
 
-      mockGet
-        .mockResolvedValueOnce({ data: mockCharacters })
-        .mockResolvedValue({ data: [] });
+      mockGet.mockResolvedValueOnce({ data: mockCharacters }).mockResolvedValue({ data: [] });
 
       const result = await manager.searchEntities('Test');
 
-      result.forEach(entity => {
+      result.forEach((entity) => {
         expect(entity).toHaveProperty('entity_type');
       });
     });
@@ -1052,22 +973,17 @@ describe('KankaEntityManager', () => {
       const noCampaignManager = new KankaEntityManager(client, '');
 
       // For specific entity type
-      await expect(
-        noCampaignManager.searchEntities('Test', 'characters')
-      ).rejects.toThrow('Campaign ID not configured');
+      await expect(noCampaignManager.searchEntities('Test', 'characters')).rejects.toThrow(
+        'Campaign ID not configured'
+      );
     });
 
     it('should propagate API errors for specific entity type search', async () => {
-      const apiError = new KankaError(
-        'Search failed',
-        KankaErrorType.API_ERROR
-      );
+      const apiError = new KankaError('Search failed', KankaErrorType.API_ERROR);
 
       mockGet.mockRejectedValue(apiError);
 
-      await expect(
-        manager.searchEntities('Dragon', 'characters')
-      ).rejects.toThrow(apiError);
+      await expect(manager.searchEntities('Dragon', 'characters')).rejects.toThrow(apiError);
     });
   });
 });

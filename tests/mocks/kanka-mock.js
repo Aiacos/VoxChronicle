@@ -551,9 +551,9 @@ export function mockImageUploadSuccess(overrides = {}) {
  */
 export function mockAuthenticationError() {
   const errorResponse = createMockAuthError();
-  return vi.fn().mockResolvedValue(
-    createMockFetchResponse(errorResponse, { ok: false, status: 401 })
-  );
+  return vi
+    .fn()
+    .mockResolvedValue(createMockFetchResponse(errorResponse, { ok: false, status: 401 }));
 }
 
 /**
@@ -563,9 +563,9 @@ export function mockAuthenticationError() {
  */
 export function mockAuthorizationError() {
   const errorResponse = createMockAuthorizationError();
-  return vi.fn().mockResolvedValue(
-    createMockFetchResponse(errorResponse, { ok: false, status: 403 })
-  );
+  return vi
+    .fn()
+    .mockResolvedValue(createMockFetchResponse(errorResponse, { ok: false, status: 403 }));
 }
 
 /**
@@ -576,9 +576,9 @@ export function mockAuthorizationError() {
  */
 export function mockNotFoundError(resource) {
   const errorResponse = createMockNotFoundError(resource);
-  return vi.fn().mockResolvedValue(
-    createMockFetchResponse(errorResponse, { ok: false, status: 404 })
-  );
+  return vi
+    .fn()
+    .mockResolvedValue(createMockFetchResponse(errorResponse, { ok: false, status: 404 }));
 }
 
 /**
@@ -589,9 +589,9 @@ export function mockNotFoundError(resource) {
  */
 export function mockValidationError(validationErrors) {
   const errorResponse = createMockValidationError(validationErrors);
-  return vi.fn().mockResolvedValue(
-    createMockFetchResponse(errorResponse, { ok: false, status: 422 })
-  );
+  return vi
+    .fn()
+    .mockResolvedValue(createMockFetchResponse(errorResponse, { ok: false, status: 422 }));
 }
 
 /**
@@ -618,9 +618,9 @@ export function mockRateLimitError(retryAfter = 60) {
  */
 export function mockServerError() {
   const errorResponse = createMockServerError();
-  return vi.fn().mockResolvedValue(
-    createMockFetchResponse(errorResponse, { ok: false, status: 500 })
-  );
+  return vi
+    .fn()
+    .mockResolvedValue(createMockFetchResponse(errorResponse, { ok: false, status: 500 }));
 }
 
 /**
@@ -629,9 +629,7 @@ export function mockServerError() {
  * @returns {Function} Mock fetch function
  */
 export function mockNetworkError() {
-  return vi.fn().mockRejectedValue(
-    new TypeError('Failed to fetch')
-  );
+  return vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
 }
 
 /**
@@ -649,9 +647,7 @@ export function mockSuccessAfterRetries(failCount, successEntity) {
   return vi.fn().mockImplementation(() => {
     attemptCount++;
     if (attemptCount <= failCount) {
-      return Promise.resolve(
-        createMockFetchResponse(errorResponse, { ok: false, status: 500 })
-      );
+      return Promise.resolve(createMockFetchResponse(errorResponse, { ok: false, status: 500 }));
     }
     return Promise.resolve(createMockFetchResponse(response));
   });
@@ -688,10 +684,7 @@ export function mockFetchRouter(routes) {
 
     // Default: 404
     return Promise.resolve(
-      createMockFetchResponse(
-        createMockNotFoundError('Resource'),
-        { ok: false, status: 404 }
-      )
+      createMockFetchResponse(createMockNotFoundError('Resource'), { ok: false, status: 404 })
     );
   });
 }
@@ -937,7 +930,7 @@ export class MockKankaClient {
    * Seed the mock with test data
    */
   seed(entities) {
-    entities.forEach(entity => {
+    entities.forEach((entity) => {
       this.entities.set(entity.id, entity);
     });
   }

@@ -48,34 +48,42 @@ function createMockSessionData(options = {}) {
   return {
     title: options.title ?? 'Test Session',
     date: options.date ?? '2024-01-01',
-    transcript: options.transcript === undefined ? {
-      segments: [
-        { speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 2.5 },
-        { speaker: 'SPEAKER_01', text: 'Test message', start: 2.5, end: 5.0 }
-      ]
-    } : options.transcript,
-    entities: options.entities === undefined ? {
-      characters: [
-        { name: 'Gandalf', description: 'A wise wizard', isNPC: true }
-      ],
-      locations: [
-        { name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }
-      ],
-      items: [
-        { name: 'Staff of Power', description: 'A magical staff', type: 'Weapon' }
-      ]
-    } : options.entities,
+    transcript:
+      options.transcript === undefined
+        ? {
+            segments: [
+              { speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 2.5 },
+              { speaker: 'SPEAKER_01', text: 'Test message', start: 2.5, end: 5.0 }
+            ]
+          }
+        : options.transcript,
+    entities:
+      options.entities === undefined
+        ? {
+            characters: [{ name: 'Gandalf', description: 'A wise wizard', isNPC: true }],
+            locations: [{ name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }],
+            items: [{ name: 'Staff of Power', description: 'A magical staff', type: 'Weapon' }]
+          }
+        : options.entities,
     moments: options.moments ?? [
-      { id: 'moment-1', title: 'Epic Battle', description: 'Battle description', imagePrompt: 'epic battle scene' }
-    ],
-    images: options.images === undefined ? [
       {
-        success: true,
-        url: 'https://example.com/gandalf.png',
-        entityType: 'character',
-        meta: { characterName: 'Gandalf' }
+        id: 'moment-1',
+        title: 'Epic Battle',
+        description: 'Battle description',
+        imagePrompt: 'epic battle scene'
       }
-    ] : options.images
+    ],
+    images:
+      options.images === undefined
+        ? [
+            {
+              success: true,
+              url: 'https://example.com/gandalf.png',
+              entityType: 'character',
+              meta: { characterName: 'Gandalf' }
+            }
+          ]
+        : options.images
   };
 }
 
@@ -84,7 +92,9 @@ function createMockSessionData(options = {}) {
  */
 function createMockKankaService() {
   return {
-    createIfNotExists: vi.fn().mockResolvedValue({ id: 1, name: 'Test Entity', _alreadyExisted: false }),
+    createIfNotExists: vi
+      .fn()
+      .mockResolvedValue({ id: 1, name: 'Test Entity', _alreadyExisted: false }),
     createJournal: vi.fn().mockResolvedValue({ id: 1, name: 'Test Journal' }),
     uploadCharacterImage: vi.fn().mockResolvedValue({ success: true })
   };
@@ -186,14 +196,18 @@ describe('KankaPublisher', () => {
     });
 
     it('should throw error when no session data provided', async () => {
-      await expect(publisher.publishSession(null)).rejects.toThrow('No session data provided to publish.');
+      await expect(publisher.publishSession(null)).rejects.toThrow(
+        'No session data provided to publish.'
+      );
     });
 
     it('should throw error when Kanka service not configured', async () => {
       publisher = new KankaPublisher(null);
       const sessionData = createMockSessionData();
 
-      await expect(publisher.publishSession(sessionData)).rejects.toThrow('Kanka service not configured.');
+      await expect(publisher.publishSession(sessionData)).rejects.toThrow(
+        'Kanka service not configured.'
+      );
     });
 
     it('should skip entity creation when createEntities is false', async () => {
@@ -280,10 +294,7 @@ describe('KankaPublisher', () => {
 
       expect(onProgress).toHaveBeenCalled();
       // Progress callback signature is (progress, message)
-      expect(onProgress).toHaveBeenCalledWith(
-        expect.any(Number),
-        expect.any(String)
-      );
+      expect(onProgress).toHaveBeenCalledWith(expect.any(Number), expect.any(String));
     });
 
     it('should propagate errors from createChronicle', async () => {
@@ -292,7 +303,9 @@ describe('KankaPublisher', () => {
 
       const sessionData = createMockSessionData();
 
-      await expect(publisher.publishSession(sessionData)).rejects.toThrow('Journal creation failed');
+      await expect(publisher.publishSession(sessionData)).rejects.toThrow(
+        'Journal creation failed'
+      );
     });
   });
 
@@ -373,7 +386,10 @@ describe('KankaPublisher', () => {
 
       await publisher.createEntities(sessionData, results, true);
 
-      expect(mockKankaService.uploadCharacterImage).toHaveBeenCalledWith(1, 'https://example.com/gandalf.png');
+      expect(mockKankaService.uploadCharacterImage).toHaveBeenCalledWith(
+        1,
+        'https://example.com/gandalf.png'
+      );
       expect(results.images).toHaveLength(1);
       expect(results.images[0]).toEqual({
         entityId: 1,
@@ -660,7 +676,9 @@ describe('KankaPublisher', () => {
         errors: []
       };
 
-      await expect(publisher.createChronicle(sessionData, results)).rejects.toThrow('Journal creation failed');
+      await expect(publisher.createChronicle(sessionData, results)).rejects.toThrow(
+        'Journal creation failed'
+      );
 
       expect(results.errors).toHaveLength(1);
       expect(results.errors[0]).toEqual({
@@ -714,12 +732,14 @@ describe('KankaPublisher', () => {
       publisher = new KankaPublisher(mockKankaService, null);
 
       // Create 60 segments (more than 50 limit)
-      const segments = Array(60).fill(null).map((_, i) => ({
-        speaker: `SPEAKER_${i % 2}`,
-        text: `Segment ${i}`,
-        start: i * 2,
-        end: (i + 1) * 2
-      }));
+      const segments = Array(60)
+        .fill(null)
+        .map((_, i) => ({
+          speaker: `SPEAKER_${i % 2}`,
+          text: `Segment ${i}`,
+          start: i * 2,
+          end: (i + 1) * 2
+        }));
 
       const sessionData = createMockSessionData({
         transcript: { segments }
@@ -754,7 +774,10 @@ describe('KankaPublisher', () => {
 
       // Check for specific progress stages
       // Progress callback signature is (progress, message)
-      const progressCalls = onProgress.mock.calls.map(call => ({ progress: call[0], message: call[1] }));
+      const progressCalls = onProgress.mock.calls.map((call) => ({
+        progress: call[0],
+        message: call[1]
+      }));
 
       expect(progressCalls).toContainEqual({
         progress: 0,
@@ -783,7 +806,10 @@ describe('KankaPublisher', () => {
       await publisher.publishSession(sessionData);
 
       // Progress callback signature is (progress, message)
-      const progressCalls = onProgress.mock.calls.map(call => ({ progress: call[0], message: call[1] }));
+      const progressCalls = onProgress.mock.calls.map((call) => ({
+        progress: call[0],
+        message: call[1]
+      }));
 
       expect(progressCalls).toContainEqual({
         progress: 20,
@@ -809,7 +835,10 @@ describe('KankaPublisher', () => {
       await publisher.publishSession(sessionData);
 
       // Progress callback signature is (progress, message)
-      const progressCalls = onProgress.mock.calls.map(call => ({ progress: call[0], message: call[1] }));
+      const progressCalls = onProgress.mock.calls.map((call) => ({
+        progress: call[0],
+        message: call[1]
+      }));
 
       expect(progressCalls).toContainEqual({
         progress: 80,
@@ -929,12 +958,14 @@ describe('KankaPublisher', () => {
     });
 
     it('should truncate long transcripts', () => {
-      const segments = Array(60).fill(null).map((_, i) => ({
-        speaker: `SPEAKER_${i % 2}`,
-        text: `Segment ${i}`,
-        start: i * 2,
-        end: (i + 1) * 2
-      }));
+      const segments = Array(60)
+        .fill(null)
+        .map((_, i) => ({
+          speaker: `SPEAKER_${i % 2}`,
+          text: `Segment ${i}`,
+          start: i * 2,
+          end: (i + 1) * 2
+        }));
 
       const sessionData = createMockSessionData({
         transcript: { segments }

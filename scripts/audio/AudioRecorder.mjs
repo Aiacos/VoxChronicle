@@ -50,7 +50,7 @@ const DEFAULT_TIMESLICE = 10000;
 class AudioRecorder {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('AudioRecorder');
@@ -99,7 +99,7 @@ class AudioRecorder {
 
   /**
    * Event callbacks
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _callbacks = {
@@ -151,7 +151,7 @@ class AudioRecorder {
   /**
    * Set event callback handlers
    *
-   * @param {Object} callbacks - Callback handlers
+   * @param {object} callbacks - Callback handlers
    * @param {Function} [callbacks.onDataAvailable] - Called when audio chunk is available
    * @param {Function} [callbacks.onError] - Called when an error occurs
    * @param {Function} [callbacks.onStateChange] - Called when recording state changes
@@ -163,7 +163,7 @@ class AudioRecorder {
   /**
    * Start recording audio from the specified source
    *
-   * @param {Object} [options] - Recording options
+   * @param {object} [options] - Recording options
    * @param {string} [options.source='microphone'] - Capture source: 'microphone', 'foundry-webrtc', or 'system-audio'
    * @param {boolean} [options.echoCancellation=true] - Enable echo cancellation for microphone
    * @param {boolean} [options.noiseSuppression=true] - Enable noise suppression for microphone
@@ -237,7 +237,9 @@ class AudioRecorder {
           const duration = this.duration;
           const sizeMB = AudioUtils.getBlobSizeMB(audioBlob);
 
-          this._logger.log(`Recording stopped. Duration: ${AudioUtils.formatDuration(duration)}, Size: ${sizeMB}MB`);
+          this._logger.log(
+            `Recording stopped. Duration: ${AudioUtils.formatDuration(duration)}, Size: ${sizeMB}MB`
+          );
 
           // Cleanup resources
           this._cleanup();
@@ -359,7 +361,7 @@ class AudioRecorder {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // Stop all tracks immediately - we just needed to request permission
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       this._logger.log('Microphone permission granted');
       return true;
     } catch (error) {
@@ -380,7 +382,7 @@ class AudioRecorder {
   async getAudioInputDevices() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioInputs = devices.filter(device => device.kind === 'audioinput');
+      const audioInputs = devices.filter((device) => device.kind === 'audioinput');
       this._logger.debug(`Found ${audioInputs.length} audio input devices`);
       return audioInputs;
     } catch (error) {
@@ -392,7 +394,7 @@ class AudioRecorder {
   /**
    * Start microphone capture
    *
-   * @param {Object} options - Capture options
+   * @param {object} options - Capture options
    * @returns {Promise<void>}
    * @private
    */
@@ -422,7 +424,9 @@ class AudioRecorder {
       } else if (error.name === 'NotFoundError') {
         throw new Error('No microphone found. Please connect a microphone and try again.');
       } else if (error.name === 'NotReadableError') {
-        throw new Error('Microphone is in use by another application. Please close other applications and try again.');
+        throw new Error(
+          'Microphone is in use by another application. Please close other applications and try again.'
+        );
       }
       throw error;
     }
@@ -432,7 +436,7 @@ class AudioRecorder {
    * Attempt to capture Foundry VTT WebRTC audio streams
    * Falls back to microphone if WebRTC is not available
    *
-   * @param {Object} options - Capture options
+   * @param {object} options - Capture options
    * @returns {Promise<void>}
    * @private
    */
@@ -472,7 +476,7 @@ class AudioRecorder {
    * Attempt to capture system audio (display media)
    * Note: This requires user interaction and may not capture system audio on all platforms
    *
-   * @param {Object} options - Capture options
+   * @param {object} options - Capture options
    * @returns {Promise<void>}
    * @private
    */
@@ -489,19 +493,19 @@ class AudioRecorder {
       // Request screen sharing with audio
       this._stream = await navigator.mediaDevices.getDisplayMedia({
         video: true, // Video is required for getDisplayMedia
-        audio: true  // Request audio (may not be supported on all platforms)
+        audio: true // Request audio (may not be supported on all platforms)
       });
 
       // Check if we got audio tracks
       if (this._stream.getAudioTracks().length === 0) {
         // Stop the video tracks since we don't need them
-        this._stream.getVideoTracks().forEach(track => track.stop());
+        this._stream.getVideoTracks().forEach((track) => track.stop());
         this._logger.warn('No audio track in display media, falling back to microphone');
         return this._startMicrophoneCapture(options);
       }
 
       // Stop video tracks - we only need audio
-      this._stream.getVideoTracks().forEach(track => track.stop());
+      this._stream.getVideoTracks().forEach((track) => track.stop());
 
       this._logger.log('System audio capture started');
     } catch (error) {
@@ -588,7 +592,7 @@ class AudioRecorder {
   _cleanup() {
     // Stop all stream tracks
     if (this._stream) {
-      this._stream.getTracks().forEach(track => {
+      this._stream.getTracks().forEach((track) => {
         track.stop();
         this._logger.debug(`Stopped track: ${track.kind}`);
       });

@@ -46,7 +46,7 @@ const HEALTH_CHECK_TIMEOUT_MS = 5000;
 /**
  * Custom error class for Whisper backend errors
  *
- * @extends Error
+ * @augments Error
  */
 class WhisperError extends Error {
   /**
@@ -55,7 +55,7 @@ class WhisperError extends Error {
    * @param {string} message - Error message
    * @param {string} type - Error type from WhisperErrorType
    * @param {number} [status] - HTTP status code
-   * @param {Object} [details] - Additional error details
+   * @param {object} [details] - Additional error details
    */
   constructor(message, type, status = null, details = null) {
     super(message);
@@ -71,9 +71,11 @@ class WhisperError extends Error {
    * @returns {boolean} True if the error can be retried
    */
   get isRetryable() {
-    return this.type === WhisperErrorType.TIMEOUT_ERROR ||
-           this.type === WhisperErrorType.CONNECTION_ERROR ||
-           (this.status >= 500 && this.status < 600);
+    return (
+      this.type === WhisperErrorType.TIMEOUT_ERROR ||
+      this.type === WhisperErrorType.CONNECTION_ERROR ||
+      (this.status >= 500 && this.status < 600)
+    );
   }
 }
 
@@ -90,7 +92,7 @@ class WhisperError extends Error {
 class WhisperBackend {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('WhisperBackend');
@@ -141,7 +143,7 @@ class WhisperBackend {
    * Create a new WhisperBackend instance
    *
    * @param {string} [baseUrl] - Whisper server base URL
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {number} [options.timeout=600000] - Request timeout in milliseconds
    * @param {number} [options.maxRetries=3] - Maximum retry attempts for failed requests
    */
@@ -192,7 +194,7 @@ class WhisperBackend {
   /**
    * Perform a health check on the Whisper backend
    *
-   * @param {Object} [options] - Health check options
+   * @param {object} [options] - Health check options
    * @param {number} [options.timeout=5000] - Health check timeout in milliseconds
    * @param {boolean} [options.useCache=true] - Use cached result if recent
    * @param {number} [options.cacheMaxAge=30000] - Maximum age of cached result in milliseconds
@@ -224,20 +226,22 @@ class WhisperBackend {
         method: 'GET',
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json'
+          Accept: 'application/json'
         }
-      }).catch(async (error) => {
-        // If /health doesn't exist, try root endpoint
-        if (error.name !== 'AbortError') {
-          return fetch(`${this._baseUrl}/`, {
-            method: 'GET',
-            signal: controller.signal
-          });
-        }
-        throw error;
-      }).finally(() => {
-        clearTimeout(timeoutId);
-      });
+      })
+        .catch(async (error) => {
+          // If /health doesn't exist, try root endpoint
+          if (error.name !== 'AbortError') {
+            return fetch(`${this._baseUrl}/`, {
+              method: 'GET',
+              signal: controller.signal
+            });
+          }
+          throw error;
+        })
+        .finally(() => {
+          clearTimeout(timeoutId);
+        });
 
       const isHealthy = response.ok || response.status === 404; // 404 is ok, server exists
       this._lastHealthStatus = isHealthy;
@@ -250,7 +254,6 @@ class WhisperBackend {
       }
 
       return isHealthy;
-
     } catch (error) {
       this._lastHealthStatus = false;
       this._lastHealthCheck = Date.now();
@@ -269,13 +272,13 @@ class WhisperBackend {
    * Transcribe audio using the local Whisper backend
    *
    * @param {Blob|File} audioBlob - Audio file to transcribe
-   * @param {Object} [options] - Transcription options
+   * @param {object} [options] - Transcription options
    * @param {string} [options.language] - ISO language code (e.g., 'en', 'it')
    * @param {string} [options.task='transcribe'] - Task type ('transcribe' or 'translate')
    * @param {boolean} [options.word_timestamps=false] - Include word-level timestamps
    * @param {number} [options.temperature=0] - Sampling temperature (0-1)
    * @param {string} [options.response_format='json'] - Response format ('json', 'text', 'srt', 'vtt')
-   * @returns {Promise<Object>} Transcription result
+   * @returns {Promise<object>} Transcription result
    */
   async transcribe(audioBlob, options = {}) {
     if (!audioBlob || !(audioBlob instanceof Blob)) {
@@ -285,7 +288,9 @@ class WhisperBackend {
       );
     }
 
-    this._logger.log(`Starting local transcription: ${(audioBlob.size / (1024 * 1024)).toFixed(2)}MB`);
+    this._logger.log(
+      `Starting local transcription: ${(audioBlob.size / (1024 * 1024)).toFixed(2)}MB`
+    );
 
     // Build FormData for multipart/form-data request
     const formData = new FormData();
@@ -327,7 +332,6 @@ class WhisperBackend {
 
       this._logger.log('Local transcription completed successfully');
       return response;
-
     } catch (error) {
       this._logger.error('Local transcription failed:', error.message);
       throw error;
@@ -338,9 +342,9 @@ class WhisperBackend {
    * Make an HTTP request to the Whisper backend with retry logic
    *
    * @param {string} endpoint - API endpoint path
-   * @param {Object} options - Fetch options
+   * @param {object} options - Fetch options
    * @param {number} [retryCount=0] - Current retry attempt
-   * @returns {Promise<Object>} Response data
+   * @returns {Promise<object>} Response data
    * @private
    */
   async _requestWithRetry(endpoint, options = {}, retryCount = 0) {
@@ -375,7 +379,6 @@ class WhisperBackend {
       } else {
         return await response.text();
       }
-
     } catch (error) {
       // Handle timeout
       if (error.name === 'AbortError') {
@@ -405,7 +408,9 @@ class WhisperBackend {
 
         // Retry if under max retries
         if (retryCount < this._maxRetries) {
-          this._logger.warn(`Connection failed, retrying (${retryCount + 1}/${this._maxRetries})...`);
+          this._logger.warn(
+            `Connection failed, retrying (${retryCount + 1}/${this._maxRetries})...`
+          );
           await this._delay(2000 * (retryCount + 1)); // Longer backoff for connection issues
           return this._requestWithRetry(endpoint, options, retryCount + 1);
         }
@@ -439,7 +444,7 @@ class WhisperBackend {
    * Parse error response from the server
    *
    * @param {Response} response - Fetch response object
-   * @returns {Promise<Object>} Parsed error data
+   * @returns {Promise<object>} Parsed error data
    * @private
    */
   async _parseErrorResponse(response) {
@@ -484,20 +489,20 @@ class WhisperBackend {
    * @private
    */
   _delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
    * Get server information (if supported by backend)
    *
-   * @returns {Promise<Object|null>} Server info or null if not supported
+   * @returns {Promise<object | null>} Server info or null if not supported
    */
   async getServerInfo() {
     try {
       const response = await this._requestWithRetry('/info', {
         method: 'GET',
         headers: {
-          'Accept': 'application/json'
+          Accept: 'application/json'
         }
       });
 
@@ -511,9 +516,9 @@ class WhisperBackend {
 }
 
 /**
- * @typedef {Object} WhisperTranscriptionResult
+ * @typedef {object} WhisperTranscriptionResult
  * @property {string} text - Full transcription text
- * @property {Array<Object>} [segments] - Transcription segments with timestamps
+ * @property {Array<object>} [segments] - Transcription segments with timestamps
  * @property {string} [language] - Detected language
  */
 

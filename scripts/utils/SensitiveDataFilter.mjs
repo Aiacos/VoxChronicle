@@ -49,14 +49,7 @@ const SENSITIVE_HEADERS = [
  * Sensitive query parameters that should be redacted
  * @private
  */
-const SENSITIVE_PARAMS = [
-  'api_key',
-  'apikey',
-  'token',
-  'access_token',
-  'auth',
-  'key'
-];
+const SENSITIVE_PARAMS = ['api_key', 'apikey', 'token', 'access_token', 'auth', 'key'];
 
 /**
  * Replacement text for redacted values
@@ -89,10 +82,7 @@ export class SensitiveDataFilter {
     );
 
     // Replace OpenAI keys
-    sanitized = sanitized.replace(
-      SENSITIVE_PATTERNS.OPENAI_KEY,
-      REDACTED
-    );
+    sanitized = sanitized.replace(SENSITIVE_PATTERNS.OPENAI_KEY, REDACTED);
 
     // Replace API keys (keep the label visible)
     sanitized = sanitized.replace(
@@ -113,9 +103,9 @@ export class SensitiveDataFilter {
    * Sanitize an object by redacting sensitive properties
    * Creates a deep copy to avoid modifying the original object
    *
-   * @param {Object} obj - The object to sanitize
+   * @param {object} obj - The object to sanitize
    * @param {boolean} [deep=true] - Whether to recursively sanitize nested objects
-   * @returns {Object} A sanitized copy of the object
+   * @returns {object} A sanitized copy of the object
    */
   static sanitizeObject(obj, deep = true) {
     if (obj === null || obj === undefined) {
@@ -128,7 +118,7 @@ export class SensitiveDataFilter {
 
     // Handle arrays
     if (Array.isArray(obj)) {
-      return obj.map(item => deep ? SensitiveDataFilter.sanitizeObject(item, deep) : item);
+      return obj.map((item) => (deep ? SensitiveDataFilter.sanitizeObject(item, deep) : item));
     }
 
     // Handle objects
@@ -137,8 +127,9 @@ export class SensitiveDataFilter {
       const lowerKey = key.toLowerCase();
 
       // Check if this is a sensitive header or property
-      const isSensitive = SENSITIVE_HEADERS.some(h => lowerKey.includes(h)) ||
-                         SENSITIVE_PARAMS.some(p => lowerKey.includes(p));
+      const isSensitive =
+        SENSITIVE_HEADERS.some((h) => lowerKey.includes(h)) ||
+        SENSITIVE_PARAMS.some((p) => lowerKey.includes(p));
 
       if (isSensitive) {
         // Redact the entire value
@@ -174,7 +165,7 @@ export class SensitiveDataFilter {
 
       // Check and redact sensitive query parameters
       let modified = false;
-      SENSITIVE_PARAMS.forEach(param => {
+      SENSITIVE_PARAMS.forEach((param) => {
         if (urlObj.searchParams.has(param)) {
           urlObj.searchParams.set(param, REDACTED);
           modified = true;
@@ -192,8 +183,8 @@ export class SensitiveDataFilter {
    * Sanitize HTTP headers object
    * Specifically designed for sanitizing request/response headers
    *
-   * @param {Object} headers - Headers object to sanitize
-   * @returns {Object} Sanitized copy of headers
+   * @param {object} headers - Headers object to sanitize
+   * @returns {object} Sanitized copy of headers
    */
   static sanitizeHeaders(headers) {
     if (!headers || typeof headers !== 'object') {
@@ -203,7 +194,7 @@ export class SensitiveDataFilter {
     const sanitized = {};
     for (const [key, value] of Object.entries(headers)) {
       const lowerKey = key.toLowerCase();
-      const isSensitive = SENSITIVE_HEADERS.some(h => lowerKey.includes(h));
+      const isSensitive = SENSITIVE_HEADERS.some((h) => lowerKey.includes(h));
 
       if (isSensitive) {
         // For bearer tokens, keep the "Bearer" prefix visible
@@ -224,8 +215,8 @@ export class SensitiveDataFilter {
    * Sanitize an error object before logging
    * Handles Error instances and plain objects
    *
-   * @param {Error|Object} error - The error to sanitize
-   * @returns {Object} Sanitized error information
+   * @param {Error | object} error - The error to sanitize
+   * @returns {object} Sanitized error information
    */
   static sanitizeError(error) {
     if (!error) {
@@ -262,7 +253,7 @@ export class SensitiveDataFilter {
    * @returns {Array} Array of sanitized arguments
    */
   static sanitizeArgs(...args) {
-    return args.map(arg => {
+    return args.map((arg) => {
       if (arg === null || arg === undefined) {
         return arg;
       }
@@ -295,7 +286,7 @@ export class SensitiveDataFilter {
       return false;
     }
 
-    return Object.values(SENSITIVE_PATTERNS).some(pattern => {
+    return Object.values(SENSITIVE_PATTERNS).some((pattern) => {
       // Reset regex lastIndex to ensure fresh test
       pattern.lastIndex = 0;
       return pattern.test(str);

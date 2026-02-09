@@ -70,8 +70,8 @@ class SessionOrchestrator {
   /**
    * Create a new SessionOrchestrator instance
    *
-   * @param {Object} [services={}] - Service instances (audioRecorder, transcriptionService, entityExtractor, imageGenerationService, kankaService, narrativeExporter)
-   * @param {Object} [options={}] - Configuration options (see DEFAULT_SESSION_OPTIONS)
+   * @param {object} [services={}] - Service instances (audioRecorder, transcriptionService, entityExtractor, imageGenerationService, kankaService, narrativeExporter)
+   * @param {object} [options={}] - Configuration options (see DEFAULT_SESSION_OPTIONS)
    */
   constructor(services = {}, options = {}) {
     this._audioRecorder = services.audioRecorder || null;
@@ -88,55 +88,58 @@ class SessionOrchestrator {
   _initializeProcessors() {
     this._transcriptionProcessor = this._transcriptionService
       ? new TranscriptionProcessor({
-          transcriptionService: this._transcriptionService,
-          config: this._transcriptionConfig
-        })
+        transcriptionService: this._transcriptionService,
+        config: this._transcriptionConfig
+      })
       : null;
 
     this._entityProcessor = this._entityExtractor
       ? new EntityProcessor({
-          entityExtractor: this._entityExtractor,
-          kankaService: this._kankaService
-        })
+        entityExtractor: this._entityExtractor,
+        kankaService: this._kankaService
+      })
       : null;
 
     this._imageProcessor = this._imageGenerationService
       ? new ImageProcessor({
-          imageGenerationService: this._imageGenerationService,
-          options: {
-            maxImagesPerSession: this._options.maxImagesPerSession,
-            imageQuality: this._options.imageQuality
-          }
-        })
+        imageGenerationService: this._imageGenerationService,
+        options: {
+          maxImagesPerSession: this._options.maxImagesPerSession,
+          imageQuality: this._options.imageQuality
+        }
+      })
       : null;
 
     this._kankaPublisher = this._kankaService
-      ? new KankaPublisher(
-          this._kankaService,
-          this._narrativeExporter,
-          { chronicleFormat: this._options.chronicleFormat }
-        )
+      ? new KankaPublisher(this._kankaService, this._narrativeExporter, {
+        chronicleFormat: this._options.chronicleFormat
+      })
       : null;
 
     this._logger.debug('Processors initialized');
   }
 
-  get state() { return this._state; }
-  get currentSession() { return this._currentSession; }
+  get state() {
+    return this._state;
+  }
+  get currentSession() {
+    return this._currentSession;
+  }
   get isSessionActive() {
-    return this._state !== SessionState.IDLE &&
-           this._state !== SessionState.COMPLETE &&
-           this._state !== SessionState.ERROR;
+    return (
+      this._state !== SessionState.IDLE &&
+      this._state !== SessionState.COMPLETE &&
+      this._state !== SessionState.ERROR
+    );
   }
   get isRecording() {
-    return this._state === SessionState.RECORDING ||
-           this._state === SessionState.PAUSED;
+    return this._state === SessionState.RECORDING || this._state === SessionState.PAUSED;
   }
 
   /**
    * Set event callback handlers
    *
-   * @param {Object} callbacks - Callback functions (onStateChange, onProgress, onError, onSessionComplete)
+   * @param {object} callbacks - Callback functions (onStateChange, onProgress, onError, onSessionComplete)
    */
   setCallbacks(callbacks) {
     this._callbacks = { ...this._callbacks, ...callbacks };
@@ -153,14 +156,20 @@ class SessionOrchestrator {
 
   _reportProgress(stage, progress, message = '') {
     if (this._callbacks.onProgress) {
-      this._callbacks.onProgress({ stage, progress, message, state: this._state, session: this._currentSession });
+      this._callbacks.onProgress({
+        stage,
+        progress,
+        message,
+        state: this._state,
+        session: this._currentSession
+      });
     }
   }
 
   /**
    * Start a new recording session
    *
-   * @param {Object} [sessionOptions={}] - Session configuration (title, date, speakerMap, language, recordingOptions)
+   * @param {object} [sessionOptions={}] - Session configuration (title, date, speakerMap, language, recordingOptions)
    * @returns {Promise<void>}
    * @throws {Error} If session already active or audio recorder not configured
    */
@@ -207,8 +216,8 @@ class SessionOrchestrator {
   /**
    * Stop the current recording session and optionally process the audio
    *
-   * @param {Object} [options={}] - Stop options (processImmediately)
-   * @returns {Promise<Object>} Current session data
+   * @param {object} [options={}] - Stop options (processImmediately)
+   * @returns {Promise<object>} Current session data
    * @throws {Error} If no recording in progress
    */
   async stopSession(options = {}) {
@@ -275,8 +284,8 @@ class SessionOrchestrator {
   /**
    * Process transcription for the current session
    *
-   * @param {Object} [options={}] - Transcription options (speakerMap, language)
-   * @returns {Promise<Object>} Transcription result
+   * @param {object} [options={}] - Transcription options (speakerMap, language)
+   * @returns {Promise<object>} Transcription result
    * @throws {Error} If no audio blob available or transcription service not configured
    */
   async processTranscription(options = {}) {
@@ -296,12 +305,15 @@ class SessionOrchestrator {
         {
           speakerMap: options.speakerMap || this._currentSession.speakerMap || {},
           language: options.language || this._currentSession.language,
-          onProgress: (progress, message) => this._reportProgress('transcription', progress, message)
+          onProgress: (progress, message) =>
+            this._reportProgress('transcription', progress, message)
         }
       );
 
       this._currentSession.transcript = transcriptResult;
-      this._logger.log(`Transcription complete: ${transcriptResult.segments?.length || 0} segments`);
+      this._logger.log(
+        `Transcription complete: ${transcriptResult.segments?.length || 0} segments`
+      );
 
       if (this._options.autoExtractEntities && this._entityProcessor) {
         await this._extractEntities();
@@ -364,7 +376,7 @@ class SessionOrchestrator {
 
     this._logger.log(
       `Extracted ${extractionResult.totalCount || 0} entities, ` +
-      `${this._currentSession.moments.length} salient moments`
+        `${this._currentSession.moments.length} salient moments`
     );
 
     if (this._options.autoExtractRelationships) {
@@ -438,7 +450,7 @@ class SessionOrchestrator {
 
     if (results && results.length > 0) {
       this._currentSession.images = results;
-      this._logger.log(`Generated ${results.filter(r => r.success !== false).length} images`);
+      this._logger.log(`Generated ${results.filter((r) => r.success !== false).length} images`);
     } else {
       this._currentSession.errors.push({
         stage: 'image_generation',
@@ -453,8 +465,8 @@ class SessionOrchestrator {
   /**
    * Publish the session to Kanka
    *
-   * @param {Object} [options={}] - Publishing options (createEntities, uploadImages, createChronicle)
-   * @returns {Promise<Object>} Publishing results
+   * @param {object} [options={}] - Publishing options (createEntities, uploadImages, createChronicle)
+   * @returns {Promise<object>} Publishing results
    * @throws {Error} If no session data or Kanka service not configured
    */
   async publishToKanka(options = {}) {
@@ -469,15 +481,12 @@ class SessionOrchestrator {
     this._updateState(SessionState.PUBLISHING);
 
     try {
-      const results = await this._kankaPublisher.publishSession(
-        this._currentSession,
-        {
-          createEntities: options.createEntities ?? true,
-          uploadImages: options.uploadImages ?? true,
-          createChronicle: options.createChronicle ?? true,
-          onProgress: (progress, message) => this._reportProgress('publishing', progress, message)
-        }
-      );
+      const results = await this._kankaPublisher.publishSession(this._currentSession, {
+        createEntities: options.createEntities ?? true,
+        uploadImages: options.uploadImages ?? true,
+        createChronicle: options.createChronicle ?? true,
+        onProgress: (progress, message) => this._reportProgress('publishing', progress, message)
+      });
 
       this._currentSession.kankaResults = results;
       if (results.journal) {
@@ -495,11 +504,11 @@ class SessionOrchestrator {
 
   setServices(services) {
     if (services.audioRecorder !== undefined) this._audioRecorder = services.audioRecorder;
-    if (services.transcriptionService !== undefined) this._transcriptionService = services.transcriptionService;
+    if (services.transcriptionService !== undefined) {this._transcriptionService = services.transcriptionService;}
     if (services.entityExtractor !== undefined) this._entityExtractor = services.entityExtractor;
-    if (services.imageGenerationService !== undefined) this._imageGenerationService = services.imageGenerationService;
+    if (services.imageGenerationService !== undefined) {this._imageGenerationService = services.imageGenerationService;}
     if (services.kankaService !== undefined) this._kankaService = services.kankaService;
-    if (services.narrativeExporter !== undefined) this._narrativeExporter = services.narrativeExporter;
+    if (services.narrativeExporter !== undefined) {this._narrativeExporter = services.narrativeExporter;}
 
     this._initializeProcessors();
     this._logger.debug('Services updated');
@@ -582,14 +591,14 @@ class SessionOrchestrator {
       hasAudio: !!this._currentSession.audioBlob,
       hasTranscript: !!this._currentSession.transcript,
       segmentCount: this._currentSession.transcript?.segments?.length || 0,
-      entityCount: this._currentSession.entities ? (
-        (this._currentSession.entities.characters?.length || 0) +
-        (this._currentSession.entities.locations?.length || 0) +
-        (this._currentSession.entities.items?.length || 0)
-      ) : 0,
+      entityCount: this._currentSession.entities
+        ? (this._currentSession.entities.characters?.length || 0) +
+          (this._currentSession.entities.locations?.length || 0) +
+          (this._currentSession.entities.items?.length || 0)
+        : 0,
       relationshipCount: this._currentSession.relationships?.length || 0,
       momentCount: this._currentSession.moments?.length || 0,
-      imageCount: this._currentSession.images?.filter(i => i.success !== false).length || 0,
+      imageCount: this._currentSession.images?.filter((i) => i.success !== false).length || 0,
       hasChronicle: !!this._currentSession.chronicle,
       errorCount: this._currentSession.errors?.length || 0
     };

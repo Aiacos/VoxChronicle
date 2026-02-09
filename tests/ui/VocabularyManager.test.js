@@ -291,7 +291,9 @@ describe('VocabularyManager', () => {
     it('should include all category data with terms', async () => {
       const data = await manager.getData();
 
-      const characterCategory = data.categories.find(c => c.id === VocabularyCategory.CHARACTER_NAMES);
+      const characterCategory = data.categories.find(
+        (c) => c.id === VocabularyCategory.CHARACTER_NAMES
+      );
       expect(characterCategory).toBeDefined();
       expect(characterCategory.label).toBeDefined();
       expect(characterCategory.terms).toEqual(['Gandalf', 'Frodo']);
@@ -332,7 +334,7 @@ describe('VocabularyManager', () => {
     it('should include all five vocabulary categories', async () => {
       const data = await manager.getData();
 
-      const categoryIds = data.categories.map(c => c.id);
+      const categoryIds = data.categories.map((c) => c.id);
       expect(categoryIds).toContain(VocabularyCategory.CHARACTER_NAMES);
       expect(categoryIds).toContain(VocabularyCategory.LOCATION_NAMES);
       expect(categoryIds).toContain(VocabularyCategory.ITEMS);
@@ -704,17 +706,9 @@ describe('VocabularyManager', () => {
 
   describe('Collect Foundry Suggestions', () => {
     it('should collect actor names and items from Foundry', () => {
-      const mockActors = [
-        { name: 'Goblin' },
-        { name: 'Orc' },
-        { name: 'Troll' }
-      ];
+      const mockActors = [{ name: 'Goblin' }, { name: 'Orc' }, { name: 'Troll' }];
 
-      const mockItems = [
-        { name: 'Longsword' },
-        { name: 'Healing Potion' },
-        { name: 'Shield' }
-      ];
+      const mockItems = [{ name: 'Longsword' }, { name: 'Healing Potion' }, { name: 'Shield' }];
 
       mockGame.actors.forEach.mockImplementation((callback) => {
         mockActors.forEach(callback);
@@ -733,11 +727,7 @@ describe('VocabularyManager', () => {
     });
 
     it('should remove duplicate suggestions', () => {
-      const mockActors = [
-        { name: 'Goblin' },
-        { name: 'Goblin' },
-        { name: 'Orc' }
-      ];
+      const mockActors = [{ name: 'Goblin' }, { name: 'Goblin' }, { name: 'Orc' }];
 
       mockGame.actors.forEach.mockImplementation((callback) => {
         mockActors.forEach(callback);
@@ -751,12 +741,7 @@ describe('VocabularyManager', () => {
     });
 
     it('should filter out empty names', () => {
-      const mockActors = [
-        { name: 'Goblin' },
-        { name: '' },
-        { name: '   ' },
-        { name: 'Orc' }
-      ];
+      const mockActors = [{ name: 'Goblin' }, { name: '' }, { name: '   ' }, { name: 'Orc' }];
 
       mockGame.actors.forEach.mockImplementation((callback) => {
         mockActors.forEach(callback);
@@ -769,11 +754,7 @@ describe('VocabularyManager', () => {
     });
 
     it('should sort suggestions alphabetically', () => {
-      const mockActors = [
-        { name: 'Zebra' },
-        { name: 'Apple' },
-        { name: 'Monkey' }
-      ];
+      const mockActors = [{ name: 'Zebra' }, { name: 'Apple' }, { name: 'Monkey' }];
 
       mockGame.actors.forEach.mockImplementation((callback) => {
         mockActors.forEach(callback);
@@ -806,10 +787,7 @@ describe('VocabularyManager', () => {
 
   describe('Suggest From Foundry Handler', () => {
     it('should show suggestions dialog when terms are found', async () => {
-      const mockActors = [
-        { name: 'Goblin' },
-        { name: 'Orc' }
-      ];
+      const mockActors = [{ name: 'Goblin' }, { name: 'Orc' }];
 
       mockGame.actors.forEach.mockImplementation((callback) => {
         mockActors.forEach(callback);

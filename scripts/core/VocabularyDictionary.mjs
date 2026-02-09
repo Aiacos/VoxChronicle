@@ -27,7 +27,7 @@ export const VocabularyCategory = {
 
 /**
  * Default dictionary structure
- * @constant {Object}
+ * @constant {object}
  */
 const DEFAULT_DICTIONARY = {
   [VocabularyCategory.CHARACTER_NAMES]: [],
@@ -55,7 +55,7 @@ const MAX_PROMPT_TERMS = 50;
 export class VocabularyDictionary {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('VocabularyDictionary');
@@ -102,7 +102,7 @@ export class VocabularyDictionary {
   /**
    * Get all terms from all categories
    *
-   * @returns {Object} Dictionary object with all categories and terms
+   * @returns {object} Dictionary object with all categories and terms
    */
   getAllTerms() {
     return this._getDictionary();
@@ -131,7 +131,7 @@ export class VocabularyDictionary {
 
     // Check if term already exists (case-insensitive)
     const exists = dictionary[category].some(
-      existing => existing.toLowerCase() === trimmedTerm.toLowerCase()
+      (existing) => existing.toLowerCase() === trimmedTerm.toLowerCase()
     );
 
     if (exists) {
@@ -168,7 +168,7 @@ export class VocabularyDictionary {
     // Find and remove term (case-insensitive)
     const originalLength = dictionary[category].length;
     dictionary[category] = dictionary[category].filter(
-      existing => existing.toLowerCase() !== term.toLowerCase()
+      (existing) => existing.toLowerCase() !== term.toLowerCase()
     );
 
     const wasRemoved = dictionary[category].length < originalLength;
@@ -239,7 +239,7 @@ export class VocabularyDictionary {
    *
    * @param {string} json - JSON string containing dictionary data
    * @param {boolean} [merge=false] - If true, merge with existing terms; if false, replace
-   * @returns {Promise<Object>} Import statistics (added, skipped, total)
+   * @returns {Promise<object>} Import statistics (added, skipped, total)
    */
   async importDictionary(json, merge = false) {
     if (!json || typeof json !== 'string') {
@@ -370,16 +370,14 @@ export class VocabularyDictionary {
     this._validateCategory(category);
 
     const dictionary = this._getDictionary();
-    return dictionary[category].some(
-      existing => existing.toLowerCase() === term.toLowerCase()
-    );
+    return dictionary[category].some((existing) => existing.toLowerCase() === term.toLowerCase());
   }
 
   /**
    * Load default D&D vocabulary terms if dictionary is empty
    * Only runs on first use to populate the dictionary with common D&D terms
    *
-   * @returns {Promise<Object>} Statistics about loaded terms (loaded, total, skipped)
+   * @returns {Promise<object>} Statistics about loaded terms (loaded, total, skipped)
    */
   async loadDefaults() {
     const dictionary = this._getDictionary();
@@ -429,7 +427,7 @@ export class VocabularyDictionary {
    * Extract terms from Foundry compendiums
    * Scans world compendiums for actor names and item names
    *
-   * @returns {Promise<Object>} Object with character_names and items arrays
+   * @returns {Promise<object>} Object with character_names and items arrays
    * @example
    * const suggestions = await dictionary.extractFromFoundryCompendiums();
    * // Returns: { character_names: ['Goblin', 'Troll'], items: ['Longsword', 'Potion of Healing'] }
@@ -510,7 +508,7 @@ export class VocabularyDictionary {
   /**
    * Get the dictionary from Foundry settings
    *
-   * @returns {Object} The current dictionary
+   * @returns {object} The current dictionary
    * @private
    */
   _getDictionary() {
@@ -529,7 +527,7 @@ export class VocabularyDictionary {
   /**
    * Save the dictionary to Foundry settings
    *
-   * @param {Object} dictionary - The dictionary to save
+   * @param {object} dictionary - The dictionary to save
    * @returns {Promise<void>}
    * @private
    */
@@ -557,7 +555,7 @@ export class VocabularyDictionary {
   /**
    * Validate dictionary structure for import
    *
-   * @param {Object} data - The data to validate
+   * @param {object} data - The data to validate
    * @throws {Error} If structure is invalid
    * @private
    */
@@ -585,7 +583,7 @@ export class VocabularyDictionary {
    * Get the index for a compendium pack
    * Similar to CompendiumSearcher but without caching
    *
-   * @param {Object} pack - The compendium pack
+   * @param {object} pack - The compendium pack
    * @returns {Promise<Array>} The pack index
    * @private
    */
@@ -608,7 +606,7 @@ export class VocabularyDictionary {
    * Determine the package type (world/module/system) of a compendium pack
    * Fallback for when metadata.packageType is not available
    *
-   * @param {Object} pack - The compendium pack
+   * @param {object} pack - The compendium pack
    * @returns {string} The package type ('world', 'module', or 'system')
    * @private
    */

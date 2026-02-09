@@ -71,7 +71,7 @@ vi.mock('../../scripts/utils/SensitiveDataFilter.mjs', () => ({
     }),
     sanitizeUrl: vi.fn((url) => url),
     sanitizeMessage: vi.fn((msg) => msg),
-    sanitizeString: vi.fn((str) => typeof str === 'string' ? str : String(str))
+    sanitizeString: vi.fn((str) => (typeof str === 'string' ? str : String(str)))
   }
 }));
 
@@ -105,16 +105,16 @@ globalThis.game = {
 function createMockSessionData() {
   return {
     id: 'session-test-123',
-    title: 'Session 1 - The Dragon\'s Lair',
+    title: "Session 1 - The Dragon's Lair",
     date: '2024-01-15',
     startTime: Date.now() - 3600000,
     endTime: Date.now(),
     transcript: {
-      text: 'The brave adventurers entered the dragon\'s lair. Gandalf the wizard cast a spell of protection. They found the legendary Sword of Flames.',
+      text: "The brave adventurers entered the dragon's lair. Gandalf the wizard cast a spell of protection. They found the legendary Sword of Flames.",
       segments: [
         {
           speaker: 'Game Master',
-          text: 'The brave adventurers entered the dragon\'s lair.',
+          text: "The brave adventurers entered the dragon's lair.",
           start: 0,
           end: 3.5
         },
@@ -146,7 +146,7 @@ function createMockSessionData() {
       ],
       locations: [
         {
-          name: 'Dragon\'s Lair',
+          name: "Dragon's Lair",
           type: 'location',
           description: 'A dark and dangerous cavern deep in the mountains',
           tags: ['dungeon', 'cave']
@@ -183,7 +183,7 @@ function createMockKankaResponses() {
     journalCreate: {
       data: {
         id: 1001,
-        name: 'Session 1 - The Dragon\'s Lair',
+        name: "Session 1 - The Dragon's Lair",
         entry: '<p>Chronicle content...</p>',
         type: 'Session Chronicle',
         entity_id: 5001
@@ -201,7 +201,7 @@ function createMockKankaResponses() {
     locationCreate: {
       data: {
         id: 3001,
-        name: 'Dragon\'s Lair',
+        name: "Dragon's Lair",
         entry: '<p>A dark and dangerous cavern...</p>',
         type: 'Dungeon',
         entity_id: 5003
@@ -298,7 +298,11 @@ describe('Publication Flow Integration', () => {
     // Mock global fetch
     mockFetch = vi.fn((url, options) => {
       // Kanka API - Journal creation
-      if (url.includes('/1.0/campaigns/') && url.includes('/journals') && options?.method === 'POST') {
+      if (
+        url.includes('/1.0/campaigns/') &&
+        url.includes('/journals') &&
+        options?.method === 'POST'
+      ) {
         return Promise.resolve({
           ok: true,
           headers: createMockHeaders(),
@@ -398,7 +402,8 @@ describe('Publication Flow Integration', () => {
     global.fetch = mockFetch;
 
     // Import real services
-    const { SessionOrchestrator } = await import('../../scripts/orchestration/SessionOrchestrator.mjs');
+    const { SessionOrchestrator } =
+      await import('../../scripts/orchestration/SessionOrchestrator.mjs');
     const { KankaService } = await import('../../scripts/kanka/KankaService.mjs');
     const { NarrativeExporter } = await import('../../scripts/kanka/NarrativeExporter.mjs');
 
@@ -436,7 +441,7 @@ describe('Publication Flow Integration', () => {
 
       // Verify locations were created
       expect(result.locations).toHaveLength(1);
-      expect(result.locations[0].name).toBe('Dragon\'s Lair');
+      expect(result.locations[0].name).toBe("Dragon's Lair");
       expect(result.locations[0].id).toBe(3001);
 
       // Verify items were created
@@ -458,15 +463,16 @@ describe('Publication Flow Integration', () => {
       expect(result.images[0].entityType).toBe('character');
 
       // Verify image download and upload API calls were made
-      const imageFetchCalls = mockFetch.mock.calls.filter(call =>
+      const imageFetchCalls = mockFetch.mock.calls.filter((call) =>
         call[0].includes('example.com/generated')
       );
       expect(imageFetchCalls.length).toBeGreaterThan(0);
 
-      const imageUploadCalls = mockFetch.mock.calls.filter(call =>
-        call[0].includes('/1.0/campaigns/') &&
-        call[0].includes('/characters/') &&
-        call[1]?.body instanceof FormData
+      const imageUploadCalls = mockFetch.mock.calls.filter(
+        (call) =>
+          call[0].includes('/1.0/campaigns/') &&
+          call[0].includes('/characters/') &&
+          call[1]?.body instanceof FormData
       );
       expect(imageUploadCalls.length).toBeGreaterThan(0);
     });
@@ -481,8 +487,8 @@ describe('Publication Flow Integration', () => {
       expect(result.journal.type).toBe('Session Chronicle');
 
       // Verify journal was created with correct API call
-      const journalCalls = mockFetch.mock.calls.filter(call =>
-        call[0].includes('/journals') && call[1]?.method === 'POST'
+      const journalCalls = mockFetch.mock.calls.filter(
+        (call) => call[0].includes('/journals') && call[1]?.method === 'POST'
       );
       expect(journalCalls).toHaveLength(1);
     });
@@ -499,9 +505,12 @@ describe('Publication Flow Integration', () => {
       expect(result.items).toHaveLength(0);
 
       // Verify no entity creation API calls were made
-      const entityCalls = mockFetch.mock.calls.filter(call =>
-        (call[0].includes('/characters') || call[0].includes('/locations') || call[0].includes('/items')) &&
-        call[1]?.method === 'POST'
+      const entityCalls = mockFetch.mock.calls.filter(
+        (call) =>
+          (call[0].includes('/characters') ||
+            call[0].includes('/locations') ||
+            call[0].includes('/items')) &&
+          call[1]?.method === 'POST'
       );
       expect(entityCalls).toHaveLength(0);
     });
@@ -518,8 +527,8 @@ describe('Publication Flow Integration', () => {
       expect(result.items).toHaveLength(1);
 
       // Verify no journal creation API call was made
-      const journalCalls = mockFetch.mock.calls.filter(call =>
-        call[0].includes('/journals') && call[1]?.method === 'POST'
+      const journalCalls = mockFetch.mock.calls.filter(
+        (call) => call[0].includes('/journals') && call[1]?.method === 'POST'
       );
       expect(journalCalls).toHaveLength(0);
     });
@@ -533,9 +542,8 @@ describe('Publication Flow Integration', () => {
       expect(result.images).toHaveLength(0);
 
       // Verify no image upload API calls were made
-      const imageUploadCalls = mockFetch.mock.calls.filter(call =>
-        call[0].includes('/1.0/campaigns/') &&
-        call[1]?.body instanceof FormData
+      const imageUploadCalls = mockFetch.mock.calls.filter(
+        (call) => call[0].includes('/1.0/campaigns/') && call[1]?.body instanceof FormData
       );
       expect(imageUploadCalls).toHaveLength(0);
     });
@@ -550,13 +558,16 @@ describe('Publication Flow Integration', () => {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve({
-              data: [{
-                id: 9999,
-                name: 'Gandalf',
-                entry: 'Existing character'
-              }]
-            })
+            json: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: 9999,
+                    name: 'Gandalf',
+                    entry: 'Existing character'
+                  }
+                ]
+              })
           });
         }
 
@@ -622,8 +633,8 @@ describe('Publication Flow Integration', () => {
       expect(result.items).toHaveLength(1);
 
       // Verify no POST call was made for characters (only GET for duplicate check)
-      const characterCreateCalls = mockFetch.mock.calls.filter(call =>
-        call[0].includes('/characters') && call[1]?.method === 'POST'
+      const characterCreateCalls = mockFetch.mock.calls.filter(
+        (call) => call[0].includes('/characters') && call[1]?.method === 'POST'
       );
       expect(characterCreateCalls).toHaveLength(0);
     });
@@ -637,9 +648,10 @@ describe('Publication Flow Integration', () => {
           status: 401,
           statusText: 'Unauthorized',
           headers: createMockHeaders(),
-          json: () => Promise.resolve({
-            error: 'Invalid API token'
-          })
+          json: () =>
+            Promise.resolve({
+              error: 'Invalid API token'
+            })
         });
       });
 
@@ -653,9 +665,10 @@ describe('Publication Flow Integration', () => {
           status: 429,
           statusText: 'Too Many Requests',
           headers: createMockHeaders(),
-          json: () => Promise.resolve({
-            error: 'Rate limit exceeded'
-          })
+          json: () =>
+            Promise.resolve({
+              error: 'Rate limit exceeded'
+            })
         });
       });
 
@@ -918,10 +931,10 @@ describe('Publication Flow Integration', () => {
       await orchestrator.publishToKanka();
 
       // Verify entities are created before journal
-      const characterCalls = apiCalls.filter(c => c.url.includes('/characters'));
-      const locationCalls = apiCalls.filter(c => c.url.includes('/locations'));
-      const itemCalls = apiCalls.filter(c => c.url.includes('/items'));
-      const journalCalls = apiCalls.filter(c => c.url.includes('/journals'));
+      const characterCalls = apiCalls.filter((c) => c.url.includes('/characters'));
+      const locationCalls = apiCalls.filter((c) => c.url.includes('/locations'));
+      const itemCalls = apiCalls.filter((c) => c.url.includes('/items'));
+      const journalCalls = apiCalls.filter((c) => c.url.includes('/journals'));
 
       expect(characterCalls.length).toBeGreaterThan(0);
       expect(locationCalls.length).toBeGreaterThan(0);
@@ -929,11 +942,13 @@ describe('Publication Flow Integration', () => {
       expect(journalCalls.length).toBeGreaterThan(0);
 
       // Journal should be created last
-      const journalIndex = apiCalls.findIndex(c => c.url.includes('/journals') && c.method === 'POST');
+      const journalIndex = apiCalls.findIndex(
+        (c) => c.url.includes('/journals') && c.method === 'POST'
+      );
       const lastEntityIndex = Math.max(
-        apiCalls.findLastIndex(c => c.url.includes('/characters') && c.method === 'POST'),
-        apiCalls.findLastIndex(c => c.url.includes('/locations') && c.method === 'POST'),
-        apiCalls.findLastIndex(c => c.url.includes('/items') && c.method === 'POST')
+        apiCalls.findLastIndex((c) => c.url.includes('/characters') && c.method === 'POST'),
+        apiCalls.findLastIndex((c) => c.url.includes('/locations') && c.method === 'POST'),
+        apiCalls.findLastIndex((c) => c.url.includes('/items') && c.method === 'POST')
       );
 
       if (lastEntityIndex >= 0 && journalIndex >= 0) {
@@ -1003,12 +1018,10 @@ describe('Publication Flow Integration', () => {
       await orchestrator.publishToKanka();
 
       // Verify Kanka endpoints use Bearer token
-      const kankaCalls = authHeaders.filter(h =>
-        h.url.includes('/1.0/campaigns/')
-      );
+      const kankaCalls = authHeaders.filter((h) => h.url.includes('/1.0/campaigns/'));
 
       expect(kankaCalls.length).toBeGreaterThan(0);
-      kankaCalls.forEach(call => {
+      kankaCalls.forEach((call) => {
         expect(call.auth).toMatch(/^Bearer /);
       });
     });
@@ -1070,8 +1083,12 @@ describe('Publication Flow Integration', () => {
       await orchestrator.publishToKanka();
 
       // For each entity type, verify GET request (duplicate check) before POST (create)
-      const characterGet = apiCalls.findIndex(c => c.url.includes('/characters') && c.url.includes('?'));
-      const characterPost = apiCalls.findIndex(c => c.url.includes('/characters') && c.method === 'POST');
+      const characterGet = apiCalls.findIndex(
+        (c) => c.url.includes('/characters') && c.url.includes('?')
+      );
+      const characterPost = apiCalls.findIndex(
+        (c) => c.url.includes('/characters') && c.method === 'POST'
+      );
 
       if (characterGet >= 0 && characterPost >= 0) {
         expect(characterGet).toBeLessThan(characterPost);
@@ -1145,7 +1162,7 @@ describe('Publication Flow Integration', () => {
       await orchestrator.publishToKanka();
 
       // Verify state changed to PUBLISHING
-      expect(stateChanges.some(s => s.to === 'publishing')).toBe(true);
+      expect(stateChanges.some((s) => s.to === 'publishing')).toBe(true);
     });
 
     it('should report progress during publication', async () => {
@@ -1161,7 +1178,7 @@ describe('Publication Flow Integration', () => {
 
       // Verify progress updates were sent
       expect(progressUpdates.length).toBeGreaterThan(0);
-      expect(progressUpdates.some(p => p.stage === 'publishing')).toBe(true);
+      expect(progressUpdates.some((p) => p.stage === 'publishing')).toBe(true);
     });
 
     it('should store publication results in session', async () => {

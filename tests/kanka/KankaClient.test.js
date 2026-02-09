@@ -72,7 +72,12 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { KankaClient, KankaError, KankaErrorType, KANKA_BASE_URL } from '../../scripts/kanka/KankaClient.mjs';
+import {
+  KankaClient,
+  KankaError,
+  KankaErrorType,
+  KANKA_BASE_URL
+} from '../../scripts/kanka/KankaClient.mjs';
 
 /**
  * Create a mock successful API response
@@ -325,7 +330,9 @@ describe('KankaClient', () => {
       const unconfiguredClient = new KankaClient('');
 
       await expect(unconfiguredClient.request('/campaigns')).rejects.toThrow(KankaError);
-      await expect(unconfiguredClient.request('/campaigns')).rejects.toThrow('API token not configured');
+      await expect(unconfiguredClient.request('/campaigns')).rejects.toThrow(
+        'API token not configured'
+      );
     });
   });
 
@@ -419,9 +426,7 @@ describe('KankaClient', () => {
 
   describe('error handling', () => {
     it('should throw authentication error for 401 response', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(401, 'Invalid API token')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(401, 'Invalid API token'));
 
       try {
         await client.request('/campaigns');
@@ -434,9 +439,7 @@ describe('KankaClient', () => {
     });
 
     it('should throw permission error for 403 response', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(403, 'Access denied')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(403, 'Access denied'));
 
       try {
         await client.request('/campaigns/123');
@@ -447,9 +450,7 @@ describe('KankaClient', () => {
     });
 
     it('should throw not found error for 404 response', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(404, 'Resource not found')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(404, 'Resource not found'));
 
       try {
         await client.request('/campaigns/999');
@@ -503,9 +504,7 @@ describe('KankaClient', () => {
     });
 
     it('should throw API error for 500 response', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(500, 'Internal server error')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(500, 'Internal server error'));
 
       try {
         await client.request('/campaigns');
@@ -516,9 +515,7 @@ describe('KankaClient', () => {
     });
 
     it('should throw API error for 502 response', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(502, 'Bad gateway')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(502, 'Bad gateway'));
 
       try {
         await client.request('/campaigns');
@@ -529,9 +526,7 @@ describe('KankaClient', () => {
     });
 
     it('should throw API error for 503 response', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(503, 'Service unavailable')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(503, 'Service unavailable'));
 
       try {
         await client.request('/campaigns');
@@ -604,12 +599,9 @@ describe('KankaClient', () => {
 
   describe('KankaError', () => {
     it('should create error with all properties', () => {
-      const error = new KankaError(
-        'Test error',
-        KankaErrorType.API_ERROR,
-        500,
-        { response: { message: 'Server error' } }
-      );
+      const error = new KankaError('Test error', KankaErrorType.API_ERROR, 500, {
+        response: { message: 'Server error' }
+      });
 
       expect(error.name).toBe('KankaError');
       expect(error.message).toBe('Test error');
@@ -619,28 +611,20 @@ describe('KankaClient', () => {
     });
 
     it('should extract retry-after from headers', () => {
-      const error = new KankaError(
-        'Rate limited',
-        KankaErrorType.RATE_LIMIT_ERROR,
-        429,
-        { headers: { 'retry-after': '60' } }
-      );
+      const error = new KankaError('Rate limited', KankaErrorType.RATE_LIMIT_ERROR, 429, {
+        headers: { 'retry-after': '60' }
+      });
 
       expect(error.retryAfter).toBe(60000); // 60 seconds in milliseconds
     });
 
     it('should extract rate limit headers', () => {
-      const error = new KankaError(
-        'Rate limited',
-        KankaErrorType.RATE_LIMIT_ERROR,
-        429,
-        {
-          headers: {
-            'x-ratelimit-remaining': '0',
-            'x-ratelimit-reset': '1640000000'
-          }
+      const error = new KankaError('Rate limited', KankaErrorType.RATE_LIMIT_ERROR, 429, {
+        headers: {
+          'x-ratelimit-remaining': '0',
+          'x-ratelimit-reset': '1640000000'
         }
-      );
+      });
 
       expect(error.rateLimitRemaining).toBe('0');
       expect(error.rateLimitReset).toBe('1640000000');
@@ -667,7 +651,11 @@ describe('KankaClient', () => {
       const notFoundError = new KankaError('Not found', KankaErrorType.NOT_FOUND_ERROR, 404);
       expect(notFoundError.isRetryable).toBe(false);
 
-      const validationError = new KankaError('Validation failed', KankaErrorType.VALIDATION_ERROR, 422);
+      const validationError = new KankaError(
+        'Validation failed',
+        KankaErrorType.VALIDATION_ERROR,
+        422
+      );
       expect(validationError.isRetryable).toBe(false);
     });
   });
@@ -766,9 +754,7 @@ describe('KankaClient', () => {
     });
 
     it('should return false for invalid API token (401)', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(401, 'Invalid token')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(401, 'Invalid token'));
 
       const result = await client.validateApiToken();
 
@@ -784,9 +770,7 @@ describe('KankaClient', () => {
     });
 
     it('should return true for non-auth errors (assume valid)', async () => {
-      mockFetch.mockResolvedValueOnce(
-        createMockErrorResponse(500, 'Server error')
-      );
+      mockFetch.mockResolvedValueOnce(createMockErrorResponse(500, 'Server error'));
 
       const result = await client.validateApiToken();
 

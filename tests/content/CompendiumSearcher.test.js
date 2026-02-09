@@ -154,7 +154,7 @@ function setupMockGame(packs = []) {
       [Symbol.iterator]: function* () {
         yield* packs;
       },
-      get: (id) => packs.find(p => p.collection === id) || null,
+      get: (id) => packs.find((p) => p.collection === id) || null,
       size: packs.length
     },
     system: {
@@ -345,7 +345,7 @@ describe('CompendiumSearcher', () => {
       });
 
       expect(results).toHaveLength(2);
-      results.forEach(r => {
+      results.forEach((r) => {
         expect(r.document.type).toBe('weapon');
       });
     });
@@ -415,9 +415,7 @@ describe('CompendiumSearcher', () => {
         { name: 'Dragon Slayer Sword', type: 'weapon' }
       ]);
 
-      const journalPack = createMockJournalPack('world.lore', [
-        { name: 'History of Dragons' }
-      ]);
+      const journalPack = createMockJournalPack('world.lore', [{ name: 'History of Dragons' }]);
 
       setupMockGame([actorPack, itemPack, journalPack]);
     });
@@ -528,7 +526,7 @@ describe('CompendiumSearcher', () => {
       });
 
       expect(results).toHaveLength(3);
-      expect(results.every(r => r.name.toLowerCase().startsWith('dragon'))).toBe(true);
+      expect(results.every((r) => r.name.toLowerCase().startsWith('dragon'))).toBe(true);
     });
 
     it('should use CONTAINS mode correctly', async () => {
@@ -537,7 +535,7 @@ describe('CompendiumSearcher', () => {
       });
 
       expect(results).toHaveLength(4);
-      expect(results.every(r => r.name.toLowerCase().includes('dragon'))).toBe(true);
+      expect(results.every((r) => r.name.toLowerCase().includes('dragon'))).toBe(true);
     });
 
     it('should use FUZZY mode with threshold', async () => {
@@ -609,17 +607,23 @@ describe('CompendiumSearcher', () => {
 
   describe('pack filtering', () => {
     beforeEach(() => {
-      const worldPack = createMockActorPack('world.npcs', [
-        { name: 'World Actor', type: 'npc' }
-      ], 'world');
+      const worldPack = createMockActorPack(
+        'world.npcs',
+        [{ name: 'World Actor', type: 'npc' }],
+        'world'
+      );
 
-      const modulePack = createMockActorPack('module.monsters', [
-        { name: 'Module Actor', type: 'npc' }
-      ], 'module');
+      const modulePack = createMockActorPack(
+        'module.monsters',
+        [{ name: 'Module Actor', type: 'npc' }],
+        'module'
+      );
 
-      const systemPack = createMockActorPack('dnd5e.actors', [
-        { name: 'System Actor', type: 'npc' }
-      ], 'system');
+      const systemPack = createMockActorPack(
+        'dnd5e.actors',
+        [{ name: 'System Actor', type: 'npc' }],
+        'system'
+      );
 
       setupMockGame([worldPack, modulePack, systemPack]);
     });
@@ -670,13 +674,9 @@ describe('CompendiumSearcher', () => {
 
   describe('getAvailableCompendiums', () => {
     beforeEach(() => {
-      const actorPack = createMockActorPack('monsters.npcs', [
-        { name: 'Test Actor' }
-      ], 'module');
+      const actorPack = createMockActorPack('monsters.npcs', [{ name: 'Test Actor' }], 'module');
 
-      const itemPack = createMockItemPack('equipment.weapons', [
-        { name: 'Test Item' }
-      ], 'system');
+      const itemPack = createMockItemPack('equipment.weapons', [{ name: 'Test Item' }], 'system');
 
       setupMockGame([actorPack, itemPack]);
     });
@@ -778,9 +778,7 @@ describe('CompendiumSearcher', () => {
 
   describe('cache management', () => {
     beforeEach(() => {
-      const actorPack = createMockActorPack('monsters.npcs', [
-        { name: 'Goblin', type: 'npc' }
-      ]);
+      const actorPack = createMockActorPack('monsters.npcs', [{ name: 'Goblin', type: 'npc' }]);
 
       setupMockGame([actorPack]);
     });
@@ -834,7 +832,7 @@ describe('CompendiumSearcher', () => {
       const firstCacheTime = shortCacheSearcher._cacheTimestamps.get('monsters.npcs');
 
       // Wait for cache to expire
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // This should fetch fresh index and update timestamp
       await shortCacheSearcher.searchActor('goblin');
@@ -924,7 +922,10 @@ describe('CompendiumSearcher', () => {
     });
 
     it('should only return items with matches', async () => {
-      const results = await searcher.findMatchingItems(['Longsword', 'Excalibur Legendary Blade XYZ']);
+      const results = await searcher.findMatchingItems([
+        'Longsword',
+        'Excalibur Legendary Blade XYZ'
+      ]);
 
       expect(results.has('Longsword')).toBe(true);
       expect(results.has('Excalibur Legendary Blade XYZ')).toBe(false);
@@ -937,9 +938,7 @@ describe('CompendiumSearcher', () => {
 
   describe('edge cases and error handling', () => {
     it('should handle empty query string', async () => {
-      const actorPack = createMockActorPack('monsters.npcs', [
-        { name: 'Goblin', type: 'npc' }
-      ]);
+      const actorPack = createMockActorPack('monsters.npcs', [{ name: 'Goblin', type: 'npc' }]);
 
       setupMockGame([actorPack]);
 
@@ -972,9 +971,7 @@ describe('CompendiumSearcher', () => {
     });
 
     it('should handle pack getIndex failure gracefully', async () => {
-      const errorPack = createMockActorPack('error.pack', [
-        { name: 'Test Actor', type: 'npc' }
-      ]);
+      const errorPack = createMockActorPack('error.pack', [{ name: 'Test Actor', type: 'npc' }]);
       errorPack.indexed = false;
       errorPack.getIndex = vi.fn().mockRejectedValue(new Error('Index error'));
 

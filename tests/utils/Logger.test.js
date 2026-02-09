@@ -281,12 +281,9 @@ describe('Logger', () => {
 
     it('should handle multiple arguments', () => {
       Logger.warn('warning', 'details', { code: 123 });
-      expect(console.warn).toHaveBeenCalledWith(
-        'vox-chronicle | [WARN]',
-        'warning',
-        'details',
-        { code: 123 }
-      );
+      expect(console.warn).toHaveBeenCalledWith('vox-chronicle | [WARN]', 'warning', 'details', {
+        code: 123
+      });
     });
   });
 
@@ -317,12 +314,9 @@ describe('Logger', () => {
 
     it('should handle multiple arguments', () => {
       Logger.error('error', 'message', { stack: 'trace' });
-      expect(console.error).toHaveBeenCalledWith(
-        'vox-chronicle | [ERROR]',
-        'error',
-        'message',
-        { stack: 'trace' }
-      );
+      expect(console.error).toHaveBeenCalledWith('vox-chronicle | [ERROR]', 'error', 'message', {
+        stack: 'trace'
+      });
     });
   });
 
@@ -418,7 +412,10 @@ describe('Logger', () => {
   describe('table', () => {
     it('should log table when log level is DEBUG', () => {
       Logger.setDebugEnabled(true);
-      const data = [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }];
+      const data = [
+        { name: 'Alice', age: 30 },
+        { name: 'Bob', age: 25 }
+      ];
       Logger.table(data);
 
       expect(console.log).toHaveBeenCalledWith('vox-chronicle | Table:');
@@ -427,7 +424,10 @@ describe('Logger', () => {
 
     it('should log table with specific columns', () => {
       Logger.setDebugEnabled(true);
-      const data = [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }];
+      const data = [
+        { name: 'Alice', age: 30 },
+        { name: 'Bob', age: 25 }
+      ];
       const columns = ['name'];
       Logger.table(data, columns);
 
@@ -517,12 +517,9 @@ describe('Logger', () => {
     it('should handle multiple arguments', () => {
       Logger.assert(false, 'failed', { data: 'value' });
 
-      expect(console.assert).toHaveBeenCalledWith(
-        false,
-        'vox-chronicle | [ASSERT]',
-        'failed',
-        { data: 'value' }
-      );
+      expect(console.assert).toHaveBeenCalledWith(false, 'vox-chronicle | [ASSERT]', 'failed', {
+        data: 'value'
+      });
     });
   });
 
@@ -590,7 +587,9 @@ describe('Logger', () => {
         const child = Logger.createChild('TestModule');
         child.group('Test Group', true);
 
-        expect(console.groupCollapsed).toHaveBeenCalledWith('vox-chronicle:TestModule | Test Group');
+        expect(console.groupCollapsed).toHaveBeenCalledWith(
+          'vox-chronicle:TestModule | Test Group'
+        );
       });
 
       it('should support group method with collapsed=false', () => {
@@ -629,7 +628,10 @@ describe('Logger', () => {
         const elapsed = child.timeEnd('operation');
 
         expect(elapsed).toBe(500);
-        expect(console.log).toHaveBeenCalledWith('vox-chronicle |', 'TestModule:operation: 500.00ms');
+        expect(console.log).toHaveBeenCalledWith(
+          'vox-chronicle |',
+          'TestModule:operation: 500.00ms'
+        );
         performanceNowMock.mockRestore();
       });
     });

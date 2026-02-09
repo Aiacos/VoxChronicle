@@ -270,7 +270,7 @@ describe('SensitiveDataFilter', () => {
   describe('sanitizeHeaders', () => {
     it('should redact authorization headers', () => {
       const input = {
-        'Authorization': 'Bearer secret_token',
+        Authorization: 'Bearer secret_token',
         'Content-Type': 'application/json'
       };
 
@@ -295,7 +295,7 @@ describe('SensitiveDataFilter', () => {
         'X-API-Token': 'secret2',
         'x-auth-token': 'secret3',
         'api-key': 'secret4',
-        'apikey': 'secret5'
+        apikey: 'secret5'
       };
 
       const output = SensitiveDataFilter.sanitizeHeaders(input);
@@ -327,7 +327,7 @@ describe('SensitiveDataFilter', () => {
     it('should preserve non-sensitive headers', () => {
       const input = {
         'User-Agent': 'VoxChronicle/1.0',
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'text/plain'
       };
 
@@ -462,12 +462,18 @@ describe('SensitiveDataFilter', () => {
     });
 
     it('should detect Bearer tokens', () => {
-      expect(SensitiveDataFilter.containsSensitiveData('Authorization: Bearer token123')).toBe(true);
+      expect(SensitiveDataFilter.containsSensitiveData('Authorization: Bearer token123')).toBe(
+        true
+      );
     });
 
     it('should detect API keys in various formats', () => {
-      expect(SensitiveDataFilter.containsSensitiveData('api_key: secret123456789012345678')).toBe(true);
-      expect(SensitiveDataFilter.containsSensitiveData('api-key=xyz123456789012345678901')).toBe(true);
+      expect(SensitiveDataFilter.containsSensitiveData('api_key: secret123456789012345678')).toBe(
+        true
+      );
+      expect(SensitiveDataFilter.containsSensitiveData('api-key=xyz123456789012345678901')).toBe(
+        true
+      );
     });
 
     it('should return false for safe strings', () => {
@@ -541,7 +547,7 @@ describe('SensitiveDataFilter', () => {
         method: 'POST',
         url: 'https://api.openai.com/v1/chat/completions?api_key=sk-test123456789',
         headers: {
-          'Authorization': 'Bearer sk-proj-secret987654321',
+          Authorization: 'Bearer sk-proj-secret987654321',
           'Content-Type': 'application/json'
         },
         body: {
@@ -563,8 +569,8 @@ describe('SensitiveDataFilter', () => {
       error.config = {
         url: 'https://api.kanka.io/campaigns',
         headers: {
-          'Authorization': 'Bearer kanka_token_xyz',
-          'Accept': 'application/json'
+          Authorization: 'Bearer kanka_token_xyz',
+          Accept: 'application/json'
         }
       };
       error.response = {
@@ -592,10 +598,7 @@ describe('SensitiveDataFilter', () => {
               refreshToken: 'refresh_token_long_enough_string'
             }
           },
-          logs: [
-            'Action completed',
-            'Error: unauthorized api_key=sk-log123456789'
-          ]
+          logs: ['Action completed', 'Error: unauthorized api_key=sk-log123456789']
         }
       };
 

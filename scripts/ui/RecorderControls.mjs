@@ -6,7 +6,7 @@
  * for workflow management.
  *
  * @class RecorderControls
- * @extends Application
+ * @augments Application
  * @module vox-chronicle
  */
 
@@ -37,7 +37,7 @@ const RecorderUIState = {
 class RecorderControls extends Application {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('RecorderControls');
@@ -65,7 +65,7 @@ class RecorderControls extends Application {
 
   /**
    * Current progress information
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _progress = {
@@ -83,7 +83,7 @@ class RecorderControls extends Application {
 
   /**
    * Get default options for the Application
-   * @returns {Object} Default application options
+   * @returns {object} Default application options
    * @static
    */
   static get defaultOptions() {
@@ -102,7 +102,7 @@ class RecorderControls extends Application {
 
   /**
    * Create a new RecorderControls instance
-   * @param {Object} [options] - Application options
+   * @param {object} [options] - Application options
    */
   constructor(options = {}) {
     super(options);
@@ -132,7 +132,7 @@ class RecorderControls extends Application {
    * Handle orchestrator state changes
    * @param {string} newState - New session state
    * @param {string} oldState - Previous session state
-   * @param {Object} data - Additional state data
+   * @param {object} data - Additional state data
    * @private
    */
   _onOrchestratorStateChange(newState, oldState, data) {
@@ -169,7 +169,7 @@ class RecorderControls extends Application {
 
   /**
    * Handle orchestrator progress updates
-   * @param {Object} progress - Progress information
+   * @param {object} progress - Progress information
    * @private
    */
   _onOrchestratorProgress(progress) {
@@ -196,15 +196,16 @@ class RecorderControls extends Application {
 
   /**
    * Handle session completion
-   * @param {Object} session - The completed session data
+   * @param {object} session - The completed session data
    * @private
    */
   _onSessionComplete(session) {
     this._logger.log('Session complete');
     const segmentCount = session.transcript?.segments?.length || 0;
     ui.notifications?.info(
-      game.i18n?.format('VOXCHRONICLE.Notifications.TranscriptionComplete', { segments: segmentCount }) ||
-      `Transcription complete (${segmentCount} segments)`
+      game.i18n?.format('VOXCHRONICLE.Notifications.TranscriptionComplete', {
+        segments: segmentCount
+      }) || `Transcription complete (${segmentCount} segments)`
     );
     this.render(false);
   }
@@ -272,8 +273,8 @@ class RecorderControls extends Application {
 
   /**
    * Get data for the template
-   * @param {Object} options - Render options
-   * @returns {Object} Template data
+   * @param {object} options - Render options
+   * @returns {object} Template data
    */
   async getData(options = {}) {
     const vox = VoxChronicle.getInstance();
@@ -286,37 +287,49 @@ class RecorderControls extends Application {
 
     // Get transcription mode information
     const transcriptionMode = game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto';
-    const showModeIndicator = game.settings?.get(MODULE_ID, 'showTranscriptionModeIndicator') !== false;
+    const showModeIndicator =
+      game.settings?.get(MODULE_ID, 'showTranscriptionModeIndicator') !== false;
 
     // Get mode display info
     let modeLabel, modeTooltip, modeClass, healthStatus, healthClass;
     switch (transcriptionMode) {
       case 'api':
         modeLabel = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeAPI') || 'API';
-        modeTooltip = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipAPI') || 'Using OpenAI cloud service';
+        modeTooltip =
+          game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipAPI') ||
+          'Using OpenAI cloud service';
         modeClass = 'mode-api';
         healthStatus = null; // No health status for API mode
         break;
       case 'local':
         modeLabel = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeLocal') || 'Local';
-        modeTooltip = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipLocal') || 'Using local Whisper backend';
+        modeTooltip =
+          game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipLocal') ||
+          'Using local Whisper backend';
         modeClass = 'mode-local';
         // Check local backend health
         healthStatus = await this._checkLocalBackendHealth();
-        healthClass = healthStatus === 'connected' ? 'health-connected' :
-                      healthStatus === 'checking' ? 'health-checking' :
-                      'health-unavailable';
+        healthClass =
+          healthStatus === 'connected'
+            ? 'health-connected'
+            : healthStatus === 'checking'
+              ? 'health-checking'
+              : 'health-unavailable';
         break;
       case 'auto':
       default:
         modeLabel = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeAuto') || 'Auto';
-        modeTooltip = game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipAuto') || 'Automatic mode';
+        modeTooltip =
+          game.i18n?.localize('VOXCHRONICLE.Recorder.ModeTooltipAuto') || 'Automatic mode';
         modeClass = 'mode-auto';
         // Check local backend health for auto mode
         healthStatus = await this._checkLocalBackendHealth();
-        healthClass = healthStatus === 'connected' ? 'health-connected' :
-                      healthStatus === 'checking' ? 'health-checking' :
-                      'health-unavailable';
+        healthClass =
+          healthStatus === 'connected'
+            ? 'health-connected'
+            : healthStatus === 'checking'
+              ? 'health-checking'
+              : 'health-unavailable';
         break;
     }
 
@@ -333,13 +346,15 @@ class RecorderControls extends Application {
         statusClass = 'paused';
         break;
       case RecorderUIState.PROCESSING:
-        statusText = this._progress.message ||
-          game.i18n?.localize('VOXCHRONICLE.Recorder.Processing') || 'Processing...';
+        statusText =
+          this._progress.message ||
+          game.i18n?.localize('VOXCHRONICLE.Recorder.Processing') ||
+          'Processing...';
         statusClass = 'processing';
         break;
       case RecorderUIState.ERROR:
-        statusText = this._lastError ||
-          game.i18n?.localize('VOXCHRONICLE.Errors.Generic') || 'Error';
+        statusText =
+          this._lastError || game.i18n?.localize('VOXCHRONICLE.Errors.Generic') || 'Error';
         statusClass = 'error';
         break;
       default:
@@ -356,7 +371,8 @@ class RecorderControls extends Application {
       isProcessing: this._uiState === RecorderUIState.PROCESSING,
       isError: this._uiState === RecorderUIState.ERROR,
       canRecord: this._uiState === RecorderUIState.IDLE,
-      canStop: this._uiState === RecorderUIState.RECORDING || this._uiState === RecorderUIState.PAUSED,
+      canStop:
+        this._uiState === RecorderUIState.RECORDING || this._uiState === RecorderUIState.PAUSED,
       canPause: this._uiState === RecorderUIState.RECORDING,
       canResume: this._uiState === RecorderUIState.PAUSED,
       statusText,
@@ -382,23 +398,35 @@ class RecorderControls extends Application {
       // Localization strings
       i18n: {
         title: game.i18n?.localize('VOXCHRONICLE.Recorder.Title') || 'Session Recorder',
-        startRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.StartRecording') || 'Start Recording',
-        stopRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.StopRecording') || 'Stop Recording',
-        pauseRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.PauseRecording') || 'Pause Recording',
-        resumeRecording: game.i18n?.localize('VOXCHRONICLE.Recorder.ResumeRecording') || 'Resume Recording',
-        cancelSession: game.i18n?.localize('VOXCHRONICLE.Recorder.CancelSession') || 'Cancel Session',
+        startRecording:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.StartRecording') || 'Start Recording',
+        stopRecording:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.StopRecording') || 'Stop Recording',
+        pauseRecording:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.PauseRecording') || 'Pause Recording',
+        resumeRecording:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.ResumeRecording') || 'Resume Recording',
+        cancelSession:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.CancelSession') || 'Cancel Session',
         duration: game.i18n?.localize('VOXCHRONICLE.Recorder.Duration') || 'Duration',
         status: game.i18n?.localize('VOXCHRONICLE.Recorder.Status') || 'Status',
         segments: game.i18n?.localize('VOXCHRONICLE.Recorder.Segments') || 'Segments:',
         speakers: game.i18n?.localize('VOXCHRONICLE.Recorder.Speakers') || 'Speakers:',
-        notConfigured: game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
+        notConfigured:
+          game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
           'Please configure your API keys in module settings.',
         settings: game.i18n?.localize('VOXCHRONICLE.Buttons.Settings') || 'Settings',
-        cancelSession: game.i18n?.localize('VOXCHRONICLE.Recorder.CancelSession') || 'Cancel Session',
-        transcriptionMode: game.i18n?.localize('VOXCHRONICLE.Recorder.TranscriptionMode') || 'Transcription Mode',
-        localBackendConnected: game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendConnected') || 'Local backend connected',
-        localBackendChecking: game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendChecking') || 'Checking local backend...',
-        localBackendUnavailable: game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendUnavailable') || 'Local backend unavailable'
+        transcriptionMode:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.TranscriptionMode') || 'Transcription Mode',
+        localBackendConnected:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendConnected') ||
+          'Local backend connected',
+        localBackendChecking:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendChecking') ||
+          'Checking local backend...',
+        localBackendUnavailable:
+          game.i18n?.localize('VOXCHRONICLE.Recorder.LocalBackendUnavailable') ||
+          'Local backend unavailable'
       }
     };
   }
@@ -496,7 +524,7 @@ class RecorderControls extends Application {
   /**
    * Start a new recording session
    *
-   * @param {Object} [options] - Recording options
+   * @param {object} [options] - Recording options
    * @param {string} [options.title] - Session title
    * @returns {Promise<void>}
    * @throws {Error} If recording cannot be started
@@ -508,7 +536,7 @@ class RecorderControls extends Application {
     if (!configStatus.openai) {
       ui.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.ApiKeyMissing') ||
-        'OpenAI API key is not configured. Please check module settings.'
+          'OpenAI API key is not configured. Please check module settings.'
       );
       return;
     }
@@ -535,12 +563,10 @@ class RecorderControls extends Application {
       await orchestrator.startSession(sessionOptions);
 
       ui.notifications?.info(
-        game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStarted') ||
-        'Recording started'
+        game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStarted') || 'Recording started'
       );
 
       this._logger.log('Recording started successfully');
-
     } catch (error) {
       this._logger.error('Failed to start recording:', error);
       this._lastError = error.message;
@@ -548,7 +574,7 @@ class RecorderControls extends Application {
 
       ui.notifications?.error(
         game.i18n?.localize('VOXCHRONICLE.Recorder.RecordingFailed') ||
-        `Recording failed: ${error.message}`
+          `Recording failed: ${error.message}`
       );
 
       this.render(false);
@@ -558,9 +584,9 @@ class RecorderControls extends Application {
   /**
    * Stop the current recording session
    *
-   * @param {Object} [options] - Stop options
+   * @param {object} [options] - Stop options
    * @param {boolean} [options.processImmediately=true] - Process transcription immediately
-   * @returns {Promise<Object|null>} Session data or null if failed
+   * @returns {Promise<object | null>} Session data or null if failed
    */
   async stopRecording(options = {}) {
     if (this._uiState !== RecorderUIState.RECORDING && this._uiState !== RecorderUIState.PAUSED) {
@@ -589,14 +615,13 @@ class RecorderControls extends Application {
 
       this._logger.log('Recording stopped successfully');
       return sessionData;
-
     } catch (error) {
       this._logger.error('Failed to stop recording:', error);
       this._lastError = error.message;
 
       ui.notifications?.error(
         game.i18n?.localize('VOXCHRONICLE.Recorder.RecordingFailed') ||
-        `Failed to stop recording: ${error.message}`
+          `Failed to stop recording: ${error.message}`
       );
 
       this.render(false);
@@ -622,7 +647,6 @@ class RecorderControls extends Application {
       if (orchestrator) {
         orchestrator.pauseRecording();
       }
-
     } catch (error) {
       this._logger.error('Failed to pause recording:', error);
       ui.notifications?.error(`Failed to pause: ${error.message}`);
@@ -647,7 +671,6 @@ class RecorderControls extends Application {
       if (orchestrator) {
         orchestrator.resumeRecording();
       }
-
     } catch (error) {
       this._logger.error('Failed to resume recording:', error);
       ui.notifications?.error(`Failed to resume: ${error.message}`);
@@ -674,7 +697,6 @@ class RecorderControls extends Application {
       this._stopDurationTimer();
 
       this.render(false);
-
     } catch (error) {
       this._logger.error('Failed to cancel session:', error);
     }
@@ -683,7 +705,7 @@ class RecorderControls extends Application {
   /**
    * Get the current recording state
    *
-   * @returns {Object} Current state information
+   * @returns {object} Current state information
    */
   getState() {
     return {
@@ -699,7 +721,7 @@ class RecorderControls extends Application {
 
   /**
    * Clean up when the application is closed
-   * @param {Object} options - Close options
+   * @param {object} options - Close options
    */
   async close(options = {}) {
     this._stopDurationTimer();
@@ -726,42 +748,64 @@ class RecorderControls extends Application {
           <span class="duration-value">${data.duration}</span>
         </div>
 
-        ${data.hasProgress ? `
+        ${
+          data.hasProgress
+            ? `
           <div class="recorder-progress">
             <div class="progress-bar">
               <div class="progress-fill" style="width: ${data.progress.progress}%"></div>
             </div>
             <span class="progress-text">${escapeHtml(data.progress.message)}</span>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         <div class="recorder-controls">
-          ${data.canRecord ? `
+          ${
+            data.canRecord
+              ? `
             <button class="btn-record" data-action="start-recording" title="${data.i18n.startRecording}">
               <i class="fas fa-microphone"></i> ${data.i18n.startRecording}
             </button>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${data.canStop ? `
+          ${
+            data.canStop
+              ? `
             <button class="btn-stop" data-action="stop-recording" title="${data.i18n.stopRecording}">
               <i class="fas fa-stop"></i> ${data.i18n.stopRecording}
             </button>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${data.canPause ? `
+          ${
+            data.canPause
+              ? `
             <button class="btn-pause" data-action="pause-recording" title="${data.i18n.pauseRecording}">
               <i class="fas fa-pause"></i>
             </button>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${data.canResume ? `
+          ${
+            data.canResume
+              ? `
             <button class="btn-resume" data-action="resume-recording" title="${data.i18n.resumeRecording}">
               <i class="fas fa-play"></i>
             </button>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
 
-        ${!data.isConfigured ? `
+        ${
+          !data.isConfigured
+            ? `
           <div class="recorder-warning">
             <i class="fas fa-exclamation-triangle"></i>
             <span>${data.i18n.notConfigured}</span>
@@ -769,14 +813,16 @@ class RecorderControls extends Application {
               <i class="fas fa-cog"></i> ${data.i18n.settings}
             </button>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     `;
   }
 
   /**
    * Override _renderInner to provide fallback content if template is missing
-   * @param {Object} data - Template data
+   * @param {object} data - Template data
    * @returns {Promise<jQuery>} Rendered inner content
    * @protected
    */
@@ -793,7 +839,4 @@ class RecorderControls extends Application {
 }
 
 // Export the class and enum
-export {
-  RecorderControls,
-  RecorderUIState
-};
+export { RecorderControls, RecorderUIState };

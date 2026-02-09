@@ -14,24 +14,24 @@ import { Logger } from '../utils/Logger.mjs';
 
 /**
  * Result object for Kanka publishing operations
- * @typedef {Object} KankaPublishResult
- * @property {Object|null} journal - Created journal entry
- * @property {Array<Object>} characters - Created character entities
- * @property {Array<Object>} locations - Created location entities
- * @property {Array<Object>} items - Created item entities
- * @property {Array<Object>} images - Uploaded images
- * @property {Array<Object>} errors - Errors encountered during publishing
+ * @typedef {object} KankaPublishResult
+ * @property {object | null} journal - Created journal entry
+ * @property {Array<object>} characters - Created character entities
+ * @property {Array<object>} locations - Created location entities
+ * @property {Array<object>} items - Created item entities
+ * @property {Array<object>} images - Uploaded images
+ * @property {Array<object>} errors - Errors encountered during publishing
  */
 
 /**
  * Session data object
- * @typedef {Object} SessionData
+ * @typedef {object} SessionData
  * @property {string} title - Session title
  * @property {string} date - Session date
- * @property {Object} transcript - Transcript data with segments
- * @property {Object} entities - Extracted entities (characters, locations, items)
- * @property {Array<Object>} moments - Salient moments from session
- * @property {Array<Object>} images - Generated images
+ * @property {object} transcript - Transcript data with segments
+ * @property {object} entities - Extracted entities (characters, locations, items)
+ * @property {Array<object>} moments - Salient moments from session
+ * @property {Array<object>} images - Generated images
  */
 
 /**
@@ -51,21 +51,21 @@ import { Logger } from '../utils/Logger.mjs';
 class KankaPublisher {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('KankaPublisher');
 
   /**
    * Kanka API service
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _kankaService = null;
 
   /**
    * Narrative exporter for chronicle formatting
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _narrativeExporter = null;
@@ -87,9 +87,9 @@ class KankaPublisher {
   /**
    * Create a new KankaPublisher instance
    *
-   * @param {Object} kankaService - KankaService instance
-   * @param {Object} [narrativeExporter] - NarrativeExporter instance (optional)
-   * @param {Object} [options] - Configuration options
+   * @param {object} kankaService - KankaService instance
+   * @param {object} [narrativeExporter] - NarrativeExporter instance (optional)
+   * @param {object} [options] - Configuration options
    * @param {Function} [options.onProgress] - Progress callback function
    * @param {string} [options.chronicleFormat='full'] - Chronicle format ('full', 'summary', 'basic')
    */
@@ -111,7 +111,7 @@ class KankaPublisher {
    * Creates journal entry (chronicle) and optionally entities with images
    *
    * @param {SessionData} sessionData - Session data to publish
-   * @param {Object} [options] - Publishing options
+   * @param {object} [options] - Publishing options
    * @param {boolean} [options.createEntities=true] - Create character/location/item entities
    * @param {boolean} [options.uploadImages=true] - Upload generated images to entities
    * @param {boolean} [options.createChronicle=true] - Create journal entry
@@ -165,7 +165,6 @@ class KankaPublisher {
       this._logger.log('Published to Kanka successfully');
 
       return results;
-
     } catch (error) {
       this._logger.error('Publishing failed:', error);
       throw error;
@@ -214,7 +213,10 @@ class KankaPublisher {
                   await this._kankaService.uploadCharacterImage(created.id, portrait.url);
                   results.images.push({ entityId: created.id, entityType: 'character' });
                 } catch (imgError) {
-                  this._logger.warn(`Failed to upload portrait for ${character.name}:`, imgError.message);
+                  this._logger.warn(
+                    `Failed to upload portrait for ${character.name}:`,
+                    imgError.message
+                  );
                 }
               }
             }
@@ -282,18 +284,21 @@ class KankaPublisher {
     let chronicleData;
 
     if (this._narrativeExporter) {
-      chronicleData = this._narrativeExporter.export({
-        title: sessionData.title,
-        date: sessionData.date,
-        segments: sessionData.transcript?.segments || [],
-        entities: sessionData.entities,
-        moments: sessionData.moments
-      }, {
-        format: this._chronicleFormat,
-        includeEntities: true,
-        includeMoments: true,
-        includeTimestamps: false
-      });
+      chronicleData = this._narrativeExporter.export(
+        {
+          title: sessionData.title,
+          date: sessionData.date,
+          segments: sessionData.transcript?.segments || [],
+          entities: sessionData.entities,
+          moments: sessionData.moments
+        },
+        {
+          format: this._chronicleFormat,
+          includeEntities: true,
+          includeMoments: true,
+          includeTimestamps: false
+        }
+      );
     } else {
       // Basic chronicle without NarrativeExporter
       chronicleData = {
@@ -309,7 +314,6 @@ class KankaPublisher {
       results.journal = journal;
 
       this._logger.log(`Chronicle created: ${journal.name} (ID: ${journal.id})`);
-
     } catch (error) {
       results.errors.push({ entity: chronicleData.name, type: 'journal', error: error.message });
       throw error;
@@ -371,7 +375,9 @@ class KankaPublisher {
       }
 
       if (sessionData.transcript.segments.length > 50) {
-        parts.push(`<p><em>... and ${sessionData.transcript.segments.length - 50} more segments</em></p>`);
+        parts.push(
+          `<p><em>... and ${sessionData.transcript.segments.length - 50} more segments</em></p>`
+        );
       }
 
       parts.push('</div>');
@@ -389,7 +395,7 @@ class KankaPublisher {
    * @param {SessionData} sessionData - Session data containing images
    * @param {string} entityType - Entity type
    * @param {string} entityName - Entity name
-   * @returns {Object|null} Image result or null
+   * @returns {object | null} Image result or null
    * @private
    */
   _findImageForEntity(sessionData, entityType, entityName) {
@@ -397,12 +403,14 @@ class KankaPublisher {
       return null;
     }
 
-    return sessionData.images.find(img => {
-      if (img.success === false) return false;
-      if (img.entityType !== entityType) return false;
-      if (img.meta?.characterName === entityName) return true;
-      return false;
-    }) || null;
+    return (
+      sessionData.images.find((img) => {
+        if (img.success === false) return false;
+        if (img.entityType !== entityType) return false;
+        if (img.meta?.characterName === entityName) return true;
+        return false;
+      }) || null
+    );
   }
 }
 

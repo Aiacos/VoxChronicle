@@ -116,7 +116,7 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
 // Mock AudioChunker
 vi.mock('../../scripts/audio/AudioChunker.mjs', () => {
   return {
-    AudioChunker: vi.fn(function() {
+    AudioChunker: vi.fn(function () {
       // Create new mock functions for each instance
       this.needsChunking = vi.fn(() => false);
       this.splitIfNeeded = vi.fn((blob) => Promise.resolve([blob]));
@@ -131,7 +131,12 @@ vi.mock('../../scripts/audio/AudioChunker.mjs', () => {
 });
 
 // Import after mocks are set up
-import { TranscriptionService, TranscriptionModel, TranscriptionResponseFormat, ChunkingStrategy } from '../../scripts/ai/TranscriptionService.mjs';
+import {
+  TranscriptionService,
+  TranscriptionModel,
+  TranscriptionResponseFormat,
+  ChunkingStrategy
+} from '../../scripts/ai/TranscriptionService.mjs';
 import { OpenAIError, OpenAIErrorType } from '../../scripts/ai/OpenAIClient.mjs';
 import { AudioChunker } from '../../scripts/audio/AudioChunker.mjs';
 import { AudioUtils } from '../../scripts/utils/AudioUtils.mjs';
@@ -198,13 +203,13 @@ describe('TranscriptionService', () => {
     it('should accept configuration options', () => {
       const options = {
         defaultLanguage: 'it',
-        defaultSpeakerMap: { 'SPEAKER_00': 'GM' },
+        defaultSpeakerMap: { SPEAKER_00: 'GM' },
         timeout: 300000
       };
 
       const customService = new TranscriptionService('test-key', options);
       expect(customService.getLanguage()).toBe('it');
-      expect(customService.getSpeakerMap()).toEqual({ 'SPEAKER_00': 'GM' });
+      expect(customService.getSpeakerMap()).toEqual({ SPEAKER_00: 'GM' });
     });
 
     it('should throw error if API key is missing', () => {
@@ -318,8 +323,8 @@ describe('TranscriptionService', () => {
       });
 
       const speakerMap = {
-        'SPEAKER_00': 'Game Master',
-        'SPEAKER_01': 'Player 1'
+        SPEAKER_00: 'Game Master',
+        SPEAKER_01: 'Player 1'
       };
 
       const result = await service.transcribe(audioBlob, { speakerMap });
@@ -340,7 +345,7 @@ describe('TranscriptionService', () => {
       });
 
       // Only map one speaker
-      const speakerMap = { 'SPEAKER_00': 'GM' };
+      const speakerMap = { SPEAKER_00: 'GM' };
 
       const result = await service.transcribe(audioBlob, { speakerMap });
 
@@ -357,23 +362,23 @@ describe('TranscriptionService', () => {
         json: () => Promise.resolve(mockResponse)
       });
 
-      const speakerMap = { 'SPEAKER_00': 'GM' };
+      const speakerMap = { SPEAKER_00: 'GM' };
       const result = await service.transcribe(audioBlob, { speakerMap });
 
       expect(result.speakers).toHaveLength(2);
 
-      const gmSpeaker = result.speakers.find(s => s.id === 'SPEAKER_00');
+      const gmSpeaker = result.speakers.find((s) => s.id === 'SPEAKER_00');
       expect(gmSpeaker.name).toBe('GM');
       expect(gmSpeaker.isMapped).toBe(true);
 
-      const unmappedSpeaker = result.speakers.find(s => s.id === 'SPEAKER_01');
+      const unmappedSpeaker = result.speakers.find((s) => s.id === 'SPEAKER_01');
       expect(unmappedSpeaker.name).toBe('SPEAKER_01');
       expect(unmappedSpeaker.isMapped).toBe(false);
     });
 
     it('should use default speaker map from constructor', async () => {
       const customService = new TranscriptionService('test-key', {
-        defaultSpeakerMap: { 'SPEAKER_00': 'Default GM' }
+        defaultSpeakerMap: { SPEAKER_00: 'Default GM' }
       });
 
       const audioBlob = createMockAudioBlob(1024);
@@ -393,9 +398,9 @@ describe('TranscriptionService', () => {
   describe('setSpeakerMap and getSpeakerMap', () => {
     it('should update and retrieve speaker map', () => {
       const speakerMap = {
-        'SPEAKER_00': 'GM',
-        'SPEAKER_01': 'Fighter',
-        'SPEAKER_02': 'Wizard'
+        SPEAKER_00: 'GM',
+        SPEAKER_01: 'Fighter',
+        SPEAKER_02: 'Wizard'
       };
 
       service.setSpeakerMap(speakerMap);
@@ -403,7 +408,7 @@ describe('TranscriptionService', () => {
     });
 
     it('should clear speaker map with null', () => {
-      service.setSpeakerMap({ 'SPEAKER_00': 'GM' });
+      service.setSpeakerMap({ SPEAKER_00: 'GM' });
       service.setSpeakerMap(null);
       expect(service.getSpeakerMap()).toEqual({});
     });
@@ -467,17 +472,19 @@ describe('TranscriptionService', () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({
-            text: 'First part.',
-            segments: [{ speaker: 'SPEAKER_00', text: 'First part.', start: 0, end: 2 }]
-          })
+          json: () =>
+            Promise.resolve({
+              text: 'First part.',
+              segments: [{ speaker: 'SPEAKER_00', text: 'First part.', start: 0, end: 2 }]
+            })
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({
-            text: 'Second part.',
-            segments: [{ speaker: 'SPEAKER_00', text: 'Second part.', start: 0, end: 2 }]
-          })
+          json: () =>
+            Promise.resolve({
+              text: 'Second part.',
+              segments: [{ speaker: 'SPEAKER_00', text: 'Second part.', start: 0, end: 2 }]
+            })
         });
 
       const result = await chunkedService.transcribe(largeBlob);
@@ -511,14 +518,14 @@ describe('TranscriptionService', () => {
       const chunkedService = new TranscriptionService('test-key');
       chunkedService._chunker = chunkerInstance;
 
-      mockFetch
-        .mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
             text: 'Part.',
             segments: [{ speaker: 'SPEAKER_00', text: 'Part.', start: 0, end: 1 }]
           })
-        });
+      });
 
       const progressCallback = vi.fn();
 
@@ -526,10 +533,12 @@ describe('TranscriptionService', () => {
 
       // Progress should be reported for each chunk plus completion
       expect(progressCallback).toHaveBeenCalledTimes(3);
-      expect(progressCallback).toHaveBeenCalledWith(expect.objectContaining({
-        currentChunk: 1,
-        totalChunks: 2
-      }));
+      expect(progressCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentChunk: 1,
+          totalChunks: 2
+        })
+      );
     });
   });
 
@@ -541,12 +550,12 @@ describe('TranscriptionService', () => {
       expect(languages.length).toBeGreaterThan(0);
 
       // Check structure
-      const english = languages.find(l => l.code === 'en');
+      const english = languages.find((l) => l.code === 'en');
       expect(english).toBeDefined();
       expect(english.name).toBe('English');
 
       // Auto-detect should be included
-      const autoDetect = languages.find(l => l.code === '');
+      const autoDetect = languages.find((l) => l.code === '');
       expect(autoDetect).toBeDefined();
       expect(autoDetect.name).toBe('Auto-detect');
     });
@@ -558,12 +567,12 @@ describe('TranscriptionService', () => {
       expect(models.length).toBe(3);
 
       // Check diarization model
-      const diarizeModel = models.find(m => m.id === TranscriptionModel.GPT4O_DIARIZE);
+      const diarizeModel = models.find((m) => m.id === TranscriptionModel.GPT4O_DIARIZE);
       expect(diarizeModel).toBeDefined();
       expect(diarizeModel.supportsDiarization).toBe(true);
 
       // Check Whisper model
-      const whisperModel = models.find(m => m.id === TranscriptionModel.WHISPER);
+      const whisperModel = models.find((m) => m.id === TranscriptionModel.WHISPER);
       expect(whisperModel).toBeDefined();
       expect(whisperModel.supportsDiarization).toBe(false);
     });
@@ -591,9 +600,10 @@ describe('TranscriptionService', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          text: 'Transcribed text without segments.'
-        })
+        json: () =>
+          Promise.resolve({
+            text: 'Transcribed text without segments.'
+          })
       });
 
       const result = await service.transcribe(audioBlob);

@@ -16,7 +16,7 @@ import { Logger } from './Logger.mjs';
 /**
  * Supported audio MIME types in order of preference
  * webm/opus is preferred for OpenAI transcription compatibility
- * @constant {Array<Object>}
+ * @constant {Array<object>}
  */
 const SUPPORTED_MIME_TYPES = [
   { mimeType: 'audio/webm;codecs=opus', extension: 'webm', name: 'WebM Opus' },
@@ -42,7 +42,7 @@ const MAX_TRANSCRIPTION_SIZE = 25 * 1024 * 1024;
 class AudioUtils {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   static _logger = Logger.createChild('AudioUtils');
@@ -87,16 +87,14 @@ class AudioUtils {
   /**
    * Get all supported MIME types for the current browser
    *
-   * @returns {Array<Object>} Array of supported format objects with mimeType, extension, and name
+   * @returns {Array<object>} Array of supported format objects with mimeType, extension, and name
    */
   static getAllSupportedTypes() {
     if (typeof MediaRecorder === 'undefined') {
       return [];
     }
 
-    return SUPPORTED_MIME_TYPES.filter(format =>
-      MediaRecorder.isTypeSupported(format.mimeType)
-    );
+    return SUPPORTED_MIME_TYPES.filter((format) => MediaRecorder.isTypeSupported(format.mimeType));
   }
 
   /**
@@ -139,7 +137,9 @@ class AudioUtils {
   static createAudioBlob(chunks, mimeType = null) {
     const effectiveMimeType = mimeType || AudioUtils.getSupportedMimeType() || 'audio/webm';
 
-    AudioUtils._logger.debug(`Creating audio blob with ${chunks.length} chunks, type: ${effectiveMimeType}`);
+    AudioUtils._logger.debug(
+      `Creating audio blob with ${chunks.length} chunks, type: ${effectiveMimeType}`
+    );
 
     return new Blob(chunks, { type: effectiveMimeType });
   }
@@ -260,11 +260,11 @@ class AudioUtils {
   static estimateDuration(blob) {
     // Approximate bitrates in bytes per second
     const bitrates = {
-      'audio/webm': 16000,   // ~128 kbps
-      'audio/ogg': 16000,    // ~128 kbps
-      'audio/mp4': 16000,    // ~128 kbps
-      'audio/mpeg': 16000,   // ~128 kbps
-      'audio/wav': 176400    // 16-bit 44.1kHz stereo
+      'audio/webm': 16000, // ~128 kbps
+      'audio/ogg': 16000, // ~128 kbps
+      'audio/mp4': 16000, // ~128 kbps
+      'audio/mpeg': 16000, // ~128 kbps
+      'audio/wav': 176400 // 16-bit 44.1kHz stereo
     };
 
     const baseType = blob.type.split(';')[0];
@@ -313,10 +313,10 @@ class AudioUtils {
   /**
    * Get MediaRecorder options for optimal recording quality
    *
-   * @param {Object} [options] - Override options
+   * @param {object} [options] - Override options
    * @param {string} [options.mimeType] - Specific MIME type to use
    * @param {number} [options.audioBitsPerSecond] - Audio bitrate
-   * @returns {Object} MediaRecorder options
+   * @returns {object} MediaRecorder options
    */
   static getRecorderOptions(options = {}) {
     const mimeType = options.mimeType || AudioUtils.getSupportedMimeType();
@@ -343,9 +343,13 @@ class AudioUtils {
     const audio = new Audio(url);
 
     // Clean up object URL when audio is no longer needed
-    audio.addEventListener('ended', () => {
-      URL.revokeObjectURL(url);
-    }, { once: true });
+    audio.addEventListener(
+      'ended',
+      () => {
+        URL.revokeObjectURL(url);
+      },
+      { once: true }
+    );
 
     return audio;
   }
@@ -362,7 +366,7 @@ class AudioUtils {
   /**
    * Get browser audio capabilities report
    *
-   * @returns {Object} Browser capabilities report
+   * @returns {object} Browser capabilities report
    */
   static getBrowserCapabilities() {
     const hasMediaRecorder = typeof MediaRecorder !== 'undefined';

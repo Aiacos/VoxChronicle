@@ -52,9 +52,7 @@ const mockKankaService = {
   createItem: vi.fn().mockResolvedValue({
     data: { id: 3, entity_id: 103 }
   }),
-  batchCreateRelations: vi.fn().mockResolvedValue([
-    { id: 1, target_id: 102, relation: 'ally' }
-  ])
+  batchCreateRelations: vi.fn().mockResolvedValue([{ id: 1, target_id: 102, relation: 'ally' }])
 };
 
 const mockImageGenerationService = {
@@ -107,7 +105,7 @@ function setupEnvironment() {
     if (typeof html === 'string') {
       return {
         on: vi.fn(),
-        find: vi.fn(function() {
+        find: vi.fn(function () {
           return {
             on: vi.fn(),
             find: vi.fn(() => ({
@@ -155,7 +153,8 @@ function setupEnvironment() {
 }
 
 // Import after environment is set up
-const { EntityPreview, EntitySelectionState, PreviewMode } = await import('../../scripts/ui/EntityPreview.mjs');
+const { EntityPreview, EntitySelectionState, PreviewMode } =
+  await import('../../scripts/ui/EntityPreview.mjs');
 
 /**
  * Create mock game object
@@ -563,9 +562,7 @@ describe('EntityPreview', () => {
       preview._mode = PreviewMode.ERROR;
       preview._results = {
         created: [],
-        failed: [
-          { type: 'character', name: 'Hero', error: 'Network error' }
-        ]
+        failed: [{ type: 'character', name: 'Hero', error: 'Network error' }]
       };
 
       const data = await preview.getData();
@@ -978,7 +975,7 @@ describe('EntityPreview', () => {
 
       // Make generatePortrait take some time
       mockImageGenerationService.generatePortrait.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve('url'), 10))
+        () => new Promise((resolve) => setTimeout(() => resolve('url'), 10))
       );
 
       const mockEvent = {
@@ -1019,7 +1016,10 @@ describe('EntityPreview', () => {
           dataset: { entityType: 'characters', entityIndex: '0' }
         }
       });
-      expect(mockImageGenerationService.generatePortrait).toHaveBeenCalledWith('character', 'Brave');
+      expect(mockImageGenerationService.generatePortrait).toHaveBeenCalledWith(
+        'character',
+        'Brave'
+      );
 
       // Test location
       await preview._onGeneratePortrait({
@@ -1065,7 +1065,7 @@ describe('EntityPreview', () => {
       await preview._onEditDescription(mockEvent);
 
       // Wait for dialog callback
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(preview._entities.characters[0].description).toBe('Updated description');
       expect(preview.render).toHaveBeenCalledWith(false);
@@ -1106,7 +1106,7 @@ describe('EntityPreview', () => {
       };
 
       await preview._onEditDescription(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(preview._entities.characters[0].description).toBe(originalDescription);
     });

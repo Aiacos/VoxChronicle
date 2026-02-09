@@ -52,10 +52,7 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import {
-  EntityExtractor,
-  RelationshipType
-} from '../../scripts/ai/EntityExtractor.mjs';
+import { EntityExtractor, RelationshipType } from '../../scripts/ai/EntityExtractor.mjs';
 import { OpenAIError, OpenAIErrorType } from '../../scripts/ai/OpenAIClient.mjs';
 
 /**
@@ -89,7 +86,7 @@ function createSampleEntities() {
     { name: 'Frodo', description: 'A young hobbit', isNPC: false, role: 'protagonist' },
     { name: 'Saruman', description: 'A corrupted wizard', isNPC: true, role: 'villain' },
     { name: 'Aragorn', description: 'A ranger', isNPC: true, role: 'ranger' },
-    { name: 'Sam', description: 'Frodo\'s companion', isNPC: true, role: 'companion' }
+    { name: 'Sam', description: "Frodo's companion", isNPC: true, role: 'companion' }
   ];
 }
 
@@ -108,10 +105,34 @@ function createFamilyEntities() {
 function createMockRelationshipResponse(options = {}) {
   return {
     relationships: options.relationships || [
-      { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'Gandalf and Frodo are old friends', confidence: 9 },
-      { sourceEntity: 'Saruman', targetEntity: 'Gandalf', relationType: 'enemy', description: 'Saruman has turned against Gandalf', confidence: 10 },
-      { sourceEntity: 'Aragorn', targetEntity: 'Frodo', relationType: 'ally', description: 'Aragorn protects Frodo', confidence: 7 },
-      { sourceEntity: 'Sam', targetEntity: 'Frodo', relationType: 'employee', description: 'Sam serves Frodo loyally', confidence: 8 }
+      {
+        sourceEntity: 'Gandalf',
+        targetEntity: 'Frodo',
+        relationType: 'friend',
+        description: 'Gandalf and Frodo are old friends',
+        confidence: 9
+      },
+      {
+        sourceEntity: 'Saruman',
+        targetEntity: 'Gandalf',
+        relationType: 'enemy',
+        description: 'Saruman has turned against Gandalf',
+        confidence: 10
+      },
+      {
+        sourceEntity: 'Aragorn',
+        targetEntity: 'Frodo',
+        relationType: 'ally',
+        description: 'Aragorn protects Frodo',
+        confidence: 7
+      },
+      {
+        sourceEntity: 'Sam',
+        targetEntity: 'Frodo',
+        relationType: 'employee',
+        description: 'Sam serves Frodo loyally',
+        confidence: 8
+      }
     ],
     summary: options.summary || 'Found 4 relationships between characters'
   };
@@ -148,16 +169,22 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -179,21 +206,27 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       expect(result.length).toBe(4);
 
       // Check each relationship has valid type
-      result.forEach(rel => {
+      result.forEach((rel) => {
         const validTypes = Object.values(RelationshipType);
         expect(validTypes).toContain(rel.relationType);
       });
@@ -205,24 +238,42 @@ describe('EntityExtractor - Relationship Extraction', () => {
       // Mock response with invalid relationship type
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'invalid_type', description: 'Test', confidence: 8 },
-          { sourceEntity: 'Sam', targetEntity: 'Frodo', relationType: 'friend', description: 'Valid relationship', confidence: 9 }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'invalid_type',
+            description: 'Test',
+            confidence: 8
+          },
+          {
+            sourceEntity: 'Sam',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Valid relationship',
+            confidence: 9
+          }
         ],
         summary: 'Test relationships'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       // Invalid type should be converted to UNKNOWN
       expect(result[0].relationType).toBe(RelationshipType.UNKNOWN);
@@ -235,22 +286,43 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'High confidence', confidence: 9 },
-          { sourceEntity: 'Aragorn', targetEntity: 'Frodo', relationType: 'ally', description: 'Medium confidence', confidence: 5 },
-          { sourceEntity: 'Sam', targetEntity: 'Frodo', relationType: 'employee', description: 'Low confidence', confidence: 3 }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'High confidence',
+            confidence: 9
+          },
+          {
+            sourceEntity: 'Aragorn',
+            targetEntity: 'Frodo',
+            relationType: 'ally',
+            description: 'Medium confidence',
+            confidence: 5
+          },
+          {
+            sourceEntity: 'Sam',
+            targetEntity: 'Frodo',
+            relationType: 'employee',
+            description: 'Low confidence',
+            confidence: 3
+          }
         ],
         summary: 'Mixed confidence relationships'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
       // Extract with confidence threshold of 5
@@ -262,7 +334,7 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       // Should only include relationships with confidence >= 5
       expect(result.length).toBe(2);
-      expect(result.every(r => r.confidence >= 5)).toBe(true);
+      expect(result.every((r) => r.confidence >= 5)).toBe(true);
     });
 
     it('should filter out entities not in the provided list', async () => {
@@ -274,25 +346,49 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'Valid', confidence: 9 },
-          { sourceEntity: 'Aragorn', targetEntity: 'Frodo', relationType: 'ally', description: 'Invalid - Aragorn not in list', confidence: 8 },
-          { sourceEntity: 'Sam', targetEntity: 'Frodo', relationType: 'employee', description: 'Invalid - Sam not in list', confidence: 7 }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Valid',
+            confidence: 9
+          },
+          {
+            sourceEntity: 'Aragorn',
+            targetEntity: 'Frodo',
+            relationType: 'ally',
+            description: 'Invalid - Aragorn not in list',
+            confidence: 8
+          },
+          {
+            sourceEntity: 'Sam',
+            targetEntity: 'Frodo',
+            relationType: 'employee',
+            description: 'Invalid - Sam not in list',
+            confidence: 7
+          }
         ],
         summary: 'Test relationships'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       // Should only include the Gandalf-Frodo relationship
       expect(result.length).toBe(1);
@@ -305,24 +401,42 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'Valid', confidence: 9 },
-          { sourceEntity: 'Gandalf', targetEntity: 'Gandalf', relationType: 'unknown', description: 'Self-relationship', confidence: 5 }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Valid',
+            confidence: 9
+          },
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Gandalf',
+            relationType: 'unknown',
+            description: 'Self-relationship',
+            confidence: 5
+          }
         ],
         summary: 'Test with self-relationship'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       // Should filter out the self-relationship
       expect(result.length).toBe(1);
@@ -334,22 +448,43 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Galadriel', targetEntity: 'Celeborn', relationType: 'family', description: 'Married couple', confidence: 10 },
-          { sourceEntity: 'Galadriel', targetEntity: 'Arwen', relationType: 'family', description: 'Grandmother', confidence: 10 },
-          { sourceEntity: 'Arwen', targetEntity: 'Aragorn', relationType: 'romantic', description: 'In love', confidence: 9 }
+          {
+            sourceEntity: 'Galadriel',
+            targetEntity: 'Celeborn',
+            relationType: 'family',
+            description: 'Married couple',
+            confidence: 10
+          },
+          {
+            sourceEntity: 'Galadriel',
+            targetEntity: 'Arwen',
+            relationType: 'family',
+            description: 'Grandmother',
+            confidence: 10
+          },
+          {
+            sourceEntity: 'Arwen',
+            targetEntity: 'Aragorn',
+            relationType: 'romantic',
+            description: 'In love',
+            confidence: 9
+          }
         ],
         summary: 'Family relationships'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
       const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_FAMILY, entities);
@@ -357,11 +492,11 @@ describe('EntityExtractor - Relationship Extraction', () => {
       expect(result.length).toBe(3);
 
       // Verify family relationships
-      const familyRels = result.filter(r => r.relationType === RelationshipType.FAMILY);
+      const familyRels = result.filter((r) => r.relationType === RelationshipType.FAMILY);
       expect(familyRels.length).toBe(2);
 
       // Verify romantic relationship
-      const romanticRels = result.filter(r => r.relationType === RelationshipType.ROMANTIC);
+      const romanticRels = result.filter((r) => r.relationType === RelationshipType.ROMANTIC);
       expect(romanticRels.length).toBe(1);
       expect(romanticRels[0].sourceEntity).toBe('Arwen');
       expect(romanticRels[0].targetEntity).toBe('Aragorn');
@@ -383,29 +518,92 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Entity1', targetEntity: 'Entity2', relationType: RelationshipType.ALLY, description: 'Allies', confidence: 8 },
-          { sourceEntity: 'Entity2', targetEntity: 'Entity3', relationType: RelationshipType.ENEMY, description: 'Enemies', confidence: 9 },
-          { sourceEntity: 'Entity3', targetEntity: 'Entity4', relationType: RelationshipType.FAMILY, description: 'Family', confidence: 10 },
-          { sourceEntity: 'Entity4', targetEntity: 'Entity5', relationType: RelationshipType.EMPLOYER, description: 'Employer', confidence: 7 },
-          { sourceEntity: 'Entity5', targetEntity: 'Entity6', relationType: RelationshipType.EMPLOYEE, description: 'Employee', confidence: 7 },
-          { sourceEntity: 'Entity6', targetEntity: 'Entity7', relationType: RelationshipType.ROMANTIC, description: 'Romantic', confidence: 8 },
-          { sourceEntity: 'Entity7', targetEntity: 'Entity8', relationType: RelationshipType.FRIEND, description: 'Friends', confidence: 9 },
-          { sourceEntity: 'Entity8', targetEntity: 'Entity9', relationType: RelationshipType.RIVAL, description: 'Rivals', confidence: 6 },
-          { sourceEntity: 'Entity9', targetEntity: 'Entity10', relationType: RelationshipType.NEUTRAL, description: 'Neutral', confidence: 5 },
-          { sourceEntity: 'Entity10', targetEntity: 'Entity1', relationType: RelationshipType.UNKNOWN, description: 'Unknown', confidence: 5 }
+          {
+            sourceEntity: 'Entity1',
+            targetEntity: 'Entity2',
+            relationType: RelationshipType.ALLY,
+            description: 'Allies',
+            confidence: 8
+          },
+          {
+            sourceEntity: 'Entity2',
+            targetEntity: 'Entity3',
+            relationType: RelationshipType.ENEMY,
+            description: 'Enemies',
+            confidence: 9
+          },
+          {
+            sourceEntity: 'Entity3',
+            targetEntity: 'Entity4',
+            relationType: RelationshipType.FAMILY,
+            description: 'Family',
+            confidence: 10
+          },
+          {
+            sourceEntity: 'Entity4',
+            targetEntity: 'Entity5',
+            relationType: RelationshipType.EMPLOYER,
+            description: 'Employer',
+            confidence: 7
+          },
+          {
+            sourceEntity: 'Entity5',
+            targetEntity: 'Entity6',
+            relationType: RelationshipType.EMPLOYEE,
+            description: 'Employee',
+            confidence: 7
+          },
+          {
+            sourceEntity: 'Entity6',
+            targetEntity: 'Entity7',
+            relationType: RelationshipType.ROMANTIC,
+            description: 'Romantic',
+            confidence: 8
+          },
+          {
+            sourceEntity: 'Entity7',
+            targetEntity: 'Entity8',
+            relationType: RelationshipType.FRIEND,
+            description: 'Friends',
+            confidence: 9
+          },
+          {
+            sourceEntity: 'Entity8',
+            targetEntity: 'Entity9',
+            relationType: RelationshipType.RIVAL,
+            description: 'Rivals',
+            confidence: 6
+          },
+          {
+            sourceEntity: 'Entity9',
+            targetEntity: 'Entity10',
+            relationType: RelationshipType.NEUTRAL,
+            description: 'Neutral',
+            confidence: 5
+          },
+          {
+            sourceEntity: 'Entity10',
+            targetEntity: 'Entity1',
+            relationType: RelationshipType.UNKNOWN,
+            description: 'Unknown',
+            confidence: 5
+          }
         ],
         summary: 'All relationship types'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
       const result = await extractor.extractRelationships('Test transcript', entities);
@@ -413,7 +611,7 @@ describe('EntityExtractor - Relationship Extraction', () => {
       expect(result.length).toBe(10);
 
       // Verify all relationship types are present
-      const types = result.map(r => r.relationType);
+      const types = result.map((r) => r.relationType);
       expect(types).toContain(RelationshipType.ALLY);
       expect(types).toContain(RelationshipType.ENEMY);
       expect(types).toContain(RelationshipType.FAMILY);
@@ -431,22 +629,43 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'Test', confidence: 15 }, // Too high
-          { sourceEntity: 'Sam', targetEntity: 'Frodo', relationType: 'friend', description: 'Test', confidence: -5 }, // Too low
-          { sourceEntity: 'Aragorn', targetEntity: 'Gandalf', relationType: 'ally', description: 'Test', confidence: 7 } // Valid
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Test',
+            confidence: 15
+          }, // Too high
+          {
+            sourceEntity: 'Sam',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Test',
+            confidence: -5
+          }, // Too low
+          {
+            sourceEntity: 'Aragorn',
+            targetEntity: 'Gandalf',
+            relationType: 'ally',
+            description: 'Test',
+            confidence: 7
+          } // Valid
         ],
         summary: 'Test normalization'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
       // Use minConfidence: 1 to see all normalized values
@@ -457,15 +676,15 @@ describe('EntityExtractor - Relationship Extraction', () => {
       );
 
       // All confidence scores should be in 1-10 range
-      result.forEach(rel => {
+      result.forEach((rel) => {
         expect(rel.confidence).toBeGreaterThanOrEqual(1);
         expect(rel.confidence).toBeLessThanOrEqual(10);
       });
 
       // Verify normalization
       expect(result[0].confidence).toBe(10); // Clamped from 15
-      expect(result[1].confidence).toBe(1);  // Clamped from -5
-      expect(result[2].confidence).toBe(7);  // Unchanged
+      expect(result[1].confidence).toBe(1); // Clamped from -5
+      expect(result[2].confidence).toBe(7); // Unchanged
     });
 
     it('should assign unique IDs to relationships', async () => {
@@ -474,24 +693,30 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
-      const ids = result.map(r => r.id);
+      const ids = result.map((r) => r.id);
 
       // All IDs should be unique
       expect(new Set(ids).size).toBe(ids.length);
 
       // IDs should follow the pattern "relationship-N"
-      ids.forEach(id => {
+      ids.forEach((id) => {
         expect(id).toMatch(/^relationship-\d+$/);
       });
     });
@@ -499,26 +724,41 @@ describe('EntityExtractor - Relationship Extraction', () => {
     it('should handle case-insensitive entity matching', async () => {
       const entities = [
         { name: 'gandalf' }, // lowercase
-        { name: 'FRODO' }    // uppercase
+        { name: 'FRODO' } // uppercase
       ];
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'Mixed case', confidence: 9 },
-          { sourceEntity: 'GANDALF', targetEntity: 'frodo', relationType: 'ally', description: 'Different case', confidence: 8 }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Mixed case',
+            confidence: 9
+          },
+          {
+            sourceEntity: 'GANDALF',
+            targetEntity: 'frodo',
+            relationType: 'ally',
+            description: 'Different case',
+            confidence: 8
+          }
         ],
         summary: 'Case test'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
       const result = await extractor.extractRelationships('Test', entities);
@@ -545,16 +785,22 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify({ summary: 'No relationships' })
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({ summary: 'No relationships' })
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       expect(result).toEqual([]);
     });
@@ -564,16 +810,22 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify({ relationships: [], summary: 'No relationships found' })
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({ relationships: [], summary: 'No relationships found' })
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       expect(result).toEqual([]);
     });
@@ -583,26 +835,54 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'Valid', confidence: 9 },
-          { targetEntity: 'Frodo', relationType: 'friend', description: 'Missing source', confidence: 8 },
-          { sourceEntity: 'Gandalf', relationType: 'friend', description: 'Missing target', confidence: 8 },
-          { sourceEntity: 'Sam', targetEntity: 'Frodo', relationType: 'employee', description: 'Valid', confidence: 7 }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Valid',
+            confidence: 9
+          },
+          {
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Missing source',
+            confidence: 8
+          },
+          {
+            sourceEntity: 'Gandalf',
+            relationType: 'friend',
+            description: 'Missing target',
+            confidence: 8
+          },
+          {
+            sourceEntity: 'Sam',
+            targetEntity: 'Frodo',
+            relationType: 'employee',
+            description: 'Valid',
+            confidence: 7
+          }
         ],
         summary: 'Test missing fields'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       // Should only include the valid relationships
       expect(result.length).toBe(2);
@@ -613,23 +893,34 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'Missing confidence' }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Missing confidence'
+          }
         ],
         summary: 'Test default confidence'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       expect(result[0].confidence).toBe(5);
     });
@@ -643,17 +934,11 @@ describe('EntityExtractor - Relationship Extraction', () => {
     it('should throw error for invalid transcript', async () => {
       const entities = createSampleEntities();
 
-      await expect(
-        extractor.extractRelationships(null, entities)
-      ).rejects.toThrow(OpenAIError);
+      await expect(extractor.extractRelationships(null, entities)).rejects.toThrow(OpenAIError);
 
-      await expect(
-        extractor.extractRelationships(123, entities)
-      ).rejects.toThrow(OpenAIError);
+      await expect(extractor.extractRelationships(123, entities)).rejects.toThrow(OpenAIError);
 
-      await expect(
-        extractor.extractRelationships('', entities)
-      ).rejects.toThrow(OpenAIError);
+      await expect(extractor.extractRelationships('', entities)).rejects.toThrow(OpenAIError);
     });
 
     it('should throw error for invalid entities parameter', async () => {
@@ -675,13 +960,16 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: 'This is not valid JSON'
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: 'This is not valid JSON'
+                }
+              }
+            ]
+          })
       });
 
       await expect(
@@ -705,9 +993,10 @@ describe('EntityExtractor - Relationship Extraction', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
-        json: () => Promise.resolve({
-          error: { message: 'Internal server error' }
-        })
+        json: () =>
+          Promise.resolve({
+            error: { message: 'Internal server error' }
+          })
       });
 
       await expect(
@@ -727,20 +1016,21 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
-      await extractor.extractRelationships(
-        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
-        entities,
-        { campaignContext: 'Lord of the Rings campaign' }
-      );
+      await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities, {
+        campaignContext: 'Lord of the Rings campaign'
+      });
 
       expect(mockFetch).toHaveBeenCalled();
       const callArgs = mockFetch.mock.calls[0];
@@ -755,25 +1045,43 @@ describe('EntityExtractor - Relationship Extraction', () => {
 
       const mockResponse = {
         relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'High', confidence: 9 },
-          { sourceEntity: 'Sam', targetEntity: 'Frodo', relationType: 'friend', description: 'Low', confidence: 4 }
+          {
+            sourceEntity: 'Gandalf',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'High',
+            confidence: 9
+          },
+          {
+            sourceEntity: 'Sam',
+            targetEntity: 'Frodo',
+            relationType: 'friend',
+            description: 'Low',
+            confidence: 4
+          }
         ],
         summary: 'Test'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
       // Don't specify minConfidence, should use default of 5
-      const result = await extractor.extractRelationships(SAMPLE_TRANSCRIPT_RELATIONSHIPS, entities);
+      const result = await extractor.extractRelationships(
+        SAMPLE_TRANSCRIPT_RELATIONSHIPS,
+        entities
+      );
 
       // Should only include relationship with confidence >= 5
       expect(result.length).toBe(1);

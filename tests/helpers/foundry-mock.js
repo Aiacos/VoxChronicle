@@ -108,7 +108,7 @@ export function createMockUser(options = {}) {
  * @returns {Object} Mock users collection
  */
 export function createMockUsers(users = []) {
-  const usersMap = new Map(users.map(u => [u.id, u]));
+  const usersMap = new Map(users.map((u) => [u.id, u]));
 
   return {
     get: vi.fn((id) => usersMap.get(id)),
@@ -373,13 +373,13 @@ export function createMockCompendium(name, documents = []) {
       type: 'JournalEntry'
     },
 
-    index: new Map(documents.map(doc => [doc.id, doc])),
+    index: new Map(documents.map((doc) => [doc.id, doc])),
     locked: false,
 
     getDocuments: vi.fn(() => Promise.resolve(documents)),
-    getDocument: vi.fn((id) => Promise.resolve(documents.find(d => d.id === id))),
+    getDocument: vi.fn((id) => Promise.resolve(documents.find((d) => d.id === id))),
     search: vi.fn((query) => {
-      const results = documents.filter(doc =>
+      const results = documents.filter((doc) =>
         doc.name.toLowerCase().includes(query.toLowerCase())
       );
       return Promise.resolve(results);
@@ -428,7 +428,7 @@ export function createMockHooks() {
 
     call: vi.fn((event, ...args) => {
       if (hooks.has(event)) {
-        hooks.get(event).forEach(callback => callback(...args));
+        hooks.get(event).forEach((callback) => callback(...args));
       }
     }),
 
@@ -437,9 +437,9 @@ export function createMockHooks() {
     }),
 
     // Helper for tests to trigger hooks
-    _trigger: function(event, ...args) {
+    _trigger: function (event, ...args) {
       if (hooks.has(event)) {
-        hooks.get(event).forEach(callback => callback(...args));
+        hooks.get(event).forEach((callback) => callback(...args));
       }
     }
   };

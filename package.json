@@ -11,6 +11,9 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.js",
     "lint": "eslint scripts/**/*.mjs tests/**/*.js",
+    "lint:fix": "eslint scripts/**/*.mjs tests/**/*.js --fix",
+    "format": "prettier --write 'scripts/**/*.mjs' 'tests/**/*.js'",
+    "format:check": "prettier --check 'scripts/**/*.mjs' 'tests/**/*.js'",
     "validate": "node --check scripts/main.mjs"
   },
   "keywords": [
@@ -35,10 +38,14 @@
   },
   "homepage": "https://github.com/your-username/vox-chronicle#readme",
   "devDependencies": {
-    "vitest": "^2.0.0",
-    "@vitest/ui": "^2.0.0",
+    "@eslint/js": "^9.39.2",
     "@vitest/coverage-v8": "^2.0.0",
-    "jsdom": "^24.0.0"
+    "@vitest/ui": "^2.0.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-jsdoc": "^62.5.4",
+    "jsdom": "^24.0.0",
+    "prettier": "^3.8.1",
+    "vitest": "^2.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

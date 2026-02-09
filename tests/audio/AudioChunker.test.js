@@ -179,7 +179,9 @@ describe('AudioChunker', () => {
     });
 
     it('should throw error for non-Blob input', async () => {
-      await expect(chunker.splitIfNeeded('not-a-blob')).rejects.toThrow('Invalid audio blob provided');
+      await expect(chunker.splitIfNeeded('not-a-blob')).rejects.toThrow(
+        'Invalid audio blob provided'
+      );
       await expect(chunker.splitIfNeeded({})).rejects.toThrow('Invalid audio blob provided');
       await expect(chunker.splitIfNeeded(123)).rejects.toThrow('Invalid audio blob provided');
     });
@@ -195,7 +197,7 @@ describe('AudioChunker', () => {
       const largeBlob = createMockAudioBlob(50 * 1024 * 1024); // 50MB
       const chunks = await chunker.split(largeBlob);
 
-      const expectedCount = Math.ceil(50 * 1024 * 1024 / MAX_CHUNK_SIZE);
+      const expectedCount = Math.ceil((50 * 1024 * 1024) / MAX_CHUNK_SIZE);
       expect(chunks).toHaveLength(expectedCount);
     });
 
@@ -204,7 +206,7 @@ describe('AudioChunker', () => {
       const largeBlob = createMockAudioBlob(50 * 1024 * 1024, mimeType);
       const chunks = await chunker.split(largeBlob);
 
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         expect(chunk.type).toBe(mimeType);
       });
     });
@@ -213,7 +215,7 @@ describe('AudioChunker', () => {
       const largeBlob = createMockAudioBlob(50 * 1024 * 1024);
       const chunks = await chunker.split(largeBlob);
 
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         expect(chunk.size).toBeLessThanOrEqual(MAX_CHUNK_SIZE);
       });
     });
@@ -228,7 +230,7 @@ describe('AudioChunker', () => {
 
     it('should combine tiny final chunks with previous chunk', async () => {
       // Create a blob that would leave a very small remainder
-      const size = MAX_CHUNK_SIZE + (MIN_CHUNK_SIZE / 2); // 24MB + 512KB
+      const size = MAX_CHUNK_SIZE + MIN_CHUNK_SIZE / 2; // 24MB + 512KB
       const blob = createMockAudioBlob(size);
       const chunks = await chunker.split(blob);
 
@@ -248,7 +250,7 @@ describe('AudioChunker', () => {
     });
 
     it('should handle blob slightly over limit', async () => {
-      const size = MAX_CHUNK_SIZE + (2 * 1024 * 1024); // 24MB + 2MB
+      const size = MAX_CHUNK_SIZE + 2 * 1024 * 1024; // 24MB + 2MB
       const blob = createMockAudioBlob(size);
       const chunks = await chunker.split(blob);
 
@@ -269,9 +271,15 @@ describe('AudioChunker', () => {
 
   describe('splitFromChunks', () => {
     it('should throw error for invalid input', async () => {
-      await expect(chunker.splitFromChunks(null, 'audio/webm')).rejects.toThrow('Invalid recording chunks array');
-      await expect(chunker.splitFromChunks([], 'audio/webm')).rejects.toThrow('Invalid recording chunks array');
-      await expect(chunker.splitFromChunks('not-array', 'audio/webm')).rejects.toThrow('Invalid recording chunks array');
+      await expect(chunker.splitFromChunks(null, 'audio/webm')).rejects.toThrow(
+        'Invalid recording chunks array'
+      );
+      await expect(chunker.splitFromChunks([], 'audio/webm')).rejects.toThrow(
+        'Invalid recording chunks array'
+      );
+      await expect(chunker.splitFromChunks('not-array', 'audio/webm')).rejects.toThrow(
+        'Invalid recording chunks array'
+      );
     });
 
     it('should group small chunks together', async () => {
@@ -296,10 +304,10 @@ describe('AudioChunker', () => {
     it('should respect chunk boundaries', async () => {
       // Create chunks at natural boundaries (like recording chunks)
       const chunks = [
-        createMockAudioBlob(5 * 1024 * 1024),  // 5MB
+        createMockAudioBlob(5 * 1024 * 1024), // 5MB
         createMockAudioBlob(10 * 1024 * 1024), // 10MB
-        createMockAudioBlob(8 * 1024 * 1024),  // 8MB
-        createMockAudioBlob(12 * 1024 * 1024), // 12MB
+        createMockAudioBlob(8 * 1024 * 1024), // 8MB
+        createMockAudioBlob(12 * 1024 * 1024) // 12MB
       ];
       const result = await chunker.splitFromChunks(chunks, 'audio/webm');
 
@@ -308,7 +316,7 @@ describe('AudioChunker', () => {
       expect(result.length).toBeLessThanOrEqual(chunks.length);
 
       // All chunks should be within limit
-      result.forEach(chunk => {
+      result.forEach((chunk) => {
         expect(chunk.size).toBeLessThanOrEqual(MAX_CHUNK_SIZE);
       });
     });
@@ -355,13 +363,13 @@ describe('AudioChunker', () => {
       const sizes = chunker.calculateChunkSizes(totalSize);
 
       expect(sizes).toHaveLength(3);
-      sizes.forEach(size => {
+      sizes.forEach((size) => {
         expect(size).toBe(MAX_CHUNK_SIZE);
       });
     });
 
     it('should distribute remainder across first chunks', () => {
-      const totalSize = (MAX_CHUNK_SIZE * 3) + 100; // Add 100 bytes
+      const totalSize = MAX_CHUNK_SIZE * 3 + 100; // Add 100 bytes
       const sizes = chunker.calculateChunkSizes(totalSize);
 
       // This will create 4 chunks because ceil((MAX_CHUNK_SIZE * 3 + 100) / MAX_CHUNK_SIZE) = 4
@@ -384,7 +392,7 @@ describe('AudioChunker', () => {
       const totalSize = 100 * 1024 * 1024;
       const sizes = chunker.calculateChunkSizes(totalSize);
 
-      sizes.forEach(size => {
+      sizes.forEach((size) => {
         expect(size).toBeLessThanOrEqual(MAX_CHUNK_SIZE);
       });
     });
@@ -443,18 +451,24 @@ describe('AudioChunker', () => {
   describe('splitWithOverlap', () => {
     it('should throw error for invalid blob', async () => {
       await expect(chunker.splitWithOverlap(null)).rejects.toThrow('Invalid audio blob provided');
-      await expect(chunker.splitWithOverlap('not-a-blob')).rejects.toThrow('Invalid audio blob provided');
+      await expect(chunker.splitWithOverlap('not-a-blob')).rejects.toThrow(
+        'Invalid audio blob provided'
+      );
     });
 
     it('should throw error for negative overlap', async () => {
       const blob = createMockAudioBlob(1024);
-      await expect(chunker.splitWithOverlap(blob, -100)).rejects.toThrow('Overlap bytes must be non-negative');
+      await expect(chunker.splitWithOverlap(blob, -100)).rejects.toThrow(
+        'Overlap bytes must be non-negative'
+      );
     });
 
     it('should throw error if overlap is too large', async () => {
       const blob = createMockAudioBlob(50 * 1024 * 1024);
-      const tooLargeOverlap = MAX_CHUNK_SIZE - (MIN_CHUNK_SIZE / 2);
-      await expect(chunker.splitWithOverlap(blob, tooLargeOverlap)).rejects.toThrow('Overlap too large');
+      const tooLargeOverlap = MAX_CHUNK_SIZE - MIN_CHUNK_SIZE / 2;
+      await expect(chunker.splitWithOverlap(blob, tooLargeOverlap)).rejects.toThrow(
+        'Overlap too large'
+      );
     });
 
     it('should return original blob if within limit', async () => {
@@ -485,7 +499,7 @@ describe('AudioChunker', () => {
       const overlapBytes = 512 * 1024; // 512KB overlap
       const result = await chunker.splitWithOverlap(blob, overlapBytes);
 
-      result.forEach(chunk => {
+      result.forEach((chunk) => {
         expect(chunk.size).toBeLessThanOrEqual(MAX_CHUNK_SIZE);
       });
     });
@@ -495,7 +509,7 @@ describe('AudioChunker', () => {
       const blob = createMockAudioBlob(50 * 1024 * 1024, mimeType);
       const result = await chunker.splitWithOverlap(blob, 0);
 
-      result.forEach(chunk => {
+      result.forEach((chunk) => {
         expect(chunk.type).toBe(mimeType);
       });
     });
@@ -573,7 +587,7 @@ describe('AudioChunker', () => {
       const result = await chunker.split(blob);
 
       expect(result).toHaveLength(4);
-      result.forEach(chunk => {
+      result.forEach((chunk) => {
         expect(chunk.size).toBe(MAX_CHUNK_SIZE);
       });
     });
@@ -618,8 +632,9 @@ describe('AudioChunker', () => {
 
     it('should handle recording chunks from real recording', async () => {
       // Simulate 30 minutes of recording with 1-minute chunks
-      const recordingChunks = Array.from({ length: 30 }, () =>
-        createMockAudioBlob(1 * 1024 * 1024, 'audio/webm') // ~1MB per minute
+      const recordingChunks = Array.from(
+        { length: 30 },
+        () => createMockAudioBlob(1 * 1024 * 1024, 'audio/webm') // ~1MB per minute
       );
 
       const result = await chunker.splitFromChunks(recordingChunks, 'audio/webm');

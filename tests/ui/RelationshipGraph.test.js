@@ -133,7 +133,7 @@ function setupEnvironment() {
 
   // Mock vis-network library
   global.vis = {
-    Network: vi.fn(function(container, data, options) {
+    Network: vi.fn(function (container, data, options) {
       this.container = container;
       this.data = data;
       this.options = options;
@@ -159,7 +159,7 @@ function setupEnvironment() {
         }
       };
     }),
-    DataSet: vi.fn(function(data) {
+    DataSet: vi.fn(function (data) {
       this.data = data || [];
       this.add = vi.fn((item) => this.data.push(item));
       this.update = vi.fn();
@@ -173,7 +173,8 @@ function setupEnvironment() {
 }
 
 // Import after environment setup
-const { RelationshipGraph, EntityType, GraphMode } = await import('../../scripts/ui/RelationshipGraph.mjs');
+const { RelationshipGraph, EntityType, GraphMode } =
+  await import('../../scripts/ui/RelationshipGraph.mjs');
 
 describe('RelationshipGraph', () => {
   let graph;
@@ -192,9 +193,7 @@ describe('RelationshipGraph', () => {
         { name: 'Castle', description: 'A grand fortress' },
         { name: 'Forest', description: 'A dark woodland' }
       ],
-      items: [
-        { name: 'Sword', description: 'A magical blade' }
-      ]
+      items: [{ name: 'Sword', description: 'A magical blade' }]
     };
 
     mockRelationships = [
@@ -430,7 +429,7 @@ describe('RelationshipGraph', () => {
       expect(data.legendItems).toBeDefined();
       expect(Array.isArray(data.legendItems)).toBe(true);
       expect(data.legendItems.length).toBeGreaterThan(0);
-      data.legendItems.forEach(item => {
+      data.legendItems.forEach((item) => {
         expect(item.type).toBeDefined();
         expect(item.label).toBeDefined();
         expect(item.color).toBeDefined();
@@ -474,14 +473,14 @@ describe('RelationshipGraph', () => {
 
     it('should assign unique IDs to nodes', () => {
       const { nodes } = graph._buildGraphData();
-      const ids = nodes.map(n => n.id);
+      const ids = nodes.map((n) => n.id);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(ids.length);
     });
 
     it('should include entity colors in nodes', () => {
       const { nodes } = graph._buildGraphData();
-      const aliceNode = nodes.find(n => n.label === 'Alice');
+      const aliceNode = nodes.find((n) => n.label === 'Alice');
       expect(aliceNode.color).toBeDefined();
       expect(aliceNode.group).toBe(EntityType.CHARACTER);
     });
@@ -495,7 +494,7 @@ describe('RelationshipGraph', () => {
       graph._filters.entityType = EntityType.CHARACTER;
       const { nodes } = graph._buildGraphData();
       expect(nodes).toHaveLength(2); // Only characters
-      expect(nodes.every(n => n.group === EntityType.CHARACTER)).toBe(true);
+      expect(nodes.every((n) => n.group === EntityType.CHARACTER)).toBe(true);
     });
 
     it('should filter edges by relationship type', () => {
@@ -522,7 +521,7 @@ describe('RelationshipGraph', () => {
 
     it('should use confidence as edge value', () => {
       const { edges } = graph._buildGraphData();
-      const allyEdge = edges.find(e => e.label === 'VOXCHRONICLE.RelationshipType.ally');
+      const allyEdge = edges.find((e) => e.label === 'VOXCHRONICLE.RelationshipType.ally');
       expect(allyEdge.value).toBe(8); // confidence from mockRelationships
     });
 
@@ -536,7 +535,7 @@ describe('RelationshipGraph', () => {
 
     it('should include tooltips for nodes', () => {
       const { nodes } = graph._buildGraphData();
-      const aliceNode = nodes.find(n => n.label === 'Alice');
+      const aliceNode = nodes.find((n) => n.label === 'Alice');
       expect(aliceNode.title).toBe('A brave warrior');
     });
 
@@ -836,10 +835,13 @@ describe('RelationshipGraph', () => {
     it('should handle node double-click', () => {
       const params = { nodes: [1] };
       graph._onNodeDoubleClick(params);
-      expect(graph._network.focus).toHaveBeenCalledWith(1, expect.objectContaining({
-        scale: 1.5,
-        animation: expect.any(Object)
-      }));
+      expect(graph._network.focus).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          scale: 1.5,
+          animation: expect.any(Object)
+        })
+      );
     });
 
     it('should ignore double-click when no node selected', () => {

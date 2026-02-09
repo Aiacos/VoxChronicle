@@ -71,7 +71,7 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
 // Mock AudioChunker
 vi.mock('../../scripts/audio/AudioChunker.mjs', () => {
   return {
-    AudioChunker: vi.fn(function() {
+    AudioChunker: vi.fn(function () {
       // Create new mock functions for each instance
       this.needsChunking = vi.fn(() => false);
       this.splitIfNeeded = vi.fn((blob) => Promise.resolve([blob]));
@@ -87,7 +87,7 @@ vi.mock('../../scripts/audio/AudioChunker.mjs', () => {
 
 // Mock WhisperBackend
 vi.mock('../../scripts/ai/WhisperBackend.mjs', () => {
-  const mockWhisperBackend = vi.fn(function(baseUrl, options) {
+  const mockWhisperBackend = vi.fn(function (baseUrl, options) {
     this.baseUrl = baseUrl || 'http://localhost:8080';
     this._timeout = options?.timeout || 600000;
     this._maxRetries = options?.maxRetries ?? 3;
@@ -99,21 +99,25 @@ vi.mock('../../scripts/ai/WhisperBackend.mjs', () => {
     });
 
     this.healthCheck = vi.fn(() => Promise.resolve(true));
-    this.transcribe = vi.fn(() => Promise.resolve({
-      text: 'Hello, this is a test transcription.',
-      segments: [
-        { speaker: 'SPEAKER_00', text: 'Hello, this is', start: 0, end: 2.5 },
-        { speaker: 'SPEAKER_01', text: 'a test transcription.', start: 2.5, end: 5.0 }
-      ],
-      language: 'en',
-      duration: 5.0
-    }));
+    this.transcribe = vi.fn(() =>
+      Promise.resolve({
+        text: 'Hello, this is a test transcription.',
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Hello, this is', start: 0, end: 2.5 },
+          { speaker: 'SPEAKER_01', text: 'a test transcription.', start: 2.5, end: 5.0 }
+        ],
+        language: 'en',
+        duration: 5.0
+      })
+    );
 
-    this.getServerInfo = vi.fn(() => Promise.resolve({
-      capabilities: {
-        diarization: true
-      }
-    }));
+    this.getServerInfo = vi.fn(() =>
+      Promise.resolve({
+        capabilities: {
+          diarization: true
+        }
+      })
+    );
   });
 
   return {
@@ -128,9 +132,11 @@ vi.mock('../../scripts/ai/WhisperBackend.mjs', () => {
       }
 
       get isRetryable() {
-        return this.type === 'timeout_error' ||
-               this.type === 'connection_error' ||
-               (this.status >= 500 && this.status < 600);
+        return (
+          this.type === 'timeout_error' ||
+          this.type === 'connection_error' ||
+          (this.status >= 500 && this.status < 600)
+        );
       }
     },
     WhisperErrorType: {
@@ -145,8 +151,16 @@ vi.mock('../../scripts/ai/WhisperBackend.mjs', () => {
 });
 
 // Import after mocks are set up
-import { LocalWhisperService, LocalWhisperResponseFormat, LOCAL_TRANSCRIPTION_TIMEOUT_MS } from '../../scripts/ai/LocalWhisperService.mjs';
-import { WhisperBackend, WhisperError, WhisperErrorType } from '../../scripts/ai/WhisperBackend.mjs';
+import {
+  LocalWhisperService,
+  LocalWhisperResponseFormat,
+  LOCAL_TRANSCRIPTION_TIMEOUT_MS
+} from '../../scripts/ai/LocalWhisperService.mjs';
+import {
+  WhisperBackend,
+  WhisperError,
+  WhisperErrorType
+} from '../../scripts/ai/WhisperBackend.mjs';
 import { AudioChunker } from '../../scripts/audio/AudioChunker.mjs';
 import { AudioUtils } from '../../scripts/utils/AudioUtils.mjs';
 
@@ -227,7 +241,7 @@ describe('LocalWhisperService', () => {
     it('should accept configuration options', () => {
       const options = {
         defaultLanguage: 'it',
-        defaultSpeakerMap: { 'SPEAKER_00': 'GM' },
+        defaultSpeakerMap: { SPEAKER_00: 'GM' },
         timeout: 300000,
         maxRetries: 5
       };
@@ -236,7 +250,7 @@ describe('LocalWhisperService', () => {
 
       expect(customService.backendUrl).toBe('http://custom:9000');
       expect(customService._defaultLanguage).toBe('it');
-      expect(customService._defaultSpeakerMap).toEqual({ 'SPEAKER_00': 'GM' });
+      expect(customService._defaultSpeakerMap).toEqual({ SPEAKER_00: 'GM' });
     });
 
     it('should initialize AudioChunker', () => {
@@ -344,13 +358,15 @@ describe('LocalWhisperService', () => {
     });
 
     it('should throw error for invalid audio input', async () => {
-      await expect(service.transcribe(null))
-        .rejects.toThrow('Invalid audio input: expected Blob or File');
+      await expect(service.transcribe(null)).rejects.toThrow(
+        'Invalid audio input: expected Blob or File'
+      );
     });
 
     it('should throw error for non-Blob input', async () => {
-      await expect(service.transcribe('not a blob'))
-        .rejects.toThrow('Invalid audio input: expected Blob or File');
+      await expect(service.transcribe('not a blob')).rejects.toThrow(
+        'Invalid audio input: expected Blob or File'
+      );
     });
 
     it('should use default language when set', async () => {
@@ -392,8 +408,8 @@ describe('LocalWhisperService', () => {
       mockBackend.transcribe.mockResolvedValue(mockResponse);
 
       const speakerMap = {
-        'SPEAKER_00': 'Game Master',
-        'SPEAKER_01': 'Player 1'
+        SPEAKER_00: 'Game Master',
+        SPEAKER_01: 'Player 1'
       };
 
       const result = await service.transcribe(audioBlob, { speakerMap });
@@ -406,8 +422,8 @@ describe('LocalWhisperService', () => {
 
     it('should use default speaker map when set', async () => {
       service.setSpeakerMap({
-        'SPEAKER_00': 'GM',
-        'SPEAKER_01': 'Player'
+        SPEAKER_00: 'GM',
+        SPEAKER_01: 'Player'
       });
 
       const audioBlob = createMockAudioBlob(1024);
@@ -451,7 +467,9 @@ describe('LocalWhisperService', () => {
       const audioBlob = createMockAudioBlob(1024);
       mockBackend.transcribe.mockResolvedValue(createMockTranscriptionResponse());
 
-      await service.transcribe(audioBlob, { responseFormat: LocalWhisperResponseFormat.VERBOSE_JSON });
+      await service.transcribe(audioBlob, {
+        responseFormat: LocalWhisperResponseFormat.VERBOSE_JSON
+      });
 
       expect(mockBackend.transcribe).toHaveBeenCalledWith(
         audioBlob,
@@ -467,8 +485,7 @@ describe('LocalWhisperService', () => {
 
       mockBackend.transcribe.mockRejectedValue(error);
 
-      await expect(service.transcribe(audioBlob))
-        .rejects.toThrow('Backend error');
+      await expect(service.transcribe(audioBlob)).rejects.toThrow('Backend error');
     });
 
     it('should warn about invalid audio blobs but continue', async () => {
@@ -555,11 +572,11 @@ describe('LocalWhisperService', () => {
       const result = await service.transcribe(largeBlob);
 
       // First chunk segments should start at 0
-      const firstChunkSegments = result.segments.filter(s => s.originalSpeaker === 'SPEAKER_00');
+      const firstChunkSegments = result.segments.filter((s) => s.originalSpeaker === 'SPEAKER_00');
       expect(firstChunkSegments[0].start).toBe(0);
 
       // Second chunk segments should be offset by first chunk duration (60s)
-      const secondChunkSegments = result.segments.filter(s => s.originalSpeaker === 'SPEAKER_01');
+      const secondChunkSegments = result.segments.filter((s) => s.originalSpeaker === 'SPEAKER_01');
       expect(secondChunkSegments[0].start).toBe(60);
     });
 
@@ -632,9 +649,7 @@ describe('LocalWhisperService', () => {
         })
         .mockResolvedValueOnce({
           text: 'Second chunk.',
-          segments: [
-            { speaker: 'SPEAKER_02', text: 'Second chunk.', start: 0, end: 2.0 }
-          ],
+          segments: [{ speaker: 'SPEAKER_02', text: 'Second chunk.', start: 0, end: 2.0 }],
           language: 'en',
           duration: 2.0
         });
@@ -642,9 +657,9 @@ describe('LocalWhisperService', () => {
       const result = await service.transcribe(largeBlob);
 
       expect(result.speakers).toHaveLength(3);
-      expect(result.speakers.map(s => s.id)).toContain('SPEAKER_00');
-      expect(result.speakers.map(s => s.id)).toContain('SPEAKER_01');
-      expect(result.speakers.map(s => s.id)).toContain('SPEAKER_02');
+      expect(result.speakers.map((s) => s.id)).toContain('SPEAKER_00');
+      expect(result.speakers.map((s) => s.id)).toContain('SPEAKER_01');
+      expect(result.speakers.map((s) => s.id)).toContain('SPEAKER_02');
     });
   });
 
@@ -708,9 +723,7 @@ describe('LocalWhisperService', () => {
     it('should handle JSON response with segments', () => {
       const response = {
         text: 'Full text',
-        segments: [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1.0 }
-        ],
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1.0 }],
         language: 'en',
         duration: 1.0
       };
@@ -744,9 +757,7 @@ describe('LocalWhisperService', () => {
     it('should handle segment with alternative time fields', () => {
       const response = {
         text: 'Full text',
-        segments: [
-          { speaker: 'SPEAKER_00', text: 'Hello', from: 0, to: 1.0 }
-        ]
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', from: 0, to: 1.0 }]
       };
 
       const normalized = service._normalizeResponse(response);
@@ -826,8 +837,8 @@ describe('LocalWhisperService', () => {
       };
 
       const speakerMap = {
-        'SPEAKER_00': 'Alice',
-        'SPEAKER_01': 'Bob'
+        SPEAKER_00: 'Alice',
+        SPEAKER_01: 'Bob'
       };
 
       const mapped = service._mapSpeakersToNames(result, speakerMap);
@@ -841,9 +852,7 @@ describe('LocalWhisperService', () => {
     it('should keep original ID when no mapping provided', () => {
       const result = {
         text: 'Full text',
-        segments: [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1.0 }
-        ]
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1.0 }]
       };
 
       const mapped = service._mapSpeakersToNames(result, {});
@@ -862,7 +871,7 @@ describe('LocalWhisperService', () => {
       };
 
       const speakerMap = {
-        'SPEAKER_00': 'Alice'
+        SPEAKER_00: 'Alice'
       };
 
       const mapped = service._mapSpeakersToNames(result, speakerMap);
@@ -923,8 +932,8 @@ describe('LocalWhisperService', () => {
   describe('setSpeakerMap', () => {
     it('should update default speaker map', () => {
       const speakerMap = {
-        'SPEAKER_00': 'GM',
-        'SPEAKER_01': 'Player'
+        SPEAKER_00: 'GM',
+        SPEAKER_01: 'Player'
       };
 
       service.setSpeakerMap(speakerMap);
@@ -940,7 +949,7 @@ describe('LocalWhisperService', () => {
 
   describe('getSpeakerMap', () => {
     it('should return copy of speaker map', () => {
-      const speakerMap = { 'SPEAKER_00': 'GM' };
+      const speakerMap = { SPEAKER_00: 'GM' };
       service.setSpeakerMap(speakerMap);
 
       const retrieved = service.getSpeakerMap();
@@ -1046,7 +1055,7 @@ describe('LocalWhisperService', () => {
 
     it('should include auto-detect option', () => {
       const languages = LocalWhisperService.getSupportedLanguages();
-      const autoDetect = languages.find(lang => lang.code === '');
+      const autoDetect = languages.find((lang) => lang.code === '');
 
       expect(autoDetect).toBeDefined();
       expect(autoDetect.name).toBe('Auto-detect');
@@ -1054,7 +1063,7 @@ describe('LocalWhisperService', () => {
 
     it('should include common languages', () => {
       const languages = LocalWhisperService.getSupportedLanguages();
-      const codes = languages.map(lang => lang.code);
+      const codes = languages.map((lang) => lang.code);
 
       expect(codes).toContain('en');
       expect(codes).toContain('it');

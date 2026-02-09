@@ -116,7 +116,7 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
 // Mock AudioChunker
 vi.mock('../../scripts/audio/AudioChunker.mjs', () => {
   return {
-    AudioChunker: vi.fn(function() {
+    AudioChunker: vi.fn(function () {
       this.needsChunking = vi.fn(() => false);
       this.splitIfNeeded = vi.fn((blob) => Promise.resolve([blob]));
       this.getChunkingInfo = vi.fn((blob) => ({
@@ -131,7 +131,7 @@ vi.mock('../../scripts/audio/AudioChunker.mjs', () => {
 
 // Mock TranscriptionService
 vi.mock('../../scripts/ai/TranscriptionService.mjs', () => ({
-  TranscriptionService: vi.fn(function(apiKey, options = {}) {
+  TranscriptionService: vi.fn(function (apiKey, options = {}) {
     this.apiKey = apiKey;
     this.options = options;
     this.isConfigured = Boolean(apiKey);
@@ -161,7 +161,7 @@ vi.mock('../../scripts/ai/TranscriptionService.mjs', () => ({
 
 // Mock LocalWhisperService
 vi.mock('../../scripts/ai/LocalWhisperService.mjs', () => ({
-  LocalWhisperService: vi.fn(function(backendUrl, options = {}) {
+  LocalWhisperService: vi.fn(function (backendUrl, options = {}) {
     this.backendUrl = backendUrl;
     this.options = options;
     this.healthCheck = vi.fn(() => Promise.resolve(true));
@@ -255,7 +255,7 @@ describe('TranscriptionFactory', () => {
       it('should pass options to TranscriptionService', async () => {
         const options = {
           defaultLanguage: 'it',
-          defaultSpeakerMap: { 'SPEAKER_00': 'GM' }
+          defaultSpeakerMap: { SPEAKER_00: 'GM' }
         };
 
         await TranscriptionFactory.create({
@@ -268,9 +268,11 @@ describe('TranscriptionFactory', () => {
       });
 
       it('should throw error if API key is missing', async () => {
-        await expect(TranscriptionFactory.create({
-          mode: 'api'
-        })).rejects.toThrow('OpenAI API key is required for API transcription mode');
+        await expect(
+          TranscriptionFactory.create({
+            mode: 'api'
+          })
+        ).rejects.toThrow('OpenAI API key is required for API transcription mode');
       });
 
       it('should use API mode as default if mode not specified', async () => {
@@ -309,9 +311,11 @@ describe('TranscriptionFactory', () => {
       });
 
       it('should throw error if backend URL is missing', async () => {
-        await expect(TranscriptionFactory.create({
-          mode: 'local'
-        })).rejects.toThrow('Whisper backend URL is required for local transcription mode');
+        await expect(
+          TranscriptionFactory.create({
+            mode: 'local'
+          })
+        ).rejects.toThrow('Whisper backend URL is required for local transcription mode');
       });
     });
 
@@ -333,7 +337,7 @@ describe('TranscriptionFactory', () => {
 
       it('should fallback to API if local health check fails', async () => {
         // Mock health check to fail
-        vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl, options = {}) {
+        vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl, options = {}) {
           this.backendUrl = backendUrl;
           this.options = options;
           this.healthCheck = vi.fn(() => Promise.resolve(false));
@@ -352,7 +356,7 @@ describe('TranscriptionFactory', () => {
 
       it('should fallback to API if local service throws error', async () => {
         // Mock health check to throw error
-        vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl, options = {}) {
+        vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl, options = {}) {
           this.backendUrl = backendUrl;
           this.options = options;
           this.healthCheck = vi.fn(() => Promise.reject(new Error('Connection failed')));
@@ -380,17 +384,19 @@ describe('TranscriptionFactory', () => {
 
       it('should throw error if both local and API are unavailable', async () => {
         // Mock health check to fail
-        vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl, options = {}) {
+        vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl, options = {}) {
           this.backendUrl = backendUrl;
           this.options = options;
           this.healthCheck = vi.fn(() => Promise.resolve(false));
           this._type = 'LocalWhisperService';
         });
 
-        await expect(TranscriptionFactory.create({
-          mode: 'auto',
-          whisperBackendUrl: 'http://localhost:8080'
-        })).rejects.toThrow(
+        await expect(
+          TranscriptionFactory.create({
+            mode: 'auto',
+            whisperBackendUrl: 'http://localhost:8080'
+          })
+        ).rejects.toThrow(
           'Auto mode failed: local backend unavailable and no OpenAI API key configured'
         );
       });
@@ -423,9 +429,11 @@ describe('TranscriptionFactory', () => {
       });
 
       it('should throw error if unknown mode and no API key', async () => {
-        await expect(TranscriptionFactory.create({
-          mode: 'unknown-mode'
-        })).rejects.toThrow('OpenAI API key is required for API transcription mode');
+        await expect(
+          TranscriptionFactory.create({
+            mode: 'unknown-mode'
+          })
+        ).rejects.toThrow('OpenAI API key is required for API transcription mode');
       });
     });
   });
@@ -453,7 +461,7 @@ describe('TranscriptionFactory', () => {
 
     it('should return false if health check fails', async () => {
       // Mock health check to fail
-      vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl) {
+      vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl) {
         this.backendUrl = backendUrl;
         this.healthCheck = vi.fn(() => Promise.resolve(false));
       });
@@ -465,7 +473,7 @@ describe('TranscriptionFactory', () => {
 
     it('should return false if health check throws error', async () => {
       // Mock health check to throw error
-      vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl) {
+      vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl) {
         this.backendUrl = backendUrl;
         this.healthCheck = vi.fn(() => Promise.reject(new Error('Connection timeout')));
       });
@@ -477,7 +485,7 @@ describe('TranscriptionFactory', () => {
 
     it('should pass options to health check', async () => {
       const mockHealthCheck = vi.fn(() => Promise.resolve(true));
-      vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl) {
+      vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl) {
         this.backendUrl = backendUrl;
         this.healthCheck = mockHealthCheck;
       });
@@ -550,7 +558,7 @@ describe('TranscriptionFactory', () => {
 
     it('should include API mode descriptor', () => {
       const modes = TranscriptionFactory.getAvailableModes();
-      const apiMode = modes.find(m => m.id === TranscriptionMode.API);
+      const apiMode = modes.find((m) => m.id === TranscriptionMode.API);
 
       expect(apiMode).toBeDefined();
       expect(apiMode.name).toBe('API Only');
@@ -561,7 +569,7 @@ describe('TranscriptionFactory', () => {
 
     it('should include LOCAL mode descriptor', () => {
       const modes = TranscriptionFactory.getAvailableModes();
-      const localMode = modes.find(m => m.id === TranscriptionMode.LOCAL);
+      const localMode = modes.find((m) => m.id === TranscriptionMode.LOCAL);
 
       expect(localMode).toBeDefined();
       expect(localMode.name).toBe('Local Whisper');
@@ -572,7 +580,7 @@ describe('TranscriptionFactory', () => {
 
     it('should include AUTO mode descriptor', () => {
       const modes = TranscriptionFactory.getAvailableModes();
-      const autoMode = modes.find(m => m.id === TranscriptionMode.AUTO);
+      const autoMode = modes.find((m) => m.id === TranscriptionMode.AUTO);
 
       expect(autoMode).toBeDefined();
       expect(autoMode.name).toBe('Auto (Local + API Fallback)');
@@ -584,7 +592,7 @@ describe('TranscriptionFactory', () => {
     it('should have descriptions for all modes', () => {
       const modes = TranscriptionFactory.getAvailableModes();
 
-      modes.forEach(mode => {
+      modes.forEach((mode) => {
         expect(mode.description).toBeDefined();
         expect(typeof mode.description).toBe('string');
         expect(mode.description.length).toBeGreaterThan(0);
@@ -597,8 +605,8 @@ describe('TranscriptionFactory', () => {
       const options = {
         defaultLanguage: 'en',
         defaultSpeakerMap: {
-          'SPEAKER_00': 'Game Master',
-          'SPEAKER_01': 'Player 1'
+          SPEAKER_00: 'Game Master',
+          SPEAKER_01: 'Player 1'
         },
         timeout: 120000
       };
@@ -633,7 +641,7 @@ describe('TranscriptionFactory', () => {
 
     it('should handle auto mode with successful local service', async () => {
       const mockHealthCheck = vi.fn(() => Promise.resolve(true));
-      vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl, options = {}) {
+      vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl, options = {}) {
         this.backendUrl = backendUrl;
         this.options = options;
         this.healthCheck = mockHealthCheck;
@@ -655,7 +663,7 @@ describe('TranscriptionFactory', () => {
     });
 
     it('should handle auto mode with failed local service fallback', async () => {
-      vi.mocked(LocalWhisperService).mockImplementationOnce(function(backendUrl, options = {}) {
+      vi.mocked(LocalWhisperService).mockImplementationOnce(function (backendUrl, options = {}) {
         this.backendUrl = backendUrl;
         this.options = options;
         this.healthCheck = vi.fn(() => Promise.reject(new Error('Network error')));

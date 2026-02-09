@@ -87,16 +87,16 @@ class Settings {
       type: String,
       choices: {
         '': 'VOXCHRONICLE.Settings.LanguageAuto',
-        'en': 'English',
-        'it': 'Italiano',
-        'es': 'Español',
-        'de': 'Deutsch',
-        'fr': 'Français',
-        'pt': 'Português',
-        'pl': 'Polski',
-        'ru': 'Русский',
-        'ja': '日本語',
-        'zh': '中文'
+        en: 'English',
+        it: 'Italiano',
+        es: 'Español',
+        de: 'Deutsch',
+        fr: 'Français',
+        pt: 'Português',
+        pl: 'Polski',
+        ru: 'Русский',
+        ja: '日本語',
+        zh: '中文'
       },
       default: ''
     });
@@ -110,9 +110,9 @@ class Settings {
       config: true,
       type: String,
       choices: {
-        'api': 'VOXCHRONICLE.Settings.TranscriptionModeAPI',
-        'local': 'VOXCHRONICLE.Settings.TranscriptionModeLocal',
-        'auto': 'VOXCHRONICLE.Settings.TranscriptionModeAuto'
+        api: 'VOXCHRONICLE.Settings.TranscriptionModeAPI',
+        local: 'VOXCHRONICLE.Settings.TranscriptionModeLocal',
+        auto: 'VOXCHRONICLE.Settings.TranscriptionModeAuto'
       },
       default: 'auto'
     });
@@ -150,7 +150,7 @@ class Settings {
       name: 'VOXCHRONICLE.Settings.VocabularyDictionary',
       hint: 'VOXCHRONICLE.Settings.VocabularyDictionaryHint',
       scope: 'world',
-      config: false,  // Hidden from config menu - managed via UI
+      config: false, // Hidden from config menu - managed via UI
       type: Object,
       default: {
         character_names: [],
@@ -173,9 +173,9 @@ class Settings {
       config: true,
       type: String,
       choices: {
-        'auto': 'VOXCHRONICLE.Settings.AudioSourceAuto',
-        'microphone': 'VOXCHRONICLE.Settings.AudioSourceMicrophone',
-        'webrtc': 'VOXCHRONICLE.Settings.AudioSourceWebRTC'
+        auto: 'VOXCHRONICLE.Settings.AudioSourceAuto',
+        microphone: 'VOXCHRONICLE.Settings.AudioSourceMicrophone',
+        webrtc: 'VOXCHRONICLE.Settings.AudioSourceWebRTC'
       },
       default: 'auto'
     });
@@ -212,8 +212,8 @@ class Settings {
       config: true,
       type: String,
       choices: {
-        'standard': 'VOXCHRONICLE.Settings.ImageQualityStandard',
-        'hd': 'VOXCHRONICLE.Settings.ImageQualityHD'
+        standard: 'VOXCHRONICLE.Settings.ImageQualityStandard',
+        hd: 'VOXCHRONICLE.Settings.ImageQualityHD'
       },
       default: 'standard'
     });
@@ -353,7 +353,9 @@ class Settings {
   static _onApiKeyChange(service) {
     // Notify user that services may need re-initialization
     if (game.ready) {
-      ui.notifications?.info(`VoxChronicle: ${service === 'openai' ? 'OpenAI' : 'Kanka'} API key updated. Services will be re-initialized.`);
+      ui.notifications?.info(
+        `VoxChronicle: ${service === 'openai' ? 'OpenAI' : 'Kanka'} API key updated. Services will be re-initialized.`
+      );
     }
   }
 
@@ -406,7 +408,7 @@ class Settings {
   /**
    * Check if all required settings are configured
    *
-   * @returns {Object} Status of each configuration area
+   * @returns {object} Status of each configuration area
    * @static
    */
   static getConfigurationStatus() {
@@ -420,7 +422,7 @@ class Settings {
   /**
    * Get speaker labels with fallback to empty object
    *
-   * @returns {Object} Map of speaker IDs to player names
+   * @returns {object} Map of speaker IDs to player names
    * @static
    */
   static getSpeakerLabels() {
@@ -434,7 +436,7 @@ class Settings {
   /**
    * Update speaker labels
    *
-   * @param {Object} labels - Map of speaker IDs to player names
+   * @param {object} labels - Map of speaker IDs to player names
    * @returns {Promise<void>}
    * @static
    */
@@ -456,7 +458,7 @@ class Settings {
   /**
    * Get audio capture settings
    *
-   * @returns {Object} Audio capture configuration
+   * @returns {object} Audio capture configuration
    * @static
    */
   static getAudioSettings() {
@@ -470,7 +472,7 @@ class Settings {
   /**
    * Get image generation settings
    *
-   * @returns {Object} Image generation configuration
+   * @returns {object} Image generation configuration
    * @static
    */
   static getImageSettings() {
@@ -483,7 +485,7 @@ class Settings {
   /**
    * Get entity extraction settings
    *
-   * @returns {Object} Entity extraction configuration
+   * @returns {object} Entity extraction configuration
    * @static
    */
   static getEntitySettings() {
@@ -509,7 +511,10 @@ class Settings {
 
     try {
       // Show loading notification
-      const loadingNotif = ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.ValidatingOpenAI'), { permanent: true });
+      const loadingNotif = ui.notifications?.info(
+        game.i18n.localize('VOXCHRONICLE.Validation.ValidatingOpenAI'),
+        { permanent: true }
+      );
 
       // Import VoxChronicle dynamically to avoid circular dependencies
       const { VoxChronicle } = await import('./VoxChronicle.mjs');
@@ -551,7 +556,9 @@ class Settings {
         return false;
       }
     } catch (error) {
-      ui.notifications?.error(game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', { error: error.message }));
+      ui.notifications?.error(
+        game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', { error: error.message })
+      );
       console.error(`${MODULE_ID} | OpenAI API key validation error:`, error);
       return false;
     }
@@ -567,13 +574,18 @@ class Settings {
   static async validateKankaToken() {
     // Check if API token is configured
     if (!Settings.isKankaConfigured()) {
-      ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenNotConfigured'));
+      ui.notifications?.error(
+        game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenNotConfigured')
+      );
       return false;
     }
 
     try {
       // Show loading notification
-      const loadingNotif = ui.notifications?.info(game.i18n.localize('VOXCHRONICLE.Validation.ValidatingKanka'), { permanent: true });
+      const loadingNotif = ui.notifications?.info(
+        game.i18n.localize('VOXCHRONICLE.Validation.ValidatingKanka'),
+        { permanent: true }
+      );
 
       // Import VoxChronicle dynamically to avoid circular dependencies
       const { VoxChronicle } = await import('./VoxChronicle.mjs');
@@ -615,7 +627,9 @@ class Settings {
         return false;
       }
     } catch (error) {
-      ui.notifications?.error(game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', { error: error.message }));
+      ui.notifications?.error(
+        game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', { error: error.message })
+      );
       console.error(`${MODULE_ID} | Kanka API token validation error:`, error);
       return false;
     }
@@ -624,7 +638,7 @@ class Settings {
   /**
    * Get relationship extraction settings
    *
-   * @returns {Object} Relationship extraction configuration
+   * @returns {object} Relationship extraction configuration
    * @static
    */
   static getRelationshipSettings() {

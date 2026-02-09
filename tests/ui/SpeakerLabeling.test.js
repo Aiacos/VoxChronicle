@@ -88,7 +88,7 @@ function setupEnvironment() {
       // Return a mock jQuery object for HTML strings
       return {
         on: vi.fn(),
-        find: vi.fn(function(selector) {
+        find: vi.fn(function (selector) {
           return {
             on: vi.fn(),
             find: vi.fn(() => ({
@@ -122,7 +122,8 @@ function setupEnvironment() {
 }
 
 // Import after environment is set up
-const { SpeakerLabeling, DEFAULT_SPEAKER_IDS } = await import('../../scripts/ui/SpeakerLabeling.mjs');
+const { SpeakerLabeling, DEFAULT_SPEAKER_IDS } =
+  await import('../../scripts/ui/SpeakerLabeling.mjs');
 
 /**
  * Create mock game object
@@ -151,11 +152,13 @@ function createMockGame() {
       })
     },
     users: {
-      map: vi.fn((callback) => [
-        { id: 'user1', name: 'Alice', isGM: true },
-        { id: 'user2', name: 'Bob', isGM: false },
-        { id: 'user3', name: 'Charlie', isGM: false }
-      ].map(callback))
+      map: vi.fn((callback) =>
+        [
+          { id: 'user1', name: 'Alice', isGM: true },
+          { id: 'user2', name: 'Bob', isGM: false },
+          { id: 'user3', name: 'Charlie', isGM: false }
+        ].map(callback)
+      )
     }
   };
 }
@@ -296,7 +299,7 @@ describe('SpeakerLabeling', () => {
 
       const ids = speakerLabeling._getAllSpeakerIds();
 
-      expect(ids.filter(id => id === 'SPEAKER_00').length).toBe(1);
+      expect(ids.filter((id) => id === 'SPEAKER_00').length).toBe(1);
     });
   });
 
@@ -364,7 +367,7 @@ describe('SpeakerLabeling', () => {
       };
 
       const data = await speakerLabeling.getData();
-      const speaker00 = data.speakers.find(s => s.id === 'SPEAKER_00');
+      const speaker00 = data.speakers.find((s) => s.id === 'SPEAKER_00');
 
       expect(speaker00).toBeDefined();
       expect(speaker00.label).toBe('Alice');
@@ -375,8 +378,8 @@ describe('SpeakerLabeling', () => {
       speakerLabeling._knownSpeakers = ['SPEAKER_00'];
 
       const data = await speakerLabeling.getData();
-      const speaker00 = data.speakers.find(s => s.id === 'SPEAKER_00');
-      const speaker01 = data.speakers.find(s => s.id === 'SPEAKER_01');
+      const speaker00 = data.speakers.find((s) => s.id === 'SPEAKER_00');
+      const speaker01 = data.speakers.find((s) => s.id === 'SPEAKER_01');
 
       expect(speaker00.isKnown).toBe(true);
       expect(speaker01.isKnown).toBe(false);
@@ -459,7 +462,7 @@ describe('SpeakerLabeling', () => {
       const formData = {
         'speaker-SPEAKER_00': 'Alice',
         'other-field': 'value',
-        'submit': 'Save'
+        submit: 'Save'
       };
 
       await speakerLabeling._updateObject({}, formData);
@@ -760,7 +763,11 @@ describe('SpeakerLabeling', () => {
 
       await SpeakerLabeling.addKnownSpeakers(['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02']);
 
-      expect(mockSettings.set).toHaveBeenCalledWith('knownSpeakers', ['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_02']);
+      expect(mockSettings.set).toHaveBeenCalledWith('knownSpeakers', [
+        'SPEAKER_00',
+        'SPEAKER_01',
+        'SPEAKER_02'
+      ]);
     });
 
     it('should filter out null/undefined values', async () => {
@@ -836,9 +843,7 @@ describe('SpeakerLabeling', () => {
     it('should use original ID if no label exists', () => {
       mockSettings.getSpeakerLabels.mockReturnValue({});
 
-      const segments = [
-        { text: 'Hello', speaker: 'SPEAKER_00' }
-      ];
+      const segments = [{ text: 'Hello', speaker: 'SPEAKER_00' }];
 
       const mapped = SpeakerLabeling.mapSpeakerLabels(segments);
 
@@ -848,9 +853,7 @@ describe('SpeakerLabeling', () => {
     it('should use "Unknown Speaker" if no speaker property', () => {
       mockSettings.getSpeakerLabels.mockReturnValue({});
 
-      const segments = [
-        { text: 'Hello' }
-      ];
+      const segments = [{ text: 'Hello' }];
 
       const mapped = SpeakerLabeling.mapSpeakerLabels(segments);
 
@@ -862,9 +865,7 @@ describe('SpeakerLabeling', () => {
         SPEAKER_00: 'Alice'
       });
 
-      const segments = [
-        { text: 'Hello', speaker: 'SPEAKER_00', timestamp: 1000 }
-      ];
+      const segments = [{ text: 'Hello', speaker: 'SPEAKER_00', timestamp: 1000 }];
 
       const mapped = SpeakerLabeling.mapSpeakerLabels(segments);
 
@@ -982,7 +983,7 @@ describe('SpeakerLabeling', () => {
 
     it('should escape HTML in speaker data', async () => {
       speakerLabeling._labels = {
-        'SPEAKER_00': '<script>alert("xss")</script>'
+        SPEAKER_00: '<script>alert("xss")</script>'
       };
 
       const html = await speakerLabeling._renderFallbackContent();

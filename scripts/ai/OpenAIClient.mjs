@@ -41,7 +41,7 @@ const DEFAULT_TIMEOUT_MS = 120000;
 /**
  * Custom error class for OpenAI API errors
  *
- * @extends Error
+ * @augments Error
  */
 class OpenAIError extends Error {
   /**
@@ -50,7 +50,7 @@ class OpenAIError extends Error {
    * @param {string} message - Error message
    * @param {string} type - Error type from OpenAIErrorType
    * @param {number} [status] - HTTP status code
-   * @param {Object} [details] - Additional error details
+   * @param {object} [details] - Additional error details
    */
   constructor(message, type, status = null, details = null) {
     super(message);
@@ -72,10 +72,12 @@ class OpenAIError extends Error {
    * @returns {boolean} True if the error can be retried
    */
   get isRetryable() {
-    return this.type === OpenAIErrorType.RATE_LIMIT_ERROR ||
-           this.type === OpenAIErrorType.NETWORK_ERROR ||
-           this.type === OpenAIErrorType.TIMEOUT_ERROR ||
-           (this.status >= 500 && this.status < 600);
+    return (
+      this.type === OpenAIErrorType.RATE_LIMIT_ERROR ||
+      this.type === OpenAIErrorType.NETWORK_ERROR ||
+      this.type === OpenAIErrorType.TIMEOUT_ERROR ||
+      (this.status >= 500 && this.status < 600)
+    );
   }
 }
 
@@ -92,7 +94,7 @@ class OpenAIError extends Error {
 class OpenAIClient {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('OpenAIClient');
@@ -129,7 +131,7 @@ class OpenAIClient {
    * Create a new OpenAIClient instance
    *
    * @param {string} apiKey - OpenAI API key
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {string} [options.baseUrl] - Custom API base URL
    * @param {number} [options.timeout=120000] - Request timeout in milliseconds
    * @param {number} [options.maxRetries=3] - Maximum retry attempts for failed requests
@@ -180,7 +182,7 @@ class OpenAIClient {
   /**
    * Build authorization headers for API requests
    *
-   * @returns {Object} Headers object with Bearer token
+   * @returns {object} Headers object with Bearer token
    * @private
    */
   _buildAuthHeaders() {
@@ -192,21 +194,21 @@ class OpenAIClient {
     }
 
     return {
-      'Authorization': `Bearer ${this._apiKey}`
+      Authorization: `Bearer ${this._apiKey}`
     };
   }
 
   /**
    * Build common headers for JSON API requests
    *
-   * @returns {Object} Headers object
+   * @returns {object} Headers object
    * @private
    */
   _buildJsonHeaders() {
     return {
       ...this._buildAuthHeaders(),
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Accept: 'application/json'
     };
   }
 
@@ -309,12 +311,12 @@ class OpenAIClient {
    * Make a request to the OpenAI API
    *
    * @param {string} endpoint - API endpoint (e.g., '/chat/completions')
-   * @param {Object} [options] - Fetch options
+   * @param {object} [options] - Fetch options
    * @param {string} [options.method='GET'] - HTTP method
-   * @param {Object} [options.headers] - Additional headers
+   * @param {object} [options.headers] - Additional headers
    * @param {string|FormData} [options.body] - Request body
    * @param {number} [options.timeout] - Custom timeout for this request
-   * @returns {Promise<Object>} Parsed JSON response
+   * @returns {Promise<object>} Parsed JSON response
    * @throws {OpenAIError} If the request fails
    */
   async request(endpoint, options = {}) {
@@ -330,9 +332,7 @@ class OpenAIClient {
 
     // Build headers - use JSON headers unless body is FormData
     const isFormData = options.body instanceof FormData;
-    const baseHeaders = isFormData
-      ? this._buildAuthHeaders()
-      : this._buildJsonHeaders();
+    const baseHeaders = isFormData ? this._buildAuthHeaders() : this._buildJsonHeaders();
 
     const headers = {
       ...baseHeaders,
@@ -387,7 +387,6 @@ class OpenAIClient {
         const data = await response.json();
         this._logger.debug(`Request to ${endpoint} completed successfully`);
         return data;
-
       } catch (error) {
         // Clear timeout
         clearTimeout(controller.timeoutId);
@@ -425,12 +424,9 @@ class OpenAIClient {
           error.message || 'Unknown error occurred'
         );
         const sanitizedError = SensitiveDataFilter.sanitizeObject(error);
-        throw new OpenAIError(
-          sanitizedMessage,
-          OpenAIErrorType.API_ERROR,
-          null,
-          { originalError: sanitizedError }
-        );
+        throw new OpenAIError(sanitizedMessage, OpenAIErrorType.API_ERROR, null, {
+          originalError: sanitizedError
+        });
       }
     });
   }
@@ -439,9 +435,9 @@ class OpenAIClient {
    * Make a POST request with JSON body
    *
    * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request payload
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} data - Request payload
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async post(endpoint, data, options = {}) {
     return this.request(endpoint, {
@@ -456,8 +452,8 @@ class OpenAIClient {
    *
    * @param {string} endpoint - API endpoint
    * @param {FormData} formData - Form data with files
-   * @param {Object} [options] - Additional fetch options
-   * @returns {Promise<Object>} Parsed JSON response
+   * @param {object} [options] - Additional fetch options
+   * @returns {Promise<object>} Parsed JSON response
    */
   async postFormData(endpoint, formData, options = {}) {
     return this.request(endpoint, {
@@ -498,7 +494,7 @@ class OpenAIClient {
   /**
    * Get rate limiter statistics
    *
-   * @returns {Object} Rate limiter stats
+   * @returns {object} Rate limiter stats
    */
   getRateLimiterStats() {
     return this._rateLimiter.getStats();

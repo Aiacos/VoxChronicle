@@ -85,13 +85,17 @@ describe('ApiKeyValidator', () => {
       });
 
       it('should reject key without sk- prefix', () => {
-        const result = ApiKeyValidator.validateOpenAIKey('1234567890abcdefghijklmnopqrstuvwxyzABCDEFG');
+        const result = ApiKeyValidator.validateOpenAIKey(
+          '1234567890abcdefghijklmnopqrstuvwxyzABCDEFG'
+        );
         expect(result.valid).toBe(false);
         expect(result.error).toBe("OpenAI API keys must start with 'sk-' or 'sk-proj-'");
       });
 
       it('should reject key with wrong prefix', () => {
-        const result = ApiKeyValidator.validateOpenAIKey('pk-1234567890abcdefghijklmnopqrstuvwxyzABCDEFG');
+        const result = ApiKeyValidator.validateOpenAIKey(
+          'pk-1234567890abcdefghijklmnopqrstuvwxyzABCDEFG'
+        );
         expect(result.valid).toBe(false);
         expect(result.error).toBe("OpenAI API keys must start with 'sk-' or 'sk-proj-'");
       });
@@ -99,31 +103,45 @@ describe('ApiKeyValidator', () => {
       it('should reject key too short (less than 43 chars after prefix)', () => {
         const result = ApiKeyValidator.validateOpenAIKey('sk-12345');
         expect(result.valid).toBe(false);
-        expect(result.error).toBe("Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens");
+        expect(result.error).toBe(
+          "Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens"
+        );
       });
 
       it('should reject key with invalid characters (spaces)', () => {
-        const result = ApiKeyValidator.validateOpenAIKey('sk-1234 5678 90ab cdef ghij klmn opqr stuv wxyz ABCDEFG');
+        const result = ApiKeyValidator.validateOpenAIKey(
+          'sk-1234 5678 90ab cdef ghij klmn opqr stuv wxyz ABCDEFG'
+        );
         expect(result.valid).toBe(false);
-        expect(result.error).toBe("Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens");
+        expect(result.error).toBe(
+          "Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens"
+        );
       });
 
       it('should reject key with invalid characters (special chars)', () => {
-        const result = ApiKeyValidator.validateOpenAIKey('sk-1234567890!@#$%^&*()_+=abcdefghijklmnopqrst');
+        const result = ApiKeyValidator.validateOpenAIKey(
+          'sk-1234567890!@#$%^&*()_+=abcdefghijklmnopqrst'
+        );
         expect(result.valid).toBe(false);
-        expect(result.error).toBe("Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens");
+        expect(result.error).toBe(
+          "Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens"
+        );
       });
 
       it('should reject just "sk-"', () => {
         const result = ApiKeyValidator.validateOpenAIKey('sk-');
         expect(result.valid).toBe(false);
-        expect(result.error).toBe("Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens");
+        expect(result.error).toBe(
+          "Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens"
+        );
       });
 
       it('should reject just "sk-proj-"', () => {
         const result = ApiKeyValidator.validateOpenAIKey('sk-proj-');
         expect(result.valid).toBe(false);
-        expect(result.error).toBe("Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens");
+        expect(result.error).toBe(
+          "Invalid OpenAI API key format. Keys must start with 'sk-' or 'sk-proj-' followed by at least 43 alphanumeric characters or hyphens"
+        );
       });
     });
   });
@@ -214,28 +232,36 @@ describe('ApiKeyValidator', () => {
         const token = 'a'.repeat(30) + '-' + 'b'.repeat(29); // 60 chars with hyphen
         const result = ApiKeyValidator.validateKankaToken(token);
         expect(result.valid).toBe(false);
-        expect(result.error).toBe('Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters');
+        expect(result.error).toBe(
+          'Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters'
+        );
       });
 
       it('should reject token with special characters', () => {
         const token = 'a'.repeat(30) + '@' + 'b'.repeat(29); // 60 chars with @
         const result = ApiKeyValidator.validateKankaToken(token);
         expect(result.valid).toBe(false);
-        expect(result.error).toBe('Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters');
+        expect(result.error).toBe(
+          'Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters'
+        );
       });
 
       it('should reject token with spaces', () => {
         const token = 'a'.repeat(30) + ' ' + 'b'.repeat(29); // 60 chars with space
         const result = ApiKeyValidator.validateKankaToken(token);
         expect(result.valid).toBe(false);
-        expect(result.error).toBe('Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters');
+        expect(result.error).toBe(
+          'Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters'
+        );
       });
 
       it('should reject token with underscores', () => {
         const token = 'a'.repeat(30) + '_' + 'b'.repeat(29); // 60 chars with underscore
         const result = ApiKeyValidator.validateKankaToken(token);
         expect(result.valid).toBe(false);
-        expect(result.error).toBe('Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters');
+        expect(result.error).toBe(
+          'Invalid Kanka API token format. Tokens must be exactly 60 alphanumeric characters'
+        );
       });
     });
   });

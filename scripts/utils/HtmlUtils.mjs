@@ -37,5 +37,5 @@ export function escapeHtml(text) {
     "'": '&#039;'
   };
 
-  return String(text).replace(/[&<>"']/g, char => escapeMap[char]);
+  return String(text).replace(/[&<>"']/g, (char) => escapeMap[char]);
 }

@@ -39,7 +39,11 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { SessionOrchestrator, SessionState, DEFAULT_SESSION_OPTIONS } from '../../scripts/orchestration/SessionOrchestrator.mjs';
+import {
+  SessionOrchestrator,
+  SessionState,
+  DEFAULT_SESSION_OPTIONS
+} from '../../scripts/orchestration/SessionOrchestrator.mjs';
 
 /**
  * Create mock audio blob for testing
@@ -83,17 +87,16 @@ function createMockTranscriptionResult(options = {}) {
  */
 function createMockEntityExtractionResult() {
   return {
-    characters: [
-      { name: 'Gandalf', description: 'A wise wizard', isNPC: true }
-    ],
-    locations: [
-      { name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }
-    ],
-    items: [
-      { name: 'Staff of Power', description: 'A magical staff', type: 'Weapon' }
-    ],
+    characters: [{ name: 'Gandalf', description: 'A wise wizard', isNPC: true }],
+    locations: [{ name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }],
+    items: [{ name: 'Staff of Power', description: 'A magical staff', type: 'Weapon' }],
     moments: [
-      { id: 'moment-1', title: 'Epic Battle', description: 'Battle description', imagePrompt: 'epic battle scene' }
+      {
+        id: 'moment-1',
+        title: 'Epic Battle',
+        description: 'Battle description',
+        imagePrompt: 'epic battle scene'
+      }
     ],
     totalCount: 3
   };
@@ -226,11 +229,9 @@ describe('SessionOrchestrator', () => {
 
       orchestrator._updateState(SessionState.RECORDING, { test: 'data' });
 
-      expect(onStateChange).toHaveBeenCalledWith(
-        SessionState.RECORDING,
-        SessionState.IDLE,
-        { test: 'data' }
-      );
+      expect(onStateChange).toHaveBeenCalledWith(SessionState.RECORDING, SessionState.IDLE, {
+        test: 'data'
+      });
     });
 
     it('should detect active sessions', () => {
@@ -308,9 +309,7 @@ describe('SessionOrchestrator', () => {
     it('should throw error if session already active', async () => {
       await orchestrator.startSession();
 
-      await expect(orchestrator.startSession()).rejects.toThrow(
-        'A session is already active'
-      );
+      await expect(orchestrator.startSession()).rejects.toThrow('A session is already active');
     });
 
     it('should throw error if audio recorder not configured', async () => {
@@ -328,18 +327,14 @@ describe('SessionOrchestrator', () => {
         new Error('Microphone access denied')
       );
 
-      await expect(orchestrator.startSession()).rejects.toThrow(
-        'Microphone access denied'
-      );
+      await expect(orchestrator.startSession()).rejects.toThrow('Microphone access denied');
     });
 
     it('should pass recording options to audio recorder', async () => {
       const recordingOptions = { mimeType: 'audio/webm' };
       await orchestrator.startSession({ recordingOptions });
 
-      expect(mockServices.audioRecorder.startRecording).toHaveBeenCalledWith(
-        recordingOptions
-      );
+      expect(mockServices.audioRecorder.startRecording).toHaveBeenCalledWith(recordingOptions);
     });
   });
 
@@ -373,15 +368,11 @@ describe('SessionOrchestrator', () => {
     it('should throw error if not recording', async () => {
       await orchestrator.stopSession();
 
-      await expect(orchestrator.stopSession()).rejects.toThrow(
-        'No recording in progress'
-      );
+      await expect(orchestrator.stopSession()).rejects.toThrow('No recording in progress');
     });
 
     it('should handle stop recording errors', async () => {
-      mockServices.audioRecorder.stopRecording.mockRejectedValueOnce(
-        new Error('Stop failed')
-      );
+      mockServices.audioRecorder.stopRecording.mockRejectedValueOnce(new Error('Stop failed'));
 
       await expect(orchestrator.stopSession()).rejects.toThrow('Stop failed');
     });
@@ -412,9 +403,7 @@ describe('SessionOrchestrator', () => {
     it('should throw error if not recording', async () => {
       await orchestrator.stopSession({ processImmediately: false });
 
-      expect(() => orchestrator.pauseRecording()).toThrow(
-        'Cannot pause - not currently recording'
-      );
+      expect(() => orchestrator.pauseRecording()).toThrow('Cannot pause - not currently recording');
     });
   });
 
@@ -483,7 +472,7 @@ describe('SessionOrchestrator', () => {
     });
 
     it('should use provided speaker map', async () => {
-      const speakerMap = { 'SPEAKER_00': 'GM', 'SPEAKER_01': 'Player 1' };
+      const speakerMap = { SPEAKER_00: 'GM', SPEAKER_01: 'Player 1' };
       await orchestrator.processTranscription({ speakerMap });
 
       expect(mockServices.transcriptionService.transcribe).toHaveBeenCalledWith(
@@ -493,21 +482,19 @@ describe('SessionOrchestrator', () => {
     });
 
     it('should use session speaker map by default', async () => {
-      orchestrator.currentSession.speakerMap = { 'SPEAKER_00': 'GM' };
+      orchestrator.currentSession.speakerMap = { SPEAKER_00: 'GM' };
       await orchestrator.processTranscription();
 
       expect(mockServices.transcriptionService.transcribe).toHaveBeenCalledWith(
         expect.any(Blob),
-        expect.objectContaining({ speakerMap: { 'SPEAKER_00': 'GM' } })
+        expect.objectContaining({ speakerMap: { SPEAKER_00: 'GM' } })
       );
     });
 
     it('should throw error if no audio blob', async () => {
       orchestrator.currentSession.audioBlob = null;
 
-      await expect(orchestrator.processTranscription()).rejects.toThrow(
-        'No audio blob available'
-      );
+      await expect(orchestrator.processTranscription()).rejects.toThrow('No audio blob available');
     });
 
     it('should throw error if transcription service not configured', async () => {
@@ -519,9 +506,9 @@ describe('SessionOrchestrator', () => {
         audioBlob: createMockAudioBlob()
       };
 
-      await expect(
-        noTranscriptionOrchestrator.processTranscription()
-      ).rejects.toThrow('Transcription service not configured');
+      await expect(noTranscriptionOrchestrator.processTranscription()).rejects.toThrow(
+        'Transcription service not configured'
+      );
     });
 
     it('should extract entities if autoExtractEntities enabled', async () => {
@@ -635,9 +622,7 @@ describe('SessionOrchestrator', () => {
     });
 
     it('should handle extraction errors gracefully', async () => {
-      mockServices.entityExtractor.extractAll.mockRejectedValueOnce(
-        new Error('Extraction failed')
-      );
+      mockServices.entityExtractor.extractAll.mockRejectedValueOnce(new Error('Extraction failed'));
 
       const result = await orchestrator._extractEntities();
 
@@ -710,7 +695,7 @@ describe('SessionOrchestrator', () => {
       await orchestrator._generateImages();
 
       const requests = mockServices.imageGenerationService.generateBatch.mock.calls[0][0];
-      const characterRequests = requests.filter(r => r.entityType === 'character');
+      const characterRequests = requests.filter((r) => r.entityType === 'character');
       expect(characterRequests.length).toBeGreaterThan(0);
     });
 
@@ -721,9 +706,9 @@ describe('SessionOrchestrator', () => {
       await orchestrator._generateImages();
 
       const requests = mockServices.imageGenerationService.generateBatch.mock.calls[0][0];
-      const characterRequests = requests.filter(r => r.entityType === 'character');
+      const characterRequests = requests.filter((r) => r.entityType === 'character');
 
-      characterRequests.forEach(req => {
+      characterRequests.forEach((req) => {
         expect(req.description).toContain('Gandalf');
         expect(req.description).not.toContain('Hero');
       });
@@ -884,9 +869,7 @@ describe('SessionOrchestrator', () => {
     it('should throw error if no session data', async () => {
       orchestrator._currentSession = null;
 
-      await expect(orchestrator.publishToKanka()).rejects.toThrow(
-        'No session data available'
-      );
+      await expect(orchestrator.publishToKanka()).rejects.toThrow('No session data available');
     });
 
     it('should throw error if Kanka service not configured', async () => {
@@ -964,9 +947,7 @@ describe('SessionOrchestrator', () => {
       const onError = vi.fn();
       orchestrator.setCallbacks({ onError });
 
-      mockServices.audioRecorder.startRecording.mockRejectedValueOnce(
-        new Error('Test error')
-      );
+      mockServices.audioRecorder.startRecording.mockRejectedValueOnce(new Error('Test error'));
 
       try {
         await orchestrator.startSession();
@@ -974,10 +955,7 @@ describe('SessionOrchestrator', () => {
         // Expected to throw
       }
 
-      expect(onError).toHaveBeenCalledWith(
-        expect.any(Error),
-        'startSession'
-      );
+      expect(onError).toHaveBeenCalledWith(expect.any(Error), 'startSession');
     });
 
     it('should set and call onSessionComplete', async () => {
@@ -987,9 +965,7 @@ describe('SessionOrchestrator', () => {
       await orchestrator.startSession();
       await orchestrator.stopSession();
 
-      expect(onSessionComplete).toHaveBeenCalledWith(
-        orchestrator.currentSession
-      );
+      expect(onSessionComplete).toHaveBeenCalledWith(orchestrator.currentSession);
     });
   });
 
@@ -1122,9 +1098,7 @@ describe('SessionOrchestrator', () => {
 
   describe('error handling', () => {
     it('should transition to ERROR state on error', async () => {
-      mockServices.audioRecorder.startRecording.mockRejectedValueOnce(
-        new Error('Start failed')
-      );
+      mockServices.audioRecorder.startRecording.mockRejectedValueOnce(new Error('Start failed'));
 
       try {
         await orchestrator.startSession();
@@ -1140,9 +1114,7 @@ describe('SessionOrchestrator', () => {
       await orchestrator.stopSession({ processImmediately: false });
 
       orchestrator.currentSession.transcript = createMockTranscriptionResult();
-      mockServices.entityExtractor.extractAll.mockRejectedValueOnce(
-        new Error('Extraction failed')
-      );
+      mockServices.entityExtractor.extractAll.mockRejectedValueOnce(new Error('Extraction failed'));
 
       await orchestrator._extractEntities();
 
@@ -1158,9 +1130,7 @@ describe('SessionOrchestrator', () => {
       const onError = vi.fn();
       orchestrator.setCallbacks({ onError });
 
-      mockServices.audioRecorder.startRecording.mockRejectedValueOnce(
-        new Error('Test error')
-      );
+      mockServices.audioRecorder.startRecording.mockRejectedValueOnce(new Error('Test error'));
 
       try {
         await orchestrator.startSession();

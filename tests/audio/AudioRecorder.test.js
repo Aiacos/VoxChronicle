@@ -39,12 +39,18 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
     getRecorderOptions: vi.fn(() => ({ mimeType: 'audio/webm' })),
     createAudioBlob: vi.fn((chunks, mimeType) => new Blob(chunks, { type: mimeType })),
     getBlobSizeMB: vi.fn((blob) => (blob.size / (1024 * 1024)).toFixed(2)),
-    formatDuration: vi.fn((seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`)
+    formatDuration: vi.fn(
+      (seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`
+    )
   }
 }));
 
 // Import after mocks are set up
-import { AudioRecorder, RecordingState, CaptureSource } from '../../scripts/audio/AudioRecorder.mjs';
+import {
+  AudioRecorder,
+  RecordingState,
+  CaptureSource
+} from '../../scripts/audio/AudioRecorder.mjs';
 import { AudioUtils } from '../../scripts/utils/AudioUtils.mjs';
 
 /**
@@ -75,8 +81,8 @@ function createMockMediaStream(audioTracks = 1, videoTracks = 0) {
 
   return {
     getTracks: vi.fn(() => tracks),
-    getAudioTracks: vi.fn(() => tracks.filter(t => t.kind === 'audio')),
-    getVideoTracks: vi.fn(() => tracks.filter(t => t.kind === 'video'))
+    getAudioTracks: vi.fn(() => tracks.filter((t) => t.kind === 'audio')),
+    getVideoTracks: vi.fn(() => tracks.filter((t) => t.kind === 'video'))
   };
 }
 
@@ -149,7 +155,7 @@ describe('AudioRecorder', () => {
         enumerateDevices: mockEnumerateDevices
       },
       permissions: {
-        query: mockPermissionsQuery = vi.fn()
+        query: (mockPermissionsQuery = vi.fn())
       }
     };
 
@@ -319,9 +325,7 @@ describe('AudioRecorder', () => {
 
       await recorder.startRecording();
 
-      await expect(recorder.startRecording()).rejects.toThrow(
-        'Recording already in progress'
-      );
+      await expect(recorder.startRecording()).rejects.toThrow('Recording already in progress');
     });
 
     it('should handle microphone permission denial', async () => {
@@ -329,9 +333,7 @@ describe('AudioRecorder', () => {
       error.name = 'NotAllowedError';
       mockGetUserMedia.mockRejectedValueOnce(error);
 
-      await expect(recorder.startRecording()).rejects.toThrow(
-        'Microphone access denied'
-      );
+      await expect(recorder.startRecording()).rejects.toThrow('Microphone access denied');
 
       expect(recorder.state).toBe(RecordingState.INACTIVE);
     });
@@ -341,9 +343,7 @@ describe('AudioRecorder', () => {
       error.name = 'NotFoundError';
       mockGetUserMedia.mockRejectedValueOnce(error);
 
-      await expect(recorder.startRecording()).rejects.toThrow(
-        'No microphone found'
-      );
+      await expect(recorder.startRecording()).rejects.toThrow('No microphone found');
     });
 
     it('should handle microphone in use', async () => {
@@ -365,10 +365,7 @@ describe('AudioRecorder', () => {
 
       await recorder.startRecording();
 
-      expect(onStateChange).toHaveBeenCalledWith(
-        RecordingState.RECORDING,
-        RecordingState.INACTIVE
-      );
+      expect(onStateChange).toHaveBeenCalledWith(RecordingState.RECORDING, RecordingState.INACTIVE);
     });
   });
 
@@ -518,10 +515,7 @@ describe('AudioRecorder', () => {
       const audioBlob = await recorder.stopRecording();
 
       expect(audioBlob).toBeInstanceOf(Blob);
-      expect(AudioUtils.createAudioBlob).toHaveBeenCalledWith(
-        chunks,
-        'audio/webm'
-      );
+      expect(AudioUtils.createAudioBlob).toHaveBeenCalledWith(chunks, 'audio/webm');
       expect(recorder.state).toBe(RecordingState.INACTIVE);
       expect(recorder._mediaRecorder).toBeNull();
       expect(recorder._stream).toBeNull();
@@ -530,9 +524,7 @@ describe('AudioRecorder', () => {
     it('should throw error if no active recording', async () => {
       await recorder.stopRecording();
 
-      await expect(recorder.stopRecording()).rejects.toThrow(
-        'No active recording to stop'
-      );
+      await expect(recorder.stopRecording()).rejects.toThrow('No active recording to stop');
     });
 
     it('should cleanup stream tracks on stop', async () => {
@@ -541,7 +533,7 @@ describe('AudioRecorder', () => {
 
       await recorder.stopRecording();
 
-      tracks.forEach(track => {
+      tracks.forEach((track) => {
         expect(track.stop).toHaveBeenCalled();
       });
     });
@@ -553,7 +545,7 @@ describe('AudioRecorder', () => {
 
       // Make stop trigger error callback
       const originalStop = recorder._mediaRecorder.stop;
-      recorder._mediaRecorder.stop = function() {
+      recorder._mediaRecorder.stop = function () {
         this.state = 'inactive';
         if (this.onerror) {
           setTimeout(() => this.onerror({ error: new Error('Recording failed') }), 0);
@@ -582,9 +574,7 @@ describe('AudioRecorder', () => {
     it('should throw error if not recording when pausing', () => {
       recorder.pause();
 
-      expect(() => recorder.pause()).toThrow(
-        'Cannot pause - not currently recording'
-      );
+      expect(() => recorder.pause()).toThrow('Cannot pause - not currently recording');
     });
 
     it('should resume paused recording', () => {
@@ -596,9 +586,7 @@ describe('AudioRecorder', () => {
     });
 
     it('should throw error if not paused when resuming', () => {
-      expect(() => recorder.resume()).toThrow(
-        'Cannot resume - recording is not paused'
-      );
+      expect(() => recorder.resume()).toThrow('Cannot resume - recording is not paused');
     });
 
     it('should call onStateChange callbacks on pause and resume', () => {
@@ -606,18 +594,12 @@ describe('AudioRecorder', () => {
       recorder.setCallbacks({ onStateChange });
 
       recorder.pause();
-      expect(onStateChange).toHaveBeenCalledWith(
-        RecordingState.PAUSED,
-        RecordingState.RECORDING
-      );
+      expect(onStateChange).toHaveBeenCalledWith(RecordingState.PAUSED, RecordingState.RECORDING);
 
       onStateChange.mockClear();
 
       recorder.resume();
-      expect(onStateChange).toHaveBeenCalledWith(
-        RecordingState.RECORDING,
-        RecordingState.PAUSED
-      );
+      expect(onStateChange).toHaveBeenCalledWith(RecordingState.RECORDING, RecordingState.PAUSED);
     });
   });
 
@@ -648,7 +630,7 @@ describe('AudioRecorder', () => {
 
       recorder.cancel();
 
-      tracks.forEach(track => {
+      tracks.forEach((track) => {
         expect(track.stop).toHaveBeenCalled();
       });
     });
@@ -722,7 +704,7 @@ describe('AudioRecorder', () => {
 
       // Stream should be stopped immediately
       const tracks = mockStream.getTracks();
-      tracks.forEach(track => {
+      tracks.forEach((track) => {
         expect(track.stop).toHaveBeenCalled();
       });
     });

@@ -60,7 +60,10 @@ vi.mock('../../scripts/ai/TranscriptionService.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { TranscriptionProcessor, TranscriptionMode } from '../../scripts/orchestration/TranscriptionProcessor.mjs';
+import {
+  TranscriptionProcessor,
+  TranscriptionMode
+} from '../../scripts/orchestration/TranscriptionProcessor.mjs';
 import { LocalWhisperService } from '../../scripts/ai/LocalWhisperService.mjs';
 import { TranscriptionService } from '../../scripts/ai/TranscriptionService.mjs';
 
@@ -202,8 +205,8 @@ describe('TranscriptionProcessor', () => {
 
     it('should pass speaker map to transcription service', async () => {
       const speakerMap = {
-        'SPEAKER_00': 'Game Master',
-        'SPEAKER_01': 'Player 1'
+        SPEAKER_00: 'Game Master',
+        SPEAKER_01: 'Player 1'
       };
 
       await processor.processTranscription(mockAudioBlob, { speakerMap });
@@ -245,19 +248,17 @@ describe('TranscriptionProcessor', () => {
     it('should handle transcription error', async () => {
       mockService.transcribe = vi.fn().mockRejectedValue(new Error('API error'));
 
-      await expect(
-        processor.processTranscription(mockAudioBlob)
-      ).rejects.toThrow('API error');
+      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow('API error');
     });
 
     it('should validate audio blob parameter', async () => {
-      await expect(
-        processor.processTranscription(null)
-      ).rejects.toThrow('Invalid audio blob provided for transcription');
+      await expect(processor.processTranscription(null)).rejects.toThrow(
+        'Invalid audio blob provided for transcription'
+      );
 
-      await expect(
-        processor.processTranscription('not-a-blob')
-      ).rejects.toThrow('Invalid audio blob provided for transcription');
+      await expect(processor.processTranscription('not-a-blob')).rejects.toThrow(
+        'Invalid audio blob provided for transcription'
+      );
     });
   });
 
@@ -282,17 +283,15 @@ describe('TranscriptionProcessor', () => {
     it('should handle local transcription error in LOCAL mode', async () => {
       mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local whisper error'));
 
-      await expect(
-        processor.processTranscription(mockAudioBlob)
-      ).rejects.toThrow('Local whisper error');
+      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow(
+        'Local whisper error'
+      );
     });
 
     it('should not attempt fallback in LOCAL mode', async () => {
       mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local error'));
 
-      await expect(
-        processor.processTranscription(mockAudioBlob)
-      ).rejects.toThrow('Local error');
+      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow('Local error');
 
       // Should only call local service once, no fallback
       expect(mockService.transcribe).toHaveBeenCalledTimes(1);
@@ -343,8 +342,8 @@ describe('TranscriptionProcessor', () => {
       await processor.processTranscription(mockAudioBlob, { onProgress });
 
       // Check for fallback progress messages
-      const progressCalls = onProgress.mock.calls.map(call => call[1]);
-      expect(progressCalls.some(msg => msg.includes('fallback'))).toBe(true);
+      const progressCalls = onProgress.mock.calls.map((call) => call[1]);
+      expect(progressCalls.some((msg) => msg.includes('fallback'))).toBe(true);
     });
 
     it('should fail if no API key configured for fallback', async () => {
@@ -356,9 +355,9 @@ describe('TranscriptionProcessor', () => {
 
       mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local error'));
 
-      await expect(
-        processor.processTranscription(mockAudioBlob)
-      ).rejects.toThrow(/no OpenAI API key configured for fallback/);
+      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow(
+        /no OpenAI API key configured for fallback/
+      );
     });
 
     it('should fail with combined error message when both local and API fail', async () => {
@@ -367,15 +366,15 @@ describe('TranscriptionProcessor', () => {
       // Make the API fallback also fail
       mockApiTranscribe.mockRejectedValueOnce(new Error('API service error'));
 
-      await expect(
-        processor.processTranscription(mockAudioBlob)
-      ).rejects.toThrow(/Both local and API transcription failed/);
+      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow(
+        /Both local and API transcription failed/
+      );
     });
 
     it('should pass speaker map to fallback API service', async () => {
       mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local error'));
 
-      const speakerMap = { 'SPEAKER_00': 'GM' };
+      const speakerMap = { SPEAKER_00: 'GM' };
 
       await processor.processTranscription(mockAudioBlob, { speakerMap });
 
@@ -543,9 +542,9 @@ describe('TranscriptionProcessor', () => {
       });
 
       // Progress callback errors should propagate
-      await expect(
-        processor.processTranscription(mockAudioBlob, { onProgress })
-      ).rejects.toThrow('Progress callback error');
+      await expect(processor.processTranscription(mockAudioBlob, { onProgress })).rejects.toThrow(
+        'Progress callback error'
+      );
     });
 
     it('should handle missing options object', async () => {

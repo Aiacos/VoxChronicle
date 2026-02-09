@@ -51,7 +51,9 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
     estimateDuration: vi.fn((blob) => Math.round(blob.size / 16000)),
     getRecorderOptions: vi.fn(() => ({ mimeType: 'audio/webm' })),
     createAudioBlob: vi.fn((chunks, mimeType) => new Blob(chunks, { type: mimeType })),
-    formatDuration: vi.fn((seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`)
+    formatDuration: vi.fn(
+      (seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`
+    )
   },
   MAX_TRANSCRIPTION_SIZE: 25 * 1024 * 1024
 }));
@@ -134,7 +136,10 @@ globalThis.game = {
 };
 
 // Import after mocks are set up
-import { SessionOrchestrator, SessionState } from '../../scripts/orchestration/SessionOrchestrator.mjs';
+import {
+  SessionOrchestrator,
+  SessionState
+} from '../../scripts/orchestration/SessionOrchestrator.mjs';
 
 /**
  * Create a mock audio blob for testing
@@ -277,7 +282,7 @@ function createMockApiResponses() {
           tags: ['ruins', 'city']
         },
         {
-          name: 'Dragon\'s Lair',
+          name: "Dragon's Lair",
           type: 'location',
           description: 'Dark cavern where Smaug dwells',
           tags: ['dungeon', 'cave']
@@ -287,7 +292,7 @@ function createMockApiResponses() {
         {
           name: 'Magical Staff',
           type: 'item',
-          description: 'Gandalf\'s enchanted staff of power',
+          description: "Gandalf's enchanted staff of power",
           tags: ['weapon', 'magical']
         },
         {
@@ -401,15 +406,16 @@ describe('Full Session Flow Integration', () => {
           ok: true,
           status: 200,
           headers: createMockHeaders(),
-          json: () => Promise.resolve({
-            choices: [
-              {
-                message: {
-                  content: JSON.stringify(mockResponses.entityExtraction)
+          json: () =>
+            Promise.resolve({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify(mockResponses.entityExtraction)
+                  }
                 }
-              }
-            ]
-          })
+              ]
+            })
         });
       }
 
@@ -650,8 +656,8 @@ describe('Full Session Flow Integration', () => {
 
       // Verify progress updates were sent
       expect(progressUpdates.length).toBeGreaterThan(0);
-      expect(progressUpdates.some(p => p.stage === 'transcription')).toBe(true);
-      expect(progressUpdates.some(p => p.stage === 'extraction')).toBe(true);
+      expect(progressUpdates.some((p) => p.stage === 'transcription')).toBe(true);
+      expect(progressUpdates.some((p) => p.stage === 'extraction')).toBe(true);
 
       // STEP 3: Publish to Kanka
       const publishResult = await orchestrator.publishToKanka({
@@ -685,8 +691,8 @@ describe('Full Session Flow Integration', () => {
 
       // Apply speaker mapping
       const speakerMap = {
-        'SPEAKER_00': 'Game Master',
-        'SPEAKER_01': 'Player Alice'
+        SPEAKER_00: 'Game Master',
+        SPEAKER_01: 'Player Alice'
       };
 
       // Process with speaker mapping
@@ -757,9 +763,10 @@ describe('Full Session Flow Integration', () => {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve({
-              choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
-            })
+            json: () =>
+              Promise.resolve({
+                choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
+              })
           });
         }
         if (url.includes('/images/generations')) {
@@ -799,9 +806,15 @@ describe('Full Session Flow Integration', () => {
       await orchestrator.publishToKanka();
 
       // Verify calls happened in correct order
-      expect(apiCallOrder.indexOf('transcription')).toBeLessThan(apiCallOrder.indexOf('entity-extraction'));
-      expect(apiCallOrder.indexOf('entity-extraction')).toBeLessThan(apiCallOrder.indexOf('image-generation'));
-      expect(apiCallOrder.indexOf('image-generation')).toBeLessThan(apiCallOrder.indexOf('kanka-journal'));
+      expect(apiCallOrder.indexOf('transcription')).toBeLessThan(
+        apiCallOrder.indexOf('entity-extraction')
+      );
+      expect(apiCallOrder.indexOf('entity-extraction')).toBeLessThan(
+        apiCallOrder.indexOf('image-generation')
+      );
+      expect(apiCallOrder.indexOf('image-generation')).toBeLessThan(
+        apiCallOrder.indexOf('kanka-journal')
+      );
     });
 
     it('should use correct authentication for each API', async () => {
@@ -827,9 +840,10 @@ describe('Full Session Flow Integration', () => {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve({
-              choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
-            })
+            json: () =>
+              Promise.resolve({
+                choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
+              })
           });
         }
         return Promise.resolve({
@@ -843,14 +857,14 @@ describe('Full Session Flow Integration', () => {
       await orchestrator.stopSession();
 
       // Verify OpenAI calls use Bearer token
-      const openaiCalls = authHeaders.filter(h => h.url.includes('api.openai.com'));
-      openaiCalls.forEach(call => {
+      const openaiCalls = authHeaders.filter((h) => h.url.includes('api.openai.com'));
+      openaiCalls.forEach((call) => {
         expect(call.auth).toMatch(/^Bearer /);
       });
 
       // Verify Kanka calls use Bearer token
-      const kankaCalls = authHeaders.filter(h => h.url.includes('kanka.io'));
-      kankaCalls.forEach(call => {
+      const kankaCalls = authHeaders.filter((h) => h.url.includes('kanka.io'));
+      kankaCalls.forEach((call) => {
         expect(call.auth).toMatch(/^Bearer /);
       });
     });
@@ -928,9 +942,10 @@ describe('Full Session Flow Integration', () => {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve({
-              choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
-            })
+            json: () =>
+              Promise.resolve({
+                choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
+              })
           });
         }
         if (url.includes('/images/generations')) {
@@ -968,9 +983,10 @@ describe('Full Session Flow Integration', () => {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve({
-              choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
-            })
+            json: () =>
+              Promise.resolve({
+                choices: [{ message: { content: JSON.stringify(mockResponses.entityExtraction) } }]
+              })
           });
         }
 

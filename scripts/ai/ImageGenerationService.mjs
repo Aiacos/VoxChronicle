@@ -87,7 +87,7 @@ const IMAGE_URL_EXPIRY_MS = 3600000;
 /**
  * ImageGenerationService class for DALL-E 3 image generation
  *
- * @extends OpenAIClient
+ * @augments OpenAIClient
  * @example
  * const service = new ImageGenerationService('your-api-key');
  * const imageUrl = await service.generatePortrait('character',
@@ -97,7 +97,7 @@ const IMAGE_URL_EXPIRY_MS = 3600000;
 class ImageGenerationService extends OpenAIClient {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('ImageGenerationService');
@@ -127,7 +127,7 @@ class ImageGenerationService extends OpenAIClient {
    * Create a new ImageGenerationService instance
    *
    * @param {string} apiKey - OpenAI API key
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {string} [options.quality='standard'] - Default image quality
    * @param {string} [options.style='vivid'] - Default image style
    * @param {string} [options.campaignStyle=''] - Campaign/world style descriptor
@@ -151,7 +151,7 @@ class ImageGenerationService extends OpenAIClient {
    *
    * @param {string} entityType - Type of entity (character, location, item, scene)
    * @param {string} description - Description of what to generate
-   * @param {Object} [options] - Generation options
+   * @param {object} [options] - Generation options
    * @param {string} [options.size] - Image size (use ImageSize enum)
    * @param {string} [options.quality] - Image quality (use ImageQuality enum)
    * @param {string} [options.style] - Image style (use ImageStyle enum)
@@ -210,7 +210,6 @@ class ImageGenerationService extends OpenAIClient {
 
       this._logger.log('Image generated successfully');
       return result;
-
     } catch (error) {
       this._logger.error('Image generation failed:', error.message);
       throw error;
@@ -221,7 +220,7 @@ class ImageGenerationService extends OpenAIClient {
    * Generate a character portrait
    *
    * @param {string} description - Character description
-   * @param {Object} [options] - Generation options
+   * @param {object} [options] - Generation options
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateCharacterPortrait(description, options = {}) {
@@ -235,7 +234,7 @@ class ImageGenerationService extends OpenAIClient {
    * Generate a location illustration
    *
    * @param {string} description - Location description
-   * @param {Object} [options] - Generation options
+   * @param {object} [options] - Generation options
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateLocationImage(description, options = {}) {
@@ -249,7 +248,7 @@ class ImageGenerationService extends OpenAIClient {
    * Generate an item illustration
    *
    * @param {string} description - Item description
-   * @param {Object} [options] - Generation options
+   * @param {object} [options] - Generation options
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateItemImage(description, options = {}) {
@@ -263,7 +262,7 @@ class ImageGenerationService extends OpenAIClient {
    * Generate a scene illustration for dramatic moments
    *
    * @param {string} description - Scene description
-   * @param {Object} [options] - Generation options
+   * @param {object} [options] - Generation options
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateSceneImage(description, options = {}) {
@@ -277,10 +276,10 @@ class ImageGenerationService extends OpenAIClient {
    * Generate multiple images in batch
    * Note: Respects rate limits and processes sequentially
    *
-   * @param {Array<Object>} requests - Array of generation requests
+   * @param {Array<object>} requests - Array of generation requests
    * @param {string} requests[].entityType - Entity type
    * @param {string} requests[].description - Description
-   * @param {Object} [requests[].options] - Options per request
+   * @param {object} [requests[].options] - Options per request
    * @param {Function} [onProgress] - Progress callback
    * @returns {Promise<Array<ImageGenerationResult>>} Array of results
    */
@@ -364,7 +363,6 @@ class ImageGenerationService extends OpenAIClient {
       const blob = await response.blob();
       this._logger.debug(`Downloaded image: ${(blob.size / 1024).toFixed(1)}KB`);
       return blob;
-
     } catch (error) {
       if (error instanceof OpenAIError) {
         throw error;
@@ -435,7 +433,7 @@ class ImageGenerationService extends OpenAIClient {
 
     // Ensure prompt doesn't exceed limits (DALL-E 3 has a 4000 character limit)
     if (prompt.length > 4000) {
-      prompt = prompt.substring(0, 3997) + '...';
+      prompt = `${prompt.substring(0, 3997)}...`;
       this._logger.warn('Prompt was truncated to 4000 characters');
     }
 
@@ -454,20 +452,20 @@ class ImageGenerationService extends OpenAIClient {
 
     // Map common aliases
     const aliases = {
-      'npc': EntityType.CHARACTER,
-      'pc': EntityType.CHARACTER,
-      'player': EntityType.CHARACTER,
-      'person': EntityType.CHARACTER,
-      'place': EntityType.LOCATION,
-      'area': EntityType.LOCATION,
-      'room': EntityType.LOCATION,
-      'weapon': EntityType.ITEM,
-      'armor': EntityType.ITEM,
-      'artifact': EntityType.ITEM,
-      'object': EntityType.ITEM,
-      'moment': EntityType.SCENE,
-      'event': EntityType.SCENE,
-      'battle': EntityType.SCENE
+      npc: EntityType.CHARACTER,
+      pc: EntityType.CHARACTER,
+      player: EntityType.CHARACTER,
+      person: EntityType.CHARACTER,
+      place: EntityType.LOCATION,
+      area: EntityType.LOCATION,
+      room: EntityType.LOCATION,
+      weapon: EntityType.ITEM,
+      armor: EntityType.ITEM,
+      artifact: EntityType.ITEM,
+      object: EntityType.ITEM,
+      moment: EntityType.SCENE,
+      event: EntityType.SCENE,
+      battle: EntityType.SCENE
     };
 
     if (Object.values(EntityType).includes(normalized)) {
@@ -553,7 +551,7 @@ class ImageGenerationService extends OpenAIClient {
    *
    * @param {string} [quality='standard'] - Image quality
    * @param {string} [size='1024x1024'] - Image size
-   * @returns {Object} Cost estimate
+   * @returns {object} Cost estimate
    */
   estimateCost(quality = ImageQuality.STANDARD, size = ImageSize.SQUARE) {
     // Pricing as of spec (subject to change)
@@ -584,7 +582,7 @@ class ImageGenerationService extends OpenAIClient {
   /**
    * Get available image sizes
    *
-   * @returns {Array<Object>} List of available sizes
+   * @returns {Array<object>} List of available sizes
    */
   static getAvailableSizes() {
     return [
@@ -612,7 +610,7 @@ class ImageGenerationService extends OpenAIClient {
   /**
    * Get available quality options
    *
-   * @returns {Array<Object>} List of quality options
+   * @returns {Array<object>} List of quality options
    */
   static getAvailableQualities() {
     return [
@@ -634,7 +632,7 @@ class ImageGenerationService extends OpenAIClient {
   /**
    * Get available style options
    *
-   * @returns {Array<Object>} List of style options
+   * @returns {Array<object>} List of style options
    */
   static getAvailableStyles() {
     return [
@@ -654,7 +652,7 @@ class ImageGenerationService extends OpenAIClient {
   /**
    * Get entity type options
    *
-   * @returns {Array<Object>} List of entity types
+   * @returns {Array<object>} List of entity types
    */
   static getEntityTypes() {
     return [
@@ -687,7 +685,7 @@ class ImageGenerationService extends OpenAIClient {
 }
 
 /**
- * @typedef {Object} ImageGenerationResult
+ * @typedef {object} ImageGenerationResult
  * @property {string} url - Generated image URL (expires in 60 minutes!)
  * @property {string} [revisedPrompt] - Prompt as revised by DALL-E 3
  * @property {string} entityType - Type of entity generated

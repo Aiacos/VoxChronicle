@@ -91,19 +91,34 @@ GM: "The temple was once sacred to Selune. Now it lies in ruins, though the Crys
 function createMockExtractionResponse(options = {}) {
   return {
     characters: options.characters || [
-      { name: 'Grognard', description: 'A gruff barkeeper with a scar across his face', isNPC: true, role: 'barkeeper' },
-      { name: 'Lord Vex', description: 'A dark sorcerer who possesses the Sword of the Phoenix', isNPC: true, role: 'villain' }
+      {
+        name: 'Grognard',
+        description: 'A gruff barkeeper with a scar across his face',
+        isNPC: true,
+        role: 'barkeeper'
+      },
+      {
+        name: 'Lord Vex',
+        description: 'A dark sorcerer who possesses the Sword of the Phoenix',
+        isNPC: true,
+        role: 'villain'
+      }
     ],
     locations: options.locations || [
       { name: 'Neverwinter', description: 'A bustling city', type: 'city' },
-      { name: 'Rusty Dragon Inn', description: 'An inn where the party meets Grognard', type: 'tavern' },
+      {
+        name: 'Rusty Dragon Inn',
+        description: 'An inn where the party meets Grognard',
+        type: 'tavern'
+      },
       { name: 'Shadowkeep Dungeon', description: 'A dungeon filled with undead', type: 'dungeon' }
     ],
     items: options.items || [
       { name: 'Sword of the Phoenix', description: 'A legendary blade', type: 'weapon' },
       { name: 'Healing Potion', description: 'A potion that restores health', type: 'potion' }
     ],
-    summary: options.summary || 'The party visited Neverwinter and learned about the Sword of the Phoenix.'
+    summary:
+      options.summary || 'The party visited Neverwinter and learned about the Sword of the Phoenix.'
   };
 }
 
@@ -115,13 +130,15 @@ function createMockMomentsResponse(options = {}) {
     moments: options.moments || [
       {
         title: 'The Secret of the Phoenix Blade',
-        imagePrompt: 'A gruff barkeeper leans across a candlelit counter, whispering to adventurers, dramatic shadows on weathered face',
+        imagePrompt:
+          'A gruff barkeeper leans across a candlelit counter, whispering to adventurers, dramatic shadows on weathered face',
         context: 'Grognard reveals the location of the legendary Sword of the Phoenix',
         dramaScore: 8
       },
       {
         title: 'Journey Into Darkness',
-        imagePrompt: 'Adventurers stand at the entrance of a foreboding dungeon, undead silhouettes visible in the shadows beyond',
+        imagePrompt:
+          'Adventurers stand at the entrance of a foreboding dungeon, undead silhouettes visible in the shadows beyond',
         context: 'The party prepares to enter Shadowkeep Dungeon',
         dramaScore: 9
       }
@@ -189,13 +206,16 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{
-            message: {
-              content: JSON.stringify(mockResponse)
-            }
-          }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(mockResponse)
+                }
+              }
+            ]
+          })
       });
 
       const result = await extractor.extractEntities(SAMPLE_TRANSCRIPT_1);
@@ -212,9 +232,10 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.extractEntities(SAMPLE_TRANSCRIPT_1);
@@ -237,9 +258,10 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.extractEntities(SAMPLE_TRANSCRIPT_1, {
@@ -257,9 +279,10 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.extractEntities(SAMPLE_TRANSCRIPT_1, {
@@ -276,18 +299,17 @@ describe('EntityExtractor', () => {
         characters: [
           { name: '  Grognard  ', description: 'A barkeeper', isNPC: true, role: 'merchant' }
         ],
-        locations: [
-          { name: 'Tavern', description: null, type: '' }
-        ],
+        locations: [{ name: 'Tavern', description: null, type: '' }],
         items: [],
         summary: 'Summary text'
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(rawResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(rawResponse) } }]
+          })
       });
 
       const result = await extractor.extractEntities(SAMPLE_TRANSCRIPT_1);
@@ -312,9 +334,10 @@ describe('EntityExtractor', () => {
     it('should handle invalid JSON response', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: 'This is not valid JSON' } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'This is not valid JSON' } }]
+          })
       });
 
       await expect(extractor.extractEntities(SAMPLE_TRANSCRIPT_1)).rejects.toThrow(OpenAIError);
@@ -342,9 +365,10 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(emptyResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(emptyResponse) } }]
+          })
       });
 
       const result = await extractor.extractEntities('Generic text without named entities.');
@@ -366,9 +390,10 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       const result = await extractor.identifySalientMoments(SAMPLE_TRANSCRIPT_1);
@@ -386,9 +411,10 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.identifySalientMoments(SAMPLE_TRANSCRIPT_1);
@@ -409,9 +435,10 @@ describe('EntityExtractor', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       const result = await extractor.identifySalientMoments(SAMPLE_TRANSCRIPT_1, { maxMoments: 2 });
@@ -422,16 +449,22 @@ describe('EntityExtractor', () => {
     it('should normalize moment data', async () => {
       const rawMoments = {
         moments: [
-          { title: '  Title with spaces  ', imagePrompt: 'Prompt', context: null, dramaScore: '15' },
+          {
+            title: '  Title with spaces  ',
+            imagePrompt: 'Prompt',
+            context: null,
+            dramaScore: '15'
+          },
           { imagePrompt: 'Only prompt', dramaScore: 0 }
         ]
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(rawMoments) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(rawMoments) } }]
+          })
       });
 
       const result = await extractor.identifySalientMoments(SAMPLE_TRANSCRIPT_1);
@@ -469,15 +502,17 @@ describe('EntityExtractor', () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({
-            choices: [{ message: { content: JSON.stringify(entitiesResponse) } }]
-          })
+          json: () =>
+            Promise.resolve({
+              choices: [{ message: { content: JSON.stringify(entitiesResponse) } }]
+            })
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({
-            choices: [{ message: { content: JSON.stringify(momentsResponse) } }]
-          })
+          json: () =>
+            Promise.resolve({
+              choices: [{ message: { content: JSON.stringify(momentsResponse) } }]
+            })
         });
 
       const result = await extractor.extractAll(SAMPLE_TRANSCRIPT_1);
@@ -512,7 +547,7 @@ describe('EntityExtractor', () => {
     it('should store entities case-insensitively', () => {
       extractor.addKnownEntities(['GANDALF', 'Gandalf', 'gandalf']);
       // Should only have one entry (lowercase)
-      expect(extractor.getKnownEntities().filter(e => e === 'gandalf')).toHaveLength(1);
+      expect(extractor.getKnownEntities().filter((e) => e === 'gandalf')).toHaveLength(1);
     });
 
     it('should remove known entity', () => {
@@ -535,9 +570,10 @@ describe('EntityExtractor', () => {
       const mockResponse = createMockExtractionResponse();
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.extractEntities(SAMPLE_TRANSCRIPT_1);
@@ -565,9 +601,10 @@ describe('EntityExtractor', () => {
       const mockResponse = createMockExtractionResponse();
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.extractEntities(SAMPLE_TRANSCRIPT_1);
@@ -587,9 +624,10 @@ describe('EntityExtractor', () => {
       const mockResponse = createMockExtractionResponse();
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.extractEntities(SAMPLE_TRANSCRIPT_1);
@@ -611,7 +649,7 @@ describe('EntityExtractor', () => {
       expect(models.length).toBeGreaterThanOrEqual(1);
 
       // Check recommended model exists
-      const recommended = models.find(m => m.recommended);
+      const recommended = models.find((m) => m.recommended);
       expect(recommended).toBeDefined();
       expect(recommended.id).toBe('gpt-4o');
 
@@ -666,9 +704,10 @@ describe('EntityExtractor', () => {
       const mockResponse = createMockExtractionResponse();
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: JSON.stringify(mockResponse) } }]
-        })
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: JSON.stringify(mockResponse) } }]
+          })
       });
 
       await extractor.extractEntities(longTranscript);

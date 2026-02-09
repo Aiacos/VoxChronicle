@@ -6,7 +6,7 @@
  * Handles image uploads for entity portraits/images.
  *
  * @class KankaService
- * @extends KankaClient
+ * @augments KankaClient
  * @module vox-chronicle
  * @see https://api.kanka.io/docs/
  */
@@ -118,7 +118,7 @@ const QuestType = {
  * Provides high-level methods for creating, reading, updating, and deleting
  * Kanka entities. Also handles image uploads for entity portraits.
  *
- * @extends KankaClient
+ * @augments KankaClient
  * @example
  * const service = new KankaService('api-token', 'campaign-id');
  * const journal = await service.createJournal({
@@ -130,7 +130,7 @@ const QuestType = {
 class KankaService extends KankaClient {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('KankaService');
@@ -154,7 +154,7 @@ class KankaService extends KankaClient {
    *
    * @param {string} apiToken - Kanka API token
    * @param {string} campaignId - Kanka campaign ID
-   * @param {Object} [options] - Configuration options (passed to KankaClient)
+   * @param {object} [options] - Configuration options (passed to KankaClient)
    */
   constructor(apiToken, campaignId, options = {}) {
     super(apiToken, options);
@@ -236,15 +236,12 @@ class KankaService extends KankaClient {
    * Get campaign details
    *
    * @param {string|number} [campaignId] - Campaign ID (defaults to configured campaign)
-   * @returns {Promise<Object>} Campaign data
+   * @returns {Promise<object>} Campaign data
    */
   async getCampaign(campaignId = null) {
     const id = campaignId || this._campaignId;
     if (!id) {
-      throw new KankaError(
-        'Campaign ID is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
+      throw new KankaError('Campaign ID is required', KankaErrorType.VALIDATION_ERROR);
     }
 
     this._logger.debug(`Fetching campaign: ${id}`);
@@ -263,7 +260,7 @@ class KankaService extends KankaClient {
    * the type to 'Session Chronicle' if not specified, making it ideal for recording
    * game session narratives.
    *
-   * @param {Object} journalData - Journal data
+   * @param {object} journalData - Journal data
    * @param {string} journalData.name - Journal title (e.g., "Session 1: The Tavern Meeting")
    * @param {string} [journalData.entry] - Journal content (HTML/Markdown supported)
    * @param {string} [journalData.type='Session Chronicle'] - Journal type/category
@@ -273,7 +270,7 @@ class KankaService extends KankaClient {
    * @param {string|number} [journalData.character_id] - Associated character ID (main protagonist)
    * @param {string|number} [journalData.journal_id] - Parent journal ID (for organizing multi-part sessions)
    * @param {Array<number>} [journalData.tags] - Tag IDs to associate (for categorization)
-   * @returns {Promise<Object>} Created journal data from Kanka API
+   * @returns {Promise<object>} Created journal data from Kanka API
    * @throws {KankaError} If validation fails or API request fails
    *
    * @example
@@ -311,7 +308,7 @@ class KankaService extends KankaClient {
    * Get a journal entry by ID
    *
    * @param {string|number} journalId - Journal ID
-   * @returns {Promise<Object>} Journal data
+   * @returns {Promise<object>} Journal data
    */
   async getJournal(journalId) {
     return this._entityManager.get(KankaEntityType.JOURNAL, journalId);
@@ -321,8 +318,8 @@ class KankaService extends KankaClient {
    * Update a journal entry
    *
    * @param {string|number} journalId - Journal ID
-   * @param {Object} journalData - Updated journal data
-   * @returns {Promise<Object>} Updated journal data
+   * @param {object} journalData - Updated journal data
+   * @returns {Promise<object>} Updated journal data
    */
   async updateJournal(journalId, journalData) {
     return this._entityManager.update(KankaEntityType.JOURNAL, journalId, journalData);
@@ -341,10 +338,10 @@ class KankaService extends KankaClient {
   /**
    * List all journals in the campaign
    *
-   * @param {Object} [options] - List options
+   * @param {object} [options] - List options
    * @param {number} [options.page=1] - Page number for pagination
    * @param {string} [options.type] - Filter by journal type
-   * @returns {Promise<Object>} Paginated journal list with data and meta
+   * @returns {Promise<object>} Paginated journal list with data and meta
    */
   async listJournals(options = {}) {
     return this._entityManager.list(KankaEntityType.JOURNAL, options);
@@ -361,7 +358,7 @@ class KankaService extends KankaClient {
    * Automatically sets the type to 'NPC' if not specified, which is the most common
    * use case for VoxChronicle's entity extraction from session transcripts.
    *
-   * @param {Object} characterData - Character data
+   * @param {object} characterData - Character data
    * @param {string} characterData.name - Character name (e.g., "Elara the Wise")
    * @param {string} [characterData.entry] - Character description/backstory (HTML/Markdown supported)
    * @param {string} [characterData.type='NPC'] - Character type ('NPC', 'PC', 'Monster', 'Deity', or '')
@@ -374,7 +371,7 @@ class KankaService extends KankaClient {
    * @param {string|number} [characterData.location_id] - Current location ID (where character is now)
    * @param {string|number} [characterData.family_id] - Family ID (for noble houses, dynasties, etc.)
    * @param {Array<number>} [characterData.tags] - Tag IDs to associate (for categorization)
-   * @returns {Promise<Object>} Created character data from Kanka API
+   * @returns {Promise<object>} Created character data from Kanka API
    * @throws {KankaError} If validation fails or API request fails
    *
    * @example
@@ -415,7 +412,7 @@ class KankaService extends KankaClient {
    * Get a character by ID
    *
    * @param {string|number} characterId - Character ID
-   * @returns {Promise<Object>} Character data
+   * @returns {Promise<object>} Character data
    */
   async getCharacter(characterId) {
     return this._entityManager.get(KankaEntityType.CHARACTER, characterId);
@@ -425,8 +422,8 @@ class KankaService extends KankaClient {
    * Update a character
    *
    * @param {string|number} characterId - Character ID
-   * @param {Object} characterData - Updated character data
-   * @returns {Promise<Object>} Updated character data
+   * @param {object} characterData - Updated character data
+   * @returns {Promise<object>} Updated character data
    */
   async updateCharacter(characterId, characterData) {
     return this._entityManager.update(KankaEntityType.CHARACTER, characterId, characterData);
@@ -445,11 +442,11 @@ class KankaService extends KankaClient {
   /**
    * List all characters in the campaign
    *
-   * @param {Object} [options] - List options
+   * @param {object} [options] - List options
    * @param {number} [options.page=1] - Page number for pagination
    * @param {string} [options.type] - Filter by character type
    * @param {boolean} [options.is_dead] - Filter by dead status
-   * @returns {Promise<Object>} Paginated character list with data and meta
+   * @returns {Promise<object>} Paginated character list with data and meta
    */
   async listCharacters(options = {}) {
     // Convert boolean is_dead to 0/1 for API compatibility
@@ -467,14 +464,14 @@ class KankaService extends KankaClient {
   /**
    * Create a new location
    *
-   * @param {Object} locationData - Location data
+   * @param {object} locationData - Location data
    * @param {string} locationData.name - Location name
    * @param {string} [locationData.entry] - Location description (HTML/Markdown)
    * @param {string} [locationData.type] - Location type ('City', 'Dungeon', etc.)
    * @param {boolean} [locationData.is_private=false] - Whether location is private
    * @param {string|number} [locationData.parent_location_id] - Parent location ID
    * @param {Array} [locationData.tags] - Tag IDs to associate
-   * @returns {Promise<Object>} Created location data
+   * @returns {Promise<object>} Created location data
    */
   async createLocation(locationData) {
     return this._entityManager.create(KankaEntityType.LOCATION, locationData);
@@ -484,7 +481,7 @@ class KankaService extends KankaClient {
    * Get a location by ID
    *
    * @param {string|number} locationId - Location ID
-   * @returns {Promise<Object>} Location data
+   * @returns {Promise<object>} Location data
    */
   async getLocation(locationId) {
     return this._entityManager.get(KankaEntityType.LOCATION, locationId);
@@ -494,8 +491,8 @@ class KankaService extends KankaClient {
    * Update a location
    *
    * @param {string|number} locationId - Location ID
-   * @param {Object} locationData - Updated location data
-   * @returns {Promise<Object>} Updated location data
+   * @param {object} locationData - Updated location data
+   * @returns {Promise<object>} Updated location data
    */
   async updateLocation(locationId, locationData) {
     return this._entityManager.update(KankaEntityType.LOCATION, locationId, locationData);
@@ -514,11 +511,11 @@ class KankaService extends KankaClient {
   /**
    * List all locations in the campaign
    *
-   * @param {Object} [options] - List options
+   * @param {object} [options] - List options
    * @param {number} [options.page=1] - Page number for pagination
    * @param {string} [options.type] - Filter by location type
    * @param {string|number} [options.parent_location_id] - Filter by parent location
-   * @returns {Promise<Object>} Paginated location list with data and meta
+   * @returns {Promise<object>} Paginated location list with data and meta
    */
   async listLocations(options = {}) {
     return this._entityManager.list(KankaEntityType.LOCATION, options);
@@ -531,7 +528,7 @@ class KankaService extends KankaClient {
   /**
    * Create a new item
    *
-   * @param {Object} itemData - Item data
+   * @param {object} itemData - Item data
    * @param {string} itemData.name - Item name
    * @param {string} [itemData.entry] - Item description (HTML/Markdown)
    * @param {string} [itemData.type] - Item type ('Weapon', 'Armor', etc.)
@@ -541,7 +538,7 @@ class KankaService extends KankaClient {
    * @param {string|number} [itemData.location_id] - Current location ID (where item is)
    * @param {string|number} [itemData.character_id] - Owner character ID
    * @param {Array} [itemData.tags] - Tag IDs to associate
-   * @returns {Promise<Object>} Created item data
+   * @returns {Promise<object>} Created item data
    */
   async createItem(itemData) {
     return this._entityManager.create(KankaEntityType.ITEM, itemData);
@@ -551,7 +548,7 @@ class KankaService extends KankaClient {
    * Get an item by ID
    *
    * @param {string|number} itemId - Item ID
-   * @returns {Promise<Object>} Item data
+   * @returns {Promise<object>} Item data
    */
   async getItem(itemId) {
     return this._entityManager.get(KankaEntityType.ITEM, itemId);
@@ -561,8 +558,8 @@ class KankaService extends KankaClient {
    * Update an item
    *
    * @param {string|number} itemId - Item ID
-   * @param {Object} itemData - Updated item data
-   * @returns {Promise<Object>} Updated item data
+   * @param {object} itemData - Updated item data
+   * @returns {Promise<object>} Updated item data
    */
   async updateItem(itemId, itemData) {
     return this._entityManager.update(KankaEntityType.ITEM, itemId, itemData);
@@ -581,11 +578,11 @@ class KankaService extends KankaClient {
   /**
    * List all items in the campaign
    *
-   * @param {Object} [options] - List options
+   * @param {object} [options] - List options
    * @param {number} [options.page=1] - Page number for pagination
    * @param {string} [options.type] - Filter by item type
    * @param {string|number} [options.character_id] - Filter by owner character
-   * @returns {Promise<Object>} Paginated item list with data and meta
+   * @returns {Promise<object>} Paginated item list with data and meta
    */
   async listItems(options = {}) {
     return this._entityManager.list(KankaEntityType.ITEM, options);
@@ -598,7 +595,7 @@ class KankaService extends KankaClient {
   /**
    * Create a new organisation
    *
-   * @param {Object} organisationData - Organisation data
+   * @param {object} organisationData - Organisation data
    * @param {string} organisationData.name - Organisation name
    * @param {string} [organisationData.entry] - Organisation description (HTML/Markdown)
    * @param {string} [organisationData.type] - Organisation type ('Guild', 'Military', etc.)
@@ -606,7 +603,7 @@ class KankaService extends KankaClient {
    * @param {string|number} [organisationData.location_id] - Headquarters location ID
    * @param {string|number} [organisationData.organisation_id] - Parent organisation ID
    * @param {Array} [organisationData.tags] - Tag IDs to associate
-   * @returns {Promise<Object>} Created organisation data
+   * @returns {Promise<object>} Created organisation data
    */
   async createOrganisation(organisationData) {
     // Set default type if not provided
@@ -622,7 +619,7 @@ class KankaService extends KankaClient {
    * Get an organisation by ID
    *
    * @param {string|number} organisationId - Organisation ID
-   * @returns {Promise<Object>} Organisation data
+   * @returns {Promise<object>} Organisation data
    */
   async getOrganisation(organisationId) {
     return this._entityManager.get(KankaEntityType.ORGANISATION, organisationId);
@@ -632,11 +629,15 @@ class KankaService extends KankaClient {
    * Update an organisation
    *
    * @param {string|number} organisationId - Organisation ID
-   * @param {Object} organisationData - Updated organisation data
-   * @returns {Promise<Object>} Updated organisation data
+   * @param {object} organisationData - Updated organisation data
+   * @returns {Promise<object>} Updated organisation data
    */
   async updateOrganisation(organisationId, organisationData) {
-    return this._entityManager.update(KankaEntityType.ORGANISATION, organisationId, organisationData);
+    return this._entityManager.update(
+      KankaEntityType.ORGANISATION,
+      organisationId,
+      organisationData
+    );
   }
 
   /**
@@ -652,11 +653,11 @@ class KankaService extends KankaClient {
   /**
    * List all organisations in the campaign
    *
-   * @param {Object} [options] - List options
+   * @param {object} [options] - List options
    * @param {number} [options.page=1] - Page number for pagination
    * @param {string} [options.type] - Filter by organisation type
    * @param {string|number} [options.organisation_id] - Filter by parent organisation
-   * @returns {Promise<Object>} Paginated organisation list with data and meta
+   * @returns {Promise<object>} Paginated organisation list with data and meta
    */
   async listOrganisations(options = {}) {
     return this._entityManager.list(KankaEntityType.ORGANISATION, options);
@@ -669,7 +670,7 @@ class KankaService extends KankaClient {
   /**
    * Create a new quest
    *
-   * @param {Object} questData - Quest data
+   * @param {object} questData - Quest data
    * @param {string} questData.name - Quest name
    * @param {string} [questData.entry] - Quest description (HTML/Markdown)
    * @param {string} [questData.type] - Quest type ('Main Quest', 'Side Quest', etc.)
@@ -679,7 +680,7 @@ class KankaService extends KankaClient {
    * @param {string|number} [questData.location_id] - Quest location ID
    * @param {string|number} [questData.quest_id] - Parent quest ID
    * @param {Array} [questData.tags] - Tag IDs to associate
-   * @returns {Promise<Object>} Created quest data
+   * @returns {Promise<object>} Created quest data
    */
   async createQuest(questData) {
     // Set default type if not provided
@@ -695,7 +696,7 @@ class KankaService extends KankaClient {
    * Get a quest by ID
    *
    * @param {string|number} questId - Quest ID
-   * @returns {Promise<Object>} Quest data
+   * @returns {Promise<object>} Quest data
    */
   async getQuest(questId) {
     return this._entityManager.get(KankaEntityType.QUEST, questId);
@@ -705,8 +706,8 @@ class KankaService extends KankaClient {
    * Update a quest
    *
    * @param {string|number} questId - Quest ID
-   * @param {Object} questData - Updated quest data
-   * @returns {Promise<Object>} Updated quest data
+   * @param {object} questData - Updated quest data
+   * @returns {Promise<object>} Updated quest data
    */
   async updateQuest(questId, questData) {
     return this._entityManager.update(KankaEntityType.QUEST, questId, questData);
@@ -725,12 +726,12 @@ class KankaService extends KankaClient {
   /**
    * List all quests in the campaign
    *
-   * @param {Object} [options] - List options
+   * @param {object} [options] - List options
    * @param {number} [options.page=1] - Page number for pagination
    * @param {string} [options.type] - Filter by quest type
    * @param {boolean} [options.is_completed] - Filter by completion status
    * @param {string|number} [options.quest_id] - Filter by parent quest
-   * @returns {Promise<Object>} Paginated quest list with data and meta
+   * @returns {Promise<object>} Paginated quest list with data and meta
    */
   async listQuests(options = {}) {
     // Convert boolean is_completed to 0/1 for API compatibility
@@ -760,9 +761,9 @@ class KankaService extends KankaClient {
    * @param {string} entityType - Entity type from KankaEntityType enum
    * @param {string|number} entityId - Entity ID (must exist in Kanka)
    * @param {string|Blob} imageSource - Image URL or Blob object
-   * @param {Object} [options] - Upload options
+   * @param {object} [options] - Upload options
    * @param {string} [options.filename='portrait.png'] - Filename (used for MIME type detection)
-   * @returns {Promise<Object>} Updated entity data with image URL from Kanka
+   * @returns {Promise<object>} Updated entity data with image URL from Kanka
    * @throws {KankaError} If validation fails, download fails, or upload fails
    *
    * @example
@@ -851,8 +852,8 @@ class KankaService extends KankaClient {
    *
    * @param {string|number} characterId - Character ID
    * @param {string|Blob} imageSource - Image URL or Blob
-   * @param {Object} [options] - Upload options
-   * @returns {Promise<Object>} Updated character data
+   * @param {object} [options] - Upload options
+   * @returns {Promise<object>} Updated character data
    */
   async uploadCharacterImage(characterId, imageSource, options = {}) {
     return this.uploadImage(KankaEntityType.CHARACTER, characterId, imageSource, options);
@@ -863,8 +864,8 @@ class KankaService extends KankaClient {
    *
    * @param {string|number} locationId - Location ID
    * @param {string|Blob} imageSource - Image URL or Blob
-   * @param {Object} [options] - Upload options
-   * @returns {Promise<Object>} Updated location data
+   * @param {object} [options] - Upload options
+   * @returns {Promise<object>} Updated location data
    */
   async uploadLocationImage(locationId, imageSource, options = {}) {
     return this.uploadImage(KankaEntityType.LOCATION, locationId, imageSource, options);
@@ -875,8 +876,8 @@ class KankaService extends KankaClient {
    *
    * @param {string|number} itemId - Item ID
    * @param {string|Blob} imageSource - Image URL or Blob
-   * @param {Object} [options] - Upload options
-   * @returns {Promise<Object>} Updated item data
+   * @param {object} [options] - Upload options
+   * @returns {Promise<object>} Updated item data
    */
   async uploadItemImage(itemId, imageSource, options = {}) {
     return this.uploadImage(KankaEntityType.ITEM, itemId, imageSource, options);
@@ -887,8 +888,8 @@ class KankaService extends KankaClient {
    *
    * @param {string|number} journalId - Journal ID
    * @param {string|Blob} imageSource - Image URL or Blob
-   * @param {Object} [options] - Upload options
-   * @returns {Promise<Object>} Updated journal data
+   * @param {object} [options] - Upload options
+   * @returns {Promise<object>} Updated journal data
    */
   async uploadJournalImage(journalId, imageSource, options = {}) {
     return this.uploadImage(KankaEntityType.JOURNAL, journalId, imageSource, options);
@@ -937,7 +938,7 @@ class KankaService extends KankaClient {
         const endpoint = this._buildCampaignEndpoint(type);
         const response = await this.get(`${endpoint}?${params.join('&')}`);
         const entities = response.data || [];
-        results.push(...entities.map(e => ({ ...e, _entityType: type })));
+        results.push(...entities.map((e) => ({ ...e, _entityType: type })));
       } catch (error) {
         this._logger.warn(`Search failed for ${type}: ${error.message}`);
       }
@@ -951,7 +952,7 @@ class KankaService extends KankaClient {
    *
    * @param {string} name - Entity name to check
    * @param {string} entityType - Entity type from KankaEntityType
-   * @returns {Promise<Object|null>} Existing entity or null
+   * @returns {Promise<object | null>} Existing entity or null
    */
   async findExistingEntity(name, entityType) {
     if (!name || !entityType) {
@@ -963,7 +964,7 @@ class KankaService extends KankaClient {
     // Find exact match (case-insensitive)
     const normalizedName = name.toLowerCase().trim();
     const exactMatch = results.find(
-      entity => entity.name.toLowerCase().trim() === normalizedName
+      (entity) => entity.name.toLowerCase().trim() === normalizedName
     );
 
     return exactMatch || null;
@@ -982,8 +983,8 @@ class KankaService extends KankaClient {
    * Use sparingly to conserve rate limits.
    *
    * @param {string} entityType - Entity type from KankaEntityType enum
-   * @param {Object} entityData - Entity data with at least 'name' property (all other fields optional)
-   * @returns {Promise<Object>} Created or existing entity data (with _alreadyExisted flag if found)
+   * @param {object} entityData - Entity data with at least 'name' property (all other fields optional)
+   * @returns {Promise<object>} Created or existing entity data (with _alreadyExisted flag if found)
    * @throws {KankaError} If validation fails or API request fails
    *
    * @example
@@ -1002,10 +1003,7 @@ class KankaService extends KankaClient {
   async createIfNotExists(entityType, entityData) {
     // Validate required name field
     if (!entityData?.name) {
-      throw new KankaError(
-        'Entity name is required',
-        KankaErrorType.VALIDATION_ERROR
-      );
+      throw new KankaError('Entity name is required', KankaErrorType.VALIDATION_ERROR);
     }
 
     // Search for existing entity by name (case-insensitive exact match)
@@ -1057,11 +1055,11 @@ class KankaService extends KankaClient {
    * - Individual failures are caught and returned as error objects (see return format)
    *
    * @param {string} entityType - Entity type from KankaEntityType enum
-   * @param {Array<Object>} entitiesData - Array of entity data objects (each must have 'name' field)
-   * @param {Object} [options] - Batch options
+   * @param {Array<object>} entitiesData - Array of entity data objects (each must have 'name' field)
+   * @param {object} [options] - Batch options
    * @param {boolean} [options.skipExisting=true] - Skip entities that already exist (requires name search)
    * @param {Function} [options.onProgress] - Progress callback: (current, total, entity) => void
-   * @returns {Promise<Array<Object>>} Array of created entities (may include error objects for failures)
+   * @returns {Promise<Array<object>>} Array of created entities (may include error objects for failures)
    * @throws {KankaError} Only throws for critical errors; individual entity failures are in results
    *
    * @example

@@ -13,7 +13,7 @@ import { Logger } from '../utils/Logger.mjs';
 
 /**
  * Default options for image processing
- * @constant {Object}
+ * @constant {object}
  */
 const DEFAULT_IMAGE_OPTIONS = {
   maxImagesPerSession: 5,
@@ -39,21 +39,21 @@ const DEFAULT_IMAGE_OPTIONS = {
 class ImageProcessor {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('ImageProcessor');
 
   /**
    * Image generation service
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _imageGenerationService = null;
 
   /**
    * Image processing options
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _options = {};
@@ -61,9 +61,9 @@ class ImageProcessor {
   /**
    * Create a new ImageProcessor instance
    *
-   * @param {Object} config - Configuration options
-   * @param {Object} config.imageGenerationService - ImageGenerationService instance
-   * @param {Object} [config.options] - Image processing options
+   * @param {object} config - Configuration options
+   * @param {object} config.imageGenerationService - ImageGenerationService instance
+   * @param {object} [config.options] - Image processing options
    * @param {number} [config.options.maxImagesPerSession=5] - Maximum images to generate per session
    * @param {string} [config.options.imageQuality='standard'] - Image quality ('standard' or 'hd')
    */
@@ -81,13 +81,13 @@ class ImageProcessor {
   /**
    * Generate images for session moments and entities
    *
-   * @param {Array<Object>} moments - Session moments with image prompts
-   * @param {Object} entities - Extracted entities (characters, locations, items)
-   * @param {Object} [options] - Generation options
+   * @param {Array<object>} moments - Session moments with image prompts
+   * @param {object} entities - Extracted entities (characters, locations, items)
+   * @param {object} [options] - Generation options
    * @param {Function} [options.onProgress] - Progress callback (progress: number, message: string)
    * @param {number} [options.maxImagesPerSession] - Override max images for this generation
    * @param {string} [options.imageQuality] - Override quality for this generation
-   * @returns {Promise<Array<Object>>} Generated image results with metadata
+   * @returns {Promise<Array<object>>} Generated image results with metadata
    */
   async generateImages(moments = [], entities = {}, options = {}) {
     if (!this._imageGenerationService) {
@@ -112,19 +112,13 @@ class ImageProcessor {
 
     try {
       // Generate images in batch with progress tracking
-      const results = await this._imageGenerationService.generateBatch(
-        requests,
-        (progress) => {
-          const progressPercent = progress.progress || 0;
-          const current = progress.current || 1;
-          const total = progress.total || requests.length;
+      const results = await this._imageGenerationService.generateBatch(requests, (progress) => {
+        const progressPercent = progress.progress || 0;
+        const current = progress.current || 1;
+        const total = progress.total || requests.length;
 
-          onProgress(
-            progressPercent,
-            `Generating image ${current}/${total}`
-          );
-        }
-      );
+        onProgress(progressPercent, `Generating image ${current}/${total}`);
+      });
 
       // Attach metadata to results
       const resultsWithMetadata = results.map((result, index) => ({
@@ -134,11 +128,10 @@ class ImageProcessor {
 
       onProgress(100, 'Image generation complete');
 
-      const successCount = resultsWithMetadata.filter(r => r.success !== false).length;
+      const successCount = resultsWithMetadata.filter((r) => r.success !== false).length;
       this._logger.log(`Generated ${successCount} images`);
 
       return resultsWithMetadata;
-
     } catch (error) {
       this._logger.error('Image generation failed:', error);
       onProgress(0, `Image generation failed: ${error.message}`);
@@ -149,11 +142,11 @@ class ImageProcessor {
   /**
    * Build image generation requests from moments and characters
    *
-   * @param {Array<Object>} moments - Session moments with image prompts
-   * @param {Object} entities - Extracted entities
+   * @param {Array<object>} moments - Session moments with image prompts
+   * @param {object} entities - Extracted entities
    * @param {number} maxImages - Maximum number of images to generate
    * @param {string} imageQuality - Image quality setting
-   * @returns {Array<Object>} Array of image generation requests
+   * @returns {Array<object>} Array of image generation requests
    * @private
    */
   _buildImageRequests(moments, entities, maxImages, imageQuality) {
@@ -176,9 +169,7 @@ class ImageProcessor {
     // Add character portraits if we have room
     const remainingSlots = maxImages - requests.length;
     if (remainingSlots > 0 && entities?.characters?.length > 0) {
-      const npcs = entities.characters
-        .filter(c => c.isNPC)
-        .slice(0, remainingSlots);
+      const npcs = entities.characters.filter((c) => c.isNPC).slice(0, remainingSlots);
 
       for (const character of npcs) {
         requests.push({
@@ -196,7 +187,7 @@ class ImageProcessor {
   /**
    * Update image processing options
    *
-   * @param {Object} options - New options to merge
+   * @param {object} options - New options to merge
    * @param {number} [options.maxImagesPerSession] - Maximum images per session
    * @param {string} [options.imageQuality] - Image quality setting
    */
@@ -208,7 +199,7 @@ class ImageProcessor {
   /**
    * Get current image processing options
    *
-   * @returns {Object} Current options
+   * @returns {object} Current options
    */
   getOptions() {
     return { ...this._options };

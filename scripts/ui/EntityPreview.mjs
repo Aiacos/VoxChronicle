@@ -6,7 +6,7 @@
  * and confirm which entities to create in Kanka.
  *
  * @class EntityPreview
- * @extends Application
+ * @augments Application
  * @module vox-chronicle
  */
 
@@ -44,14 +44,14 @@ const PreviewMode = {
 class EntityPreview extends Application {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('EntityPreview');
 
   /**
    * Entities to preview
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _entities = {
@@ -83,7 +83,7 @@ class EntityPreview extends Application {
 
   /**
    * Progress information for entity creation
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _progress = {
@@ -94,7 +94,7 @@ class EntityPreview extends Application {
 
   /**
    * Results from entity creation
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _results = {
@@ -125,7 +125,7 @@ class EntityPreview extends Application {
 
   /**
    * Get default options for the Application
-   * @returns {Object} Default application options
+   * @returns {object} Default application options
    * @static
    */
   static get defaultOptions() {
@@ -144,8 +144,8 @@ class EntityPreview extends Application {
 
   /**
    * Create a new EntityPreview instance
-   * @param {Object} [options] - Application options
-   * @param {Object} [options.entities] - Extracted entities to preview
+   * @param {object} [options] - Application options
+   * @param {object} [options.entities] - Extracted entities to preview
    * @param {Array} [options.relationships] - Extracted relationships to preview
    * @param {Function} [options.onConfirm] - Callback when entities are confirmed
    * @param {Function} [options.onCancel] - Callback when preview is cancelled
@@ -174,7 +174,7 @@ class EntityPreview extends Application {
 
   /**
    * Set the entities to preview
-   * @param {Object} entities - Extracted entities object
+   * @param {object} entities - Extracted entities object
    * @param {Array} [entities.characters] - Character entities
    * @param {Array} [entities.locations] - Location entities
    * @param {Array} [entities.items] - Item entities
@@ -220,7 +220,7 @@ class EntityPreview extends Application {
    * @private
    */
   _initializeSelections() {
-    ['characters', 'locations', 'items'].forEach(type => {
+    ['characters', 'locations', 'items'].forEach((type) => {
       this._entities[type].forEach((entity, index) => {
         const key = `${type}-${index}`;
         this._selections.set(key, true);
@@ -281,14 +281,16 @@ class EntityPreview extends Application {
    * @private
    */
   _getRelationshipTypeLabel(relationType) {
-    const typeKey = relationType ? relationType.charAt(0).toUpperCase() + relationType.slice(1) : 'Unknown';
+    const typeKey = relationType
+      ? relationType.charAt(0).toUpperCase() + relationType.slice(1)
+      : 'Unknown';
     return game.i18n?.localize(`VOXCHRONICLE.RelationshipGraph.${typeKey}`) || typeKey;
   }
 
   /**
    * Get data for the template
-   * @param {Object} options - Render options
-   * @returns {Object} Template data
+   * @param {object} options - Render options
+   * @returns {object} Template data
    */
   async getData(options = {}) {
     const configStatus = Settings.getConfigurationStatus();
@@ -302,8 +304,8 @@ class EntityPreview extends Application {
       selected: this._selections.get(`characters-${index}`) ?? true,
       isGeneratingImage: this._imageLoadingStates.get(`characters-${index}`) ?? false,
       typeLabel: entity.isNPC
-        ? (game.i18n?.localize('VOXCHRONICLE.EntityPreview.IsNPC') || 'NPC')
-        : (game.i18n?.localize('VOXCHRONICLE.EntityPreview.IsPC') || 'PC')
+        ? game.i18n?.localize('VOXCHRONICLE.EntityPreview.IsNPC') || 'NPC'
+        : game.i18n?.localize('VOXCHRONICLE.EntityPreview.IsPC') || 'PC'
     }));
 
     const locations = this._entities.locations.map((entity, index) => ({
@@ -378,45 +380,65 @@ class EntityPreview extends Application {
 
       // Localization strings
       i18n: {
-        title: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Title') || 'Review Extracted Entities',
-        description: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Description') ||
+        title:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.Title') || 'Review Extracted Entities',
+        description:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.Description') ||
           'Review the entities extracted from your session. Select which ones to create in Kanka.',
         characters: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Characters') || 'Characters',
         locations: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Locations') || 'Locations',
         items: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Items') || 'Items',
-        relationships: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Relationships') || 'Relationships',
-        relationshipsDescription: game.i18n?.localize('VOXCHRONICLE.EntityPreview.RelationshipsDescription') ||
+        relationships:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.Relationships') || 'Relationships',
+        relationshipsDescription:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.RelationshipsDescription') ||
           'Select which relationships to create in Kanka. Relationships will only be created if both entities are selected.',
         viewGraph: game.i18n?.localize('VOXCHRONICLE.EntityPreview.ViewGraph') || 'View Graph',
         sourceEntity: game.i18n?.localize('VOXCHRONICLE.EntityPreview.SourceEntity') || 'Source',
         targetEntity: game.i18n?.localize('VOXCHRONICLE.EntityPreview.TargetEntity') || 'Target',
-        relationshipType: game.i18n?.localize('VOXCHRONICLE.EntityPreview.RelationshipType') || 'Type',
+        relationshipType:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.RelationshipType') || 'Type',
         selectAll: game.i18n?.localize('VOXCHRONICLE.EntityPreview.SelectAll') || 'Select All',
-        deselectAll: game.i18n?.localize('VOXCHRONICLE.EntityPreview.DeselectAll') || 'Deselect All',
+        deselectAll:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.DeselectAll') || 'Deselect All',
         create: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Create') || 'Create Selected',
         skip: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Skip') || 'Skip All',
         cancel: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Cancel') || 'Cancel',
-        generatePortrait: game.i18n?.localize('VOXCHRONICLE.EntityPreview.GeneratePortrait') || 'Generate Portrait',
-        editDescription: game.i18n?.localize('VOXCHRONICLE.EntityPreview.EditDescription') || 'Edit Description',
-        generating: game.i18n?.localize('VOXCHRONICLE.ImageGeneration.Generating') || 'Generating image...',
+        generatePortrait:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.GeneratePortrait') || 'Generate Portrait',
+        editDescription:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.EditDescription') || 'Edit Description',
+        generating:
+          game.i18n?.localize('VOXCHRONICLE.ImageGeneration.Generating') || 'Generating image...',
         name: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Name') || 'Name',
         type: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Type') || 'Type',
-        description: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Description') || 'Description',
-        noEntities: game.i18n?.localize('VOXCHRONICLE.EntityPreview.NoEntities') || 'No entities to display',
-        creating: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Creating') || 'Creating entities in Kanka...',
-        created: game.i18n?.format('VOXCHRONICLE.EntityPreview.Created', { count: this._results.created.length }) ||
-          `${this._results.created.length} entities created in Kanka`,
-        partialSuccess: game.i18n?.format('VOXCHRONICLE.EntityPreview.PartialSuccess', {
-          created: this._results.created.length,
-          total: this._results.created.length + this._results.failed.length
-        }) || `${this._results.created.length} of ${this._results.created.length + this._results.failed.length} entities created`,
-        failed: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Failed') || 'Failed to create entities',
-        failedCountLabel: game.i18n?.format('VOXCHRONICLE.EntityPreview.FailedCount', { count: this._results.failed.length }) ||
-          `${this._results.failed.length} failed`,
-        confidenceLabel: game.i18n?.localize('VOXCHRONICLE.EntityPreview.ConfidenceLabel') || 'Confidence:',
+        noEntities:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.NoEntities') || 'No entities to display',
+        creating:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.Creating') ||
+          'Creating entities in Kanka...',
+        created:
+          game.i18n?.format('VOXCHRONICLE.EntityPreview.Created', {
+            count: this._results.created.length
+          }) || `${this._results.created.length} entities created in Kanka`,
+        partialSuccess:
+          game.i18n?.format('VOXCHRONICLE.EntityPreview.PartialSuccess', {
+            created: this._results.created.length,
+            total: this._results.created.length + this._results.failed.length
+          }) ||
+          `${this._results.created.length} of ${this._results.created.length + this._results.failed.length} entities created`,
+        failed:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.Failed') || 'Failed to create entities',
+        failedCountLabel:
+          game.i18n?.format('VOXCHRONICLE.EntityPreview.FailedCount', {
+            count: this._results.failed.length
+          }) || `${this._results.failed.length} failed`,
+        confidenceLabel:
+          game.i18n?.localize('VOXCHRONICLE.EntityPreview.ConfidenceLabel') || 'Confidence:',
         close: game.i18n?.localize('VOXCHRONICLE.Buttons.Close') || 'Close',
         retry: game.i18n?.localize('VOXCHRONICLE.Buttons.Retry') || 'Retry',
-        notConfigured: game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
+        notConfigured:
+          game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
           'Kanka is not configured. Please set your API token and campaign ID in module settings.'
       }
     };
@@ -430,7 +452,9 @@ class EntityPreview extends Application {
     super.activateListeners(html);
 
     // Entity selection checkboxes
-    html.find('input[type="checkbox"][data-entity-key]').on('change', this._onToggleEntity.bind(this));
+    html
+      .find('input[type="checkbox"][data-entity-key]')
+      .on('change', this._onToggleEntity.bind(this));
 
     // Select all button
     html.find('[data-action="select-all"]').on('click', this._onSelectAll.bind(this));
@@ -525,11 +549,10 @@ class EntityPreview extends Application {
     event.preventDefault();
 
     const selectedEntities = this.getSelectedEntities();
-    const totalSelected = (
+    const totalSelected =
       selectedEntities.characters.length +
       selectedEntities.locations.length +
-      selectedEntities.items.length
-    );
+      selectedEntities.items.length;
 
     if (totalSelected === 0) {
       ui.notifications?.warn(
@@ -543,7 +566,7 @@ class EntityPreview extends Application {
     if (!configStatus.kanka) {
       ui.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Kanka.NotConfigured') ||
-        'Kanka is not configured. Please set your API token and campaign ID.'
+          'Kanka is not configured. Please set your API token and campaign ID.'
       );
       return;
     }
@@ -562,11 +585,12 @@ class EntityPreview extends Application {
     try {
       await this._createEntitiesInKanka(selectedEntities);
 
-      this._mode = this._results.failed.length > 0 && this._results.created.length > 0
-        ? PreviewMode.COMPLETE // Partial success
-        : this._results.failed.length > 0
-          ? PreviewMode.ERROR
-          : PreviewMode.COMPLETE;
+      this._mode =
+        this._results.failed.length > 0 && this._results.created.length > 0
+          ? PreviewMode.COMPLETE // Partial success
+          : this._results.failed.length > 0
+            ? PreviewMode.ERROR
+            : PreviewMode.COMPLETE;
 
       this.render(false);
 
@@ -574,7 +598,6 @@ class EntityPreview extends Application {
       if (this._onConfirmCallback) {
         await this._onConfirmCallback(this._results);
       }
-
     } catch (error) {
       this._logger.error('Failed to create entities:', error);
       this._mode = PreviewMode.ERROR;
@@ -584,7 +607,7 @@ class EntityPreview extends Application {
 
   /**
    * Create entities in Kanka
-   * @param {Object} selectedEntities - Selected entities to create
+   * @param {object} selectedEntities - Selected entities to create
    * @private
    */
   async _createEntitiesInKanka(selectedEntities) {
@@ -624,7 +647,6 @@ class EntityPreview extends Application {
 
         this._progress.current++;
         this.render(false);
-
       } catch (error) {
         this._logger.error(`Failed to create character ${character.name}:`, error);
         this._results.failed.push({
@@ -662,7 +684,6 @@ class EntityPreview extends Application {
 
         this._progress.current++;
         this.render(false);
-
       } catch (error) {
         this._logger.error(`Failed to create location ${location.name}:`, error);
         this._results.failed.push({
@@ -700,7 +721,6 @@ class EntityPreview extends Application {
 
         this._progress.current++;
         this.render(false);
-
       } catch (error) {
         this._logger.error(`Failed to create item ${item.name}:`, error);
         this._results.failed.push({
@@ -729,7 +749,8 @@ class EntityPreview extends Application {
         game.i18n?.format('VOXCHRONICLE.EntityPreview.PartialSuccess', {
           created: this._results.created.length,
           total: this._results.created.length + this._results.failed.length
-        }) || `${this._results.created.length} of ${this._results.created.length + this._results.failed.length} entities created`
+        }) ||
+          `${this._results.created.length} of ${this._results.created.length + this._results.failed.length} entities created`
       );
     }
   }
@@ -762,7 +783,7 @@ class EntityPreview extends Application {
       if (!sourceEntityId || !targetEntityId) {
         this._logger.warn(
           `Skipping relationship: ${relationship.sourceEntity} -> ${relationship.targetEntity} ` +
-          `(source: ${sourceEntityId}, target: ${targetEntityId})`
+            `(source: ${sourceEntityId}, target: ${targetEntityId})`
         );
         skippedRelationships.push(relationship);
         continue;
@@ -783,7 +804,9 @@ class EntityPreview extends Application {
     }
 
     if (skippedRelationships.length > 0) {
-      this._logger.warn(`Skipped ${skippedRelationships.length} relationships due to missing entities`);
+      this._logger.warn(
+        `Skipped ${skippedRelationships.length} relationships due to missing entities`
+      );
     }
 
     // Create relationships for each source entity
@@ -814,12 +837,8 @@ class EntityPreview extends Application {
             relationshipsCreated++;
           }
         }
-
       } catch (error) {
-        this._logger.error(
-          `Failed to create relationships for entity ${sourceEntityId}:`,
-          error
-        );
+        this._logger.error(`Failed to create relationships for entity ${sourceEntityId}:`, error);
         relationshipsFailed += relations.length;
       }
     }
@@ -961,7 +980,9 @@ class EntityPreview extends Application {
   async _showEditDialog(name, currentDescription) {
     return new Promise((resolve) => {
       new Dialog({
-        title: game.i18n?.format('VOXCHRONICLE.EntityPreview.EditDialogTitle', { name }) || `Edit Description: ${name}`,
+        title:
+          game.i18n?.format('VOXCHRONICLE.EntityPreview.EditDialogTitle', { name }) ||
+          `Edit Description: ${name}`,
         content: `
           <form class="vox-chronicle-edit-description">
             <div class="form-group">
@@ -1012,7 +1033,7 @@ class EntityPreview extends Application {
     if (!configStatus.openai) {
       ui.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.ApiKeyMissing') ||
-        'OpenAI API key is not configured'
+          'OpenAI API key is not configured'
       );
       return;
     }
@@ -1032,14 +1053,16 @@ class EntityPreview extends Application {
       }
 
       ui.notifications?.info(
-        game.i18n?.localize('VOXCHRONICLE.ImageGeneration.Generating') ||
-        'Generating image...'
+        game.i18n?.localize('VOXCHRONICLE.ImageGeneration.Generating') || 'Generating image...'
       );
 
       // Map entity type to image type
-      const imageType = entityType === 'characters' ? 'character'
-        : entityType === 'locations' ? 'location'
-          : 'item';
+      const imageType =
+        entityType === 'characters'
+          ? 'character'
+          : entityType === 'locations'
+            ? 'location'
+            : 'item';
 
       const imageUrl = await imageService.generatePortrait(imageType, entity.description);
 
@@ -1047,17 +1070,15 @@ class EntityPreview extends Application {
       this._entities[entityType][entityIndex].imageUrl = imageUrl;
 
       ui.notifications?.info(
-        game.i18n?.localize('VOXCHRONICLE.ImageGeneration.GenerationComplete') ||
-        'Image generated'
+        game.i18n?.localize('VOXCHRONICLE.ImageGeneration.GenerationComplete') || 'Image generated'
       );
 
       this._logger.debug(`Image generation completed for ${entityKey}`);
-
     } catch (error) {
       this._logger.error('Failed to generate portrait:', error);
       ui.notifications?.error(
         game.i18n?.localize('VOXCHRONICLE.ImageGeneration.GenerationFailed') ||
-        'Image generation failed'
+          'Image generation failed'
       );
     } finally {
       // Clear loading state
@@ -1104,7 +1125,7 @@ class EntityPreview extends Application {
 
   /**
    * Get the currently selected entities
-   * @returns {Object} Selected entities by type
+   * @returns {object} Selected entities by type
    */
   getSelectedEntities() {
     const selected = {
@@ -1152,7 +1173,7 @@ class EntityPreview extends Application {
 
   /**
    * Get all entities (including unselected)
-   * @returns {Object} All entities by type
+   * @returns {object} All entities by type
    */
   getAllEntities() {
     return { ...this._entities };
@@ -1168,7 +1189,7 @@ class EntityPreview extends Application {
 
   /**
    * Get the creation results
-   * @returns {Object} Creation results with created and failed arrays
+   * @returns {object} Creation results with created and failed arrays
    */
   getResults() {
     return { ...this._results };
@@ -1201,7 +1222,9 @@ class EntityPreview extends Application {
     const buildEntitySection = (title, entities, type) => {
       if (entities.length === 0) return '';
 
-      const entityRows = entities.map(entity => `
+      const entityRows = entities
+        .map(
+          (entity) => `
         <div class="entity-row ${entity.selected ? 'selected' : ''}">
           <div class="entity-select">
             <input type="checkbox" data-entity-key="${entity.key}"
@@ -1224,13 +1247,19 @@ class EntityPreview extends Application {
               <i class="fas fa-image"></i>
             </button>
           </div>
-          ${entity.imageUrl ? `
+          ${
+            entity.imageUrl
+              ? `
             <div class="entity-preview-image">
               <img src="${entity.imageUrl}" alt="${entity.name}" />
             </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
-      `).join('');
+      `
+        )
+        .join('');
 
       return `
         <div class="entity-section">
@@ -1247,7 +1276,8 @@ class EntityPreview extends Application {
     };
 
     // Build progress section
-    const progressSection = data.hasProgress ? `
+    const progressSection = data.hasProgress
+      ? `
       <div class="entity-preview-progress">
         <div class="progress-message">${data.progress.message}</div>
         <div class="progress-bar">
@@ -1255,22 +1285,29 @@ class EntityPreview extends Application {
         </div>
         <div class="progress-count">${data.progress.current} / ${data.progress.total}</div>
       </div>
-    ` : '';
+    `
+      : '';
 
     // Build results section
-    const resultsSection = data.hasResults ? `
+    const resultsSection = data.hasResults
+      ? `
       <div class="entity-preview-results ${data.isError ? 'error' : 'success'}">
         <div class="results-summary">
           ${data.createdCount > 0 ? `<div class="created-count"><i class="fas fa-check"></i> ${data.i18n.created}</div>` : ''}
           ${data.failedCount > 0 ? `<div class="failed-count"><i class="fas fa-times"></i> ${data.failedCount} failed</div>` : ''}
         </div>
-        ${data.failedCount > 0 ? `
+        ${
+          data.failedCount > 0
+            ? `
           <div class="failed-entities">
-            ${data.results.failed.map(f => `<div class="failed-entity">${f.type}: ${f.name} - ${f.error}</div>`).join('')}
+            ${data.results.failed.map((f) => `<div class="failed-entity">${f.type}: ${f.name} - ${f.error}</div>`).join('')}
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
-    ` : '';
+    `
+      : '';
 
     // Build action buttons based on mode
     let actionButtons = '';
@@ -1297,11 +1334,15 @@ class EntityPreview extends Application {
     } else if (data.isComplete || data.isError) {
       actionButtons = `
         <div class="form-actions">
-          ${data.isError ? `
+          ${
+            data.isError
+              ? `
             <button type="button" class="btn-retry" data-action="retry">
               <i class="fas fa-redo"></i> ${data.i18n.retry}
             </button>
-          ` : ''}
+          `
+              : ''
+          }
           <button type="button" class="btn-close" data-action="close">
             <i class="fas fa-times"></i> ${data.i18n.close}
           </button>
@@ -1315,30 +1356,42 @@ class EntityPreview extends Application {
           <p>${data.i18n.description}</p>
         </div>
 
-        ${!data.isKankaConfigured ? `
+        ${
+          !data.isKankaConfigured
+            ? `
           <div class="preview-warning">
             <i class="fas fa-exclamation-triangle"></i>
             <span>${data.i18n.notConfigured}</span>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         ${progressSection}
         ${resultsSection}
 
-        ${data.isReview && data.hasEntities ? `
+        ${
+          data.isReview && data.hasEntities
+            ? `
           <div class="entity-sections">
             ${buildEntitySection(data.i18n.characters, data.characters, 'characters')}
             ${buildEntitySection(data.i18n.locations, data.locations, 'locations')}
             ${buildEntitySection(data.i18n.items, data.items, 'items')}
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${!data.hasEntities && data.isReview ? `
+        ${
+          !data.hasEntities && data.isReview
+            ? `
           <div class="no-entities">
             <i class="fas fa-info-circle"></i>
             <span>${data.i18n.noEntities}</span>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         ${actionButtons}
       </div>
@@ -1347,7 +1400,7 @@ class EntityPreview extends Application {
 
   /**
    * Override _renderInner to provide fallback content if template is missing
-   * @param {Object} data - Template data
+   * @param {object} data - Template data
    * @returns {Promise<jQuery>} Rendered inner content
    * @protected
    */
@@ -1364,9 +1417,9 @@ class EntityPreview extends Application {
 
   /**
    * Static factory method to create and show an EntityPreview dialog
-   * @param {Object} entities - Extracted entities to preview
-   * @param {Object} [options] - Additional options
-   * @returns {Promise<Object>} Result with selected entities or cancellation info
+   * @param {object} entities - Extracted entities to preview
+   * @param {object} [options] - Additional options
+   * @returns {Promise<object>} Result with selected entities or cancellation info
    * @static
    */
   static async show(entities, options = {}) {
@@ -1394,8 +1447,4 @@ class EntityPreview extends Application {
 }
 
 // Export the class and enums
-export {
-  EntityPreview,
-  EntitySelectionState,
-  PreviewMode
-};
+export { EntityPreview, EntitySelectionState, PreviewMode };

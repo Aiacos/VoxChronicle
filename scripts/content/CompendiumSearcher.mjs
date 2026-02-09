@@ -32,15 +32,15 @@ const CompendiumType = {
  * @enum {string}
  */
 const SearchMode = {
-  EXACT: 'exact',       // Case-insensitive exact match
+  EXACT: 'exact', // Case-insensitive exact match
   CONTAINS: 'contains', // Name contains search term
   STARTS_WITH: 'starts', // Name starts with search term
-  FUZZY: 'fuzzy'        // Fuzzy matching with tolerance
+  FUZZY: 'fuzzy' // Fuzzy matching with tolerance
 };
 
 /**
  * Default search options
- * @constant {Object}
+ * @constant {object}
  */
 const DEFAULT_SEARCH_OPTIONS = {
   mode: SearchMode.CONTAINS,
@@ -63,14 +63,14 @@ const DEFAULT_SEARCH_OPTIONS = {
 class CompendiumSearcher {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('CompendiumSearcher');
 
   /**
    * Cache of indexed compendium contents
-   * @type {Map<string, Array<Object>>}
+   * @type {Map<string, Array<object>>}
    * @private
    */
   _indexCache = new Map();
@@ -92,7 +92,7 @@ class CompendiumSearcher {
   /**
    * Create a new CompendiumSearcher instance
    *
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {number} [options.cacheExpiryMs=300000] - Cache expiry time in milliseconds
    * @param {boolean} [options.preloadIndex=false] - Whether to preload compendium indexes
    */
@@ -110,7 +110,7 @@ class CompendiumSearcher {
    * Search for actors across all actor compendiums
    *
    * @param {string} query - Search query
-   * @param {Object} [options] - Search options
+   * @param {object} [options] - Search options
    * @param {string} [options.mode='contains'] - Search mode
    * @param {boolean} [options.caseSensitive=false] - Case sensitive search
    * @param {number} [options.limit=10] - Maximum results to return
@@ -122,16 +122,12 @@ class CompendiumSearcher {
 
     this._logger.log(`Searching actors for: "${query}"`);
 
-    const results = await this._searchCompendiums(
-      query,
-      CompendiumType.ACTOR,
-      mergedOptions
-    );
+    const results = await this._searchCompendiums(query, CompendiumType.ACTOR, mergedOptions);
 
     // Filter by actor type if specified
     if (options.actorType) {
-      return results.filter(r =>
-        r.document?.type?.toLowerCase() === options.actorType.toLowerCase()
+      return results.filter(
+        (r) => r.document?.type?.toLowerCase() === options.actorType.toLowerCase()
       );
     }
 
@@ -142,7 +138,7 @@ class CompendiumSearcher {
    * Search for items across all item compendiums
    *
    * @param {string} query - Search query
-   * @param {Object} [options] - Search options
+   * @param {object} [options] - Search options
    * @param {string} [options.mode='contains'] - Search mode
    * @param {boolean} [options.caseSensitive=false] - Case sensitive search
    * @param {number} [options.limit=10] - Maximum results to return
@@ -154,16 +150,12 @@ class CompendiumSearcher {
 
     this._logger.log(`Searching items for: "${query}"`);
 
-    const results = await this._searchCompendiums(
-      query,
-      CompendiumType.ITEM,
-      mergedOptions
-    );
+    const results = await this._searchCompendiums(query, CompendiumType.ITEM, mergedOptions);
 
     // Filter by item type if specified
     if (options.itemType) {
-      return results.filter(r =>
-        r.document?.type?.toLowerCase() === options.itemType.toLowerCase()
+      return results.filter(
+        (r) => r.document?.type?.toLowerCase() === options.itemType.toLowerCase()
       );
     }
 
@@ -174,7 +166,7 @@ class CompendiumSearcher {
    * Search for journal entries across all journal compendiums
    *
    * @param {string} query - Search query
-   * @param {Object} [options] - Search options
+   * @param {object} [options] - Search options
    * @param {string} [options.mode='contains'] - Search mode
    * @param {boolean} [options.caseSensitive=false] - Case sensitive search
    * @param {number} [options.limit=10] - Maximum results to return
@@ -186,11 +178,7 @@ class CompendiumSearcher {
 
     this._logger.log(`Searching journals for: "${query}"`);
 
-    const results = await this._searchCompendiums(
-      query,
-      CompendiumType.JOURNAL,
-      mergedOptions
-    );
+    const results = await this._searchCompendiums(query, CompendiumType.JOURNAL, mergedOptions);
 
     return results;
   }
@@ -199,9 +187,9 @@ class CompendiumSearcher {
    * Search across multiple compendium types
    *
    * @param {string} query - Search query
-   * @param {Object} [options] - Search options
+   * @param {object} [options] - Search options
    * @param {Array<string>} [options.types] - Document types to search
-   * @returns {Promise<Object>} Results grouped by type
+   * @returns {Promise<object>} Results grouped by type
    */
   async searchAll(query, options = {}) {
     const types = options.types || [
@@ -214,13 +202,14 @@ class CompendiumSearcher {
 
     const results = {};
 
-    await Promise.all(types.map(async (type) => {
-      results[type.toLowerCase()] = await this._searchCompendiums(
-        query,
-        type,
-        { ...DEFAULT_SEARCH_OPTIONS, ...options }
-      );
-    }));
+    await Promise.all(
+      types.map(async (type) => {
+        results[type.toLowerCase()] = await this._searchCompendiums(query, type, {
+          ...DEFAULT_SEARCH_OPTIONS,
+          ...options
+        });
+      })
+    );
 
     return results;
   }
@@ -249,18 +238,18 @@ class CompendiumSearcher {
     }
 
     // For searchAll results (object)
-    return Object.values(results).some(arr => arr.length > 0);
+    return Object.values(results).some((arr) => arr.length > 0);
   }
 
   /**
    * Get all available compendiums
    *
-   * @param {Object} [options] - Filter options
+   * @param {object} [options] - Filter options
    * @param {string} [options.type] - Filter by document type
    * @param {boolean} [options.includeWorldPacks=true] - Include world packs
    * @param {boolean} [options.includeModulePacks=true] - Include module packs
    * @param {boolean} [options.includeSystemPacks=true] - Include system packs
-   * @returns {Array<Object>} Array of compendium info objects
+   * @returns {Array<object>} Array of compendium info objects
    */
   getAvailableCompendiums(options = {}) {
     const mergedOptions = { ...DEFAULT_SEARCH_OPTIONS, ...options };
@@ -303,7 +292,7 @@ class CompendiumSearcher {
    *
    * @param {string} packId - The compendium pack ID
    * @param {string} documentId - The document ID
-   * @returns {Promise<Object|null>} The document or null if not found
+   * @returns {Promise<object | null>} The document or null if not found
    */
   async getDocument(packId, documentId) {
     if (typeof game === 'undefined' || !game.packs) {
@@ -331,7 +320,7 @@ class CompendiumSearcher {
    *
    * @param {string} query - Search query
    * @param {string} documentType - Document type to search
-   * @param {Object} options - Search options
+   * @param {object} options - Search options
    * @returns {Promise<Array<SearchResult>>} Array of search results
    * @private
    */
@@ -400,7 +389,9 @@ class CompendiumSearcher {
     // Apply limit
     const limitedResults = results.slice(0, options.limit);
 
-    this._logger.debug(`Found ${limitedResults.length} matches for "${query}" in ${documentType} compendiums`);
+    this._logger.debug(
+      `Found ${limitedResults.length} matches for "${query}" in ${documentType} compendiums`
+    );
 
     return limitedResults;
   }
@@ -408,7 +399,7 @@ class CompendiumSearcher {
   /**
    * Get the index for a compendium pack (with caching)
    *
-   * @param {Object} pack - The compendium pack
+   * @param {object} pack - The compendium pack
    * @returns {Promise<Array>} The pack index
    * @private
    */
@@ -449,7 +440,7 @@ class CompendiumSearcher {
    *
    * @param {string} name - The normalized name to check
    * @param {string} query - The normalized query
-   * @param {Object} options - Search options
+   * @param {object} options - Search options
    * @returns {boolean} True if the name matches
    * @private
    */
@@ -464,9 +455,10 @@ class CompendiumSearcher {
       case SearchMode.CONTAINS:
         return name.includes(query);
 
-      case SearchMode.FUZZY:
+      case SearchMode.FUZZY: {
         const similarity = this._calculateSimilarity(name, query);
         return similarity >= options.fuzzyThreshold;
+      }
 
       default:
         return name.includes(query);
@@ -478,7 +470,7 @@ class CompendiumSearcher {
    *
    * @param {string} name - The normalized name
    * @param {string} query - The normalized query
-   * @param {Object} options - Search options
+   * @param {object} options - Search options
    * @returns {number} Relevance score (higher is better)
    * @private
    */
@@ -532,8 +524,8 @@ class CompendiumSearcher {
       for (let j = 1; j <= str2.length; j++) {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
         matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,     // deletion
-          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1, // deletion
+          matrix[i][j - 1] + 1, // insertion
           matrix[i - 1][j - 1] + cost // substitution
         );
       }
@@ -542,13 +534,13 @@ class CompendiumSearcher {
     const distance = matrix[str1.length][str2.length];
     const maxLength = Math.max(str1.length, str2.length);
 
-    return 1 - (distance / maxLength);
+    return 1 - distance / maxLength;
   }
 
   /**
    * Determine the package type for a compendium
    *
-   * @param {Object} pack - The compendium pack
+   * @param {object} pack - The compendium pack
    * @returns {string} Package type: 'world', 'module', or 'system'
    * @private
    */
@@ -606,7 +598,7 @@ class CompendiumSearcher {
   /**
    * Get cache statistics
    *
-   * @returns {Object} Cache statistics
+   * @returns {object} Cache statistics
    */
   getCacheStats() {
     return {
@@ -620,7 +612,7 @@ class CompendiumSearcher {
    * Convenience method for entity extraction integration
    *
    * @param {Array<string>} names - Array of entity names to search
-   * @param {Object} [options] - Search options
+   * @param {object} [options] - Search options
    * @returns {Promise<Map<string, Array<SearchResult>>>} Map of name to matching results
    */
   async findMatchingActors(names, options = {}) {
@@ -647,7 +639,7 @@ class CompendiumSearcher {
    * Convenience method for entity extraction integration
    *
    * @param {Array<string>} names - Array of item names to search
-   * @param {Object} [options] - Search options
+   * @param {object} [options] - Search options
    * @returns {Promise<Map<string, Array<SearchResult>>>} Map of name to matching results
    */
   async findMatchingItems(names, options = {}) {
@@ -671,7 +663,7 @@ class CompendiumSearcher {
 }
 
 /**
- * @typedef {Object} SearchResult
+ * @typedef {object} SearchResult
  * @property {string} id - Document ID
  * @property {string} name - Document name
  * @property {string} packId - Compendium pack ID
@@ -679,14 +671,9 @@ class CompendiumSearcher {
  * @property {string} packType - Package type (world, module, system)
  * @property {string} documentType - Document type (Actor, Item, etc.)
  * @property {string|null} img - Image path if available
- * @property {Object} document - The raw index entry
+ * @property {object} document - The raw index entry
  * @property {number} score - Relevance score (higher is better)
  */
 
 // Export all classes and enums
-export {
-  CompendiumSearcher,
-  CompendiumType,
-  SearchMode,
-  DEFAULT_SEARCH_OPTIONS
-};
+export { CompendiumSearcher, CompendiumType, SearchMode, DEFAULT_SEARCH_OPTIONS };

@@ -96,12 +96,8 @@ function createMockEntities(options = {}) {
 
   return {
     characters,
-    locations: [
-      { name: 'Tavern', description: 'A cozy tavern', type: 'Building' }
-    ],
-    items: [
-      { name: 'Magic Sword', description: 'A legendary blade', type: 'Weapon' }
-    ]
+    locations: [{ name: 'Tavern', description: 'A cozy tavern', type: 'Building' }],
+    items: [{ name: 'Magic Sword', description: 'A legendary blade', type: 'Weapon' }]
   };
 }
 
@@ -226,7 +222,11 @@ describe('ImageProcessor', () => {
       const entities = createMockEntities({ numCharacters: 5 });
 
       mockImageService.generateBatch.mockResolvedValue(
-        Array(5).fill({ success: true, url: 'https://example.com/image.png', revisedPrompt: 'Test' })
+        Array(5).fill({
+          success: true,
+          url: 'https://example.com/image.png',
+          revisedPrompt: 'Test'
+        })
       );
 
       await processor.generateImages(moments, entities);
@@ -243,7 +243,11 @@ describe('ImageProcessor', () => {
       const entities = createMockEntities({ numCharacters: 3 });
 
       mockImageService.generateBatch.mockResolvedValue(
-        Array(5).fill({ success: true, url: 'https://example.com/image.png', revisedPrompt: 'Test' })
+        Array(5).fill({
+          success: true,
+          url: 'https://example.com/image.png',
+          revisedPrompt: 'Test'
+        })
       );
 
       await processor.generateImages(moments, entities);
@@ -253,7 +257,7 @@ describe('ImageProcessor', () => {
 
       // All 5 slots taken by moments
       expect(requests).toHaveLength(5);
-      expect(requests.every(r => r.entityType === 'scene')).toBe(true);
+      expect(requests.every((r) => r.entityType === 'scene')).toBe(true);
     });
 
     it('should only generate images for NPCs', async () => {
@@ -281,9 +285,13 @@ describe('ImageProcessor', () => {
     it('should use custom imageQuality option', async () => {
       const moments = createMockMoments(1);
 
-      await processor.generateImages(moments, {}, {
-        imageQuality: 'hd'
-      });
+      await processor.generateImages(
+        moments,
+        {},
+        {
+          imageQuality: 'hd'
+        }
+      );
 
       const calls = mockImageService.generateBatch.mock.calls[0];
       const requests = calls[0];
@@ -295,12 +303,20 @@ describe('ImageProcessor', () => {
       const moments = createMockMoments(10);
 
       mockImageService.generateBatch.mockResolvedValue(
-        Array(2).fill({ success: true, url: 'https://example.com/image.png', revisedPrompt: 'Test' })
+        Array(2).fill({
+          success: true,
+          url: 'https://example.com/image.png',
+          revisedPrompt: 'Test'
+        })
       );
 
-      await processor.generateImages(moments, {}, {
-        maxImagesPerSession: 2
-      });
+      await processor.generateImages(
+        moments,
+        {},
+        {
+          maxImagesPerSession: 2
+        }
+      );
 
       const calls = mockImageService.generateBatch.mock.calls[0];
       const requests = calls[0];
@@ -369,7 +385,10 @@ describe('ImageProcessor', () => {
       const results = await processor.generateImages(moments, {}, { onProgress });
 
       expect(results).toEqual([]);
-      expect(onProgress).toHaveBeenCalledWith(0, 'Image generation failed: API rate limit exceeded');
+      expect(onProgress).toHaveBeenCalledWith(
+        0,
+        'Image generation failed: API rate limit exceeded'
+      );
     });
 
     it('should handle partial generation failures', async () => {
@@ -526,13 +545,21 @@ describe('ImageProcessor', () => {
       const moments = createMockMoments(10);
 
       mockImageService.generateBatch.mockResolvedValue(
-        Array(5).fill({ success: true, url: 'https://example.com/image.png', revisedPrompt: 'Test' })
+        Array(5).fill({
+          success: true,
+          url: 'https://example.com/image.png',
+          revisedPrompt: 'Test'
+        })
       );
 
       // When 0 is passed, it's falsy and falls back to default (5)
-      const results = await processor.generateImages(moments, {}, {
-        maxImagesPerSession: 0
-      });
+      const results = await processor.generateImages(
+        moments,
+        {},
+        {
+          maxImagesPerSession: 0
+        }
+      );
 
       const calls = mockImageService.generateBatch.mock.calls[0];
       const requests = calls[0];

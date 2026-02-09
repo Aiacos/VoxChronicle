@@ -57,7 +57,12 @@ function createMockEntityExtractionResult(options = {}) {
       { name: 'Staff of Power', description: 'A magical staff', type: 'Weapon' }
     ],
     moments: options.moments || [
-      { id: 'moment-1', title: 'Epic Battle', description: 'Battle description', imagePrompt: 'epic battle scene' }
+      {
+        id: 'moment-1',
+        title: 'Epic Battle',
+        description: 'Battle description',
+        imagePrompt: 'epic battle scene'
+      }
     ],
     totalCount: options.totalCount || 4
   };
@@ -97,14 +102,10 @@ function createMockKankaLists() {
       ]
     },
     locations: {
-      data: [
-        { id: 3, name: 'Existing Location' }
-      ]
+      data: [{ id: 3, name: 'Existing Location' }]
     },
     items: {
-      data: [
-        { id: 4, name: 'Existing Item' }
-      ]
+      data: [{ id: 4, name: 'Existing Item' }]
     }
   };
 }
@@ -317,9 +318,7 @@ describe('EntityProcessor', () => {
     });
 
     it('should handle extraction errors gracefully', async () => {
-      mockServices.entityExtractor.extractAll.mockRejectedValueOnce(
-        new Error('Extraction failed')
-      );
+      mockServices.entityExtractor.extractAll.mockRejectedValueOnce(new Error('Extraction failed'));
 
       const transcriptText = 'Test transcript';
       const result = await processor.extractEntities(transcriptText);
@@ -328,9 +327,7 @@ describe('EntityProcessor', () => {
     });
 
     it('should continue if fetching existing entities fails', async () => {
-      mockServices.kankaService.listCharacters.mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      mockServices.kankaService.listCharacters.mockRejectedValueOnce(new Error('Network error'));
 
       const transcriptText = 'Test transcript';
       const result = await processor.extractEntities(transcriptText);
@@ -405,7 +402,10 @@ describe('EntityProcessor', () => {
         onProgress: progressCallback
       });
 
-      expect(progressCallback).toHaveBeenCalledWith(0, 'Extracting relationships from transcript...');
+      expect(progressCallback).toHaveBeenCalledWith(
+        0,
+        'Extracting relationships from transcript...'
+      );
       expect(progressCallback).toHaveBeenCalledWith(100, 'Relationship extraction complete');
     });
 
@@ -574,9 +574,7 @@ describe('EntityProcessor', () => {
     });
 
     it('should handle partial failures gracefully', async () => {
-      mockServices.kankaService.listCharacters.mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      mockServices.kankaService.listCharacters.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await processor.getExistingKankaEntities();
 
@@ -607,9 +605,7 @@ describe('EntityProcessor', () => {
       mockServices.kankaService.listCharacters.mockResolvedValueOnce({
         data: [{ id: 1, name: 'Character' }]
       });
-      mockServices.kankaService.listLocations.mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      mockServices.kankaService.listLocations.mockRejectedValueOnce(new Error('Network error'));
       mockServices.kankaService.listItems.mockResolvedValueOnce({
         data: [{ id: 2, name: 'Item' }]
       });

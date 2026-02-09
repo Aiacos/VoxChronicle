@@ -28,21 +28,21 @@ import { Logger } from '../utils/Logger.mjs';
 class EntityProcessor {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('EntityProcessor');
 
   /**
    * Entity extraction service
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _entityExtractor = null;
 
   /**
    * Kanka API service for duplicate checking
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _kankaService = null;
@@ -50,9 +50,9 @@ class EntityProcessor {
   /**
    * Create a new EntityProcessor instance
    *
-   * @param {Object} options - Configuration options
-   * @param {Object} options.entityExtractor - EntityExtractor service instance
-   * @param {Object} [options.kankaService] - KankaService instance (optional, for duplicate checking)
+   * @param {object} options - Configuration options
+   * @param {object} options.entityExtractor - EntityExtractor service instance
+   * @param {object} [options.kankaService] - KankaService instance (optional, for duplicate checking)
    */
   constructor(options = {}) {
     if (!options.entityExtractor) {
@@ -69,7 +69,7 @@ class EntityProcessor {
    * Extract entities from transcript text
    *
    * @param {string} transcriptText - The full transcription text
-   * @param {Object} [options] - Extraction options
+   * @param {object} [options] - Extraction options
    * @param {boolean} [options.includePlayerCharacters=false] - Whether to include PCs
    * @param {string} [options.campaignContext] - Additional context about the campaign
    * @param {Function} [options.onProgress] - Progress callback (progress: number, message: string)
@@ -99,24 +99,20 @@ class EntityProcessor {
       }
 
       // Extract entities and salient moments
-      const extractionResult = await this._entityExtractor.extractAll(
-        transcriptText,
-        {
-          existingEntities,
-          includePlayerCharacters: options.includePlayerCharacters,
-          campaignContext: options.campaignContext
-        }
-      );
+      const extractionResult = await this._entityExtractor.extractAll(transcriptText, {
+        existingEntities,
+        includePlayerCharacters: options.includePlayerCharacters,
+        campaignContext: options.campaignContext
+      });
 
       onProgress(100, 'Entity extraction complete');
 
       this._logger.log(
         `Extracted ${extractionResult.totalCount || 0} entities, ` +
-        `${extractionResult.moments?.length || 0} salient moments`
+          `${extractionResult.moments?.length || 0} salient moments`
       );
 
       return extractionResult;
-
     } catch (error) {
       this._logger.error('Entity extraction failed:', error);
       // Don't throw - extraction failure shouldn't stop the workflow
@@ -128,8 +124,8 @@ class EntityProcessor {
    * Extract relationships between entities from transcript text
    *
    * @param {string} transcriptText - The full transcription text
-   * @param {Object} extractionResult - Entity extraction result containing characters, locations, and items
-   * @param {Object} [options] - Extraction options
+   * @param {object} extractionResult - Entity extraction result containing characters, locations, and items
+   * @param {object} [options] - Extraction options
    * @param {string} [options.campaignContext] - Additional context about the campaign
    * @param {number} [options.minConfidence=5] - Minimum confidence score (1-10) for relationships
    * @param {Function} [options.onProgress] - Progress callback (progress: number, message: string)
@@ -179,7 +175,6 @@ class EntityProcessor {
       this._logger.log(`Extracted ${relationships?.length || 0} relationships`);
 
       return relationships || [];
-
     } catch (error) {
       this._logger.error('Relationship extraction failed:', error);
       // Don't throw - relationship extraction failure shouldn't stop the workflow
@@ -209,17 +204,16 @@ class EntityProcessor {
       ]);
 
       if (characters?.data) {
-        names.push(...characters.data.map(c => c.name));
+        names.push(...characters.data.map((c) => c.name));
       }
       if (locations?.data) {
-        names.push(...locations.data.map(l => l.name));
+        names.push(...locations.data.map((l) => l.name));
       }
       if (items?.data) {
-        names.push(...items.data.map(i => i.name));
+        names.push(...items.data.map((i) => i.name));
       }
 
       this._logger.debug(`Found ${names.length} existing entities in Kanka`);
-
     } catch (error) {
       this._logger.warn('Failed to fetch existing entities:', error.message);
     }
@@ -230,7 +224,7 @@ class EntityProcessor {
   /**
    * Update the entity extractor service
    *
-   * @param {Object} entityExtractor - New EntityExtractor instance
+   * @param {object} entityExtractor - New EntityExtractor instance
    */
   updateEntityExtractor(entityExtractor) {
     if (!entityExtractor) {
@@ -243,7 +237,7 @@ class EntityProcessor {
   /**
    * Update the Kanka service
    *
-   * @param {Object} kankaService - New KankaService instance
+   * @param {object} kankaService - New KankaService instance
    */
   updateKankaService(kankaService) {
     this._kankaService = kankaService;

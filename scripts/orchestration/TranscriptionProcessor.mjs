@@ -47,21 +47,21 @@ const TranscriptionMode = {
 class TranscriptionProcessor {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('TranscriptionProcessor');
 
   /**
    * Primary transcription service (local or API)
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _transcriptionService = null;
 
   /**
    * Transcription configuration (mode, API key for fallback)
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _config = null;
@@ -69,9 +69,9 @@ class TranscriptionProcessor {
   /**
    * Create a new TranscriptionProcessor instance
    *
-   * @param {Object} options - Configuration options
-   * @param {Object} options.transcriptionService - Primary transcription service (LocalWhisperService or TranscriptionService)
-   * @param {Object} [options.config] - Transcription configuration
+   * @param {object} options - Configuration options
+   * @param {object} options.transcriptionService - Primary transcription service (LocalWhisperService or TranscriptionService)
+   * @param {object} [options.config] - Transcription configuration
    * @param {string} [options.config.mode='local'] - Transcription mode ('local', 'api', or 'auto')
    * @param {string} [options.config.openaiApiKey] - OpenAI API key for fallback in auto mode
    */
@@ -90,8 +90,8 @@ class TranscriptionProcessor {
    * Process transcription for an audio blob
    *
    * @param {Blob} audioBlob - Audio data to transcribe
-   * @param {Object} [options] - Processing options
-   * @param {Object} [options.speakerMap] - Speaker ID to name mapping
+   * @param {object} [options] - Processing options
+   * @param {object} [options.speakerMap] - Speaker ID to name mapping
    * @param {string} [options.language] - Language code (e.g., 'en', 'it')
    * @param {Function} [options.onProgress] - Progress callback (progress: number, message: string)
    * @returns {Promise<TranscriptionResult>} Transcription result with segments and speakers
@@ -110,7 +110,8 @@ class TranscriptionProcessor {
 
     // Determine current transcription mode
     const isLocalService = this._transcriptionService instanceof LocalWhisperService;
-    const mode = this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
+    const mode =
+      this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
 
     onProgress(0, `Starting transcription (${mode} mode)...`);
 
@@ -123,20 +124,24 @@ class TranscriptionProcessor {
       );
 
       onProgress(100, 'Transcription complete');
-      this._logger.log(`Transcription complete: ${transcriptResult.segments?.length || 0} segments`);
+      this._logger.log(
+        `Transcription complete: ${transcriptResult.segments?.length || 0} segments`
+      );
 
       return transcriptResult;
-
     } catch (transcriptionError) {
       // Handle fallback for auto mode with local service
       if (isLocalService && mode === TranscriptionMode.AUTO) {
-        this._logger.warn('Local transcription failed, attempting fallback to API...', transcriptionError.message);
+        this._logger.warn(
+          'Local transcription failed, attempting fallback to API...',
+          transcriptionError.message
+        );
 
         // Check if we have API key for fallback
         if (!this._config?.openaiApiKey) {
           throw new Error(
             'Local transcription failed and no OpenAI API key configured for fallback. ' +
-            `Error: ${transcriptionError.message}`
+              `Error: ${transcriptionError.message}`
           );
         }
 
@@ -149,29 +154,24 @@ class TranscriptionProcessor {
 
         try {
           // Retry with API service
-          const transcriptResult = await this._transcribeWithService(
-            apiService,
-            audioBlob,
-            {
-              speakerMap,
-              language,
-              onProgress: (progress, message) => {
-                onProgress(progress, `${message} (API fallback)`);
-              }
+          const transcriptResult = await this._transcribeWithService(apiService, audioBlob, {
+            speakerMap,
+            language,
+            onProgress: (progress, message) => {
+              onProgress(progress, `${message} (API fallback)`);
             }
-          );
+          });
 
           this._logger.log('Fallback to API transcription successful');
           onProgress(100, 'Transcription complete (via API fallback)');
 
           return transcriptResult;
-
         } catch (fallbackError) {
           this._logger.error('API fallback transcription also failed:', fallbackError);
           throw new Error(
             `Both local and API transcription failed. ` +
-            `Local error: ${transcriptionError.message}. ` +
-            `API error: ${fallbackError.message}`
+              `Local error: ${transcriptionError.message}. ` +
+              `API error: ${fallbackError.message}`
           );
         }
       }
@@ -185,9 +185,9 @@ class TranscriptionProcessor {
   /**
    * Transcribe audio with a specific service
    *
-   * @param {Object} service - Transcription service instance
+   * @param {object} service - Transcription service instance
    * @param {Blob} audioBlob - Audio data to transcribe
-   * @param {Object} options - Transcription options
+   * @param {object} options - Transcription options
    * @returns {Promise<TranscriptionResult>} Transcription result
    * @private
    */
@@ -202,10 +202,7 @@ class TranscriptionProcessor {
         const totalChunks = progress.totalChunks || 1;
         const progressPercent = progress.progress || 0;
 
-        onProgress(
-          progressPercent,
-          `Transcribing chunk ${currentChunk}/${totalChunks}`
-        );
+        onProgress(progressPercent, `Transcribing chunk ${currentChunk}/${totalChunks}`);
       }
     });
   }
@@ -234,7 +231,7 @@ class TranscriptionProcessor {
   /**
    * Update transcription configuration
    *
-   * @param {Object} config - New configuration
+   * @param {object} config - New configuration
    * @param {string} [config.mode] - Transcription mode
    * @param {string} [config.openaiApiKey] - OpenAI API key for fallback
    */

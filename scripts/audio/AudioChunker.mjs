@@ -18,7 +18,7 @@ import { AudioUtils, MAX_TRANSCRIPTION_SIZE } from '../utils/AudioUtils.mjs';
  * Using a slightly smaller target to leave margin for container overhead
  * @constant {number}
  */
-const MAX_CHUNK_SIZE = MAX_TRANSCRIPTION_SIZE - (1024 * 1024); // 24MB to leave 1MB margin
+const MAX_CHUNK_SIZE = MAX_TRANSCRIPTION_SIZE - 1024 * 1024; // 24MB to leave 1MB margin
 
 /**
  * Minimum chunk size to avoid creating too-small segments
@@ -39,7 +39,7 @@ const MIN_CHUNK_SIZE = 1024 * 1024; // 1MB minimum
 class AudioChunker {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('AudioChunker');
@@ -54,7 +54,7 @@ class AudioChunker {
   /**
    * Create a new AudioChunker instance
    *
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {number} [options.maxChunkSize] - Maximum size per chunk in bytes
    */
   constructor(options = {}) {
@@ -139,7 +139,10 @@ class AudioChunker {
       if (remaining <= MIN_CHUNK_SIZE && chunks.length > 0) {
         // Append to last chunk if the remainder is too small
         const lastChunk = chunks.pop();
-        const combinedData = await this._combineBlobs([lastChunk, audioBlob.slice(offset)], mimeType);
+        const combinedData = await this._combineBlobs(
+          [lastChunk, audioBlob.slice(offset)],
+          mimeType
+        );
         chunks.push(combinedData);
         this._logger.debug(`Combined small remainder with previous chunk`);
         break;
@@ -244,7 +247,7 @@ class AudioChunker {
    * Get metadata about how an audio blob would be chunked
    *
    * @param {Blob} audioBlob - The audio blob to analyze
-   * @returns {Object} Chunking metadata
+   * @returns {object} Chunking metadata
    */
   getChunkingInfo(audioBlob) {
     const totalSize = audioBlob.size;

@@ -51,7 +51,7 @@ const LOCAL_TRANSCRIPTION_TIMEOUT_MS = 600000;
 class LocalWhisperService {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('LocalWhisperService');
@@ -79,7 +79,7 @@ class LocalWhisperService {
 
   /**
    * Default speaker mapping
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _defaultSpeakerMap = {};
@@ -95,9 +95,9 @@ class LocalWhisperService {
    * Create a new LocalWhisperService instance
    *
    * @param {string} backendUrl - Whisper backend server URL
-   * @param {Object} [options] - Configuration options
+   * @param {object} [options] - Configuration options
    * @param {string} [options.defaultLanguage] - Default transcription language (e.g., 'en', 'it')
-   * @param {Object} [options.defaultSpeakerMap] - Default speaker ID to name mapping
+   * @param {object} [options.defaultSpeakerMap] - Default speaker ID to name mapping
    * @param {number} [options.timeout=600000] - Request timeout in milliseconds
    * @param {number} [options.maxRetries=3] - Maximum retry attempts
    */
@@ -137,7 +137,7 @@ class LocalWhisperService {
   /**
    * Perform a health check on the backend
    *
-   * @param {Object} [options] - Health check options
+   * @param {object} [options] - Health check options
    * @returns {Promise<boolean>} True if backend is healthy
    */
   async healthCheck(options = {}) {
@@ -157,8 +157,8 @@ class LocalWhisperService {
    * Transcribe audio with optional speaker diarization
    *
    * @param {Blob|File} audioBlob - Audio file to transcribe
-   * @param {Object} [options] - Transcription options
-   * @param {Object} [options.speakerMap] - Map of speaker IDs to names (e.g., {'SPEAKER_00': 'GM'})
+   * @param {object} [options] - Transcription options
+   * @param {object} [options.speakerMap] - Map of speaker IDs to names (e.g., {'SPEAKER_00': 'GM'})
    * @param {string} [options.language] - ISO language code (e.g., 'en', 'it', 'es')
    * @param {string} [options.responseFormat] - Response format
    * @param {boolean} [options.word_timestamps=false] - Include word-level timestamps
@@ -191,7 +191,7 @@ class LocalWhisperService {
    * Transcribe a single audio blob (under size limit)
    *
    * @param {Blob} audioBlob - Audio blob to transcribe
-   * @param {Object} options - Transcription options
+   * @param {object} options - Transcription options
    * @returns {Promise<TranscriptionResult>} Transcription result
    * @private
    */
@@ -219,7 +219,6 @@ class LocalWhisperService {
 
       this._logger.log('Local transcription completed successfully');
       return mappedResult;
-
     } catch (error) {
       this._logger.error('Local transcription failed:', error.message);
       throw error;
@@ -230,7 +229,7 @@ class LocalWhisperService {
    * Transcribe a large audio file by splitting into chunks
    *
    * @param {Blob} audioBlob - Large audio blob to transcribe
-   * @param {Object} options - Transcription options
+   * @param {object} options - Transcription options
    * @returns {Promise<TranscriptionResult>} Combined transcription result
    * @private
    */
@@ -270,7 +269,7 @@ class LocalWhisperService {
       // Track duration offset for proper timing
       if (chunkResult.segments) {
         // Adjust segment times based on previous chunks
-        chunkResult.segments.forEach(segment => {
+        chunkResult.segments.forEach((segment) => {
           segment.start += totalDuration;
           segment.end += totalDuration;
           if (segment.speaker || segment.originalSpeaker) {
@@ -306,8 +305,8 @@ class LocalWhisperService {
   /**
    * Normalize Whisper backend response to match OpenAI format
    *
-   * @param {Object|string} response - Raw backend response
-   * @returns {Object} Normalized transcription result
+   * @param {object | string} response - Raw backend response
+   * @returns {object} Normalized transcription result
    * @private
    */
   _normalizeResponse(response) {
@@ -331,7 +330,7 @@ class LocalWhisperService {
 
       // Process segments if available
       if (response.segments && Array.isArray(response.segments)) {
-        normalized.segments = response.segments.map(segment => ({
+        normalized.segments = response.segments.map((segment) => ({
           speaker: segment.speaker || null,
           text: segment.text || '',
           start: segment.start ?? segment.from ?? 0,
@@ -357,8 +356,8 @@ class LocalWhisperService {
   /**
    * Create segments from word-level transcription
    *
-   * @param {Array<Object>} words - Array of word objects with timestamps
-   * @returns {Array<Object>} Segment array
+   * @param {Array<object>} words - Array of word objects with timestamps
+   * @returns {Array<object>} Segment array
    * @private
    */
   _createSegmentsFromWords(words) {
@@ -380,10 +379,11 @@ class LocalWhisperService {
       // 1. No current segment
       // 2. Speaker changed
       // 3. Long gap since last word
-      if (!currentSegment ||
-          (wordSpeaker && currentSegment.speaker !== wordSpeaker) ||
-          (wordStart - currentSegment.end > SEGMENT_GAP_THRESHOLD)) {
-
+      if (
+        !currentSegment ||
+        (wordSpeaker && currentSegment.speaker !== wordSpeaker) ||
+        wordStart - currentSegment.end > SEGMENT_GAP_THRESHOLD
+      ) {
         if (currentSegment) {
           segments.push(currentSegment);
         }
@@ -396,7 +396,7 @@ class LocalWhisperService {
         };
       } else {
         // Append to current segment
-        currentSegment.text += ' ' + wordText;
+        currentSegment.text += ` ${wordText}`;
         currentSegment.end = wordEnd;
       }
     }
@@ -412,9 +412,9 @@ class LocalWhisperService {
   /**
    * Combine transcription results from multiple chunks
    *
-   * @param {Array<Object>} chunkResults - Results from each chunk
+   * @param {Array<object>} chunkResults - Results from each chunk
    * @param {Set<string>} allSpeakers - Set of all unique speakers
-   * @returns {Object} Combined transcription result
+   * @returns {object} Combined transcription result
    * @private
    */
   _combineChunkResults(chunkResults, allSpeakers) {
@@ -424,7 +424,7 @@ class LocalWhisperService {
 
     // Combine all text
     const fullText = chunkResults
-      .map(result => result.text || '')
+      .map((result) => result.text || '')
       .join(' ')
       .trim();
 
@@ -451,8 +451,8 @@ class LocalWhisperService {
   /**
    * Map speaker IDs to human-readable names
    *
-   * @param {Object} result - Raw transcription result
-   * @param {Object} speakerMap - Map of speaker IDs to names
+   * @param {object} result - Raw transcription result
+   * @param {object} speakerMap - Map of speaker IDs to names
    * @returns {TranscriptionResult} Result with mapped speaker names
    * @private
    */
@@ -475,7 +475,7 @@ class LocalWhisperService {
     const uniqueSpeakers = new Set();
 
     // Map segments with speaker names
-    const mappedSegments = result.segments.map(segment => {
+    const mappedSegments = result.segments.map((segment) => {
       const originalSpeaker = segment.speaker || 'Unknown';
 
       // Only add to uniqueSpeakers if there's a speaker
@@ -496,7 +496,7 @@ class LocalWhisperService {
     });
 
     // Build speaker list with mapping info
-    const speakers = Array.from(uniqueSpeakers).map(speakerId => ({
+    const speakers = Array.from(uniqueSpeakers).map((speakerId) => ({
       id: speakerId,
       name: speakerMap[speakerId] || speakerId,
       isMapped: Boolean(speakerMap[speakerId])
@@ -517,7 +517,7 @@ class LocalWhisperService {
   /**
    * Set the default speaker mapping
    *
-   * @param {Object} speakerMap - Map of speaker IDs to names
+   * @param {object} speakerMap - Map of speaker IDs to names
    * @example
    * service.setSpeakerMap({
    *   'SPEAKER_00': 'Game Master',
@@ -527,13 +527,15 @@ class LocalWhisperService {
    */
   setSpeakerMap(speakerMap) {
     this._defaultSpeakerMap = speakerMap || {};
-    this._logger.debug(`Updated speaker map with ${Object.keys(this._defaultSpeakerMap).length} entries`);
+    this._logger.debug(
+      `Updated speaker map with ${Object.keys(this._defaultSpeakerMap).length} entries`
+    );
   }
 
   /**
    * Get the current speaker mapping
    *
-   * @returns {Object} Current speaker map
+   * @returns {object} Current speaker map
    */
   getSpeakerMap() {
     return { ...this._defaultSpeakerMap };
@@ -564,7 +566,7 @@ class LocalWhisperService {
    *
    * @param {Blob} audioBlob - Audio to transcribe
    * @param {string} [language] - Language code
-   * @returns {Promise<Object>} Basic transcription result
+   * @returns {Promise<object>} Basic transcription result
    */
   async transcribeBasic(audioBlob, language = null) {
     return this.transcribe(audioBlob, {
@@ -596,7 +598,6 @@ class LocalWhisperService {
 
       this._logger.debug(`Backend diarization support: ${this._supportsDiarization}`);
       return this._supportsDiarization;
-
     } catch (error) {
       this._logger.debug('Could not determine diarization support, assuming false');
       this._supportsDiarization = false;
@@ -609,7 +610,7 @@ class LocalWhisperService {
    * Note: This returns Whisper's standard language support
    * Actual backend may support a subset depending on loaded models
    *
-   * @returns {Array<Object>} List of supported languages
+   * @returns {Array<object>} List of supported languages
    */
   static getSupportedLanguages() {
     return [
@@ -635,9 +636,9 @@ class LocalWhisperService {
    * Local transcription speed depends on hardware and model
    *
    * @param {Blob} audioBlob - Audio to estimate time for
-   * @param {Object} [options] - Estimation options
+   * @param {object} [options] - Estimation options
    * @param {number} [options.realtimeFactor=0.5] - Estimation factor (0.5 = 2x faster than realtime)
-   * @returns {Object} Time estimate
+   * @returns {object} Time estimate
    */
   estimateTranscriptionTime(audioBlob, options = {}) {
     const estimatedDuration = AudioUtils.estimateDuration(audioBlob);
@@ -655,7 +656,7 @@ class LocalWhisperService {
 }
 
 /**
- * @typedef {Object} TranscriptionResult
+ * @typedef {object} TranscriptionResult
  * @property {string} text - Full transcription text
  * @property {Array<TranscriptionSegment>} segments - Speaker-labeled segments
  * @property {Array<SpeakerInfo>} speakers - List of identified speakers
@@ -663,11 +664,11 @@ class LocalWhisperService {
  * @property {number} [duration] - Audio duration in seconds
  * @property {boolean} [chunked] - Whether transcription was chunked
  * @property {number} [chunkCount] - Number of chunks if chunked
- * @property {Object} [raw] - Raw backend response
+ * @property {object} [raw] - Raw backend response
  */
 
 /**
- * @typedef {Object} TranscriptionSegment
+ * @typedef {object} TranscriptionSegment
  * @property {string} speaker - Speaker name (mapped or original ID)
  * @property {string} originalSpeaker - Original speaker ID from backend
  * @property {string} text - Segment text
@@ -676,15 +677,11 @@ class LocalWhisperService {
  */
 
 /**
- * @typedef {Object} SpeakerInfo
+ * @typedef {object} SpeakerInfo
  * @property {string} id - Original speaker ID from backend
  * @property {string} name - Mapped name or original ID
  * @property {boolean} isMapped - Whether a custom name was applied
  */
 
 // Export the class and enums
-export {
-  LocalWhisperService,
-  LocalWhisperResponseFormat,
-  LOCAL_TRANSCRIPTION_TIMEOUT_MS
-};
+export { LocalWhisperService, LocalWhisperResponseFormat, LOCAL_TRANSCRIPTION_TIMEOUT_MS };

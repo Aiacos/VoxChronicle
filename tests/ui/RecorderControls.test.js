@@ -313,13 +313,21 @@ describe('RecorderControls', () => {
     });
 
     it('should map GENERATING_IMAGES orchestrator state to PROCESSING UI state', () => {
-      orchestratorCallbacks.onStateChange(SessionState.GENERATING_IMAGES, SessionState.EXTRACTING, {});
+      orchestratorCallbacks.onStateChange(
+        SessionState.GENERATING_IMAGES,
+        SessionState.EXTRACTING,
+        {}
+      );
 
       expect(recorder._uiState).toBe(RecorderUIState.PROCESSING);
     });
 
     it('should map PUBLISHING orchestrator state to PROCESSING UI state', () => {
-      orchestratorCallbacks.onStateChange(SessionState.PUBLISHING, SessionState.GENERATING_IMAGES, {});
+      orchestratorCallbacks.onStateChange(
+        SessionState.PUBLISHING,
+        SessionState.GENERATING_IMAGES,
+        {}
+      );
 
       expect(recorder._uiState).toBe(RecorderUIState.PROCESSING);
     });
@@ -397,11 +405,7 @@ describe('RecorderControls', () => {
     it('should show completion notification with segment count', () => {
       const session = {
         transcript: {
-          segments: [
-            { text: 'segment 1' },
-            { text: 'segment 2' },
-            { text: 'segment 3' }
-          ]
+          segments: [{ text: 'segment 1' }, { text: 'segment 2' }, { text: 'segment 3' }]
         }
       };
 

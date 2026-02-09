@@ -309,9 +309,7 @@ describe('VoxChronicle', () => {
       expect(instance.audioRecorder).toBe(firstAudioRecorder);
       expect(instance.transcriptionService).toBe(firstTranscriptionService);
       expect(TranscriptionFactory.create).not.toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('already initialized')
-      );
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('already initialized'));
     });
 
     it('should initialize audio recorder regardless of API keys', async () => {
@@ -550,7 +548,7 @@ describe('VoxChronicle', () => {
 
     it('should show critical warning when token expires in 30 days or less', async () => {
       const daysAgo = 364 - 25; // 25 days remaining
-      const timestamp = Date.now() - (daysAgo * 24 * 60 * 60 * 1000);
+      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
 
       setupFoundryMocks({
         'vox-chronicle.kankaApiTokenCreatedAt': timestamp
@@ -569,7 +567,7 @@ describe('VoxChronicle', () => {
 
     it('should show urgent warning when token expires in 31-60 days', async () => {
       const daysAgo = 364 - 45; // 45 days remaining (approximately)
-      const timestamp = Date.now() - (daysAgo * 24 * 60 * 60 * 1000);
+      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
 
       setupFoundryMocks({
         'vox-chronicle.kankaApiTokenCreatedAt': timestamp
@@ -579,18 +577,15 @@ describe('VoxChronicle', () => {
       await instance.initialize();
 
       // Accept 44 or 45 days due to fractional day calculations
-      expect(ui.notifications.warn).toHaveBeenCalledWith(
-        expect.stringMatching(/4[45] days/),
-        { permanent: true }
-      );
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringMatching(/4[45] days \(URGENT\)/)
-      );
+      expect(ui.notifications.warn).toHaveBeenCalledWith(expect.stringMatching(/4[45] days/), {
+        permanent: true
+      });
+      expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/4[45] days \(URGENT\)/));
     });
 
     it('should show info notification when token expires in 61-90 days', async () => {
       const daysAgo = 364 - 75; // 75 days remaining
-      const timestamp = Date.now() - (daysAgo * 24 * 60 * 60 * 1000);
+      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
 
       setupFoundryMocks({
         'vox-chronicle.kankaApiTokenCreatedAt': timestamp
@@ -608,7 +603,7 @@ describe('VoxChronicle', () => {
 
     it('should not show warning when token has 91+ days remaining', async () => {
       const daysAgo = 364 - 100; // 100 days remaining
-      const timestamp = Date.now() - (daysAgo * 24 * 60 * 60 * 1000);
+      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
 
       setupFoundryMocks({
         'vox-chronicle.kankaApiTokenCreatedAt': timestamp
@@ -747,9 +742,7 @@ describe('VoxChronicle', () => {
       const instance = VoxChronicle.getInstance();
       instance.kankaService = null;
 
-      await expect(instance.publishToKanka({})).rejects.toThrow(
-        'Kanka service not initialized'
-      );
+      await expect(instance.publishToKanka({})).rejects.toThrow('Kanka service not initialized');
     });
 
     it('should publish to Kanka when service initialized', async () => {

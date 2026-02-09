@@ -7,7 +7,7 @@
  * terminology like spell names, creature names, and fantasy proper nouns.
  *
  * @class VocabularyManager
- * @extends Application
+ * @augments Application
  * @module vox-chronicle
  */
 
@@ -22,7 +22,7 @@ import { VocabularyDictionary, VocabularyCategory } from '../core/VocabularyDict
 export class VocabularyManager extends Application {
   /**
    * Logger instance for this class
-   * @type {Object}
+   * @type {object}
    * @private
    */
   _logger = Logger.createChild('VocabularyManager');
@@ -43,7 +43,7 @@ export class VocabularyManager extends Application {
 
   /**
    * Get default options for the Application
-   * @returns {Object} Default application options
+   * @returns {object} Default application options
    * @static
    */
   static get defaultOptions() {
@@ -68,7 +68,7 @@ export class VocabularyManager extends Application {
 
   /**
    * Create a new VocabularyManager instance
-   * @param {Object} [options] - Application options
+   * @param {object} [options] - Application options
    */
   constructor(options = {}) {
     super(options);
@@ -78,8 +78,8 @@ export class VocabularyManager extends Application {
 
   /**
    * Get data for the template
-   * @param {Object} options - Render options
-   * @returns {Object} Template data
+   * @param {object} options - Render options
+   * @returns {object} Template data
    */
   async getData(options = {}) {
     const data = await super.getData(options);
@@ -91,10 +91,12 @@ export class VocabularyManager extends Application {
     const categories = [
       {
         id: VocabularyCategory.CHARACTER_NAMES,
-        label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCharacters') || 'Character Names',
+        label:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCharacters') || 'Character Names',
         terms: allTerms[VocabularyCategory.CHARACTER_NAMES] || [],
         icon: 'fa-user',
-        description: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCharactersDesc') ||
+        description:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCharactersDesc') ||
           'NPC and character names from your campaign'
       },
       {
@@ -102,7 +104,8 @@ export class VocabularyManager extends Application {
         label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryLocations') || 'Location Names',
         terms: allTerms[VocabularyCategory.LOCATION_NAMES] || [],
         icon: 'fa-map-marker-alt',
-        description: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryLocationsDesc') ||
+        description:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryLocationsDesc') ||
           'Cities, dungeons, and places in your world'
       },
       {
@@ -110,7 +113,8 @@ export class VocabularyManager extends Application {
         label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryItems') || 'Items & Artifacts',
         terms: allTerms[VocabularyCategory.ITEMS] || [],
         icon: 'fa-gem',
-        description: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryItemsDesc') ||
+        description:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryItemsDesc') ||
           'Magical items, artifacts, and equipment'
       },
       {
@@ -118,7 +122,8 @@ export class VocabularyManager extends Application {
         label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryTerms') || 'Game Terms',
         terms: allTerms[VocabularyCategory.TERMS] || [],
         icon: 'fa-book',
-        description: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryTermsDesc') ||
+        description:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryTermsDesc') ||
           'Spells, abilities, creatures, and game-specific terminology'
       },
       {
@@ -126,7 +131,8 @@ export class VocabularyManager extends Application {
         label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCustom') || 'Custom Terms',
         terms: allTerms[VocabularyCategory.CUSTOM] || [],
         icon: 'fa-star',
-        description: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCustomDesc') ||
+        description:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCustomDesc') ||
           'Any other terms specific to your campaign'
       }
     ];
@@ -143,31 +149,46 @@ export class VocabularyManager extends Application {
       // Localization strings
       i18n: {
         title: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Title') || 'Vocabulary Manager',
-        description: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Description') ||
+        description:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.Description') ||
           'Manage custom vocabulary terms to improve transcription accuracy for your campaign.',
         addTerm: game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddTerm') || 'Add Term',
         removeTerm: game.i18n?.localize('VOXCHRONICLE.Vocabulary.RemoveTerm') || 'Remove',
-        clearCategory: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearCategory') || 'Clear Category',
+        clearCategory:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearCategory') || 'Clear Category',
         clearAll: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearAll') || 'Clear All',
-        suggestFoundry: game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestFoundry') || 'Suggest from Foundry',
+        suggestFoundry:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestFoundry') || 'Suggest from Foundry',
         importDict: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Import') || 'Import Dictionary',
         exportDict: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Export') || 'Export Dictionary',
-        termPlaceholder: game.i18n?.localize('VOXCHRONICLE.Vocabulary.TermPlaceholder') || 'Enter term...',
+        termPlaceholder:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.TermPlaceholder') || 'Enter term...',
         noTerms: game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoTerms') || 'No terms added yet',
         totalTermsLabel: game.i18n?.localize('VOXCHRONICLE.Vocabulary.TotalTerms') || 'Total Terms',
-        addSuccess: game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSuccess') || 'Term added successfully',
-        addDuplicate: game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddDuplicate') || 'Term already exists',
-        removeSuccess: game.i18n?.localize('VOXCHRONICLE.Vocabulary.RemoveSuccess') || 'Term removed',
-        clearSuccess: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearSuccess') || 'Category cleared',
-        clearAllSuccess: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearAllSuccess') || 'All terms cleared',
-        importSuccess: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportSuccess') || 'Dictionary imported',
-        exportSuccess: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ExportSuccess') || 'Dictionary exported',
-        confirmClearCategory: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearCategory') ||
+        addSuccess:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSuccess') || 'Term added successfully',
+        addDuplicate:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddDuplicate') || 'Term already exists',
+        removeSuccess:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.RemoveSuccess') || 'Term removed',
+        clearSuccess:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearSuccess') || 'Category cleared',
+        clearAllSuccess:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ClearAllSuccess') || 'All terms cleared',
+        importSuccess:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportSuccess') || 'Dictionary imported',
+        exportSuccess:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ExportSuccess') || 'Dictionary exported',
+        confirmClearCategory:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearCategory') ||
           'Are you sure you want to clear all terms in this category?',
-        confirmClearAll: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearAll') ||
+        confirmClearAll:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearAll') ||
           'Are you sure you want to clear all vocabulary terms?',
-        importMerge: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportMerge') || 'Merge with existing terms',
-        importReplace: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportReplace') || 'Replace all terms'
+        importMerge:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportMerge') || 'Merge with existing terms',
+        importReplace:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportReplace') || 'Replace all terms'
       }
     });
   }
@@ -255,7 +276,7 @@ export class VocabularyManager extends Application {
       this._logger.error('Failed to add term:', error);
       ui.notifications.error(
         game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-        `Error: ${error.message}`
+          `Error: ${error.message}`
       );
     }
   }
@@ -285,7 +306,7 @@ export class VocabularyManager extends Application {
       this._logger.error('Failed to remove term:', error);
       ui.notifications.error(
         game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-        `Error: ${error.message}`
+          `Error: ${error.message}`
       );
     }
   }
@@ -303,8 +324,11 @@ export class VocabularyManager extends Application {
 
     // Confirm with user
     const confirm = await Dialog.confirm({
-      title: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearCategoryTitle') || 'Clear Category',
-      content: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearCategory') ||
+      title:
+        game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearCategoryTitle') ||
+        'Clear Category',
+      content:
+        game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearCategory') ||
         'Are you sure you want to clear all terms in this category?',
       yes: () => true,
       no: () => false
@@ -317,14 +341,14 @@ export class VocabularyManager extends Application {
 
       ui.notifications.info(
         game.i18n?.format('VOXCHRONICLE.Vocabulary.ClearCategorySuccess', { count: removed }) ||
-        `Cleared ${removed} terms`
+          `Cleared ${removed} terms`
       );
       this.render(false);
     } catch (error) {
       this._logger.error('Failed to clear category:', error);
       ui.notifications.error(
         game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-        `Error: ${error.message}`
+          `Error: ${error.message}`
       );
     }
   }
@@ -339,8 +363,10 @@ export class VocabularyManager extends Application {
 
     // Confirm with user
     const confirm = await Dialog.confirm({
-      title: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearAllTitle') || 'Clear All Terms',
-      content: game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearAll') ||
+      title:
+        game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearAllTitle') || 'Clear All Terms',
+      content:
+        game.i18n?.localize('VOXCHRONICLE.Vocabulary.ConfirmClearAll') ||
         'Are you sure you want to clear all vocabulary terms?',
       yes: () => true,
       no: () => false
@@ -353,14 +379,14 @@ export class VocabularyManager extends Application {
 
       ui.notifications.info(
         game.i18n?.format('VOXCHRONICLE.Vocabulary.ClearAllSuccess', { count: removed }) ||
-        `Cleared ${removed} terms`
+          `Cleared ${removed} terms`
       );
       this.render(false);
     } catch (error) {
       this._logger.error('Failed to clear all terms:', error);
       ui.notifications.error(
         game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-        `Error: ${error.message}`
+          `Error: ${error.message}`
       );
     }
   }
@@ -400,7 +426,8 @@ export class VocabularyManager extends Application {
 
             if (!json) {
               ui.notifications.warn(
-                game.i18n?.localize('VOXCHRONICLE.Vocabulary.EmptyImport') || 'Please paste JSON data'
+                game.i18n?.localize('VOXCHRONICLE.Vocabulary.EmptyImport') ||
+                  'Please paste JSON data'
               );
               return;
             }
@@ -410,14 +437,14 @@ export class VocabularyManager extends Application {
 
               ui.notifications.info(
                 game.i18n?.format('VOXCHRONICLE.Vocabulary.ImportStats', stats) ||
-                `Imported: ${stats.added} added, ${stats.skipped} skipped`
+                  `Imported: ${stats.added} added, ${stats.skipped} skipped`
               );
               this.render(false);
             } catch (error) {
               this._logger.error('Failed to import dictionary:', error);
               ui.notifications.error(
                 game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-                `Error: ${error.message}`
+                  `Error: ${error.message}`
               );
             }
           }
@@ -456,7 +483,8 @@ export class VocabularyManager extends Application {
         buttons: {
           copy: {
             icon: '<i class="fas fa-copy"></i>',
-            label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopyToClipboard') || 'Copy to Clipboard',
+            label:
+              game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopyToClipboard') || 'Copy to Clipboard',
             callback: async (html) => {
               const textarea = html.find('textarea')[0];
               textarea.select();
@@ -465,14 +493,14 @@ export class VocabularyManager extends Application {
                 await navigator.clipboard.writeText(json);
                 ui.notifications.info(
                   game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopiedToClipboard') ||
-                  'Dictionary copied to clipboard'
+                    'Dictionary copied to clipboard'
                 );
               } catch (err) {
                 // Fallback for older browsers
                 document.execCommand('copy');
                 ui.notifications.info(
                   game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopiedToClipboard') ||
-                  'Dictionary copied to clipboard'
+                    'Dictionary copied to clipboard'
                 );
               }
             }
@@ -492,14 +520,14 @@ export class VocabularyManager extends Application {
       this._logger.error('Failed to export dictionary:', error);
       ui.notifications.error(
         game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-        `Error: ${error.message}`
+          `Error: ${error.message}`
       );
     }
   }
 
   /**
    * Collect vocabulary suggestions from Foundry world data
-   * @returns {Object} Suggestions object with character_names and items arrays
+   * @returns {object} Suggestions object with character_names and items arrays
    * @private
    */
   _collectFoundrySuggestions() {
@@ -511,7 +539,7 @@ export class VocabularyManager extends Application {
     try {
       // Collect actor names (characters and NPCs)
       if (game.actors) {
-        game.actors.forEach(actor => {
+        game.actors.forEach((actor) => {
           if (actor.name && actor.name.trim()) {
             suggestions[VocabularyCategory.CHARACTER_NAMES].push(actor.name.trim());
           }
@@ -520,7 +548,7 @@ export class VocabularyManager extends Application {
 
       // Collect item names
       if (game.items) {
-        game.items.forEach(item => {
+        game.items.forEach((item) => {
           if (item.name && item.name.trim()) {
             suggestions[VocabularyCategory.ITEMS].push(item.name.trim());
           }
@@ -567,7 +595,7 @@ export class VocabularyManager extends Application {
       if (totalCount === 0) {
         ui.notifications.warn(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoSuggestions') ||
-          'No actors or items found in your world'
+            'No actors or items found in your world'
         );
         return;
       }
@@ -591,7 +619,7 @@ export class VocabularyManager extends Application {
               </label>
         `;
 
-        suggestions[VocabularyCategory.CHARACTER_NAMES].forEach(name => {
+        suggestions[VocabularyCategory.CHARACTER_NAMES].forEach((name) => {
           // Check if term already exists
           const exists = this._dictionary.hasTerm(VocabularyCategory.CHARACTER_NAMES, name);
           const disabled = exists ? 'disabled checked' : '';
@@ -628,7 +656,7 @@ export class VocabularyManager extends Application {
               </label>
         `;
 
-        suggestions[VocabularyCategory.ITEMS].forEach(name => {
+        suggestions[VocabularyCategory.ITEMS].forEach((name) => {
           // Check if term already exists
           const exists = this._dictionary.hasTerm(VocabularyCategory.ITEMS, name);
           const disabled = exists ? 'disabled checked' : '';
@@ -653,7 +681,8 @@ export class VocabularyManager extends Application {
 
       // Show dialog
       new Dialog({
-        title: game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestFoundryTitle') ||
+        title:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestFoundryTitle') ||
           'Suggest from Foundry',
         content: suggestionsHtml,
         buttons: {
@@ -681,14 +710,15 @@ export class VocabularyManager extends Application {
 
               if (addedCount > 0) {
                 ui.notifications.info(
-                  game.i18n?.format('VOXCHRONICLE.Vocabulary.SuggestAddedCount', { count: addedCount }) ||
-                  `Added ${addedCount} term${addedCount !== 1 ? 's' : ''}`
+                  game.i18n?.format('VOXCHRONICLE.Vocabulary.SuggestAddedCount', {
+                    count: addedCount
+                  }) || `Added ${addedCount} term${addedCount !== 1 ? 's' : ''}`
                 );
                 this.render(false);
               } else {
                 ui.notifications.warn(
                   game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoTermsSelected') ||
-                  'No terms selected'
+                    'No terms selected'
                 );
               }
             }
@@ -701,12 +731,12 @@ export class VocabularyManager extends Application {
         default: 'add',
         render: (html) => {
           // Handle "select all" checkboxes
-          html.find('input[name="select-all-characters"]').on('change', function() {
+          html.find('input[name="select-all-characters"]').on('change', function () {
             const checked = $(this).is(':checked');
             html.find('input[name="character"]:not(:disabled)').prop('checked', checked);
           });
 
-          html.find('input[name="select-all-items"]').on('change', function() {
+          html.find('input[name="select-all-items"]').on('change', function () {
             const checked = $(this).is(':checked');
             html.find('input[name="item"]:not(:disabled)').prop('checked', checked);
           });
@@ -716,7 +746,7 @@ export class VocabularyManager extends Application {
       this._logger.error('Failed to suggest from Foundry:', error);
       ui.notifications.error(
         game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-        `Error: ${error.message}`
+          `Error: ${error.message}`
       );
     }
   }

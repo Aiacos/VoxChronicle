@@ -1,3 +1,5 @@
 # Test fixture fake API keys - not real credentials
 tests/utils/ApiKeyValidator.test.js:generic-api-key:29
 tests/utils/ApiKeyValidator.test.js:generic-api-key:141
+tests/utils/SensitiveDataFilter.test.js:generic-api-key:471
+tests/utils/SensitiveDataFilter.test.js:generic-api-key:474

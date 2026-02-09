@@ -63,7 +63,15 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import { KankaService, KankaEntityType, CharacterType, LocationType, ItemType, OrganisationType, QuestType } from '../../scripts/kanka/KankaService.mjs';
+import {
+  KankaService,
+  KankaEntityType,
+  CharacterType,
+  LocationType,
+  ItemType,
+  OrganisationType,
+  QuestType
+} from '../../scripts/kanka/KankaService.mjs';
 import { KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
 
 /**
@@ -597,7 +605,9 @@ describe('KankaService', () => {
     });
 
     it('should throw error without organisation name', async () => {
-      await expect(service.createOrganisation({ entry: 'Description' })).rejects.toThrow(KankaError);
+      await expect(service.createOrganisation({ entry: 'Description' })).rejects.toThrow(
+        KankaError
+      );
     });
   });
 
@@ -748,7 +758,11 @@ describe('KankaService', () => {
         headers: new Headers()
       });
 
-      const result = await service.listQuests({ type: 'Main Quest', is_completed: false, quest_id: 999 });
+      const result = await service.listQuests({
+        type: 'Main Quest',
+        is_completed: false,
+        quest_id: 999
+      });
 
       const url = mockFetch.mock.calls[0][0];
       expect(url).toContain('type=Main%20Quest');
@@ -778,7 +792,10 @@ describe('KankaService', () => {
 
   describe('updateQuest', () => {
     it('should update a quest', async () => {
-      const updatedQuest = createMockQuest({ name: 'The Lost Artifact - Updated', is_completed: true });
+      const updatedQuest = createMockQuest({
+        name: 'The Lost Artifact - Updated',
+        is_completed: true
+      });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -885,11 +902,7 @@ describe('KankaService', () => {
         headers: new Headers()
       });
 
-      await service.uploadImage(
-        KankaEntityType.CHARACTER,
-        789,
-        'https://example.com/portrait.png'
-      );
+      await service.uploadImage(KankaEntityType.CHARACTER, 789, 'https://example.com/portrait.png');
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
 
@@ -908,26 +921,23 @@ describe('KankaService', () => {
         headers: new Headers()
       });
 
-      await service.uploadImage(
-        KankaEntityType.CHARACTER,
-        789,
-        mockImageBlob,
-        { filename: 'custom-portrait.png' }
-      );
+      await service.uploadImage(KankaEntityType.CHARACTER, 789, mockImageBlob, {
+        filename: 'custom-portrait.png'
+      });
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error for invalid image source', async () => {
-      await expect(
-        service.uploadImage(KankaEntityType.CHARACTER, 789, 12345)
-      ).rejects.toThrow(KankaError);
+      await expect(service.uploadImage(KankaEntityType.CHARACTER, 789, 12345)).rejects.toThrow(
+        KankaError
+      );
     });
 
     it('should throw error without entity type or ID', async () => {
-      await expect(
-        service.uploadImage(null, 789, 'https://example.com/image.png')
-      ).rejects.toThrow(KankaError);
+      await expect(service.uploadImage(null, 789, 'https://example.com/image.png')).rejects.toThrow(
+        KankaError
+      );
 
       await expect(
         service.uploadImage(KankaEntityType.CHARACTER, null, 'https://example.com/image.png')
@@ -1014,9 +1024,7 @@ describe('KankaService', () => {
     });
 
     it('should return null when no exact match', async () => {
-      const mockCharacters = [
-        createMockCharacter({ name: 'Grognard Junior' })
-      ];
+      const mockCharacters = [createMockCharacter({ name: 'Grognard Junior' })];
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -1216,10 +1224,13 @@ describe('KankaService', () => {
         ok: false,
         status: 422,
         statusText: 'Unprocessable Entity',
-        text: () => Promise.resolve(JSON.stringify({
-          message: 'Validation failed',
-          errors: { name: ['Name is required'] }
-        })),
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              message: 'Validation failed',
+              errors: { name: ['Name is required'] }
+            })
+          ),
         headers: new Headers()
       });
 

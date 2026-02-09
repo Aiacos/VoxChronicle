@@ -44,7 +44,7 @@ export const DND_VOCABULARY = {
     'Chromatic Orb',
     'Sleep',
     'Faerie Fire',
-    'Hunter\'s Mark',
+    "Hunter's Mark",
     'Hex',
 
     // 2nd Level
@@ -94,7 +94,7 @@ export const DND_VOCABULARY = {
     'Scrying',
     'Teleportation Circle',
     'Wall of Force',
-    'Bigby\'s Hand',
+    "Bigby's Hand",
     'Hold Monster',
 
     // 6th Level
@@ -103,7 +103,7 @@ export const DND_VOCABULARY = {
     'Globe of Invulnerability',
     'True Seeing',
     'Heal',
-    'Heroes\' Feast',
+    "Heroes' Feast",
     'Sunbeam',
 
     // 7th Level
