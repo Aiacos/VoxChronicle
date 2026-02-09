@@ -376,15 +376,25 @@ class TranscriptionService extends OpenAIClient {
       };
     }
 
-    // Collect unique speaker IDs
+    // Collect unique speaker IDs from all segments
+    // OpenAI diarization returns speaker IDs like "SPEAKER_00", "SPEAKER_01", etc.
+    // We use a Set to automatically deduplicate as we encounter the same speaker across segments
     const uniqueSpeakers = new Set();
 
     // Map segments with speaker names
+    // For each segment, we replace the AI-generated speaker ID (e.g., "SPEAKER_00")
+    // with the human-readable name provided in speakerMap (e.g., "Game Master")
     const mappedSegments = result.segments.map((segment) => {
+      // Extract original speaker ID from the API response (e.g., "SPEAKER_00")
       const originalSpeaker = segment.speaker || 'Unknown';
+
+      // Track this speaker ID in our set of unique speakers
       uniqueSpeakers.add(originalSpeaker);
 
       // Look up speaker name in map, use original ID if not found
+      // This allows graceful handling when user hasn't mapped all speakers yet
+      // Example: speakerMap["SPEAKER_00"] = "Game Master" → mappedName = "Game Master"
+      // Example: speakerMap["SPEAKER_02"] = undefined → mappedName = "SPEAKER_02" (fallback)
       const mappedName = speakerMap[originalSpeaker] || originalSpeaker;
 
       return {
@@ -397,10 +407,12 @@ class TranscriptionService extends OpenAIClient {
     });
 
     // Build speaker list with mapping info
+    // Convert Set to Array and create metadata for each speaker showing
+    // both their original ID and mapped name (if any)
     const speakers = Array.from(uniqueSpeakers).map((speakerId) => ({
-      id: speakerId,
-      name: speakerMap[speakerId] || speakerId,
-      isMapped: Boolean(speakerMap[speakerId])
+      id: speakerId,                                    // Original: "SPEAKER_00"
+      name: speakerMap[speakerId] || speakerId,        // Mapped: "Game Master" or fallback "SPEAKER_00"
+      isMapped: Boolean(speakerMap[speakerId])         // True if user provided a custom name
     }));
 
     const mappedResult = {
