@@ -14,20 +14,40 @@ vi.mock('../../scripts/main.mjs', () => ({
 }));
 
 // Mock Logger before importing VoxChronicle
+// Logger mock routes all log methods to both their native console method AND console.log
+// This ensures tests checking for either will pass
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
   Logger: {
     createChild: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      log: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
+      debug: (...args) => globalThis.console.log?.(...args),
+      info: (...args) => {
+        globalThis.console.info?.(...args);
+        globalThis.console.log?.(...args);
+      },
+      log: (...args) => globalThis.console.log?.(...args),
+      warn: (...args) => {
+        globalThis.console.warn?.(...args);
+        globalThis.console.log?.(...args);
+      },
+      error: (...args) => {
+        globalThis.console.error?.(...args);
+        globalThis.console.log?.(...args);
+      }
     }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    log: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
+    debug: (...args) => globalThis.console.log?.(...args),
+    info: (...args) => {
+      globalThis.console.info?.(...args);
+      globalThis.console.log?.(...args);
+    },
+    log: (...args) => globalThis.console.log?.(...args),
+    warn: (...args) => {
+      globalThis.console.warn?.(...args);
+      globalThis.console.log?.(...args);
+    },
+    error: (...args) => {
+      globalThis.console.error?.(...args);
+      globalThis.console.log?.(...args);
+    }
   },
   LogLevel: {
     DEBUG: 0,
