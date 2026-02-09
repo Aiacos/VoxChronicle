@@ -13,6 +13,10 @@
 
 import { MODULE_ID } from '../main.mjs';
 import { VoxChronicleConfig } from '../ui/VoxChronicleConfig.mjs';
+import { Logger } from '../utils/Logger.mjs';
+
+// Create logger instance for Settings
+const logger = Logger.createChild('Settings');
 
 /**
  * Settings configuration class for VoxChronicle
@@ -366,7 +370,7 @@ class Settings {
       default: 0
     });
 
-    console.log(`${MODULE_ID} | Settings registered successfully`);
+    logger.info('Settings registered successfully');
   }
 
   /**
@@ -585,7 +589,7 @@ class Settings {
       ui.notifications?.error(
         game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', { error: error.message })
       );
-      console.error(`${MODULE_ID} | OpenAI API key validation error:`, error);
+      logger.error('OpenAI API key validation error:', error);
       return false;
     }
   }
@@ -656,7 +660,7 @@ class Settings {
       ui.notifications?.error(
         game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', { error: error.message })
       );
-      console.error(`${MODULE_ID} | Kanka API token validation error:`, error);
+      logger.error('Kanka API token validation error:', error);
       return false;
     }
   }
