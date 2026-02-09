@@ -31,11 +31,12 @@ class Settings {
     // ==========================================
 
     // Register the configuration menu that opens VoxChronicleConfig
+    // Using fa-solid prefix for Foundry VTT v13 compatibility
     game.settings.registerMenu(MODULE_ID, 'config', {
       name: 'VOXCHRONICLE.Config.MenuName',
       label: 'VOXCHRONICLE.Config.MenuLabel',
       hint: 'VOXCHRONICLE.Config.MenuHint',
-      icon: 'fas fa-cogs',
+      icon: 'fa-solid fa-cogs',
       type: VoxChronicleConfig,
       restricted: false
     });
