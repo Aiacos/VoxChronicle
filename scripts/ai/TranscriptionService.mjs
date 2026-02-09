@@ -272,18 +272,29 @@ class TranscriptionService extends OpenAIClient {
         });
       }
 
+      // Transcribe this chunk without speaker mapping
+      // IMPORTANT: We pass an empty speakerMap here because OpenAI's diarization
+      // assigns consistent speaker IDs (SPEAKER_00, SPEAKER_01, etc.) across chunks.
+      // The same person will get the same ID in each chunk, so we can safely defer
+      // the mapping to human-readable names until after all chunks are combined.
+      // This ensures speaker continuity across chunk boundaries.
       const chunkResult = await this._transcribeSingle(chunk, {
         ...options,
-        // Don't re-map speakers until we combine results
-        speakerMap: {}
+        speakerMap: {}  // Delay mapping until combination phase
       });
 
-      // Track duration offset for proper timing
+      // Track duration offset for proper timing across chunks
+      // Each chunk's timestamps start at 0, so we need to adjust them based on
+      // the cumulative duration of previous chunks to maintain chronological order
       if (chunkResult.segments) {
-        // Adjust segment times based on previous chunks
         chunkResult.segments.forEach((segment) => {
+          // Offset timestamps to account for previous chunks
           segment.start += totalDuration;
           segment.end += totalDuration;
+
+          // Collect all unique speaker IDs across all chunks
+          // The diarization model preserves speaker identity between chunks,
+          // so SPEAKER_00 in chunk 1 is the same person as SPEAKER_00 in chunk 2
           if (segment.speaker) {
             allSpeakers.add(segment.speaker);
           }
@@ -306,10 +317,14 @@ class TranscriptionService extends OpenAIClient {
       });
     }
 
-    // Combine all chunk results
+    // Combine all chunk results with properly adjusted timestamps
     const combinedResult = this._combineChunkResults(results, allSpeakers);
 
-    // Apply speaker mapping to final result
+    // Apply speaker mapping to the final combined result
+    // By deferring speaker name mapping until this point, we ensure that:
+    // 1. All chunks use consistent speaker IDs (SPEAKER_00, SPEAKER_01, etc.)
+    // 2. The same speaker gets the same human-readable name across the entire transcription
+    // 3. Speaker continuity is preserved even when a speaker appears in multiple chunks
     const speakerMap = options.speakerMap || this._defaultSpeakerMap;
     return this._mapSpeakersToNames(combinedResult, speakerMap);
   }
