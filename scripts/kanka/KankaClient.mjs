@@ -670,6 +670,29 @@ class KankaClient {
   }
 
   /**
+   * Fetch all campaigns accessible by the authenticated user
+   *
+   * @returns {Promise<Array<object>>} Array of campaign objects
+   * @throws {KankaError} If the request fails
+   * @example
+   * const campaigns = await client.getCampaigns();
+   * // Returns: [{ id: 1, name: 'My Campaign', ... }, ...]
+   */
+  async getCampaigns() {
+    this._logger.debug('Fetching campaigns from Kanka API');
+
+    try {
+      const response = await this.get('/campaigns');
+      const campaigns = response.data || [];
+      this._logger.debug(`Retrieved ${campaigns.length} campaign(s)`);
+      return campaigns;
+    } catch (error) {
+      this._logger.error('Failed to fetch campaigns:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Validate API token by making a simple API call
    *
    * @returns {Promise<boolean>} True if API token is valid
