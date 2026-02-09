@@ -59,7 +59,10 @@ import {
   ENTITY_EXTRACTION_TIMEOUT_MS,
   DEFAULT_MAX_MOMENTS
 } from '../../scripts/ai/EntityExtractor.mjs';
-import { OpenAIError, OpenAIErrorType } from '../../scripts/ai/OpenAIClient.mjs';
+import {
+  OpenAIError,
+  OpenAIErrorType as _OpenAIErrorType
+} from '../../scripts/ai/OpenAIClient.mjs';
 
 /**
  * Sample RPG transcript for testing entity extraction
@@ -76,7 +79,7 @@ GM: "Three days ride north, past the Whispering Woods. But beware, the dungeon i
 SPEAKER_00: Thorin purchases a Healing Potion from Grognard's stock.
 `;
 
-const SAMPLE_TRANSCRIPT_2 = `
+const _SAMPLE_TRANSCRIPT_2 = `
 SPEAKER_00: We continue through the forest.
 GM: As you travel through the Whispering Woods, you encounter a mysterious figure. She introduces herself as Maven, a druid who protects these lands.
 SPEAKER_01: "Hail, Maven. We mean no harm to your forest."

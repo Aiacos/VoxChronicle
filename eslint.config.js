@@ -197,8 +197,19 @@ export default [
         btoa: 'readonly',
         Audio: 'readonly',
 
+        // Browser/DOM globals used in tests
+        document: 'readonly',
+        DOMException: 'readonly',
+
         // Foundry VTT globals used in tests
         game: 'readonly',
+        ui: 'readonly',
+        Dialog: 'readonly',
+        vis: 'readonly',
+        Hooks: 'readonly',
+        CONFIG: 'readonly',
+        foundry: 'readonly',
+        canvas: 'readonly',
 
         // Vitest globals
         describe: 'readonly',

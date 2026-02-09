@@ -200,7 +200,7 @@ function createMockTranscriptionResponse(options = {}) {
 /**
  * Create a mock transcription response without diarization
  */
-function createMockBasicResponse(text = 'Basic transcription text') {
+function _createMockBasicResponse(text = 'Basic transcription text') {
   return {
     text: text,
     language: 'en',
@@ -259,7 +259,7 @@ describe('LocalWhisperService', () => {
     });
 
     it('should initialize WhisperBackend with options', () => {
-      const customService = new LocalWhisperService('http://localhost:8080', {
+      const _customService = new LocalWhisperService('http://localhost:8080', {
         timeout: 300000,
         maxRetries: 5
       });
@@ -668,7 +668,7 @@ describe('LocalWhisperService', () => {
       const audioBlob = createMockAudioBlob(1024);
       mockBackend.transcribe.mockResolvedValue('Simple text transcription.');
 
-      const result = await service.transcribeBasic(audioBlob);
+      const _result = await service.transcribeBasic(audioBlob);
 
       expect(mockBackend.transcribe).toHaveBeenCalledWith(
         audioBlob,

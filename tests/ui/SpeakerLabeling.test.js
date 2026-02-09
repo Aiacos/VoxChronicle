@@ -88,7 +88,7 @@ function setupEnvironment() {
       // Return a mock jQuery object for HTML strings
       return {
         on: vi.fn(),
-        find: vi.fn(function (selector) {
+        find: vi.fn(function (_selector) {
           return {
             on: vi.fn(),
             find: vi.fn(() => ({
@@ -110,7 +110,7 @@ function setupEnvironment() {
   const MockApplicationBase = createMockApplication();
   global.Application = MockApplicationBase;
   global.FormApplication = class FormApplication extends MockApplicationBase {
-    async _updateObject(event, formData) {
+    async _updateObject(_event, _formData) {
       // Override in subclasses
     }
   };

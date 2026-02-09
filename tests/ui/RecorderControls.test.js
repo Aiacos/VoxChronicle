@@ -6,7 +6,7 @@
  * event handling, and template rendering.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
 import { createMockApplication } from '../helpers/foundry-mock.js';
 

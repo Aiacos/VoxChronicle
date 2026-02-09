@@ -95,7 +95,7 @@ globalThis.game = {
   },
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => key)
+    format: vi.fn((key, _data) => key)
   }
 };
 
@@ -252,7 +252,7 @@ function createMockHeaders() {
 /**
  * Create a complete mock response with all required properties
  */
-function createMockResponse(options = {}) {
+function _createMockResponse(options = {}) {
   return {
     ok: options.ok !== false,
     status: options.status || 200,
@@ -287,7 +287,7 @@ describe('Publication Flow Integration', () => {
         },
         i18n: {
           localize: vi.fn((key) => key),
-          format: vi.fn((key, data) => key)
+          format: vi.fn((key, _data) => key)
         }
       };
     }

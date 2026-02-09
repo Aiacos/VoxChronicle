@@ -136,7 +136,8 @@ class VoxChronicleConfig extends FormApplication {
     // Transcription mode options
     const modeOptions = {
       api: game.i18n?.localize('VOXCHRONICLE.Settings.TranscriptionModeAPI') || 'API (OpenAI)',
-      local: game.i18n?.localize('VOXCHRONICLE.Settings.TranscriptionModeLocal') || 'Local (Whisper)',
+      local:
+        game.i18n?.localize('VOXCHRONICLE.Settings.TranscriptionModeLocal') || 'Local (Whisper)',
       auto: game.i18n?.localize('VOXCHRONICLE.Settings.TranscriptionModeAuto') || 'Auto'
     };
 
@@ -189,8 +190,7 @@ class VoxChronicleConfig extends FormApplication {
         title: game.i18n?.localize('VOXCHRONICLE.Config.Title') || 'VoxChronicle Configuration',
         openaiSection:
           game.i18n?.localize('VOXCHRONICLE.Config.OpenAISection') || 'OpenAI Settings',
-        openaiKeyLabel:
-          game.i18n?.localize('VOXCHRONICLE.Settings.OpenAIKey') || 'OpenAI API Key',
+        openaiKeyLabel: game.i18n?.localize('VOXCHRONICLE.Settings.OpenAIKey') || 'OpenAI API Key',
         openaiKeyHint:
           game.i18n?.localize('VOXCHRONICLE.Settings.OpenAIKeyHint') ||
           'Your OpenAI API key for transcription and image generation',
@@ -200,8 +200,7 @@ class VoxChronicleConfig extends FormApplication {
         kankaTokenHint:
           game.i18n?.localize('VOXCHRONICLE.Settings.KankaTokenHint') ||
           'Your Kanka API token for publishing chronicles',
-        campaignLabel:
-          game.i18n?.localize('VOXCHRONICLE.Config.CampaignLabel') || 'Kanka Campaign',
+        campaignLabel: game.i18n?.localize('VOXCHRONICLE.Config.CampaignLabel') || 'Kanka Campaign',
         campaignHint:
           game.i18n?.localize('VOXCHRONICLE.Config.CampaignHint') ||
           'Select the campaign to publish chronicles to',
@@ -251,14 +250,12 @@ class VoxChronicleConfig extends FormApplication {
         entitySection:
           game.i18n?.localize('VOXCHRONICLE.Config.EntitySection') || 'Entity Extraction Settings',
         autoExtractLabel:
-          game.i18n?.localize('VOXCHRONICLE.Settings.AutoExtract') ||
-          'Auto-Extract Entities',
+          game.i18n?.localize('VOXCHRONICLE.Settings.AutoExtract') || 'Auto-Extract Entities',
         autoExtractHint:
           game.i18n?.localize('VOXCHRONICLE.Settings.AutoExtractHint') ||
           'Automatically extract NPCs, locations, and items from transcripts',
         confirmCreationLabel:
-          game.i18n?.localize('VOXCHRONICLE.Settings.ConfirmEntities') ||
-          'Confirm Entity Creation',
+          game.i18n?.localize('VOXCHRONICLE.Settings.ConfirmEntities') || 'Confirm Entity Creation',
         confirmCreationHint:
           game.i18n?.localize('VOXCHRONICLE.Settings.ConfirmEntitiesHint') ||
           'Show confirmation dialog before creating entities in Kanka',
@@ -276,17 +273,13 @@ class VoxChronicleConfig extends FormApplication {
     super.activateListeners(html);
 
     // OpenAI test connection button
-    html
-      .find('[data-action="test-openai"]')
-      .on('click', this._onTestOpenAIConnection.bind(this));
+    html.find('[data-action="test-openai"]').on('click', this._onTestOpenAIConnection.bind(this));
 
     // Kanka test connection button
     html.find('[data-action="test-kanka"]').on('click', this._onTestKankaConnection.bind(this));
 
     // Refresh campaigns button
-    html
-      .find('[data-action="refresh-campaigns"]')
-      .on('click', this._onRefreshCampaigns.bind(this));
+    html.find('[data-action="refresh-campaigns"]').on('click', this._onRefreshCampaigns.bind(this));
 
     // API token input change - trigger campaign refresh
     html.find('input[name="kankaApiToken"]').on('change', this._onKankaTokenChange.bind(this));

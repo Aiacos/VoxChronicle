@@ -620,7 +620,7 @@ describe('VoxChronicle', () => {
     it('should handle errors in expiration check gracefully', async () => {
       // Mock settings.set to throw error when trying to set token timestamp
       const originalGet = game.settings.get;
-      const originalSet = game.settings.set;
+      const _originalSet = game.settings.set;
 
       game.settings.get = vi.fn((module, key) => {
         if (key === 'kankaApiToken') return 'test-token';

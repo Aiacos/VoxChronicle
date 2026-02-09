@@ -292,7 +292,7 @@ describe('RelationshipGraph', () => {
     });
 
     it('should localize the title', () => {
-      const options = RelationshipGraph.defaultOptions;
+      const _options = RelationshipGraph.defaultOptions;
       expect(game.i18n.localize).toHaveBeenCalledWith('VOXCHRONICLE.RelationshipGraph.Title');
     });
   });
@@ -462,12 +462,12 @@ describe('RelationshipGraph', () => {
     });
 
     it('should build nodes from all entities', () => {
-      const { nodes, edges } = graph._buildGraphData();
+      const { nodes, edges: _edges } = graph._buildGraphData();
       expect(nodes).toHaveLength(5); // 2 chars + 2 locs + 1 item
     });
 
     it('should build edges from relationships', () => {
-      const { nodes, edges } = graph._buildGraphData();
+      const { nodes: _nodes, edges } = graph._buildGraphData();
       expect(edges).toHaveLength(3); // 3 relationships
     });
 

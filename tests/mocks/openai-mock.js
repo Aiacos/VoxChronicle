@@ -97,7 +97,7 @@ export function createMockImageGenerationResponse(options = {}) {
  * @returns {Object} Mock error response
  */
 export function createMockErrorResponse(options = {}) {
-  const status = options.status || 400;
+  const _status = options.status || 400;
   const type = options.type || 'invalid_request_error';
   const message = options.message || 'Invalid request';
   const code = options.code || null;
@@ -205,7 +205,7 @@ export function createMockFetchResponse(data, options = {}) {
 
   // Create headers object with has() and get() methods
   const headersObj = {
-    has: (key) => headers.hasOwnProperty(key.toLowerCase()),
+    has: (key) => Object.prototype.hasOwnProperty.call(headers, key.toLowerCase()),
     get: (key) => headers[key.toLowerCase()] || null,
     ...headers
   };
@@ -400,7 +400,7 @@ export function extractJsonFromCall(fetchCallArgs) {
   if (options && typeof options.body === 'string') {
     try {
       return JSON.parse(options.body);
-    } catch (e) {
+    } catch {
       return null;
     }
   }

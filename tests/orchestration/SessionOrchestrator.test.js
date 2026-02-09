@@ -951,7 +951,7 @@ describe('SessionOrchestrator', () => {
 
       try {
         await orchestrator.startSession();
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -1102,7 +1102,7 @@ describe('SessionOrchestrator', () => {
 
       try {
         await orchestrator.startSession();
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -1134,7 +1134,7 @@ describe('SessionOrchestrator', () => {
 
       try {
         await orchestrator.startSession();
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 

@@ -6,7 +6,7 @@
  * Foundry suggestions, and event handling.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { JSDOM } from 'jsdom';
 import { createMockApplication } from '../helpers/foundry-mock.js';
 

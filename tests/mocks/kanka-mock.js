@@ -285,7 +285,7 @@ export function createMockImageUploadResponse(overrides = {}) {
  * @returns {Object} Mock error response
  */
 export function createMockKankaError(options = {}) {
-  const status = options.status || 400;
+  const _status = options.status || 400;
   const message = options.message || 'The given data was invalid.';
 
   const errorResponse = {
@@ -401,7 +401,7 @@ export function createMockFetchResponse(data, options = {}) {
 
   // Create headers object with has() and get() methods
   const headersObj = {
-    has: (key) => headers.hasOwnProperty(key.toLowerCase()),
+    has: (key) => Object.prototype.hasOwnProperty.call(headers, key.toLowerCase()),
     get: (key) => headers[key.toLowerCase()] || null,
     forEach: (callback) => {
       Object.entries(headers).forEach(([key, value]) => callback(value, key.toLowerCase()));
@@ -700,7 +700,7 @@ export function extractJsonFromCall(fetchCallArgs) {
   if (options && typeof options.body === 'string') {
     try {
       return JSON.parse(options.body);
-    } catch (e) {
+    } catch {
       return null;
     }
   }
@@ -847,7 +847,7 @@ export class MockKankaClient {
   /**
    * Handle read operation
    */
-  _handleRead(endpoint, options) {
+  _handleRead(endpoint, _options) {
     // List entities
     if (!endpoint.match(/\/\d+$/)) {
       const entities = Array.from(this.entities.values());
@@ -897,7 +897,7 @@ export class MockKankaClient {
   /**
    * Handle delete operation
    */
-  _handleDelete(endpoint, options) {
+  _handleDelete(endpoint, _options) {
     const idMatch = endpoint.match(/\/(\d+)$/);
     if (!idMatch) {
       throw new Error('Invalid endpoint for delete');

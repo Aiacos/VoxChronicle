@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createMockSettings, createMockI18n } from '../helpers/foundry-mock.js';
 
 // Mock the MODULE_ID before importing VocabularyDictionary
-const MODULE_ID = 'vox-chronicle';
+const _MODULE_ID = 'vox-chronicle';
 
 // Mock Logger
 vi.mock('../../scripts/utils/Logger.mjs', () => ({

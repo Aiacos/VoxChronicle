@@ -69,9 +69,9 @@ vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({
   VocabularyDictionary: vi.fn().mockImplementation(() => ({
     generatePrompt: vi.fn(() => 'Fireball, Magic Missile, Dragon, Mind Flayer'),
     initialize: vi.fn(() => Promise.resolve()),
-    addTerm: vi.fn((category, term) => Promise.resolve(true)),
-    removeTerm: vi.fn((category, term) => Promise.resolve(true)),
-    getTerms: vi.fn((category) => []),
+    addTerm: vi.fn((_category, _term) => Promise.resolve(true)),
+    removeTerm: vi.fn((_category, _term) => Promise.resolve(true)),
+    getTerms: vi.fn((_category) => []),
     getAllTerms: vi.fn(() => ({
       character_names: [],
       location_names: [],
@@ -137,9 +137,12 @@ import {
   TranscriptionResponseFormat,
   ChunkingStrategy
 } from '../../scripts/ai/TranscriptionService.mjs';
-import { OpenAIError, OpenAIErrorType } from '../../scripts/ai/OpenAIClient.mjs';
+import {
+  OpenAIError,
+  OpenAIErrorType as _OpenAIErrorType
+} from '../../scripts/ai/OpenAIClient.mjs';
 import { AudioChunker } from '../../scripts/audio/AudioChunker.mjs';
-import { AudioUtils } from '../../scripts/utils/AudioUtils.mjs';
+import { AudioUtils as _AudioUtils } from '../../scripts/utils/AudioUtils.mjs';
 
 /**
  * Create a mock audio blob for testing

@@ -72,7 +72,7 @@ globalThis.game = {
   },
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => key)
+    format: vi.fn((key, _data) => key)
   }
 };
 
@@ -772,7 +772,7 @@ describe('Transcription Flow Integration', () => {
 
       await transcriptionService.transcribe(audioBlob);
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0];
 
       expect(options.method).toBe('POST');
       expect(options.body).toBeInstanceOf(FormData);

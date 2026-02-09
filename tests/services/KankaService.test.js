@@ -69,8 +69,8 @@ import {
   CharacterType,
   LocationType,
   ItemType,
-  OrganisationType,
-  QuestType
+  OrganisationType as _OrganisationType,
+  QuestType as _QuestType
 } from '../../scripts/kanka/KankaService.mjs';
 import { KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
 

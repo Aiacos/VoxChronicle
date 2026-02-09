@@ -69,9 +69,9 @@ vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({
   VocabularyDictionary: vi.fn().mockImplementation(() => ({
     generatePrompt: vi.fn(() => 'Fireball, Magic Missile, Dragon, Mind Flayer'),
     initialize: vi.fn(() => Promise.resolve()),
-    addTerm: vi.fn((category, term) => Promise.resolve(true)),
-    removeTerm: vi.fn((category, term) => Promise.resolve(true)),
-    getTerms: vi.fn((category) => []),
+    addTerm: vi.fn((_category, _term) => Promise.resolve(true)),
+    removeTerm: vi.fn((_category, _term) => Promise.resolve(true)),
+    getTerms: vi.fn((_category) => []),
     getAllTerms: vi.fn(() => ({
       character_names: [],
       location_names: [],

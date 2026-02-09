@@ -117,7 +117,7 @@ globalThis.game = {
   },
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => key)
+    format: vi.fn((key, _data) => key)
   }
 };
 
@@ -636,7 +636,7 @@ describe('Recording Flow Integration', () => {
       };
 
       await orchestrator.startSession();
-      const result = await orchestrator.stopSession({
+      const _result = await orchestrator.stopSession({
         processImmediately: false
       });
 
@@ -954,7 +954,7 @@ describe('Recording Flow Integration', () => {
 
       try {
         await orchestrator.stopSession();
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 

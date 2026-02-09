@@ -619,7 +619,7 @@ describe('AudioChunker', () => {
       expect(result.length).toBeGreaterThan(1);
 
       // All chunks should be valid sizes
-      result.forEach((chunk, index) => {
+      result.forEach((chunk, _index) => {
         expect(chunk.size).toBeGreaterThan(0);
         expect(chunk.size).toBeLessThanOrEqual(MAX_CHUNK_SIZE);
         expect(chunk.type).toBe('audio/webm');

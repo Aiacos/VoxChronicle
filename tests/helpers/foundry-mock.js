@@ -34,7 +34,7 @@ export function createMockSettings(initialSettings = {}) {
       }
     }),
 
-    registerMenu: vi.fn((module, key, config) => {
+    registerMenu: vi.fn((_module, _key, _config) => {
       // Mock registerMenu for settings menus (like VoxChronicleConfig)
     }),
 
@@ -193,7 +193,7 @@ export function createMockApplication() {
       return {};
     }
 
-    render(force = false) {
+    render(_force = false) {
       this.rendered = true;
       return this;
     }
@@ -203,12 +203,12 @@ export function createMockApplication() {
       return Promise.resolve();
     }
 
-    activateListeners(html) {
+    activateListeners(_html) {
       // Override in subclasses
     }
 
-    async _render(force = false, options = {}) {
-      const data = this.getData();
+    async _render(_force = false, _options = {}) {
+      const _data = this.getData();
       this.rendered = true;
       return this;
     }
@@ -224,15 +224,15 @@ export function createMockApplication() {
  */
 export function createMockSocket() {
   return {
-    emit: vi.fn((event, data) => {
+    emit: vi.fn((_event, _data) => {
       return Promise.resolve();
     }),
 
-    on: vi.fn((event, callback) => {
+    on: vi.fn((_event, _callback) => {
       // Store callback for potential testing
     }),
 
-    off: vi.fn((event, callback) => {
+    off: vi.fn((_event, _callback) => {
       // Remove callback
     })
   };

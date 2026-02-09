@@ -74,7 +74,7 @@
    ========================================================================== */
 
 .vox-chronicle {
-  font-family: "Signika", sans-serif;
+  font-family: 'Signika', sans-serif;
   color: var(--vox-text);
   background: var(--vox-bg);
 }
@@ -170,7 +170,9 @@ form .form-group .vox-chronicle-validate-button {
   background: var(--vox-bg-light);
   border-radius: var(--vox-radius-md);
   border-left: 4px solid var(--vox-border);
-  transition: border-color var(--vox-transition), background-color var(--vox-transition);
+  transition:
+    border-color var(--vox-transition),
+    background-color var(--vox-transition);
 }
 
 .vox-chronicle-recorder .recorder-status.ready {
@@ -241,7 +243,7 @@ form .form-group .vox-chronicle-validate-button {
   padding: var(--vox-spacing-sm) var(--vox-spacing-md);
   background: var(--vox-bg-dark);
   border-radius: var(--vox-radius-sm);
-  font-family: "Courier New", monospace;
+  font-family: 'Courier New', monospace;
 }
 
 .vox-chronicle-recorder .duration-label {
@@ -599,7 +601,9 @@ form .form-group .vox-chronicle-validate-button {
   background: var(--vox-bg-light);
   border-radius: var(--vox-radius-sm);
   border-left: 3px solid transparent;
-  transition: border-color var(--vox-transition), background-color var(--vox-transition);
+  transition:
+    border-color var(--vox-transition),
+    background-color var(--vox-transition);
 }
 
 .vox-chronicle-speaker-labeling .speaker-row:hover {
@@ -615,7 +619,7 @@ form .form-group .vox-chronicle-validate-button {
   display: flex;
   align-items: center;
   gap: var(--vox-spacing-xs);
-  font-family: "Courier New", monospace;
+  font-family: 'Courier New', monospace;
   font-size: 0.9em;
   color: var(--vox-accent);
 }
@@ -898,7 +902,9 @@ form .form-group .vox-chronicle-validate-button {
   background: var(--vox-bg);
   border-radius: var(--vox-radius-sm);
   border: 1px solid transparent;
-  transition: border-color var(--vox-transition), background-color var(--vox-transition);
+  transition:
+    border-color var(--vox-transition),
+    background-color var(--vox-transition);
 }
 
 .vox-chronicle-entity-preview .entity-row:hover {
@@ -916,7 +922,7 @@ form .form-group .vox-chronicle-validate-button {
   padding-top: 2px;
 }
 
-.vox-chronicle-entity-preview .entity-select input[type="checkbox"] {
+.vox-chronicle-entity-preview .entity-select input[type='checkbox'] {
   width: 18px;
   height: 18px;
   accent-color: var(--vox-primary);
@@ -1469,7 +1475,7 @@ form .form-group .vox-chronicle-validate-button {
   border-color: var(--vox-primary-light);
 }
 
-.vox-chronicle-relationship-graph .filter-checkbox input[type="checkbox"] {
+.vox-chronicle-relationship-graph .filter-checkbox input[type='checkbox'] {
   width: 16px;
   height: 16px;
   accent-color: var(--vox-primary);
@@ -1567,7 +1573,7 @@ form .form-group .vox-chronicle-validate-button {
   padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
   font-size: 0.85em;
   color: var(--vox-text-dim);
-  font-family: "Courier New", monospace;
+  font-family: 'Courier New', monospace;
   box-shadow: var(--vox-shadow);
   z-index: 10;
 }
@@ -1701,7 +1707,9 @@ form .form-group .vox-chronicle-validate-button {
   border-radius: var(--vox-radius-sm);
   color: var(--vox-text);
   font-size: 1em;
-  transition: border-color var(--vox-transition), box-shadow var(--vox-transition);
+  transition:
+    border-color var(--vox-transition),
+    box-shadow var(--vox-transition);
 }
 
 .vox-chronicle-config .config-input:focus {
@@ -1742,7 +1750,9 @@ form .form-group .vox-chronicle-validate-button {
   color: var(--vox-text);
   font-size: 1em;
   cursor: pointer;
-  transition: border-color var(--vox-transition), box-shadow var(--vox-transition);
+  transition:
+    border-color var(--vox-transition),
+    box-shadow var(--vox-transition);
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23adb5bd' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -1991,7 +2001,7 @@ form .form-group .vox-chronicle-validate-button {
 }
 
 /* Placeholder option in dropdown */
-.vox-chronicle-config .config-select option[value=""] {
+.vox-chronicle-config .config-select option[value=''] {
   color: var(--vox-text-muted);
   font-style: italic;
 }
@@ -2020,9 +2030,9 @@ form .form-group .vox-chronicle-validate-button {
    Common Form Elements
    ========================================================================== */
 
-.vox-chronicle input[type="text"],
-.vox-chronicle input[type="password"],
-.vox-chronicle input[type="number"],
+.vox-chronicle input[type='text'],
+.vox-chronicle input[type='password'],
+.vox-chronicle input[type='number'],
 .vox-chronicle textarea,
 .vox-chronicle select {
   background: var(--vox-bg-dark);
@@ -2079,7 +2089,8 @@ form .form-group .vox-chronicle-validate-button {
    ========================================================================== */
 
 @keyframes vox-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     box-shadow: 0 0 0 0 var(--vox-recording-pulse);
   }

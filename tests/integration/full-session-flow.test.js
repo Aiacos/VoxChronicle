@@ -131,7 +131,7 @@ globalThis.game = {
   },
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => key)
+    format: vi.fn((key, _data) => key)
   }
 };
 
@@ -593,7 +593,7 @@ describe('Full Session Flow Integration', () => {
         onProgress: (progress) => {
           progressUpdates.push(progress);
         },
-        onSessionComplete: (session) => {
+        onSessionComplete: (_session) => {
           sessionCompleted = true;
         }
       });

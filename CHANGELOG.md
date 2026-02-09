@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-09
+
 ### Added
 
 #### Offline Transcription Mode
@@ -21,25 +23,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Whisper Backend URL Setting**: Configurable endpoint for local Whisper server (default: http://localhost:8080)
 - **Mode Indicator Toggle**: Client-side setting to show/hide transcription mode indicator
 
+#### Configuration Panel
+- **VoxChronicleConfig**: Dedicated FormApplication settings panel accessible from Foundry module settings menu
+- **Grouped Settings UI**: API keys, transcription mode, Kanka integration, and advanced settings organized in tabs
+- **Kanka Campaign Selector**: `getCampaigns()` method on KankaClient for campaign dropdown
+
+#### Orchestrator Refactoring
+- **SessionOrchestrator** refactored from monolithic class into 4 focused processors:
+  - `TranscriptionProcessor` - audio transcription workflow with auto-fallback
+  - `EntityProcessor` - entity extraction workflow
+  - `ImageProcessor` - image generation workflow
+  - `KankaPublisher` - Kanka publishing workflow
+
+#### Test Suite
+- Comprehensive test coverage: **2029 tests** across **38 test files**
+- Unit tests for all core, AI, audio, kanka, orchestration, and UI modules
+- Integration tests for full session flow, recording, transcription, and publication
+- Test mocks for Foundry VTT, OpenAI, and Kanka APIs
+
 #### Documentation
 - **WHISPER_SETUP.md**: Comprehensive setup guide for local Whisper backend
-  - Installation instructions for Windows, macOS, and Linux
-  - Multiple installation methods (pre-built binaries, source builds, Docker)
-  - Model selection guide with performance/quality tradeoffs
-  - GPU acceleration configuration (CUDA, Metal, OpenCL)
-  - Background service setup for all platforms
-  - Troubleshooting section with common issues and solutions
-  - Alternative backend options (faster-whisper, WhisperX, remote servers)
-- **README.md Updates**:
-  - Offline transcription mode feature description
-  - Optional OpenAI API key clarification
-  - Setup section for both cloud and offline modes
-  - Cost considerations with $0 transcription examples
-  - Offline-specific troubleshooting guidance
+- **GPT4O_TRANSCRIBE_API.md**: Complete diarization API documentation
+- **tests/README.md**: Test coverage quick-start and documentation
+- **Migration guide** template section in CHANGELOG
+- Inline comments for speaker mapping algorithm and multi-chunk transcription
 
 #### Localization
-- English (en.json) translations for offline mode settings and UI
-- Italian (it.json) translations for offline mode settings and UI
+- English and Italian translations for offline mode, configuration panel, and all UI strings
+- Localized previously hardcoded UI strings (segments, speakers, cancel session, etc.)
+
+### Changed
+- UI section collapse/expand now uses smooth CSS animations
+- Help details accordion uses animated transitions
+- ESLint + Prettier enforced across entire codebase (0 errors, 0 warnings)
 
 ### Technical Details
 - Local backend communication via HTTP with health checks and retry logic
@@ -255,5 +271,6 @@ For flexibility with automatic fallback:
 
 ---
 
-[Unreleased]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/voxchronicle/vox-chronicle/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.0.0...v1.2.0
+[1.0.0]: https://github.com/Aiacos/VoxChronicle/releases/tag/v1.0.0

@@ -6,7 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { RateLimiter, RateLimitPresets } from '../../scripts/utils/RateLimiter.mjs';
+import {
+  RateLimiter,
+  RateLimitPresets as _RateLimitPresets
+} from '../../scripts/utils/RateLimiter.mjs';
 
 // Mock Logger to prevent console output during tests
 vi.mock('../../scripts/utils/Logger.mjs', () => ({

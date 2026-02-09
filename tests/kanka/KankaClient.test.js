@@ -683,7 +683,7 @@ describe('KankaClient', () => {
 
       try {
         await client.request('/campaigns');
-      } catch (error) {
+      } catch {
         expect(mockPause).toHaveBeenCalled();
       }
     });

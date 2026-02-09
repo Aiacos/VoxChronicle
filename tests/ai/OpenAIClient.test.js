@@ -66,7 +66,7 @@ import {
   OpenAIErrorType,
   OPENAI_BASE_URL
 } from '../../scripts/ai/OpenAIClient.mjs';
-import { RateLimiter } from '../../scripts/utils/RateLimiter.mjs';
+import { RateLimiter as _RateLimiter } from '../../scripts/utils/RateLimiter.mjs';
 
 /**
  * Create a mock successful API response
@@ -244,7 +244,7 @@ describe('OpenAIClient', () => {
         body: JSON.stringify(requestBody)
       });
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0];
       expect(options.method).toBe('POST');
       expect(options.headers['Content-Type']).toBe('application/json');
       expect(options.body).toBe(JSON.stringify(requestBody));
@@ -262,7 +262,7 @@ describe('OpenAIClient', () => {
         body: formData
       });
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0];
       expect(options.method).toBe('POST');
       expect(options.body).toBeInstanceOf(FormData);
       expect(options.headers['Content-Type']).toBeUndefined(); // Browser sets this
@@ -288,7 +288,7 @@ describe('OpenAIClient', () => {
         }
       });
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0];
       expect(options.headers['X-Custom-Header']).toBe('custom-value');
       expect(options.headers.Authorization).toBe('Bearer test-api-key-12345');
     });
@@ -484,7 +484,7 @@ describe('OpenAIClient', () => {
       const result = await client.post('/test-endpoint', requestData);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [url, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0];
 
       expect(options.method).toBe('POST');
       expect(options.headers['Content-Type']).toBe('application/json');
@@ -506,7 +506,7 @@ describe('OpenAIClient', () => {
         }
       );
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0];
       expect(options.headers['X-Custom']).toBe('value');
     });
   });
@@ -522,7 +522,7 @@ describe('OpenAIClient', () => {
       const result = await client.postFormData('/test-endpoint', formData);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [url, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0];
 
       expect(options.method).toBe('POST');
       expect(options.body).toBeInstanceOf(FormData);

@@ -59,7 +59,7 @@ beforeEach(() => {
 
   // Create mock notifications
   mockNotifications = {
-    info: vi.fn((msg, options) => {
+    info: vi.fn((_msg, _options) => {
       const notif = { remove: vi.fn() };
       return notif;
     }),
@@ -355,7 +355,7 @@ describe('Settings', () => {
     it('should return false when both are missing', async () => {
       const { Settings } = await import('../../scripts/core/Settings.mjs');
 
-      mockSettings.get.mockImplementation((module, key) => {
+      mockSettings.get.mockImplementation((_module, _key) => {
         return '';
       });
 
@@ -643,7 +643,7 @@ describe('Settings', () => {
     it('should return false when API token is not configured', async () => {
       const { Settings } = await import('../../scripts/core/Settings.mjs');
 
-      mockSettings.get.mockImplementation((module, key) => {
+      mockSettings.get.mockImplementation((_module, _key) => {
         return '';
       });
 

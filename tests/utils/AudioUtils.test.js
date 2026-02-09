@@ -455,7 +455,7 @@ describe('AudioUtils', () => {
   describe('base64ToBlob - base64 to blob conversion', () => {
     beforeEach(() => {
       // Mock atob (base64 decode)
-      globalThis.atob = vi.fn((str) => {
+      globalThis.atob = vi.fn((_str) => {
         // Simple mock - just return a decoded string
         return 'decoded data';
       });

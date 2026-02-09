@@ -53,7 +53,10 @@ vi.mock('../../scripts/main.mjs', () => ({
 
 // Import after mocks are set up
 import { EntityExtractor, RelationshipType } from '../../scripts/ai/EntityExtractor.mjs';
-import { OpenAIError, OpenAIErrorType } from '../../scripts/ai/OpenAIClient.mjs';
+import {
+  OpenAIError,
+  OpenAIErrorType as _OpenAIErrorType
+} from '../../scripts/ai/OpenAIClient.mjs';
 
 /**
  * Sample RPG transcript mentioning relationships

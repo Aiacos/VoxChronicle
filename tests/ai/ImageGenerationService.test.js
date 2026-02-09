@@ -61,7 +61,10 @@ import {
   IMAGE_GENERATION_TIMEOUT_MS,
   IMAGE_URL_EXPIRY_MS
 } from '../../scripts/ai/ImageGenerationService.mjs';
-import { OpenAIError, OpenAIErrorType } from '../../scripts/ai/OpenAIClient.mjs';
+import {
+  OpenAIError,
+  OpenAIErrorType as _OpenAIErrorType
+} from '../../scripts/ai/OpenAIClient.mjs';
 
 /**
  * Create a mock API response for image generation

@@ -544,7 +544,7 @@ describe('AudioRecorder', () => {
       recorder._mediaRecorder.onerror = null;
 
       // Make stop trigger error callback
-      const originalStop = recorder._mediaRecorder.stop;
+      const _originalStop = recorder._mediaRecorder.stop;
       recorder._mediaRecorder.stop = function () {
         this.state = 'inactive';
         if (this.onerror) {

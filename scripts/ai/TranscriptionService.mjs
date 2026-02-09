@@ -280,7 +280,7 @@ class TranscriptionService extends OpenAIClient {
       // This ensures speaker continuity across chunk boundaries.
       const chunkResult = await this._transcribeSingle(chunk, {
         ...options,
-        speakerMap: {}  // Delay mapping until combination phase
+        speakerMap: {} // Delay mapping until combination phase
       });
 
       // Track duration offset for proper timing across chunks
@@ -440,9 +440,9 @@ class TranscriptionService extends OpenAIClient {
     // Convert Set to Array and create metadata for each speaker showing
     // both their original ID and mapped name (if any)
     const speakers = Array.from(uniqueSpeakers).map((speakerId) => ({
-      id: speakerId,                                    // Original: "SPEAKER_00"
-      name: speakerMap[speakerId] || speakerId,        // Mapped: "Game Master" or fallback "SPEAKER_00"
-      isMapped: Boolean(speakerMap[speakerId])         // True if user provided a custom name
+      id: speakerId, // Original: "SPEAKER_00"
+      name: speakerMap[speakerId] || speakerId, // Mapped: "Game Master" or fallback "SPEAKER_00"
+      isMapped: Boolean(speakerMap[speakerId]) // True if user provided a custom name
     }));
 
     const mappedResult = {
