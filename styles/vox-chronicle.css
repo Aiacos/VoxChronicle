@@ -1609,6 +1609,414 @@ form .form-group .vox-chronicle-validate-button {
 }
 
 /* ==========================================================================
+   Configuration Panel Component
+   ========================================================================== */
+
+.vox-chronicle-config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vox-spacing-md);
+}
+
+.vox-chronicle-config .window-content {
+  padding: var(--vox-spacing-md);
+  background: var(--vox-bg);
+}
+
+/* Form sections */
+.vox-chronicle-config .config-section {
+  background: var(--vox-bg-light);
+  border-radius: var(--vox-radius-md);
+  padding: var(--vox-spacing-md);
+  border-left: 3px solid var(--vox-primary);
+}
+
+.vox-chronicle-config .config-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-sm);
+  margin-bottom: var(--vox-spacing-md);
+  padding-bottom: var(--vox-spacing-sm);
+  border-bottom: 1px solid var(--vox-border);
+}
+
+.vox-chronicle-config .config-section-header i {
+  color: var(--vox-primary-light);
+  font-size: 1.1em;
+}
+
+.vox-chronicle-config .config-section-title {
+  font-weight: 600;
+  font-size: 1.1em;
+  color: var(--vox-text);
+  margin: 0;
+}
+
+.vox-chronicle-config .config-section-description {
+  color: var(--vox-text-dim);
+  font-size: 0.9em;
+  margin-bottom: var(--vox-spacing-md);
+  line-height: 1.4;
+}
+
+/* Input groups */
+.vox-chronicle-config .config-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vox-spacing-xs);
+  margin-bottom: var(--vox-spacing-md);
+}
+
+.vox-chronicle-config .config-input-group:last-child {
+  margin-bottom: 0;
+}
+
+.vox-chronicle-config .config-label {
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+  font-weight: 500;
+  font-size: 0.95em;
+  color: var(--vox-text);
+}
+
+.vox-chronicle-config .config-label .required {
+  color: var(--vox-error);
+  font-weight: bold;
+}
+
+.vox-chronicle-config .config-hint {
+  font-size: 0.85em;
+  color: var(--vox-text-muted);
+  margin-top: var(--vox-spacing-xs);
+  line-height: 1.4;
+}
+
+/* Text input styling */
+.vox-chronicle-config .config-input {
+  width: 100%;
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: var(--vox-bg-dark);
+  border: 1px solid var(--vox-border);
+  border-radius: var(--vox-radius-sm);
+  color: var(--vox-text);
+  font-size: 1em;
+  transition: border-color var(--vox-transition), box-shadow var(--vox-transition);
+}
+
+.vox-chronicle-config .config-input:focus {
+  outline: none;
+  border-color: var(--vox-primary);
+  box-shadow: 0 0 0 2px rgba(123, 44, 191, 0.2);
+}
+
+.vox-chronicle-config .config-input::placeholder {
+  color: var(--vox-text-muted);
+}
+
+.vox-chronicle-config .config-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--vox-bg);
+}
+
+/* Input with inline button (for validation) */
+.vox-chronicle-config .config-input-wrapper {
+  display: flex;
+  gap: var(--vox-spacing-sm);
+  align-items: center;
+}
+
+.vox-chronicle-config .config-input-wrapper .config-input {
+  flex: 1;
+}
+
+/* Dropdown/Select styling */
+.vox-chronicle-config .config-select {
+  width: 100%;
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  padding-right: var(--vox-spacing-xl);
+  background: var(--vox-bg-dark);
+  border: 1px solid var(--vox-border);
+  border-radius: var(--vox-radius-sm);
+  color: var(--vox-text);
+  font-size: 1em;
+  cursor: pointer;
+  transition: border-color var(--vox-transition), box-shadow var(--vox-transition);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23adb5bd' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--vox-spacing-sm) center;
+}
+
+.vox-chronicle-config .config-select:focus {
+  outline: none;
+  border-color: var(--vox-primary);
+  box-shadow: 0 0 0 2px rgba(123, 44, 191, 0.2);
+}
+
+.vox-chronicle-config .config-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--vox-bg);
+}
+
+.vox-chronicle-config .config-select option {
+  background: var(--vox-bg-dark);
+  color: var(--vox-text);
+  padding: var(--vox-spacing-sm);
+}
+
+/* Dropdown with loading state */
+.vox-chronicle-config .config-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--vox-spacing-sm);
+}
+
+.vox-chronicle-config .config-select-wrapper .config-select {
+  flex: 1;
+}
+
+.vox-chronicle-config .config-select-wrapper .select-loading {
+  position: absolute;
+  right: var(--vox-spacing-xl);
+  color: var(--vox-processing);
+}
+
+/* Button styling */
+.vox-chronicle-config .config-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vox-spacing-xs);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: var(--vox-primary);
+  color: white;
+  border: 1px solid var(--vox-primary-dark);
+  border-radius: var(--vox-radius-sm);
+  font-size: 0.95em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--vox-transition);
+  white-space: nowrap;
+}
+
+.vox-chronicle-config .config-button:hover:not(:disabled) {
+  background: var(--vox-primary-dark);
+  border-color: var(--vox-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--vox-shadow);
+}
+
+.vox-chronicle-config .config-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.vox-chronicle-config .config-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.vox-chronicle-config .config-button--secondary {
+  background: var(--vox-bg-light);
+  color: var(--vox-text);
+  border-color: var(--vox-border);
+}
+
+.vox-chronicle-config .config-button--secondary:hover:not(:disabled) {
+  background: var(--vox-bg-hover);
+  border-color: var(--vox-border-light);
+}
+
+.vox-chronicle-config .config-button--small {
+  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
+  font-size: 0.9em;
+}
+
+/* Loading spinner */
+.vox-chronicle-config .config-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-md);
+  color: var(--vox-text-dim);
+}
+
+.vox-chronicle-config .config-loading i {
+  color: var(--vox-processing);
+  animation: vox-spin 1s linear infinite;
+}
+
+.vox-chronicle-config .config-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--vox-border);
+  border-top-color: var(--vox-processing);
+  border-radius: 50%;
+  animation: vox-spin 1s linear infinite;
+}
+
+.vox-chronicle-config .config-spinner--small {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+}
+
+/* Error message styling */
+.vox-chronicle-config .config-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: rgba(239, 35, 60, 0.1);
+  border: 1px solid var(--vox-error);
+  border-radius: var(--vox-radius-sm);
+  color: var(--vox-error);
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.vox-chronicle-config .config-error i {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.vox-chronicle-config .config-error-message {
+  flex: 1;
+}
+
+/* Success message styling */
+.vox-chronicle-config .config-success {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: rgba(6, 214, 160, 0.1);
+  border: 1px solid var(--vox-success);
+  border-radius: var(--vox-radius-sm);
+  color: var(--vox-success);
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.vox-chronicle-config .config-success i {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Warning message styling */
+.vox-chronicle-config .config-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vox-spacing-sm);
+  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
+  background: rgba(252, 163, 17, 0.1);
+  border: 1px solid var(--vox-warning);
+  border-radius: var(--vox-radius-sm);
+  color: var(--vox-warning);
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.vox-chronicle-config .config-warning i {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Form actions footer */
+.vox-chronicle-config .config-actions {
+  display: flex;
+  gap: var(--vox-spacing-sm);
+  justify-content: flex-end;
+  padding-top: var(--vox-spacing-md);
+  border-top: 1px solid var(--vox-border);
+  margin-top: var(--vox-spacing-md);
+}
+
+/* Status indicators for inputs */
+.vox-chronicle-config .config-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vox-spacing-xs);
+  font-size: 0.85em;
+  margin-top: var(--vox-spacing-xs);
+}
+
+.vox-chronicle-config .config-status--valid {
+  color: var(--vox-success);
+}
+
+.vox-chronicle-config .config-status--invalid {
+  color: var(--vox-error);
+}
+
+.vox-chronicle-config .config-status--loading {
+  color: var(--vox-processing);
+}
+
+/* Validation icon states */
+.vox-chronicle-config .validation-icon {
+  margin-left: var(--vox-spacing-xs);
+}
+
+.vox-chronicle-config .validation-icon--success {
+  color: var(--vox-success);
+}
+
+.vox-chronicle-config .validation-icon--error {
+  color: var(--vox-error);
+}
+
+.vox-chronicle-config .validation-icon--loading {
+  color: var(--vox-processing);
+  animation: vox-spin 1s linear infinite;
+}
+
+/* Campaign dropdown disabled state */
+.vox-chronicle-config .config-select--disabled {
+  background: var(--vox-bg);
+  color: var(--vox-text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.vox-chronicle-config .config-select--disabled option {
+  color: var(--vox-text-muted);
+}
+
+/* Placeholder option in dropdown */
+.vox-chronicle-config .config-select option[value=""] {
+  color: var(--vox-text-muted);
+  font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 500px) {
+  .vox-chronicle-config .config-input-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vox-chronicle-config .config-input-wrapper .config-button {
+    width: 100%;
+  }
+
+  .vox-chronicle-config .config-actions {
+    flex-direction: column;
+  }
+
+  .vox-chronicle-config .config-actions .config-button {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
    Common Form Elements
    ========================================================================== */
 
