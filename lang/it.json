@@ -279,7 +279,10 @@
       "CampaignNotFound": "Campagna non trovata. Controlla l'ID della campagna.",
       "EntityCreated": "{type} '{name}' creato su Kanka",
       "JournalCreated": "Diario sessione creato: {title}",
-      "ViewInKanka": "Visualizza su Kanka"
+      "ViewInKanka": "Visualizza su Kanka",
+      "TokenExpiringCritical": "Il tuo token API Kanka scade tra {days} giorni! Genera un nuovo token su app.kanka.io/settings/api",
+      "TokenExpiringUrgent": "Il tuo token API Kanka scade tra {days} giorni. Considera di generare un nuovo token presto.",
+      "TokenExpiring": "Il tuo token API Kanka scadrà tra {days} giorni."
     },
 
     "Chronicle": {
