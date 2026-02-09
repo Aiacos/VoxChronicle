@@ -303,6 +303,27 @@
       "DefaultTitle": "Cronaca Sessione - {date}"
     },
 
+    "Config": {
+      "Title": "Configurazione VoxChronicle",
+      "MenuName": "VoxChronicle",
+      "MenuLabel": "Configura",
+      "MenuHint": "Configura le impostazioni di VoxChronicle incluse le chiavi API e l'integrazione con Kanka",
+      "OpenAISection": "Impostazioni OpenAI",
+      "KankaSection": "Integrazione Kanka",
+      "CampaignLabel": "Campagna Kanka",
+      "CampaignHint": "Seleziona la campagna Kanka dove pubblicare le cronache",
+      "CampaignPlaceholder": "Seleziona una campagna...",
+      "CampaignLoading": "Caricamento campagne...",
+      "CampaignError": "Caricamento campagne fallito",
+      "CampaignNone": "Nessuna campagna disponibile",
+      "RefreshCampaigns": "Aggiorna Campagne",
+      "TestConnection": "Testa Connessione",
+      "TestSuccess": "Connessione riuscita!",
+      "TestFailed": "Connessione fallita: {error}",
+      "Save": "Salva Impostazioni",
+      "Cancel": "Annulla"
+    },
+
     "RelationshipGraph": {
       "Title": "Relazioni tra Entità",
       "Description": "Visualizza come le entità sono connesse tra le tue sessioni",

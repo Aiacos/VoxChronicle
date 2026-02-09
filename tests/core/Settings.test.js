@@ -24,7 +24,15 @@ vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
 
+// Mock VoxChronicleConfig to avoid FormApplication dependency
+// VoxChronicleConfig extends FormApplication which is only available in Foundry VTT
+vi.mock('../../scripts/ui/VoxChronicleConfig.mjs', () => ({
+  VoxChronicleConfig: class MockVoxChronicleConfig {}
+}));
+
 beforeEach(() => {
+  // Reset module cache to ensure fresh imports with mocks
+  vi.resetModules();
   // Mock Foundry Hooks
   globalThis.Hooks = {
     once: vi.fn(),

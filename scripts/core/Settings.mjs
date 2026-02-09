@@ -12,6 +12,7 @@
  */
 
 import { MODULE_ID } from '../main.mjs';
+import { VoxChronicleConfig } from '../ui/VoxChronicleConfig.mjs';
 
 /**
  * Settings configuration class for VoxChronicle
@@ -25,6 +26,20 @@ class Settings {
    * @static
    */
   static registerSettings() {
+    // ==========================================
+    // Settings Menu Registration
+    // ==========================================
+
+    // Register the configuration menu that opens VoxChronicleConfig
+    game.settings.registerMenu(MODULE_ID, 'config', {
+      name: 'VOXCHRONICLE.Config.MenuName',
+      label: 'VOXCHRONICLE.Config.MenuLabel',
+      hint: 'VOXCHRONICLE.Config.MenuHint',
+      icon: 'fas fa-cogs',
+      type: VoxChronicleConfig,
+      restricted: false
+    });
+
     // ==========================================
     // API Key Settings
     // ==========================================
