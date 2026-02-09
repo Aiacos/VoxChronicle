@@ -178,14 +178,14 @@ Hooks.on('getSceneControlButtons', (controls) => {
     controls.push({
       name: MODULE_ID,
       title: 'VOXCHRONICLE.Controls.Title',
-      icon: 'fas fa-microphone',
+      icon: 'fa-solid fa-microphone',
       layer: 'controls',
       visible: true,
       tools: [
         {
           name: 'recorder',
           title: 'VOXCHRONICLE.Controls.Recorder',
-          icon: 'fas fa-microphone',
+          icon: 'fa-solid fa-microphone',
           button: true,
           onClick: async () => {
             const recorder = await getRecorderControls();
@@ -195,7 +195,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'speaker-labels',
           title: 'VOXCHRONICLE.Controls.SpeakerLabels',
-          icon: 'fas fa-users',
+          icon: 'fa-solid fa-users',
           button: true,
           onClick: async () => {
             const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
@@ -206,7 +206,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'vocabulary',
           title: 'VOXCHRONICLE.Controls.Vocabulary',
-          icon: 'fas fa-book',
+          icon: 'fa-solid fa-book',
           button: true,
           onClick: async () => {
             const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
@@ -217,7 +217,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'relationship-graph',
           title: 'VOXCHRONICLE.Controls.RelationshipGraph',
-          icon: 'fas fa-project-diagram',
+          icon: 'fa-solid fa-project-diagram',
           button: true,
           onClick: async () => {
             const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
@@ -228,7 +228,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'settings',
           title: 'VOXCHRONICLE.Controls.Settings',
-          icon: 'fas fa-cog',
+          icon: 'fa-solid fa-cog',
           button: true,
           onClick: () => {
             const app = new SettingsConfig();
