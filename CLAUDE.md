@@ -51,17 +51,22 @@ vox-chronicle/
 │   ├── ui/
 │   │   ├── RecorderControls.mjs   # Recording start/stop/pause UI
 │   │   ├── SpeakerLabeling.mjs    # Map speaker IDs to player names
-│   │   └── EntityPreview.mjs      # Review entities before Kanka publish
+│   │   ├── EntityPreview.mjs      # Review entities before Kanka publish
+│   │   └── RelationshipGraph.mjs  # Visualize entity relationships
 │   └── utils/
 │       ├── Logger.mjs             # Module-prefixed logging utility
 │       ├── RateLimiter.mjs        # Request throttling with queue
-│       └── AudioUtils.mjs         # MIME detection, blob conversion
+│       ├── AudioUtils.mjs         # MIME detection, blob conversion
+│       ├── SensitiveDataFilter.mjs # Filter API keys from logs
+│       ├── HtmlUtils.mjs          # HTML sanitization and formatting
+│       └── ApiKeyValidator.mjs    # Validate API keys before use
 ├── styles/
 │   └── vox-chronicle.css          # All module styles with .vox-chronicle prefix
 ├── templates/
 │   ├── recorder.hbs               # Recording controls template
 │   ├── speaker-labeling.hbs       # Speaker mapping form
-│   └── entity-preview.hbs         # Entity review dialog
+│   ├── entity-preview.hbs         # Entity review dialog
+│   └── relationship-graph.hbs     # Relationship visualization template
 ├── lang/
 │   ├── en.json                    # English localization
 │   └── it.json                    # Italian localization
@@ -73,7 +78,8 @@ vox-chronicle/
 │   └── USER_GUIDE.md              # End-user instructions
 ├── README.md                      # Project overview and setup
 ├── CHANGELOG.md                   # Version history
-└── CLAUDE.md                      # This file - AI development context
+├── CLAUDE.md                      # This file - AI development context
+└── .gitleaksignore                # Patterns to ignore in secret scanning
 ```
 
 ## Code Patterns
@@ -141,6 +147,30 @@ game.settings.register(MODULE_ID, 'kankaCampaignId', {
   scope: 'world',
   config: true,
   type: String
+});
+
+// Relationship extraction settings
+game.settings.register(MODULE_ID, 'autoExtractRelationships', {
+  scope: 'client',      // Per-user preference
+  config: true,
+  type: Boolean,
+  default: true         // Enable relationship extraction by default
+});
+
+game.settings.register(MODULE_ID, 'relationshipConfidenceThreshold', {
+  scope: 'world',
+  config: true,
+  type: Number,
+  range: { min: 1, max: 10, step: 1 },
+  default: 5            // Medium confidence threshold (1-10 scale)
+});
+
+game.settings.register(MODULE_ID, 'maxRelationshipsPerSession', {
+  scope: 'world',
+  config: true,
+  type: Number,
+  range: { min: 0, max: 50, step: 1 },
+  default: 20           // Reasonable limit to avoid API overuse
 });
 ```
 

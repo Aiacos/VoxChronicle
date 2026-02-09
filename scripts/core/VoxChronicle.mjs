@@ -19,6 +19,10 @@ import { KankaService } from '../kanka/KankaService.mjs';
 import { EntityExtractor } from '../ai/EntityExtractor.mjs';
 import { NarrativeExporter } from '../kanka/NarrativeExporter.mjs';
 import { VocabularyDictionary } from './VocabularyDictionary.mjs';
+import { Logger } from '../utils/Logger.mjs';
+
+// Create logger instance for VoxChronicle
+const logger = Logger.createChild('VoxChronicle');
 
 /**
  * Main VoxChronicle singleton class
@@ -89,11 +93,11 @@ class VoxChronicle {
    */
   async initialize() {
     if (this.isInitialized) {
-      console.warn(`${MODULE_ID} | VoxChronicle already initialized`);
+      logger.warn('VoxChronicle already initialized');
       return;
     }
 
-    console.log(`${MODULE_ID} | Initializing VoxChronicle services...`);
+    logger.info('Initializing VoxChronicle services...');
 
     try {
       // Get API keys from settings
@@ -111,10 +115,10 @@ class VoxChronicle {
 
       // Validate and warn about missing settings
       if (!openaiApiKey && transcriptionMode !== 'local') {
-        console.warn(`${MODULE_ID} | OpenAI API key not configured`);
+        logger.warn('OpenAI API key not configured');
       }
       if (!kankaApiToken || !kankaCampaignId) {
-        console.warn(`${MODULE_ID} | Kanka API settings not configured`);
+        logger.warn('Kanka API settings not configured');
       }
 
       // Initialize audio recorder (always available)
@@ -127,11 +131,9 @@ class VoxChronicle {
           openaiApiKey: openaiApiKey,
           whisperBackendUrl: whisperBackendUrl
         });
-        console.log(
-          `${MODULE_ID} | Transcription service initialized with mode: ${transcriptionMode}`
-        );
+        logger.info(`Transcription service initialized with mode: ${transcriptionMode}`);
       } catch (error) {
-        console.warn(`${MODULE_ID} | Failed to create transcription service: ${error.message}`);
+        logger.warn(`Failed to create transcription service: ${error.message}`);
       }
 
       // Initialize other OpenAI services (if API key configured)
@@ -176,9 +178,9 @@ class VoxChronicle {
 
       // Mark as initialized
       this.isInitialized = true;
-      console.log(`${MODULE_ID} | VoxChronicle services initialized successfully`);
+      logger.info('VoxChronicle services initialized successfully');
     } catch (error) {
-      console.error(`${MODULE_ID} | Failed to initialize services:`, error);
+      logger.error('Failed to initialize services:', error);
       throw error;
     }
   }
@@ -221,7 +223,7 @@ class VoxChronicle {
       if (!tokenCreatedAt) {
         tokenCreatedAt = Date.now();
         await game.settings.set(MODULE_ID, 'kankaApiTokenCreatedAt', tokenCreatedAt);
-        console.log(`${MODULE_ID} | Kanka API token timestamp initialized (migration)`);
+        logger.info('Kanka API token timestamp initialized (migration)');
         return; // Don't warn on first run after migration
       }
 
@@ -236,24 +238,24 @@ class VoxChronicle {
           days: daysRemaining
         });
         ui.notifications.error(message, { permanent: true });
-        console.warn(`${MODULE_ID} | Kanka API token expires in ${daysRemaining} days (CRITICAL)`);
+        logger.warn(`Kanka API token expires in ${daysRemaining} days (CRITICAL)`);
       } else if (daysRemaining <= 60) {
         // Urgent: 60 days or less
         const message = game.i18n.format('VOXCHRONICLE.Kanka.TokenExpiringUrgent', {
           days: daysRemaining
         });
         ui.notifications.warn(message, { permanent: true });
-        console.warn(`${MODULE_ID} | Kanka API token expires in ${daysRemaining} days (URGENT)`);
+        logger.warn(`Kanka API token expires in ${daysRemaining} days (URGENT)`);
       } else if (daysRemaining <= 90) {
         // Info: 90 days or less
         const message = game.i18n.format('VOXCHRONICLE.Kanka.TokenExpiring', {
           days: daysRemaining
         });
         ui.notifications.info(message);
-        console.info(`${MODULE_ID} | Kanka API token expires in ${daysRemaining} days`);
+        logger.info(`Kanka API token expires in ${daysRemaining} days`);
       }
     } catch (error) {
-      console.error(`${MODULE_ID} | Failed to check Kanka token expiration:`, error);
+      logger.error('Failed to check Kanka token expiration:', error);
       // Don't throw - this is a non-critical check
     }
   }
@@ -273,7 +275,7 @@ class VoxChronicle {
       throw new Error('Audio recorder not initialized');
     }
 
-    console.log(`${MODULE_ID} | Starting recording session...`);
+    logger.info('Starting recording session...');
 
     this.isRecording = true;
     this.currentSession = {
@@ -286,7 +288,7 @@ class VoxChronicle {
     // Audio recording will be started by the audioRecorder service
     // await this.audioRecorder.startRecording();
 
-    console.log(`${MODULE_ID} | Recording session started`);
+    logger.info('Recording session started');
   }
 
   /**
@@ -300,7 +302,7 @@ class VoxChronicle {
       throw new Error('No recording in progress');
     }
 
-    console.log(`${MODULE_ID} | Stopping recording session...`);
+    logger.info('Stopping recording session...');
 
     this.isRecording = false;
 
@@ -311,7 +313,7 @@ class VoxChronicle {
     // Audio recording will be stopped by the audioRecorder service
     // const audioBlob = await this.audioRecorder.stopRecording();
 
-    console.log(`${MODULE_ID} | Recording session stopped`);
+    logger.info('Recording session stopped');
 
     // Return placeholder - will return actual blob from audioRecorder
     return null;
@@ -329,7 +331,7 @@ class VoxChronicle {
       throw new Error('Transcription service not initialized');
     }
 
-    console.log(`${MODULE_ID} | Processing recording session...`);
+    logger.info('Processing recording session...');
 
     // Get speaker labels from settings
     const _speakerLabels = this._getSetting('speakerLabels') || {};
@@ -339,7 +341,7 @@ class VoxChronicle {
     // const transcript = await this.transcriptionService.transcribe(audioBlob, speakerLabels, transcriptionLanguage);
     // const entities = await this.entityExtractor.extractEntities(transcript.text);
 
-    console.log(`${MODULE_ID} | Session processing complete`);
+    logger.info('Session processing complete');
 
     return {
       transcript: null,
@@ -359,12 +361,12 @@ class VoxChronicle {
       throw new Error('Kanka service not initialized');
     }
 
-    console.log(`${MODULE_ID} | Publishing to Kanka...`);
+    logger.info('Publishing to Kanka...');
 
     // Kanka publishing will be handled here
     // const journal = await this.kankaService.createJournal(sessionData);
 
-    console.log(`${MODULE_ID} | Published to Kanka successfully`);
+    logger.info('Published to Kanka successfully');
 
     return {
       journal: null,

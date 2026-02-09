@@ -47,7 +47,7 @@ async function getRecorderControls() {
  */
 Hooks.once('init', () => {
   // Log module initialization start
-  console.log(`${MODULE_ID} | Initializing VoxChronicle module`);
+  logger.info('Initializing VoxChronicle module');
 
   // Register module settings
   Settings.registerSettings();
@@ -58,7 +58,7 @@ Hooks.once('init', () => {
     ready: false
   };
 
-  console.log(`${MODULE_ID} | Module settings registered`);
+  logger.info('Module settings registered');
 });
 
 /**
@@ -67,7 +67,7 @@ Hooks.once('init', () => {
  * Use this to initialize services that depend on game data
  */
 Hooks.once('ready', async () => {
-  console.log(`${MODULE_ID} | VoxChronicle module ready`);
+  logger.info('VoxChronicle module ready');
 
   try {
     // Initialize the main VoxChronicle singleton
@@ -77,9 +77,9 @@ Hooks.once('ready', async () => {
     // Mark module as ready
     game[MODULE_ID].ready = true;
 
-    console.log(`${MODULE_ID} | All services initialized successfully`);
+    logger.info('All services initialized successfully');
   } catch (error) {
-    console.error(`${MODULE_ID} | Failed to initialize module:`, error);
+    logger.error('Failed to initialize module:', error);
     ui.notifications?.error(
       'VoxChronicle: Failed to initialize module. Check console for details.'
     );
@@ -178,14 +178,14 @@ Hooks.on('getSceneControlButtons', (controls) => {
     controls.push({
       name: MODULE_ID,
       title: 'VOXCHRONICLE.Controls.Title',
-      icon: 'fas fa-microphone',
+      icon: 'fa-solid fa-microphone',
       layer: 'controls',
       visible: true,
       tools: [
         {
           name: 'recorder',
           title: 'VOXCHRONICLE.Controls.Recorder',
-          icon: 'fas fa-microphone',
+          icon: 'fa-solid fa-microphone',
           button: true,
           onClick: async () => {
             const recorder = await getRecorderControls();
@@ -195,7 +195,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'speaker-labels',
           title: 'VOXCHRONICLE.Controls.SpeakerLabels',
-          icon: 'fas fa-users',
+          icon: 'fa-solid fa-users',
           button: true,
           onClick: async () => {
             const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
@@ -206,7 +206,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'vocabulary',
           title: 'VOXCHRONICLE.Controls.Vocabulary',
-          icon: 'fas fa-book',
+          icon: 'fa-solid fa-book',
           button: true,
           onClick: async () => {
             const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
@@ -217,7 +217,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'relationship-graph',
           title: 'VOXCHRONICLE.Controls.RelationshipGraph',
-          icon: 'fas fa-project-diagram',
+          icon: 'fa-solid fa-project-diagram',
           button: true,
           onClick: async () => {
             const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
@@ -228,7 +228,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         {
           name: 'settings',
           title: 'VOXCHRONICLE.Controls.Settings',
-          icon: 'fas fa-cog',
+          icon: 'fa-solid fa-cog',
           button: true,
           onClick: () => {
             const app = new SettingsConfig();
@@ -243,7 +243,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
     });
   }
 
-  console.log(`${MODULE_ID} | Scene control buttons registered`);
+  logger.info('Scene control buttons registered');
 });
 
 /**
@@ -298,7 +298,7 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       } catch (error) {
         // Error state for unexpected exceptions
         icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        console.error(`${MODULE_ID} | OpenAI validation error:`, error);
+        logger.error('OpenAI validation error:', error);
 
         setTimeout(() => {
           icon.removeClass('fa-times').addClass('fa-plug');
@@ -350,7 +350,7 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       } catch (error) {
         // Error state for unexpected exceptions
         icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        console.error(`${MODULE_ID} | Kanka validation error:`, error);
+        logger.error('Kanka validation error:', error);
 
         setTimeout(() => {
           icon.removeClass('fa-times').addClass('fa-plug');

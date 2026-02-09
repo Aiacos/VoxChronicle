@@ -1,33 +1,33 @@
 # TODO - VoxChronicle
 
-Audit del codebase eseguito il 2026-02-07. Correggere in ordine di priorita'.
+Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-09.
 
-## CRITICAL
+## CRITICAL - FIXED
 
-### C1. Setting `kankaApiTokenCreatedAt` non registrato
-- `VoxChronicle.mjs:189` legge con `_getSetting('kankaApiTokenCreatedAt')`
-- `VoxChronicle.mjs:194` scrive con `game.settings.set(MODULE_ID, 'kankaApiTokenCreatedAt', ...)`
-- `Settings.mjs` non contiene il `game.settings.register()` corrispondente
-- **Causa crash runtime** quando il codice tenta di salvare il setting
-- **Fix**: Aggiungere registrazione in `Settings.mjs` con `scope: 'world'`, `config: false`, `type: Number`, `default: 0`
+### C1. Setting `kankaApiTokenCreatedAt` non registrato - ✅ FIXED
+**Stato**: Risolto in `Settings.mjs:360-367`
+- Il setting e' ora registrato correttamente con `scope: 'world'`, `config: false`, `type: Number`, `default: 0`
 
-### C2. Chiavi di localizzazione mancanti (4 chiavi x 2 lingue)
-Usate nel codice ma assenti da `lang/en.json` e `lang/it.json`:
+### C2. Chiavi di localizzazione mancanti - ✅ FIXED
+**Stato**: Tutte le chiavi sono state aggiunte in `lang/en.json` e `lang/it.json` (righe 283-285, 330, 452)
+- `VOXCHRONICLE.Kanka.TokenExpiringCritical` ✅
+- `VOXCHRONICLE.Kanka.TokenExpiringUrgent` ✅
+- `VOXCHRONICLE.Kanka.TokenExpiring` ✅
+- `VOXCHRONICLE.Controls.RelationshipGraph` ✅
 
-| Chiave | File | Riga |
-|---|---|---|
-| `VOXCHRONICLE.Kanka.TokenExpiringCritical` | VoxChronicle.mjs | 206 |
-| `VOXCHRONICLE.Kanka.TokenExpiringUrgent` | VoxChronicle.mjs | 213 |
-| `VOXCHRONICLE.Kanka.TokenExpiring` | VoxChronicle.mjs | 220 |
-| `VOXCHRONICLE.Controls.RelationshipGraph` | main.mjs | 136, 194 |
+## CRITICAL - DA CORREGGERE
 
-L'utente vedra' la chiave grezza invece del testo tradotto.
+### C3. `console.log` diretto invece di Logger (~29 occorrenze)
+CLAUDE.md vieta `console.log` diretto. Violazioni attuali:
 
-### C3. `console.log` diretto invece di Logger (~20 occorrenze)
-CLAUDE.md vieta `console.log` diretto. Violazioni in:
-- `main.mjs`: righe 46, 57, 70, 76, 80, 183
-- `VoxChronicle.mjs`: righe 91, 95, 110, 113, 147, 149, 185, 198, 224, 241, 251, 276
-- `Settings.mjs`: riga 239
+**`scripts/main.mjs`** (8 occorrenze):
+- righe 50, 61, 70, 80, 82, 246, 301, 353
+
+**`scripts/core/VoxChronicle.mjs`** (18 occorrenze):
+- righe 92, 96, 114, 117, 130, 134, 179, 181, 224, 239, 246, 253, 256, 276, 289, 303, 314, 332, 342, 362, 367
+
+**`scripts/core/Settings.mjs`** (3 occorrenze):
+- righe 369, 588, 659
 
 **Fix**: Sostituire con `Logger.info()`, `Logger.error()`, `Logger.warn()`.
 

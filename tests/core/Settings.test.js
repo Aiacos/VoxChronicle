@@ -30,6 +30,46 @@ vi.mock('../../scripts/ui/VoxChronicleConfig.mjs', () => ({
   VoxChronicleConfig: class MockVoxChronicleConfig {}
 }));
 
+// Mock Logger before importing Settings
+// Logger mock routes all log methods to console.log for test compatibility
+// Tests expect consoleLogSpy (console.log) to be called
+vi.mock('../../scripts/utils/Logger.mjs', () => ({
+  Logger: {
+    createChild: () => ({
+      debug: (...args) => console.log(...args),
+      info: (...args) => console.log(...args),
+      log: (...args) => console.log(...args),
+      warn: (...args) => {
+        console.warn(...args);
+        console.log(...args);
+      },
+      error: (...args) => {
+        console.error(...args);
+        console.log(...args);
+      }
+    }),
+    debug: (...args) => console.log(...args),
+    info: (...args) => console.log(...args),
+    log: (...args) => console.log(...args),
+    warn: (...args) => {
+      console.warn(...args);
+      console.log(...args);
+    },
+    error: (...args) => {
+      console.error(...args);
+      console.log(...args);
+    }
+  },
+  LogLevel: {
+    DEBUG: 0,
+    INFO: 1,
+    LOG: 2,
+    WARN: 3,
+    ERROR: 4,
+    NONE: 5
+  }
+}));
+
 beforeEach(() => {
   // Reset module cache to ensure fresh imports with mocks
   vi.resetModules();
