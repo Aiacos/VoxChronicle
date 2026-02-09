@@ -134,5 +134,126 @@ Initial release of VoxChronicle - the Foundry VTT session transcription and Kank
 - Comprehensive error handling with user-friendly notifications
 - Full JSDoc documentation in source files
 
+---
+
+## Migration Guide
+
+This section provides step-by-step instructions for upgrading between major versions of VoxChronicle. Follow the guide corresponding to your upgrade path.
+
+### Migrating to 1.1.0 (Offline Transcription Mode)
+
+Version 1.1.0 introduces optional offline transcription using local Whisper backends. **This is a non-breaking update** - existing users can continue using OpenAI API transcription without any changes.
+
+#### What's New
+
+- **Transcription Mode Setting**: Choose between API (OpenAI), Local (Whisper), or Auto (try local, fallback to API)
+- **Optional API Key**: OpenAI API key is now optional if you use local transcription exclusively
+- **Whisper Backend URL**: Configure the endpoint for your local Whisper server
+- **Mode Indicator**: Visual badge showing current transcription mode in the recorder UI
+
+#### Migration Steps
+
+**Option 1: Continue Using OpenAI API (No Action Required)**
+
+If you're happy with cloud-based transcription, you don't need to do anything. Your existing setup will continue working as before.
+
+1. After updating to 1.1.0, your **Transcription Mode** will default to `API`
+2. All recordings will use OpenAI transcription as usual
+3. No configuration changes needed
+
+**Option 2: Switch to Local Offline Transcription**
+
+To enable privacy-focused, cost-free local transcription:
+
+1. **Set up a local Whisper backend** following the [WHISPER_SETUP.md](docs/WHISPER_SETUP.md) guide
+   - Install whisper.cpp, faster-whisper, or another compatible backend
+   - Start the Whisper server (default: `http://localhost:8080`)
+   - Verify the server is running and accessible
+
+2. **Update VoxChronicle settings** in Foundry VTT:
+   - Go to **Settings** → **Module Settings** → **VoxChronicle**
+   - Set **Transcription Mode** to `Local`
+   - Set **Whisper Backend URL** to your server address (e.g., `http://localhost:8080`)
+   - *(Optional)* Enable **Show Mode Indicator** to see transcription status in the UI
+   - Click **Save**
+
+3. **Test your setup**:
+   - Click the VoxChronicle icon in the scene controls
+   - Start a short test recording (10-30 seconds)
+   - Stop the recording and verify transcription works
+   - Check the mode indicator badge shows "Local"
+
+4. **Remove OpenAI API key** (optional):
+   - If you're using local transcription exclusively, you can remove your OpenAI API key
+   - **Note:** You'll still need an API key for AI image generation and entity extraction features
+   - To disable these features, adjust the corresponding settings
+
+**Option 3: Use Auto Mode (Best of Both Worlds)**
+
+For flexibility with automatic fallback:
+
+1. **Set up a local Whisper backend** (see Option 2, step 1)
+
+2. **Keep your OpenAI API key configured** in VoxChronicle settings
+
+3. **Update transcription mode**:
+   - Go to **Settings** → **Module Settings** → **VoxChronicle**
+   - Set **Transcription Mode** to `Auto`
+   - Set **Whisper Backend URL** to your server address
+   - Click **Save**
+
+4. **How Auto Mode works**:
+   - VoxChronicle will try local transcription first
+   - If the local backend is unavailable or fails, it automatically falls back to OpenAI API
+   - The mode indicator shows which service is being used
+   - Perfect for laptops that may not always have the local server running
+
+#### Settings Reference
+
+| Setting | Description | Default | Required? |
+|---------|-------------|---------|-----------|
+| **Transcription Mode** | Choose API, Local, or Auto | `API` | Yes |
+| **Whisper Backend URL** | URL of your local Whisper server | `http://localhost:8080` | Only for Local/Auto modes |
+| **Show Mode Indicator** | Display transcription mode badge in UI | `true` | No |
+| **OpenAI API Key** | Your OpenAI API key | *(none)* | Only for API/Auto modes and image generation |
+
+#### Troubleshooting Common Issues
+
+**Issue: "Local backend not available" error**
+
+- **Solution**: Verify your Whisper server is running and accessible
+- Test with: `curl http://localhost:8080/health` (should return status information)
+- Check the Whisper Backend URL setting matches your server address
+- See [WHISPER_SETUP.md](docs/WHISPER_SETUP.md) for detailed troubleshooting
+
+**Issue: Transcription is slow with local mode**
+
+- **Solution**: Consider using a faster model (tiny, base) or enabling GPU acceleration
+- See the Model Selection section in [WHISPER_SETUP.md](docs/WHISPER_SETUP.md)
+- Alternatively, switch to Auto mode to use API for long recordings
+
+**Issue: Mode indicator not showing**
+
+- **Solution**: Enable **Show Mode Indicator** in module settings
+- Refresh the page after changing the setting
+
+#### Breaking Changes
+
+**None.** Version 1.1.0 is fully backward compatible with 1.0.0. All new features are opt-in.
+
+#### Recommended Actions
+
+1. **Review the documentation**: Read [WHISPER_SETUP.md](docs/WHISPER_SETUP.md) to understand local transcription setup
+2. **Test before your session**: If switching to local mode, test with a short recording first
+3. **Update your workflow**: Consider using Auto mode for maximum reliability
+
+#### Need Help?
+
+- Check the [Troubleshooting section](docs/WHISPER_SETUP.md#troubleshooting) in WHISPER_SETUP.md
+- Review the [User Guide](docs/USER_GUIDE.md) for configuration details
+- Report issues on [GitHub Issues](https://github.com/voxchronicle/vox-chronicle/issues)
+
+---
+
 [Unreleased]: https://github.com/voxchronicle/vox-chronicle/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/voxchronicle/vox-chronicle/releases/tag/v1.0.0
