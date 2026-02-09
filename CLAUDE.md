@@ -148,6 +148,30 @@ game.settings.register(MODULE_ID, 'kankaCampaignId', {
   config: true,
   type: String
 });
+
+// Relationship extraction settings
+game.settings.register(MODULE_ID, 'autoExtractRelationships', {
+  scope: 'client',      // Per-user preference
+  config: true,
+  type: Boolean,
+  default: true         // Enable relationship extraction by default
+});
+
+game.settings.register(MODULE_ID, 'relationshipConfidenceThreshold', {
+  scope: 'world',
+  config: true,
+  type: Number,
+  range: { min: 1, max: 10, step: 1 },
+  default: 5            // Medium confidence threshold (1-10 scale)
+});
+
+game.settings.register(MODULE_ID, 'maxRelationshipsPerSession', {
+  scope: 'world',
+  config: true,
+  type: Number,
+  range: { min: 0, max: 50, step: 1 },
+  default: 20           // Reasonable limit to avoid API overuse
+});
 ```
 
 ### Service Classes
