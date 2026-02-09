@@ -377,11 +377,20 @@ class TranscriptionService extends OpenAIClient {
    * @private
    */
   _mapSpeakersToNames(result, speakerMap = {}) {
+    // Edge case 4: Empty speakerMap parameter
+    // When no speaker mapping is provided (e.g., during chunked transcription or initial
+    // transcription before user has labeled speakers), we default to an empty object.
+    // This allows the algorithm to proceed and preserve the original speaker IDs, which
+    // can be mapped later via setSpeakerMap() or in a subsequent call to this method.
+
     if (!result) {
       return { text: '', segments: [], speakers: [] };
     }
 
-    // If no segments, return basic result
+    // Edge case 1: No segments in result
+    // OpenAI API may return empty segments for silent audio or transcription failures.
+    // Return a valid but empty result structure to prevent downstream code from breaking
+    // when trying to iterate over segments that don't exist.
     if (!result.segments || !Array.isArray(result.segments)) {
       return {
         text: result.text || '',
@@ -400,14 +409,20 @@ class TranscriptionService extends OpenAIClient {
     // For each segment, we replace the AI-generated speaker ID (e.g., "SPEAKER_00")
     // with the human-readable name provided in speakerMap (e.g., "Game Master")
     const mappedSegments = result.segments.map((segment) => {
-      // Extract original speaker ID from the API response (e.g., "SPEAKER_00")
+      // Edge case 3: Missing speaker field in segment
+      // Some segments may lack a speaker field if the audio is unclear or if the diarization
+      // model couldn't confidently identify a speaker. Default to "Unknown" to maintain
+      // data integrity and prevent undefined values in the output.
       const originalSpeaker = segment.speaker || 'Unknown';
 
       // Track this speaker ID in our set of unique speakers
       uniqueSpeakers.add(originalSpeaker);
 
-      // Look up speaker name in map, use original ID if not found
-      // This allows graceful handling when user hasn't mapped all speakers yet
+      // Edge case 2: Speaker ID not in map
+      // Users may not have mapped all detected speakers yet, especially in first-time
+      // transcriptions or when new speakers join mid-session. Fall back to the original
+      // speaker ID (e.g., "SPEAKER_00") so the segment remains identifiable and can be
+      // mapped later without losing the speaker identity.
       // Example: speakerMap["SPEAKER_00"] = "Game Master" → mappedName = "Game Master"
       // Example: speakerMap["SPEAKER_02"] = undefined → mappedName = "SPEAKER_02" (fallback)
       const mappedName = speakerMap[originalSpeaker] || originalSpeaker;
