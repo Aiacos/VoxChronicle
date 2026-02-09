@@ -373,6 +373,8 @@ const transcription = new TranscriptionService(apiKey, {
 });
 ```
 
+> 📖 **Detailed Documentation:** For comprehensive information about the GPT-4o transcription API with speaker diarization, including response formats, error handling, and best practices, see [GPT4O_TRANSCRIBE_API.md](./GPT4O_TRANSCRIBE_API.md).
+
 #### Methods
 
 ##### `transcribe(audioBlob, options)`
