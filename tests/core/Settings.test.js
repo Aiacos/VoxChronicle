@@ -23,6 +23,9 @@ let consoleLogSpy;
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Mock VoxChronicleConfig to avoid FormApplication dependency
 // VoxChronicleConfig extends FormApplication which is only available in Foundry VTT

@@ -50,6 +50,9 @@ vi.mock('../../scripts/utils/RateLimiter.mjs', () => ({
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Import after mocks are set up
 import {

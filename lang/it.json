@@ -319,6 +319,7 @@
       "CampaignLoading": "Caricamento campagne...",
       "CampaignError": "Caricamento campagne fallito",
       "CampaignNone": "Nessuna campagna disponibile",
+      "CampaignNeedsToken": "Per favore imposta prima un token API Kanka",
       "RefreshCampaigns": "Aggiorna Campagne",
       "TestConnection": "Testa Connessione",
       "TestSuccess": "Connessione riuscita!",

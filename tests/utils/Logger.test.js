@@ -11,6 +11,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Mock SensitiveDataFilter to avoid additional dependencies
 vi.mock('../../scripts/utils/SensitiveDataFilter.mjs', () => ({

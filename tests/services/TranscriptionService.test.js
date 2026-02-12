@@ -63,6 +63,9 @@ vi.mock('../../scripts/utils/RateLimiter.mjs', () => ({
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Mock VocabularyDictionary
 vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({

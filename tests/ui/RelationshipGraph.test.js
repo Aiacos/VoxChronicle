@@ -40,6 +40,9 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Set up DOM and globals before any test runs
 setupEnvironment();

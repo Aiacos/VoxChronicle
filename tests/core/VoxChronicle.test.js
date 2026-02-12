@@ -12,6 +12,9 @@ import { createMockSettings, createMockI18n } from '../helpers/foundry-mock.js';
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Mock Logger before importing VoxChronicle
 // Logger mock routes all log methods to both their native console method AND console.log

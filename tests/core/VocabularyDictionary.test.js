@@ -44,6 +44,9 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Mock DND_VOCABULARY with minimal test data
 vi.mock('../../scripts/data/dnd-vocabulary.mjs', () => ({

@@ -10,7 +10,7 @@
  * @module vox-chronicle
  */
 
-import { MODULE_ID } from '../main.mjs';
+import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { RelationshipType } from '../ai/EntityExtractor.mjs';
 

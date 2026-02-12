@@ -8,7 +8,7 @@
  * @module vox-chronicle
  */
 
-import { MODULE_ID } from '../main.mjs';
+import { MODULE_ID } from '../constants.mjs';
 import { SensitiveDataFilter } from './SensitiveDataFilter.mjs';
 
 /**

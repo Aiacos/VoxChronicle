@@ -37,6 +37,9 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Import after mocks are set up
 import { escapeHtml } from '../../scripts/utils/HtmlUtils.mjs';

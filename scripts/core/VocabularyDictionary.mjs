@@ -10,7 +10,7 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
-import { MODULE_ID } from '../main.mjs';
+import { MODULE_ID } from '../constants.mjs';
 import { DND_VOCABULARY } from '../data/dnd-vocabulary.mjs';
 
 /**

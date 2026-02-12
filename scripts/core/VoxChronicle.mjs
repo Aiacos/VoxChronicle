@@ -10,7 +10,7 @@
  * @module vox-chronicle
  */
 
-import { MODULE_ID } from '../main.mjs';
+import { MODULE_ID } from '../constants.mjs';
 import { SessionOrchestrator } from '../orchestration/SessionOrchestrator.mjs';
 import { AudioRecorder } from '../audio/AudioRecorder.mjs';
 import { TranscriptionFactory } from '../ai/TranscriptionFactory.mjs';

@@ -319,6 +319,7 @@
       "CampaignLoading": "Loading campaigns...",
       "CampaignError": "Failed to load campaigns",
       "CampaignNone": "No campaigns available",
+      "CampaignNeedsToken": "Please set a Kanka API token first",
       "RefreshCampaigns": "Refresh Campaigns",
       "TestConnection": "Test Connection",
       "TestSuccess": "Connection successful!",

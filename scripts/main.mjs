@@ -10,8 +10,8 @@
  * @license MIT
  */
 
-// Module identifier constant - used for settings, logging, and hooks
-const MODULE_ID = 'vox-chronicle';
+// Module identifier constant - imported from leaf module to prevent circular dependencies
+import { MODULE_ID } from './constants.mjs';
 
 // Import core classes for module initialization
 import { Settings } from './core/Settings.mjs';
@@ -363,5 +363,5 @@ Hooks.on('renderSettingsConfig', (app, html) => {
   }
 });
 
-// Export module ID for use in other files
-export { MODULE_ID };
+// Re-export module ID for backward compatibility
+export { MODULE_ID } from './constants.mjs';

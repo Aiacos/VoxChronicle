@@ -38,6 +38,9 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
 vi.mock('../../scripts/main.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
+vi.mock('../../scripts/constants.mjs', () => ({
+  MODULE_ID: 'vox-chronicle'
+}));
 
 // Mock KankaClient methods
 const mockGet = vi.fn();
