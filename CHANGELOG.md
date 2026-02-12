@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-02-09
+
+### Fixed
+- **Font Awesome v13 icons**: Replaced all `fas fa-*` shorthand with `fa-solid fa-*` (Font Awesome 6 standard) across 6 templates and 5 UI scripts
+- **Broken icon class concatenation**: Fixed missing space in icon classes that caused icons not to render (e.g., `fa-solidfa-trash` → `fa-solid fa-trash`)
+- **Handlebars conditional icon patterns**: Fixed `fa-solid{{#if ...}}` → `fa-solid {{#if ...}}` in config and entity-preview templates
+
+### Changed
+- Updated TODO.md with resolved items (W1, W2, I1, I2) and new v13 compatibility notes (jQuery deprecation, ApplicationV2 migration)
+
+## [1.2.1] - 2026-02-09
+
+### Fixed
+- **Settings not appearing in Foundry VTT v13**: Broke circular ES module import dependency that prevented the `init` hook from firing
+- **Circular import chain**: Extracted `MODULE_ID` constant to new `scripts/constants.mjs` leaf module (zero imports), eliminating circular dependency cycles between `main.mjs` and 10 source files
+
+### Added
+- `scripts/constants.mjs` - Dependency-free module exporting `MODULE_ID`
+- Missing localization key `VOXCHRONICLE.Config.CampaignNeedsToken` in en.json and it.json
+
+### Changed
+- All 10 source files now import `MODULE_ID` from `constants.mjs` instead of `main.mjs`
+- `main.mjs` re-exports `MODULE_ID` from `constants.mjs` for backward compatibility
+- All 33 test files updated with `constants.mjs` mock
+
 ## [1.2.0] - 2026-02-09
 
 ### Added
@@ -271,6 +296,8 @@ For flexibility with automatic fallback:
 
 ---
 
-[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/Aiacos/VoxChronicle/releases/tag/v1.0.0
