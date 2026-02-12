@@ -23,11 +23,11 @@
       {{modeLabel}}
       {{#if healthStatus}}
         {{#if (eq healthStatus "connected")}}
-          <i class="fas fa-check-circle health-icon" title="{{i18n.localBackendConnected}}"></i>
+          <i class="fa-solid fa-check-circle health-icon" title="{{i18n.localBackendConnected}}"></i>
         {{else if (eq healthStatus "checking")}}
-          <i class="fas fa-spinner fa-pulse health-icon" title="{{i18n.localBackendChecking}}"></i>
+          <i class="fa-solid fa-spinner fa-pulse health-icon" title="{{i18n.localBackendChecking}}"></i>
         {{else}}
-          <i class="fas fa-exclamation-circle health-icon" title="{{i18n.localBackendUnavailable}}"></i>
+          <i class="fa-solid fa-exclamation-circle health-icon" title="{{i18n.localBackendUnavailable}}"></i>
         {{/if}}
       {{/if}}
     </span>
@@ -58,7 +58,7 @@
   {{!-- Error display --}}
   {{#if isError}}
   <div class="recorder-error">
-    <i class="fas fa-exclamation-circle"></i>
+    <i class="fa-solid fa-exclamation-circle"></i>
     <span>{{lastError}}</span>
   </div>
   {{/if}}
@@ -72,7 +72,7 @@
             data-action="start-recording"
             title="{{i18n.startRecording}}"
             {{#unless isConfigured}}disabled{{/unless}}>
-      <i class="fas fa-microphone"></i>
+      <i class="fa-solid fa-microphone"></i>
       <span>{{i18n.startRecording}}</span>
     </button>
     {{/if}}
@@ -84,7 +84,7 @@
             data-action="pause-recording"
             title="{{i18n.pauseRecording}}"
             aria-label="{{i18n.pauseRecording}}">
-      <i class="fas fa-pause"></i>
+      <i class="fa-solid fa-pause"></i>
     </button>
     {{/if}}
 
@@ -95,7 +95,7 @@
             data-action="resume-recording"
             title="{{i18n.resumeRecording}}"
             aria-label="{{i18n.resumeRecording}}">
-      <i class="fas fa-play"></i>
+      <i class="fa-solid fa-play"></i>
     </button>
     {{/if}}
 
@@ -105,7 +105,7 @@
             class="btn-stop"
             data-action="stop-recording"
             title="{{i18n.stopRecording}}">
-      <i class="fas fa-stop"></i>
+      <i class="fa-solid fa-stop"></i>
       <span>{{i18n.stopRecording}}</span>
     </button>
     {{/if}}
@@ -117,7 +117,7 @@
             data-action="cancel-session"
             title="{{i18n.cancelSession}}"
             aria-label="{{i18n.cancelSession}}">
-      <i class="fas fa-times"></i>
+      <i class="fa-solid fa-times"></i>
     </button>
     {{/if}}
   </div>
@@ -125,10 +125,10 @@
   {{!-- Configuration warning (shown when not configured) --}}
   {{#unless isConfigured}}
   <div class="recorder-warning">
-    <i class="fas fa-exclamation-triangle"></i>
+    <i class="fa-solid fa-exclamation-triangle"></i>
     <span>{{i18n.notConfigured}}</span>
     <button type="button" class="btn-settings" data-action="open-settings">
-      <i class="fas fa-cog"></i>
+      <i class="fa-solid fa-cog"></i>
       <span>{{i18n.settings}}</span>
     </button>
   </div>
@@ -138,11 +138,11 @@
   {{#if isConfigured}}
   <div class="recorder-config-status">
     <span class="config-item {{#if isOpenAIConfigured}}configured{{else}}missing{{/if}}" title="OpenAI API">
-      <i class="fas fa-{{#if isOpenAIConfigured}}check-circle{{else}}exclamation-circle{{/if}}"></i>
+      <i class="fa-solid fa-{{#if isOpenAIConfigured}}check-circle{{else}}exclamation-circle{{/if}}"></i>
       <span>OpenAI</span>
     </span>
     <span class="config-item {{#if isKankaConfigured}}configured{{else}}optional{{/if}}" title="Kanka API">
-      <i class="fas fa-{{#if isKankaConfigured}}check-circle{{else}}minus-circle{{/if}}"></i>
+      <i class="fa-solid fa-{{#if isKankaConfigured}}check-circle{{else}}minus-circle{{/if}}"></i>
       <span>Kanka</span>
     </span>
   </div>

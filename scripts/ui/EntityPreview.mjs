@@ -993,7 +993,7 @@ class EntityPreview extends Application {
         `,
         buttons: {
           save: {
-            icon: '<i class="fas fa-save"></i>',
+            icon: '<i class="fa-solid fa-save"></i>',
             label: game.i18n?.localize('VOXCHRONICLE.Buttons.Save') || 'Save',
             callback: (html) => {
               const description = html.find('textarea[name="description"]').val();
@@ -1001,7 +1001,7 @@ class EntityPreview extends Application {
             }
           },
           cancel: {
-            icon: '<i class="fas fa-times"></i>',
+            icon: '<i class="fa-solid fa-times"></i>',
             label: game.i18n?.localize('VOXCHRONICLE.Buttons.Cancel') || 'Cancel',
             callback: () => resolve(null)
           }
@@ -1239,12 +1239,12 @@ class EntityPreview extends Application {
             <button type="button" data-action="edit-description"
               data-entity-type="${type}" data-entity-index="${entity.index}"
               title="${data.i18n.editDescription}">
-              <i class="fas fa-edit"></i>
+              <i class="fa-solid fa-edit"></i>
             </button>
             <button type="button" data-action="generate-portrait"
               data-entity-type="${type}" data-entity-index="${entity.index}"
               title="${data.i18n.generatePortrait}">
-              <i class="fas fa-image"></i>
+              <i class="fa-solid fa-image"></i>
             </button>
           </div>
           ${
@@ -1264,7 +1264,7 @@ class EntityPreview extends Application {
       return `
         <div class="entity-section">
           <div class="section-header" data-action="toggle-section">
-            <i class="fas fa-chevron-down"></i>
+            <i class="fa-solid fa-chevron-down"></i>
             <span class="section-title">${title}</span>
             <span class="section-count">(${entities.length})</span>
           </div>
@@ -1293,8 +1293,8 @@ class EntityPreview extends Application {
       ? `
       <div class="entity-preview-results ${data.isError ? 'error' : 'success'}">
         <div class="results-summary">
-          ${data.createdCount > 0 ? `<div class="created-count"><i class="fas fa-check"></i> ${data.i18n.created}</div>` : ''}
-          ${data.failedCount > 0 ? `<div class="failed-count"><i class="fas fa-times"></i> ${data.failedCount} failed</div>` : ''}
+          ${data.createdCount > 0 ? `<div class="created-count"><i class="fa-solid fa-check"></i> ${data.i18n.created}</div>` : ''}
+          ${data.failedCount > 0 ? `<div class="failed-count"><i class="fa-solid fa-times"></i> ${data.failedCount} failed</div>` : ''}
         </div>
         ${
           data.failedCount > 0
@@ -1315,19 +1315,19 @@ class EntityPreview extends Application {
       actionButtons = `
         <div class="selection-actions">
           <button type="button" data-action="select-all" ${data.isAllSelected ? 'disabled' : ''}>
-            <i class="fas fa-check-square"></i> ${data.i18n.selectAll}
+            <i class="fa-solid fa-check-square"></i> ${data.i18n.selectAll}
           </button>
           <button type="button" data-action="deselect-all" ${data.isNoneSelected ? 'disabled' : ''}>
-            <i class="fas fa-square"></i> ${data.i18n.deselectAll}
+            <i class="fa-solid fa-square"></i> ${data.i18n.deselectAll}
           </button>
         </div>
         <div class="form-actions">
           <button type="button" class="btn-skip" data-action="skip-all">
-            <i class="fas fa-forward"></i> ${data.i18n.skip}
+            <i class="fa-solid fa-forward"></i> ${data.i18n.skip}
           </button>
           <button type="button" class="btn-confirm" data-action="confirm-create"
             ${data.isNoneSelected || !data.isKankaConfigured ? 'disabled' : ''}>
-            <i class="fas fa-cloud-upload-alt"></i> ${data.i18n.create} (${data.selectedCount})
+            <i class="fa-solid fa-cloud-upload-alt"></i> ${data.i18n.create} (${data.selectedCount})
           </button>
         </div>
       `;
@@ -1338,13 +1338,13 @@ class EntityPreview extends Application {
             data.isError
               ? `
             <button type="button" class="btn-retry" data-action="retry">
-              <i class="fas fa-redo"></i> ${data.i18n.retry}
+              <i class="fa-solid fa-redo"></i> ${data.i18n.retry}
             </button>
           `
               : ''
           }
           <button type="button" class="btn-close" data-action="close">
-            <i class="fas fa-times"></i> ${data.i18n.close}
+            <i class="fa-solid fa-times"></i> ${data.i18n.close}
           </button>
         </div>
       `;
@@ -1360,7 +1360,7 @@ class EntityPreview extends Application {
           !data.isKankaConfigured
             ? `
           <div class="preview-warning">
-            <i class="fas fa-exclamation-triangle"></i>
+            <i class="fa-solid fa-exclamation-triangle"></i>
             <span>${data.i18n.notConfigured}</span>
           </div>
         `
@@ -1386,7 +1386,7 @@ class EntityPreview extends Application {
           !data.hasEntities && data.isReview
             ? `
           <div class="no-entities">
-            <i class="fas fa-info-circle"></i>
+            <i class="fa-solid fa-info-circle"></i>
             <span>${data.i18n.noEntities}</span>
           </div>
         `

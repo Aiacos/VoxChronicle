@@ -418,7 +418,7 @@ export class VocabularyManager extends Application {
       `,
       buttons: {
         import: {
-          icon: '<i class="fas fa-file-import"></i>',
+          icon: '<i class="fa-solid fa-file-import"></i>',
           label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Import') || 'Import',
           callback: async (html) => {
             const json = html.find('[name="json"]').val().trim();
@@ -450,7 +450,7 @@ export class VocabularyManager extends Application {
           }
         },
         cancel: {
-          icon: '<i class="fas fa-times"></i>',
+          icon: '<i class="fa-solid fa-times"></i>',
           label: game.i18n?.localize('VOXCHRONICLE.Button.Cancel') || 'Cancel'
         }
       },
@@ -482,7 +482,7 @@ export class VocabularyManager extends Application {
         `,
         buttons: {
           copy: {
-            icon: '<i class="fas fa-copy"></i>',
+            icon: '<i class="fa-solid fa-copy"></i>',
             label:
               game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopyToClipboard') || 'Copy to Clipboard',
             callback: async (html) => {
@@ -506,7 +506,7 @@ export class VocabularyManager extends Application {
             }
           },
           close: {
-            icon: '<i class="fas fa-times"></i>',
+            icon: '<i class="fa-solid fa-times"></i>',
             label: game.i18n?.localize('VOXCHRONICLE.Button.Close') || 'Close'
           }
         },
@@ -608,7 +608,7 @@ export class VocabularyManager extends Application {
         suggestionsHtml += `
           <div class="form-group">
             <label style="font-weight: bold; margin-bottom: 0.5em; display: block;">
-              <i class="fas fa-user"></i>
+              <i class="fa-solid fa-user"></i>
               ${game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryCharacters') || 'Character Names'}
               (${characterCount})
             </label>
@@ -645,7 +645,7 @@ export class VocabularyManager extends Application {
         suggestionsHtml += `
           <div class="form-group">
             <label style="font-weight: bold; margin-bottom: 0.5em; display: block;">
-              <i class="fas fa-gem"></i>
+              <i class="fa-solid fa-gem"></i>
               ${game.i18n?.localize('VOXCHRONICLE.Vocabulary.CategoryItems') || 'Items & Artifacts'}
               (${itemCount})
             </label>
@@ -687,7 +687,7 @@ export class VocabularyManager extends Application {
         content: suggestionsHtml,
         buttons: {
           add: {
-            icon: '<i class="fas fa-plus"></i>',
+            icon: '<i class="fa-solid fa-plus"></i>',
             label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSelected') || 'Add Selected',
             callback: async (html) => {
               let addedCount = 0;
@@ -724,7 +724,7 @@ export class VocabularyManager extends Application {
             }
           },
           cancel: {
-            icon: '<i class="fas fa-times"></i>',
+            icon: '<i class="fa-solid fa-times"></i>',
             label: game.i18n?.localize('VOXCHRONICLE.Button.Cancel') || 'Cancel'
           }
         },

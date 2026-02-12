@@ -25,7 +25,7 @@
   <nav class="tabs" data-group="vocabulary-categories">
     {{#each categories}}
     <a class="item" data-tab="{{id}}">
-      <i class="fas {{icon}}"></i>
+      <i class="fa-solid {{icon}}"></i>
       <span>{{label}}</span>
       {{#if terms.length}}
       <span class="term-count">({{terms.length}})</span>
@@ -58,7 +58,7 @@
             <button type="button"
                     class="clear-category-btn"
                     title="{{../i18n.clearCategory}}">
-              <i class="fas fa-trash"></i>
+              <i class="fa-solid fa-trash"></i>
               <span>{{../i18n.clearCategory}}</span>
             </button>
             {{/if}}
@@ -75,14 +75,14 @@
                       data-term="{{this}}"
                       title="{{../../i18n.removeTerm}}"
                       aria-label="{{../../i18n.removeTerm}}">
-                <i class="fas fa-times"></i>
+                <i class="fa-solid fa-times"></i>
               </button>
             </li>
             {{/each}}
           </ul>
           {{else}}
           <div class="no-terms-message">
-            <i class="fas fa-info-circle"></i>
+            <i class="fa-solid fa-info-circle"></i>
             <span>{{../i18n.noTerms}}</span>
           </div>
           {{/if}}
@@ -98,7 +98,7 @@
             <button type="button"
                     class="add-term-btn"
                     title="{{../i18n.addTerm}}">
-              <i class="fas fa-plus"></i>
+              <i class="fa-solid fa-plus"></i>
               <span>{{../i18n.addTerm}}</span>
             </button>
           </div>
@@ -114,14 +114,14 @@
       <button type="button"
               class="suggest-foundry-btn"
               title="{{i18n.suggestFoundry}}">
-        <i class="fas fa-magic"></i>
+        <i class="fa-solid fa-magic"></i>
         <span>{{i18n.suggestFoundry}}</span>
       </button>
 
       <button type="button"
               class="import-btn"
               title="{{i18n.importDict}}">
-        <i class="fas fa-file-import"></i>
+        <i class="fa-solid fa-file-import"></i>
         <span>{{i18n.importDict}}</span>
       </button>
 
@@ -129,7 +129,7 @@
               class="export-btn"
               title="{{i18n.exportDict}}"
               {{#unless hasTerms}}disabled{{/unless}}>
-        <i class="fas fa-file-export"></i>
+        <i class="fa-solid fa-file-export"></i>
         <span>{{i18n.exportDict}}</span>
       </button>
     </div>
@@ -139,7 +139,7 @@
               class="clear-all-btn"
               title="{{i18n.clearAll}}"
               {{#unless hasTerms}}disabled{{/unless}}>
-        <i class="fas fa-exclamation-triangle"></i>
+        <i class="fa-solid fa-exclamation-triangle"></i>
         <span>{{i18n.clearAll}}</span>
       </button>
     </div>
@@ -148,7 +148,7 @@
   {{!-- Help section --}}
   <div class="vocabulary-help">
     <details>
-      <summary><i class="fas fa-question-circle"></i> Help</summary>
+      <summary><i class="fa-solid fa-question-circle"></i> Help</summary>
       <div class="help-content">
         <p><strong>Categories:</strong> Organize your vocabulary by type for better accuracy.</p>
         <ul>
@@ -159,7 +159,7 @@
           <li><strong>Custom Terms:</strong> Any other campaign-specific vocabulary</li>
         </ul>
         <p><strong>Adding Terms:</strong> Type a term and press Enter or click the Add button.</p>
-        <p><strong>Removing Terms:</strong> Click the <i class="fas fa-times"></i> icon next to any term.</p>
+        <p><strong>Removing Terms:</strong> Click the <i class="fa-solid fa-times"></i> icon next to any term.</p>
         <p><strong>Import/Export:</strong> Share your vocabulary dictionary across campaigns or backup your terms.</p>
         <p><strong>Note:</strong> These terms will be included in transcription prompts to improve accuracy for your campaign's unique vocabulary.</p>
       </div>

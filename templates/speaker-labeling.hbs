@@ -32,7 +32,7 @@
       <div class="speaker-id">
         <span class="speaker-id-text">{{id}}</span>
         {{#if isKnown}}
-        <i class="fas fa-check-circle known-indicator" title="{{../i18n.detectedInSession}}"></i>
+        <i class="fa-solid fa-check-circle known-indicator" title="{{../i18n.detectedInSession}}"></i>
         {{/if}}
       </div>
 
@@ -48,7 +48,7 @@
                 data-speaker-id="{{id}}"
                 title="{{i18n.clear}}"
                 aria-label="{{i18n.clear}}">
-          <i class="fas fa-times"></i>
+          <i class="fa-solid fa-times"></i>
         </button>
       </div>
 
@@ -71,7 +71,7 @@
     {{!-- Empty state message if no speakers detected --}}
     {{#unless speakers.length}}
     <div class="no-speakers-message">
-      <i class="fas fa-info-circle"></i>
+      <i class="fa-solid fa-info-circle"></i>
       <span>{{noSpeakersMessage}}</span>
     </div>
     {{/unless}}
@@ -83,7 +83,7 @@
             class="btn-auto-detect"
             data-action="auto-detect"
             title="{{i18n.autoDetect}}">
-      <i class="fas fa-magic"></i>
+      <i class="fa-solid fa-magic"></i>
       <span>{{i18n.autoDetect}}</span>
     </button>
 
@@ -91,14 +91,14 @@
             class="btn-reset"
             data-action="reset-labels"
             title="{{i18n.reset}}">
-      <i class="fas fa-undo"></i>
+      <i class="fa-solid fa-undo"></i>
       <span>{{i18n.reset}}</span>
     </button>
 
     <button type="submit"
             class="btn-save"
             title="{{i18n.save}}">
-      <i class="fas fa-save"></i>
+      <i class="fa-solid fa-save"></i>
       <span>{{i18n.save}}</span>
     </button>
   </div>
@@ -106,7 +106,7 @@
   {{!-- Help section --}}
   <div class="form-help">
     <details>
-      <summary><i class="fas fa-question-circle"></i> {{i18n.help}}</summary>
+      <summary><i class="fa-solid fa-question-circle"></i> {{i18n.help}}</summary>
       <div class="help-content">
         <p>{{{i18n.helpSpeakerIds}}}</p>
         <p>{{{i18n.helpKnownSpeakers}}}</p>

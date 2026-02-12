@@ -767,7 +767,7 @@ class RecorderControls extends Application {
             data.canRecord
               ? `
             <button class="btn-record" data-action="start-recording" title="${data.i18n.startRecording}">
-              <i class="fas fa-microphone"></i> ${data.i18n.startRecording}
+              <i class="fa-solid fa-microphone"></i> ${data.i18n.startRecording}
             </button>
           `
               : ''
@@ -777,7 +777,7 @@ class RecorderControls extends Application {
             data.canStop
               ? `
             <button class="btn-stop" data-action="stop-recording" title="${data.i18n.stopRecording}">
-              <i class="fas fa-stop"></i> ${data.i18n.stopRecording}
+              <i class="fa-solid fa-stop"></i> ${data.i18n.stopRecording}
             </button>
           `
               : ''
@@ -787,7 +787,7 @@ class RecorderControls extends Application {
             data.canPause
               ? `
             <button class="btn-pause" data-action="pause-recording" title="${data.i18n.pauseRecording}">
-              <i class="fas fa-pause"></i>
+              <i class="fa-solid fa-pause"></i>
             </button>
           `
               : ''
@@ -797,7 +797,7 @@ class RecorderControls extends Application {
             data.canResume
               ? `
             <button class="btn-resume" data-action="resume-recording" title="${data.i18n.resumeRecording}">
-              <i class="fas fa-play"></i>
+              <i class="fa-solid fa-play"></i>
             </button>
           `
               : ''
@@ -808,10 +808,10 @@ class RecorderControls extends Application {
           !data.isConfigured
             ? `
           <div class="recorder-warning">
-            <i class="fas fa-exclamation-triangle"></i>
+            <i class="fa-solid fa-exclamation-triangle"></i>
             <span>${data.i18n.notConfigured}</span>
             <button class="btn-settings" data-action="open-settings">
-              <i class="fas fa-cog"></i> ${data.i18n.settings}
+              <i class="fa-solid fa-cog"></i> ${data.i18n.settings}
             </button>
           </div>
         `

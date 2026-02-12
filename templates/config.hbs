@@ -18,7 +18,7 @@
   {{!-- OpenAI Section --}}
   <section class="config-section">
     <h2 class="section-header">
-      <i class="fas fa-brain"></i>
+      <i class="fa-solid fa-brain"></i>
       {{i18n.openaiSection}}
     </h2>
 
@@ -36,7 +36,7 @@
                 data-action="test-openai"
                 title="{{i18n.testConnection}}"
                 {{#if isValidatingOpenAI}}disabled{{/if}}>
-          <i class="fas {{#if isValidatingOpenAI}}fa-spinner fa-spin{{else}}fa-plug{{/if}}"></i>
+          <i class="fa-solid {{#if isValidatingOpenAI}}fa-spinner fa-spin{{else}}fa-plug{{/if}}"></i>
         </button>
       </div>
       <p class="hint">{{i18n.openaiKeyHint}}</p>
@@ -46,7 +46,7 @@
   {{!-- Kanka Section --}}
   <section class="config-section">
     <h2 class="section-header">
-      <i class="fas fa-book"></i>
+      <i class="fa-solid fa-book"></i>
       {{i18n.kankaSection}}
     </h2>
 
@@ -65,7 +65,7 @@
                 data-action="test-kanka"
                 title="{{i18n.testConnection}}"
                 {{#if isValidatingKanka}}disabled{{/if}}>
-          <i class="fas {{#if isValidatingKanka}}fa-spinner fa-spin{{else}}fa-plug{{/if}}"></i>
+          <i class="fa-solid {{#if isValidatingKanka}}fa-spinner fa-spin{{else}}fa-plug{{/if}}"></i>
         </button>
       </div>
       <p class="hint">{{i18n.kankaTokenHint}}</p>
@@ -100,13 +100,13 @@
                 data-action="refresh-campaigns"
                 title="{{i18n.refreshCampaigns}}"
                 {{#unless hasKankaToken}}disabled{{/unless}}>
-          <i class="fas fa-sync-alt {{#if isLoadingCampaigns}}fa-spin{{/if}}"></i>
+          <i class="fa-solid fa-sync-alt {{#if isLoadingCampaigns}}fa-spin{{/if}}"></i>
         </button>
       </div>
       <p class="hint">{{i18n.campaignHint}}</p>
       {{#if campaignError}}
         <p class="error-message">
-          <i class="fas fa-exclamation-triangle"></i>
+          <i class="fa-solid fa-exclamation-triangle"></i>
           {{campaignError}}
         </p>
       {{/if}}
@@ -116,7 +116,7 @@
   {{!-- Transcription Section --}}
   <section class="config-section">
     <h2 class="section-header">
-      <i class="fas fa-microphone"></i>
+      <i class="fa-solid fa-microphone"></i>
       {{i18n.transcriptionSection}}
     </h2>
 
@@ -166,7 +166,7 @@
   {{!-- Image Generation Section --}}
   <section class="config-section">
     <h2 class="section-header">
-      <i class="fas fa-image"></i>
+      <i class="fa-solid fa-image"></i>
       {{i18n.imageSection}}
     </h2>
 
@@ -204,7 +204,7 @@
   {{!-- Entity Extraction Section --}}
   <section class="config-section">
     <h2 class="section-header">
-      <i class="fas fa-users"></i>
+      <i class="fa-solid fa-users"></i>
       {{i18n.entitySection}}
     </h2>
 
@@ -240,7 +240,7 @@
   {{!-- Form Footer with Save Button --}}
   <footer class="form-footer">
     <button type="submit" class="btn-save">
-      <i class="fas fa-save"></i>
+      <i class="fa-solid fa-save"></i>
       <span>{{i18n.save}}</span>
     </button>
   </footer>

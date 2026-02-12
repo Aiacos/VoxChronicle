@@ -18,7 +18,7 @@
   {{!-- Configuration warning (shown when Kanka is not configured) --}}
   {{#unless isKankaConfigured}}
   <div class="preview-warning">
-    <i class="fas fa-exclamation-triangle"></i>
+    <i class="fa-solid fa-exclamation-triangle"></i>
     <span>{{i18n.notConfigured}}</span>
   </div>
   {{/unless}}
@@ -40,13 +40,13 @@
     <div class="results-summary">
       {{#if createdCount}}
       <div class="created-count">
-        <i class="fas fa-check"></i>
+        <i class="fa-solid fa-check"></i>
         <span>{{i18n.created}}</span>
       </div>
       {{/if}}
       {{#if failedCount}}
       <div class="failed-count">
-        <i class="fas fa-times"></i>
+        <i class="fa-solid fa-times"></i>
         <span>{{i18n.failedCountLabel}}</span>
       </div>
       {{/if}}
@@ -74,7 +74,7 @@
       {{#if hasCharacters}}
       <div class="entity-section">
         <div class="section-header" data-action="toggle-section">
-          <i class="fas fa-chevron-down section-toggle"></i>
+          <i class="fa-solid fa-chevron-down section-toggle"></i>
           <span class="section-title">{{i18n.characters}}</span>
           <span class="section-count">({{characters.length}})</span>
         </div>
@@ -100,7 +100,7 @@
                       data-entity-type="characters"
                       data-entity-index="{{index}}"
                       title="{{../i18n.editDescription}}">
-                <i class="fas fa-edit"></i>
+                <i class="fa-solid fa-edit"></i>
               </button>
               <button type="button"
                       class="btn-generate"
@@ -109,12 +109,12 @@
                       data-entity-index="{{index}}"
                       {{#if isGeneratingImage}}disabled{{/if}}
                       title="{{../i18n.generatePortrait}}">
-                <i class="fas {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
+                <i class="fa-solid {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
               </button>
             </div>
             {{#if isGeneratingImage}}
             <div class="entity-image-placeholder">
-              <i class="fas fa-spinner fa-spin"></i>
+              <i class="fa-solid fa-spinner fa-spin"></i>
               <span class="placeholder-text">{{../i18n.generating}}</span>
             </div>
             {{else}}
@@ -134,7 +134,7 @@
       {{#if hasLocations}}
       <div class="entity-section">
         <div class="section-header" data-action="toggle-section">
-          <i class="fas fa-chevron-down section-toggle"></i>
+          <i class="fa-solid fa-chevron-down section-toggle"></i>
           <span class="section-title">{{i18n.locations}}</span>
           <span class="section-count">({{locations.length}})</span>
         </div>
@@ -160,7 +160,7 @@
                       data-entity-type="locations"
                       data-entity-index="{{index}}"
                       title="{{../i18n.editDescription}}">
-                <i class="fas fa-edit"></i>
+                <i class="fa-solid fa-edit"></i>
               </button>
               <button type="button"
                       class="btn-generate"
@@ -169,12 +169,12 @@
                       data-entity-index="{{index}}"
                       {{#if isGeneratingImage}}disabled{{/if}}
                       title="{{../i18n.generatePortrait}}">
-                <i class="fas {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
+                <i class="fa-solid {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
               </button>
             </div>
             {{#if isGeneratingImage}}
             <div class="entity-image-placeholder">
-              <i class="fas fa-spinner fa-spin"></i>
+              <i class="fa-solid fa-spinner fa-spin"></i>
               <span class="placeholder-text">{{../i18n.generating}}</span>
             </div>
             {{else}}
@@ -194,7 +194,7 @@
       {{#if hasItems}}
       <div class="entity-section">
         <div class="section-header" data-action="toggle-section">
-          <i class="fas fa-chevron-down section-toggle"></i>
+          <i class="fa-solid fa-chevron-down section-toggle"></i>
           <span class="section-title">{{i18n.items}}</span>
           <span class="section-count">({{items.length}})</span>
         </div>
@@ -220,7 +220,7 @@
                       data-entity-type="items"
                       data-entity-index="{{index}}"
                       title="{{../i18n.editDescription}}">
-                <i class="fas fa-edit"></i>
+                <i class="fa-solid fa-edit"></i>
               </button>
               <button type="button"
                       class="btn-generate"
@@ -229,12 +229,12 @@
                       data-entity-index="{{index}}"
                       {{#if isGeneratingImage}}disabled{{/if}}
                       title="{{../i18n.generatePortrait}}">
-                <i class="fas {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
+                <i class="fa-solid {{#if isGeneratingImage}}fa-spinner fa-spin{{else}}fa-image{{/if}}"></i>
               </button>
             </div>
             {{#if isGeneratingImage}}
             <div class="entity-image-placeholder">
-              <i class="fas fa-spinner fa-spin"></i>
+              <i class="fa-solid fa-spinner fa-spin"></i>
               <span class="placeholder-text">{{../i18n.generating}}</span>
             </div>
             {{else}}
@@ -254,14 +254,14 @@
       {{#if hasRelationships}}
       <div class="entity-section relationships-section">
         <div class="section-header" data-action="toggle-section">
-          <i class="fas fa-chevron-down section-toggle"></i>
+          <i class="fa-solid fa-chevron-down section-toggle"></i>
           <span class="section-title">{{i18n.relationships}}</span>
           <span class="section-count">({{relationships.length}})</span>
           <button type="button"
                   class="btn-view-graph"
                   data-action="view-graph"
                   title="{{i18n.viewGraph}}">
-            <i class="fas fa-project-diagram"></i>
+            <i class="fa-solid fa-project-diagram"></i>
             <span>{{i18n.viewGraph}}</span>
           </button>
         </div>
@@ -279,11 +279,11 @@
             <div class="relationship-info">
               <div class="relationship-entities">
                 <span class="source-entity">{{sourceEntity}}</span>
-                <i class="fas fa-arrow-right"></i>
+                <i class="fa-solid fa-arrow-right"></i>
                 <span class="target-entity">{{targetEntity}}</span>
               </div>
               <div class="relationship-type-label">
-                <i class="fas fa-tag"></i>
+                <i class="fa-solid fa-tag"></i>
                 <span>{{typeLabel}}</span>
               </div>
               {{#if description}}
@@ -291,7 +291,7 @@
               {{/if}}
               {{#if confidence}}
               <div class="relationship-confidence">
-                <i class="fas fa-star"></i>
+                <i class="fa-solid fa-star"></i>
                 <span>{{../i18n.confidenceLabel}} {{confidence}}/10</span>
               </div>
               {{/if}}
@@ -306,7 +306,7 @@
     {{else}}
     {{!-- No entities message --}}
     <div class="no-entities">
-      <i class="fas fa-info-circle"></i>
+      <i class="fa-solid fa-info-circle"></i>
       <span>{{i18n.noEntities}}</span>
     </div>
     {{/if}}
@@ -321,14 +321,14 @@
               class="btn-select-all"
               data-action="select-all"
               {{#if isAllSelected}}disabled{{/if}}>
-        <i class="fas fa-check-square"></i>
+        <i class="fa-solid fa-check-square"></i>
         <span>{{i18n.selectAll}}</span>
       </button>
       <button type="button"
               class="btn-deselect-all"
               data-action="deselect-all"
               {{#if isNoneSelected}}disabled{{/if}}>
-        <i class="fas fa-square"></i>
+        <i class="fa-solid fa-square"></i>
         <span>{{i18n.deselectAll}}</span>
       </button>
     </div>
@@ -336,7 +336,7 @@
       <button type="button"
               class="btn-skip"
               data-action="skip-all">
-        <i class="fas fa-forward"></i>
+        <i class="fa-solid fa-forward"></i>
         <span>{{i18n.skip}}</span>
       </button>
       <button type="button"
@@ -344,7 +344,7 @@
               data-action="confirm-create"
               {{#if isNoneSelected}}disabled{{/if}}
               {{#unless isKankaConfigured}}disabled{{/unless}}>
-        <i class="fas fa-cloud-upload-alt"></i>
+        <i class="fa-solid fa-cloud-upload-alt"></i>
         <span>{{i18n.create}} ({{selectedCount}})</span>
       </button>
     </div>
@@ -363,7 +363,7 @@
       <button type="button"
               class="btn-close"
               data-action="close">
-        <i class="fas fa-times"></i>
+        <i class="fa-solid fa-times"></i>
         <span>{{i18n.close}}</span>
       </button>
     </div>
@@ -374,13 +374,13 @@
       <button type="button"
               class="btn-retry"
               data-action="retry">
-        <i class="fas fa-redo"></i>
+        <i class="fa-solid fa-redo"></i>
         <span>{{i18n.retry}}</span>
       </button>
       <button type="button"
               class="btn-close"
               data-action="close">
-        <i class="fas fa-times"></i>
+        <i class="fa-solid fa-times"></i>
         <span>{{i18n.close}}</span>
       </button>
     </div>

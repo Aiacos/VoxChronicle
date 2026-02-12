@@ -541,7 +541,7 @@ class VoxChronicleConfig extends FormApplication {
       <form class="vox-chronicle-config-form" autocomplete="off">
         <!-- OpenAI Section -->
         <section class="config-section">
-          <h2><i class="fas fa-brain"></i> ${escapeHtml(data.i18n.openaiSection)}</h2>
+          <h2><i class="fa-solid fa-brain"></i> ${escapeHtml(data.i18n.openaiSection)}</h2>
 
           <div class="form-group">
             <label for="openaiApiKey">${escapeHtml(data.i18n.openaiKeyLabel)}</label>
@@ -550,7 +550,7 @@ class VoxChronicleConfig extends FormApplication {
                      value="${escapeHtml(data.openaiApiKey)}"
                      placeholder="sk-..." autocomplete="new-password" />
               <button type="button" class="btn-test" data-action="test-openai" title="${escapeHtml(data.i18n.testConnection)}">
-                <i class="fas fa-plug"></i>
+                <i class="fa-solid fa-plug"></i>
               </button>
             </div>
             <p class="hint">${escapeHtml(data.i18n.openaiKeyHint)}</p>
@@ -559,7 +559,7 @@ class VoxChronicleConfig extends FormApplication {
 
         <!-- Kanka Section -->
         <section class="config-section">
-          <h2><i class="fas fa-book"></i> ${escapeHtml(data.i18n.kankaSection)}</h2>
+          <h2><i class="fa-solid fa-book"></i> ${escapeHtml(data.i18n.kankaSection)}</h2>
 
           <div class="form-group">
             <label for="kankaApiToken">${escapeHtml(data.i18n.kankaTokenLabel)}</label>
@@ -568,7 +568,7 @@ class VoxChronicleConfig extends FormApplication {
                      value="${escapeHtml(data.kankaApiToken)}"
                      placeholder="..." autocomplete="new-password" />
               <button type="button" class="btn-test" data-action="test-kanka" title="${escapeHtml(data.i18n.testConnection)}">
-                <i class="fas fa-plug"></i>
+                <i class="fa-solid fa-plug"></i>
               </button>
             </div>
             <p class="hint">${escapeHtml(data.i18n.kankaTokenHint)}</p>
@@ -584,7 +584,7 @@ class VoxChronicleConfig extends FormApplication {
               <button type="button" class="btn-refresh" data-action="refresh-campaigns"
                       title="${escapeHtml(data.i18n.refreshCampaigns)}"
                       ${!data.hasKankaToken ? 'disabled' : ''}>
-                <i class="fas fa-sync-alt ${data.isLoadingCampaigns ? 'fa-spin' : ''}"></i>
+                <i class="fa-solid fa-sync-alt ${data.isLoadingCampaigns ? 'fa-spin' : ''}"></i>
               </button>
             </div>
             <p class="hint">${escapeHtml(data.i18n.campaignHint)}</p>
@@ -594,7 +594,7 @@ class VoxChronicleConfig extends FormApplication {
 
         <!-- Transcription Section -->
         <section class="config-section">
-          <h2><i class="fas fa-microphone"></i> ${escapeHtml(data.i18n.transcriptionSection)}</h2>
+          <h2><i class="fa-solid fa-microphone"></i> ${escapeHtml(data.i18n.transcriptionSection)}</h2>
 
           <div class="form-group">
             <label for="transcriptionLanguage">${escapeHtml(data.i18n.languageLabel)}</label>
@@ -628,7 +628,7 @@ class VoxChronicleConfig extends FormApplication {
 
         <!-- Image Section -->
         <section class="config-section">
-          <h2><i class="fas fa-image"></i> ${escapeHtml(data.i18n.imageSection)}</h2>
+          <h2><i class="fa-solid fa-image"></i> ${escapeHtml(data.i18n.imageSection)}</h2>
 
           <div class="form-group">
             <label for="imageQuality">${escapeHtml(data.i18n.qualityLabel)}</label>
@@ -652,7 +652,7 @@ class VoxChronicleConfig extends FormApplication {
 
         <!-- Entity Section -->
         <section class="config-section">
-          <h2><i class="fas fa-users"></i> ${escapeHtml(data.i18n.entitySection)}</h2>
+          <h2><i class="fa-solid fa-users"></i> ${escapeHtml(data.i18n.entitySection)}</h2>
 
           <div class="form-group">
             <label for="autoExtractEntities" class="checkbox-label">
@@ -675,7 +675,7 @@ class VoxChronicleConfig extends FormApplication {
 
         <footer class="sheet-footer flexrow">
           <button type="submit" class="btn-save">
-            <i class="fas fa-save"></i> ${escapeHtml(data.i18n.save)}
+            <i class="fa-solid fa-save"></i> ${escapeHtml(data.i18n.save)}
           </button>
         </footer>
       </form>

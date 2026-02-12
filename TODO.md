@@ -31,20 +31,21 @@ CLAUDE.md vieta `console.log` diretto. Violazioni attuali:
 
 **Fix**: Sostituire con `Logger.info()`, `Logger.error()`, `Logger.warn()`.
 
-## WARNING
+## WARNING - FIXED
 
-### W1. Dipendenza circolare `MODULE_ID`
-`main.mjs` esporta `MODULE_ID` e importa da `Settings.mjs`, `VoxChronicle.mjs`, che reimportano `MODULE_ID` da `main.mjs`. Lo stesso fa `Logger.mjs` (importato da 16 file).
+### W1. Dipendenza circolare `MODULE_ID` - ✅ FIXED (v1.2.1)
+**Stato**: Risolto creando `scripts/constants.mjs` con `export const MODULE_ID = 'vox-chronicle'`.
+- Tutti i 10 file sorgente ora importano da `constants.mjs` invece di `main.mjs`
+- `main.mjs` ri-esporta `MODULE_ID` per compatibilita'
+- Tutti i 33 file di test aggiornati con mock per `constants.mjs`
 
-Funziona perche' `MODULE_ID` e' usato solo dentro funzioni (non a livello di modulo), ma e' fragile.
+### W2. Icone Font Awesome inconsistenti tra v12 e v13 - ✅ FIXED (v1.2.2)
+**Stato**: Tutte le occorrenze di `fas fa-*` sostituite con `fa-solid fa-*`.
+- 6 template `.hbs`: config, recorder, speaker-labeling, entity-preview, relationship-graph, vocabulary-manager
+- 5 file UI `.mjs`: VoxChronicleConfig, EntityPreview, RecorderControls, SpeakerLabeling, VocabularyManager
+- Fix incluse anche pattern Handlebars condizionali (es. `fa-solid {{#if ...}}`)
 
-**Fix**: Spostare `MODULE_ID` in `scripts/constants.mjs` o duplicarlo come costante locale in ogni file.
-
-### W2. Icone Font Awesome inconsistenti tra v12 e v13
-- v13 path (`main.mjs:104-147`): usa `fa-solid fa-*` (v13 standard)
-- v11/v12 path (`main.mjs:167-206`): usa `fas fa-*` (shorthand vecchio)
-
-Funzionale ma inconsistente.
+## WARNING - DA CORREGGERE
 
 ### W3. `ApiKeyValidator.mjs` non integrato
 - Il file esiste (152 righe) con validazione formato chiavi
@@ -52,19 +53,22 @@ Funzionale ma inconsistente.
 - `ApiKeyValidator` non e' usato da nessuna parte nel codice di produzione (solo nei test)
 - Valutare se integrarlo in `Settings.mjs` per validazione formato pre-API o rimuoverlo
 
-## INFO
+## INFO - FIXED
 
-### I1. File non documentati in CLAUDE.md
-Aggiunti dopo la stesura originale, da aggiungere alla sezione Project Structure:
-- `scripts/utils/SensitiveDataFilter.mjs`
-- `scripts/utils/HtmlUtils.mjs`
-- `scripts/ui/RelationshipGraph.mjs`
-- `scripts/utils/ApiKeyValidator.mjs`
-- `templates/relationship-graph.hbs`
-- `.gitleaksignore`
+### I1. File non documentati in CLAUDE.md - ✅ FIXED
+**Stato**: Risolto in subtask-6-1 - Tutti i file mancanti aggiunti alla sezione Project Structure.
 
-### I2. Setting di relazioni non documentati
-Registrati in `Settings.mjs` ma non elencati in CLAUDE.md:
-- `autoExtractRelationships`
-- `relationshipConfidenceThreshold`
-- `maxRelationshipsPerSession`
+### I2. Setting di relazioni non documentati - ✅ FIXED
+**Stato**: Risolto in subtask-6-2 - Settings aggiunti alla documentazione CLAUDE.md.
+
+## INFO - NOTE DI COMPATIBILITA' v13
+
+### I3. Uso di jQuery (deprecato in v13)
+- Tutti i file UI usano `html.find(...)`, `$(...)` e metodi jQuery
+- In v13, jQuery e' deprecato ma ancora funzionante
+- Migrazione a vanilla JS o alla nuova API ApplicationV2 in futuro
+
+### I4. Classi Application/FormApplication legacy
+- I componenti UI usano `Application` e `FormApplication` (API v1)
+- In v13, `ApplicationV2` e' l'API raccomandata ma v1 e' ancora supportata
+- Migrazione non urgente, priorita' bassa

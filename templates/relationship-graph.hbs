@@ -17,7 +17,7 @@
   {{!-- Error state --}}
   {{#if isError}}
   <div class="graph-error">
-    <i class="fas fa-exclamation-triangle"></i>
+    <i class="fa-solid fa-exclamation-triangle"></i>
     <p>{{localize "VOXCHRONICLE.RelationshipGraph.ErrorMessage"}}</p>
   </div>
   {{/if}}
@@ -25,7 +25,7 @@
   {{!-- Empty state --}}
   {{#if isEmpty}}
   <div class="graph-empty">
-    <i class="fas fa-project-diagram"></i>
+    <i class="fa-solid fa-project-diagram"></i>
     <p>{{localize "VOXCHRONICLE.RelationshipGraph.NoRelationships"}}</p>
     <p class="empty-hint">{{localize "VOXCHRONICLE.RelationshipGraph.NoRelationshipsHint"}}</p>
   </div>
@@ -66,14 +66,14 @@
                 class="btn-action"
                 data-action="refresh"
                 title="{{localize 'VOXCHRONICLE.RelationshipGraph.Refresh'}}">
-          <i class="fas fa-sync"></i>
+          <i class="fa-solid fa-sync"></i>
           <span>{{localize "VOXCHRONICLE.RelationshipGraph.Refresh"}}</span>
         </button>
         <button type="button"
                 class="btn-action"
                 data-action="export"
                 title="{{localize 'VOXCHRONICLE.RelationshipGraph.Export'}}">
-          <i class="fas fa-download"></i>
+          <i class="fa-solid fa-download"></i>
           <span>{{localize "VOXCHRONICLE.RelationshipGraph.Export"}}</span>
         </button>
       </div>
@@ -108,11 +108,11 @@
   <div class="graph-footer">
     <div class="graph-stats">
       <span class="stat-item">
-        <i class="fas fa-circle"></i>
+        <i class="fa-solid fa-circle"></i>
         <span>{{totalEntities}} {{localize "VOXCHRONICLE.RelationshipGraph.Entities"}}</span>
       </span>
       <span class="stat-item">
-        <i class="fas fa-arrows-alt-h"></i>
+        <i class="fa-solid fa-arrows-alt-h"></i>
         <span>{{totalRelationships}} {{localize "VOXCHRONICLE.RelationshipGraph.Relationships"}}</span>
       </span>
     </div>
@@ -120,7 +120,7 @@
       <button type="button"
               class="btn-close"
               data-action="close">
-        <i class="fas fa-times"></i>
+        <i class="fa-solid fa-times"></i>
         <span>{{localize "VOXCHRONICLE.RelationshipGraph.Close"}}</span>
       </button>
     </div>

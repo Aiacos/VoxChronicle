@@ -198,7 +198,7 @@ class SpeakerLabeling extends FormApplication {
           '<strong>Speaker IDs:</strong> These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).',
         helpKnownSpeakers:
           game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpKnownSpeakers') ||
-          '<strong>Known speakers:</strong> Speakers with a <i class="fas fa-check-circle"></i> icon were detected in a previous transcription session.',
+          '<strong>Known speakers:</strong> Speakers with a <i class="fa-solid fa-check-circle"></i> icon were detected in a previous transcription session.',
         helpQuickAssign:
           game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.HelpQuickAssign') ||
           "<strong>Quick Assign:</strong> Use the dropdown to quickly assign a game user's name to a speaker slot.",
@@ -487,12 +487,12 @@ class SpeakerLabeling extends FormApplication {
       <div class="speaker-row ${speaker.isKnown ? 'known' : ''}">
         <div class="speaker-id">
           <span class="speaker-id-text">${escapeHtml(speaker.id)}</span>
-          ${speaker.isKnown ? `<i class="fas fa-check-circle known-indicator" title="${escapeHtml(data.i18n.detectedInSession)}"></i>` : ''}
+          ${speaker.isKnown ? `<i class="fa-solid fa-check-circle known-indicator" title="${escapeHtml(data.i18n.detectedInSession)}"></i>` : ''}
         </div>
         <div class="speaker-label">
           <input type="text" name="speaker-${escapeHtml(speaker.id)}" value="${escapeHtml(speaker.label)}" placeholder="${escapeHtml(speaker.placeholder)}" />
           <button type="button" class="btn-clear" data-action="clear-label" data-speaker-id="${escapeHtml(speaker.id)}" title="${escapeHtml(data.i18n.clear)}">
-            <i class="fas fa-times"></i>
+            <i class="fa-solid fa-times"></i>
           </button>
         </div>
         ${
@@ -530,13 +530,13 @@ class SpeakerLabeling extends FormApplication {
 
         <div class="form-actions">
           <button type="button" class="btn-auto-detect" data-action="auto-detect">
-            <i class="fas fa-magic"></i> ${data.i18n.autoDetect}
+            <i class="fa-solid fa-magic"></i> ${data.i18n.autoDetect}
           </button>
           <button type="button" class="btn-reset" data-action="reset-labels">
-            <i class="fas fa-undo"></i> ${data.i18n.reset}
+            <i class="fa-solid fa-undo"></i> ${data.i18n.reset}
           </button>
           <button type="submit" class="btn-save">
-            <i class="fas fa-save"></i> ${data.i18n.save}
+            <i class="fa-solid fa-save"></i> ${data.i18n.save}
           </button>
         </div>
       </form>
