@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **Redundant VoxChronicleConfig custom settings panel**: Eliminated duplicate settings UI that overlapped with native Foundry settings. Deleted `scripts/ui/VoxChronicleConfig.mjs` (705 lines) and `templates/config.hbs` (248 lines)
+- **Dead code in VoxChronicle singleton**: Removed 4 placeholder methods (`startRecording`, `stopRecording`, `processSession`, `publishToKanka`) never called by any code — all workflow logic lives in `SessionOrchestrator`
+- **Config.\* localization keys**: Removed unused keys from en.json and it.json
+
+### Added
+- **Dynamic Kanka campaign dropdown in native settings**: Injected via `renderSettingsConfig` hook — replaces text input with a `<select>` that loads campaigns from the Kanka API with refresh button and loading/error states
+- Campaign dropdown localization keys (`CampaignPlaceholder`, `CampaignNone`, `CampaignNeedsToken`, `CampaignError`) in en.json and it.json
+
+### Changed
+- **Refactored validation button handlers**: Extracted ~100 lines of duplicated OpenAI/Kanka validation code into shared `injectValidationButton` function
+- **Refactored scene control tool handlers**: Extracted handler functions into shared `toolHandlers` map used by both v13 (`onChange`) and v11/v12 (`onClick`) definitions
+
 ## [1.2.2] - 2026-02-09
 
 ### Fixed
