@@ -150,18 +150,52 @@ class KankaService extends KankaClient {
   _entityManager = null;
 
   /**
+   * Maximum concurrent API calls during batch operations
+   * @type {number}
+   * @private
+   */
+  _batchConcurrency = 1;
+
+  /**
+   * Whether to enable parallel batch processing
+   * @type {boolean}
+   * @private
+   */
+  _enableParallelBatch = false;
+
+  /**
    * Create a new KankaService instance
    *
    * @param {string} apiToken - Kanka API token
    * @param {string} campaignId - Kanka campaign ID
-   * @param {object} [options] - Configuration options (passed to KankaClient)
+   * @param {object} [options] - Configuration options
+   * @param {number} [options.timeout] - Request timeout in milliseconds (passed to KankaClient)
+   * @param {number} [options.maxRetries] - Maximum retry attempts (passed to KankaClient)
+   * @param {boolean} [options.isPremium] - Premium subscription status (passed to KankaClient)
+   * @param {number} [options.batchConcurrency=1] - Maximum concurrent API calls for batch operations (1=sequential)
+   * @param {boolean} [options.enableParallelBatch=false] - Enable parallel batch processing (requires batchConcurrency > 1)
    */
   constructor(apiToken, campaignId, options = {}) {
     super(apiToken, options);
     this._campaignId = campaignId || '';
     this._logger = Logger.createChild('KankaService');
     this._entityManager = new KankaEntityManager(this, campaignId);
-    this._logger.debug(`KankaService initialized for campaign: ${campaignId}`);
+
+    // Configure batch processing options
+    this._batchConcurrency = options.batchConcurrency ?? 1;
+    this._enableParallelBatch = options.enableParallelBatch ?? false;
+
+    // Validate batch configuration
+    if (this._batchConcurrency < 1) {
+      this._logger.warn('Invalid batchConcurrency (must be >= 1), defaulting to 1');
+      this._batchConcurrency = 1;
+    }
+
+    // Log configuration for debugging
+    this._logger.debug(
+      `KankaService initialized for campaign: ${campaignId} ` +
+        `(parallelBatch: ${this._enableParallelBatch}, concurrency: ${this._batchConcurrency})`
+    );
   }
 
   // ============================================================================
