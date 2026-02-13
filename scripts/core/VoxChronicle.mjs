@@ -62,12 +62,6 @@ class VoxChronicle {
     // State tracking
     /** @type {boolean} Whether the module is fully initialized */
     this.isInitialized = false;
-
-    /** @type {boolean} Whether a recording session is active */
-    this.isRecording = false;
-
-    /** @type {object | null} Current session data */
-    this.currentSession = null;
   }
 
   /**
@@ -261,122 +255,6 @@ class VoxChronicle {
   }
 
   /**
-   * Start a new recording session
-   *
-   * @returns {Promise<void>}
-   * @throws {Error} If recording cannot be started
-   */
-  async startRecording() {
-    if (this.isRecording) {
-      throw new Error('Recording already in progress');
-    }
-
-    if (!this.audioRecorder) {
-      throw new Error('Audio recorder not initialized');
-    }
-
-    logger.info('Starting recording session...');
-
-    this.isRecording = true;
-    this.currentSession = {
-      startTime: Date.now(),
-      audioBlobs: [],
-      transcript: null,
-      entities: []
-    };
-
-    // Audio recording will be started by the audioRecorder service
-    // await this.audioRecorder.startRecording();
-
-    logger.info('Recording session started');
-  }
-
-  /**
-   * Stop the current recording session
-   *
-   * @returns {Promise<Blob>} The recorded audio blob
-   * @throws {Error} If no recording is in progress
-   */
-  async stopRecording() {
-    if (!this.isRecording) {
-      throw new Error('No recording in progress');
-    }
-
-    logger.info('Stopping recording session...');
-
-    this.isRecording = false;
-
-    if (this.currentSession) {
-      this.currentSession.endTime = Date.now();
-    }
-
-    // Audio recording will be stopped by the audioRecorder service
-    // const audioBlob = await this.audioRecorder.stopRecording();
-
-    logger.info('Recording session stopped');
-
-    // Return placeholder - will return actual blob from audioRecorder
-    return null;
-  }
-
-  /**
-   * Process a completed recording session
-   * Transcribes audio, extracts entities, and prepares for Kanka export
-   *
-   * @param {Blob} _audioBlob - The recorded audio blob
-   * @returns {Promise<object>} The processed session data
-   */
-  async processSession(_audioBlob) {
-    if (!this.transcriptionService) {
-      throw new Error('Transcription service not initialized');
-    }
-
-    logger.info('Processing recording session...');
-
-    // Get speaker labels from settings
-    const _speakerLabels = this._getSetting('speakerLabels') || {};
-    const _transcriptionLanguage = this._getSetting('transcriptionLanguage') || null;
-
-    // Transcription and entity extraction will be performed here
-    // const transcript = await this.transcriptionService.transcribe(audioBlob, speakerLabels, transcriptionLanguage);
-    // const entities = await this.entityExtractor.extractEntities(transcript.text);
-
-    logger.info('Session processing complete');
-
-    return {
-      transcript: null,
-      entities: [],
-      salientMoments: []
-    };
-  }
-
-  /**
-   * Publish a processed session to Kanka
-   *
-   * @param {object} _sessionData - The processed session data
-   * @returns {Promise<object>} The created Kanka entities
-   */
-  async publishToKanka(_sessionData) {
-    if (!this.kankaService) {
-      throw new Error('Kanka service not initialized');
-    }
-
-    logger.info('Publishing to Kanka...');
-
-    // Kanka publishing will be handled here
-    // const journal = await this.kankaService.createJournal(sessionData);
-
-    logger.info('Published to Kanka successfully');
-
-    return {
-      journal: null,
-      characters: [],
-      locations: [],
-      items: []
-    };
-  }
-
-  /**
    * Check if all required services are configured and ready
    *
    * @returns {object} Status of each service
@@ -384,7 +262,6 @@ class VoxChronicle {
   getServicesStatus() {
     return {
       initialized: this.isInitialized,
-      recording: this.isRecording,
       services: {
         audioRecorder: !!this.audioRecorder,
         transcription: !!this.transcriptionService,
@@ -411,8 +288,6 @@ class VoxChronicle {
   static resetInstance() {
     if (VoxChronicle.instance) {
       VoxChronicle.instance.isInitialized = false;
-      VoxChronicle.instance.isRecording = false;
-      VoxChronicle.instance.currentSession = null;
     }
     VoxChronicle.instance = null;
   }

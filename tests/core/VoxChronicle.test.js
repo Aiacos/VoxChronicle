@@ -2,7 +2,7 @@
  * VoxChronicle Unit Tests
  *
  * Tests for the VoxChronicle singleton class with mocked Foundry and service dependencies.
- * Covers initialization, service management, recording lifecycle, and Kanka token expiration.
+ * Covers initialization, service management, and Kanka token expiration.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -235,7 +235,6 @@ describe('VoxChronicle', () => {
 
       expect(instance).toBeInstanceOf(VoxChronicle);
       expect(instance.isInitialized).toBe(false);
-      expect(instance.isRecording).toBe(false);
     });
 
     it('should return same instance on subsequent calls', () => {
@@ -248,7 +247,6 @@ describe('VoxChronicle', () => {
     it('should reset instance when resetInstance is called', () => {
       const instance1 = VoxChronicle.getInstance();
       instance1.isInitialized = true;
-      instance1.isRecording = true;
 
       VoxChronicle.resetInstance();
 
@@ -257,14 +255,11 @@ describe('VoxChronicle', () => {
       const instance2 = VoxChronicle.getInstance();
       expect(instance2).not.toBe(instance1);
       expect(instance2.isInitialized).toBe(false);
-      expect(instance2.isRecording).toBe(false);
     });
 
     it('should properly reset state when resetInstance is called on existing instance', () => {
       const instance = VoxChronicle.getInstance();
       instance.isInitialized = true;
-      instance.isRecording = true;
-      instance.currentSession = { test: 'data' };
 
       VoxChronicle.resetInstance();
 
@@ -290,8 +285,6 @@ describe('VoxChronicle', () => {
       const instance = VoxChronicle.getInstance();
 
       expect(instance.isInitialized).toBe(false);
-      expect(instance.isRecording).toBe(false);
-      expect(instance.currentSession).toBeNull();
     });
   });
 
@@ -667,125 +660,6 @@ describe('VoxChronicle', () => {
     });
   });
 
-  describe('Recording Lifecycle', () => {
-    it('should start recording session', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      const startTime = Date.now();
-      await instance.startRecording();
-
-      expect(instance.isRecording).toBe(true);
-      expect(instance.currentSession).toBeTruthy();
-      expect(instance.currentSession.startTime).toBeGreaterThanOrEqual(startTime);
-      expect(instance.currentSession.audioBlobs).toEqual([]);
-      expect(instance.currentSession.transcript).toBeNull();
-      expect(instance.currentSession.entities).toEqual([]);
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Recording session started')
-      );
-    });
-
-    it('should throw error if already recording', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-      await instance.startRecording();
-
-      await expect(instance.startRecording()).rejects.toThrow('Recording already in progress');
-    });
-
-    it('should throw error if audio recorder not initialized', async () => {
-      const instance = VoxChronicle.getInstance();
-      instance.audioRecorder = null;
-
-      await expect(instance.startRecording()).rejects.toThrow('Audio recorder not initialized');
-    });
-
-    it('should stop recording session', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-      await instance.startRecording();
-
-      const result = await instance.stopRecording();
-
-      expect(instance.isRecording).toBe(false);
-      expect(instance.currentSession.endTime).toBeTruthy();
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Recording session stopped')
-      );
-      // Current implementation returns null
-      expect(result).toBeNull();
-    });
-
-    it('should throw error if no recording in progress', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      await expect(instance.stopRecording()).rejects.toThrow('No recording in progress');
-    });
-  });
-
-  describe('Session Processing', () => {
-    it('should throw error if transcription service not initialized', async () => {
-      const instance = VoxChronicle.getInstance();
-      instance.transcriptionService = null;
-
-      const audioBlob = new Blob(['test'], { type: 'audio/webm' });
-
-      await expect(instance.processSession(audioBlob)).rejects.toThrow(
-        'Transcription service not initialized'
-      );
-    });
-
-    it('should process session with transcription service', async () => {
-      const instance = VoxChronicle.getInstance();
-
-      // Manually set transcription service since TranscriptionFactory might fail
-      instance.transcriptionService = {
-        transcribe: vi.fn(),
-        validateApiKey: vi.fn()
-      };
-
-      const audioBlob = new Blob(['test'], { type: 'audio/webm' });
-      const result = await instance.processSession(audioBlob);
-
-      expect(result).toEqual({
-        transcript: null,
-        entities: [],
-        salientMoments: []
-      });
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Session processing complete')
-      );
-    });
-  });
-
-  describe('Kanka Publishing', () => {
-    it('should throw error if kanka service not initialized', async () => {
-      const instance = VoxChronicle.getInstance();
-      instance.kankaService = null;
-
-      await expect(instance.publishToKanka({})).rejects.toThrow('Kanka service not initialized');
-    });
-
-    it('should publish to Kanka when service initialized', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      const result = await instance.publishToKanka({});
-
-      expect(result).toEqual({
-        journal: null,
-        characters: [],
-        locations: [],
-        items: []
-      });
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Published to Kanka successfully')
-      );
-    });
-  });
-
   describe('Service Status', () => {
     it('should return correct services status when not initialized', () => {
       const instance = VoxChronicle.getInstance();
@@ -793,7 +667,6 @@ describe('VoxChronicle', () => {
 
       expect(status).toEqual({
         initialized: false,
-        recording: false,
         services: {
           audioRecorder: false,
           transcription: false,
@@ -818,7 +691,6 @@ describe('VoxChronicle', () => {
 
       // Verify core properties
       expect(status.initialized).toBe(true);
-      expect(status.recording).toBe(false);
 
       // Verify services are initialized (except transcription which depends on factory mock)
       expect(status.services.audioRecorder).toBe(true);
@@ -831,16 +703,6 @@ describe('VoxChronicle', () => {
       // Verify settings
       expect(status.settings.openaiConfigured).toBe(true);
       expect(status.settings.kankaConfigured).toBe(true);
-    });
-
-    it('should return correct recording status', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-      await instance.startRecording();
-
-      const status = instance.getServicesStatus();
-
-      expect(status.recording).toBe(true);
     });
 
     it('should return correct settings status when API keys missing', async () => {
@@ -880,43 +742,27 @@ describe('VoxChronicle', () => {
   });
 
   describe('Integration', () => {
-    it('should handle full initialization and recording lifecycle', async () => {
+    it('should handle full initialization and status check', async () => {
       const instance = VoxChronicle.getInstance();
 
       // Initialize
       await instance.initialize();
       expect(instance.isInitialized).toBe(true);
 
-      // Start recording
-      await instance.startRecording();
-      expect(instance.isRecording).toBe(true);
-
-      // Check status
-      const statusDuringRecording = instance.getServicesStatus();
-      expect(statusDuringRecording.recording).toBe(true);
-      expect(statusDuringRecording.initialized).toBe(true);
-
-      // Stop recording
-      await instance.stopRecording();
-      expect(instance.isRecording).toBe(false);
-
-      // Check status after stopping
-      const statusAfterStop = instance.getServicesStatus();
-      expect(statusAfterStop.recording).toBe(false);
-      expect(statusAfterStop.initialized).toBe(true);
+      // Check status after initialization
+      const status = instance.getServicesStatus();
+      expect(status.initialized).toBe(true);
+      expect(status.services.audioRecorder).toBe(true);
+      expect(status.services.sessionOrchestrator).toBe(true);
     });
 
     it('should maintain singleton across multiple operations', async () => {
       const instance1 = VoxChronicle.getInstance();
       await instance1.initialize();
-      await instance1.startRecording();
 
       const instance2 = VoxChronicle.getInstance();
       expect(instance2).toBe(instance1);
-      expect(instance2.isRecording).toBe(true);
-
-      await instance2.stopRecording();
-      expect(instance1.isRecording).toBe(false);
+      expect(instance2.isInitialized).toBe(true);
     });
   });
 });
