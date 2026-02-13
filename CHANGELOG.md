@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-13
+
 ### Removed
 - **Redundant VoxChronicleConfig custom settings panel**: Eliminated duplicate settings UI that overlapped with native Foundry settings. Deleted `scripts/ui/VoxChronicleConfig.mjs` (705 lines) and `templates/config.hbs` (248 lines)
 - **Dead code in VoxChronicle singleton**: Removed 4 placeholder methods (`startRecording`, `stopRecording`, `processSession`, `publishToKanka`) never called by any code — all workflow logic lives in `SessionOrchestrator`
