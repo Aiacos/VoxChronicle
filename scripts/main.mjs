@@ -306,6 +306,94 @@ Hooks.on('renderSettingsConfig', (app, html) => {
     'kanka',
     () => Settings.validateKankaToken()
   );
+
+  // Inject dynamic campaign dropdown to replace text input for kankaCampaignId
+  const campaignInput = html.find(`input[name="${MODULE_ID}.kankaCampaignId"]`);
+  if (campaignInput.length > 0) {
+    const currentValue = campaignInput.val() || '';
+
+    // Create select element to replace the text input
+    const campaignSelect = $(`
+      <select name="${MODULE_ID}.kankaCampaignId" class="vox-chronicle-campaign-select">
+        <option value="${currentValue}" selected>${currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder')}</option>
+      </select>
+    `);
+
+    const refreshButton = $(`
+      <button type="button" class="vox-chronicle-validate-button" data-action="refresh-campaigns">
+        <i class="fa-solid fa-sync-alt"></i>
+      </button>
+    `);
+
+    // Replace input with select + refresh button
+    campaignInput.replaceWith(campaignSelect);
+    campaignSelect.after(refreshButton);
+
+    /**
+     * Load Kanka campaigns into the dropdown
+     */
+    async function loadCampaigns() {
+      const token = html.find(`input[name="${MODULE_ID}.kankaApiToken"]`).val()
+        || Settings.get('kankaApiToken');
+
+      if (!token || token.trim().length === 0) {
+        campaignSelect.html(
+          `<option value="">${game.i18n.localize('VOXCHRONICLE.Settings.CampaignNeedsToken')}</option>`
+        );
+        return;
+      }
+
+      const refreshIcon = refreshButton.find('i');
+      refreshIcon.addClass('fa-spin');
+      campaignSelect.prop('disabled', true);
+
+      try {
+        const { KankaClient } = await import('./kanka/KankaClient.mjs');
+        const client = new KankaClient(token);
+        const campaigns = await client.getCampaigns();
+
+        campaignSelect.empty();
+        campaignSelect.append(
+          `<option value="">${game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder')}</option>`
+        );
+
+        for (const campaign of campaigns) {
+          const selected = campaign.id.toString() === currentValue ? 'selected' : '';
+          campaignSelect.append(
+            `<option value="${campaign.id}" ${selected}>${campaign.name}</option>`
+          );
+        }
+
+        if (campaigns.length === 0) {
+          campaignSelect.html(
+            `<option value="">${game.i18n.localize('VOXCHRONICLE.Settings.CampaignNone')}</option>`
+          );
+        }
+      } catch (error) {
+        logger.error('Failed to load campaigns:', error);
+        campaignSelect.html(
+          `<option value="${currentValue}">${currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignError')}</option>`
+        );
+      } finally {
+        refreshIcon.removeClass('fa-spin');
+        campaignSelect.prop('disabled', false);
+      }
+    }
+
+    // Wire up refresh button
+    refreshButton.on('click', (event) => {
+      event.preventDefault();
+      loadCampaigns();
+    });
+
+    // Auto-load campaigns if token exists
+    const kankaToken = Settings.get('kankaApiToken');
+    if (kankaToken && kankaToken.trim().length > 0) {
+      loadCampaigns();
+    }
+
+    logger.info('Campaign dropdown injected');
+  }
 });
 
 // Re-export module ID for backward compatibility

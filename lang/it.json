@@ -52,7 +52,11 @@
       "ConfigureSpeakers": "Configura Parlanti",
       "SpeakerLabeling": "Etichettatura Parlanti",
       "SpeakerLabelingHint": "Assegna nomi dei giocatori alle voci rilevate",
-      "TestConnection": "Testa Connessione"
+      "TestConnection": "Testa Connessione",
+      "CampaignPlaceholder": "Seleziona una campagna...",
+      "CampaignNone": "Nessuna campagna disponibile",
+      "CampaignNeedsToken": "Inserisci prima il token API di Kanka",
+      "CampaignError": "Impossibile caricare le campagne"
     },
 
     "Validation": {

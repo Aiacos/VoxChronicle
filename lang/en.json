@@ -52,7 +52,11 @@
       "ConfigureSpeakers": "Configure Speakers",
       "SpeakerLabeling": "Speaker Labeling",
       "SpeakerLabelingHint": "Assign player names to detected speaker voices",
-      "TestConnection": "Test Connection"
+      "TestConnection": "Test Connection",
+      "CampaignPlaceholder": "Select a campaign...",
+      "CampaignNone": "No campaigns available",
+      "CampaignNeedsToken": "Set Kanka API token first",
+      "CampaignError": "Failed to load campaigns"
     },
 
     "Validation": {
