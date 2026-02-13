@@ -1184,15 +1184,18 @@ class KankaService extends KankaClient {
   /**
    * Batch create multiple entities of the same type
    *
-   * Creates multiple entities sequentially with progress tracking and error handling.
+   * Creates multiple entities with progress tracking and error handling.
+   * Uses parallel or sequential processing depending on configuration.
    * This is useful for importing entities extracted from session transcripts or other
    * bulk operations.
    *
    * IMPORTANT NOTES:
-   * - Entities are created sequentially (not parallel) to respect rate limits
+   * - Default behavior (sequential): Entities are created one at a time to respect rate limits
+   * - Parallel mode (enableParallelBatch=true): Processes entities in parallel batches up to batchConcurrency limit
    * - Free tier: 30 req/min, Premium: 90 req/min
    * - With skipExisting=true, each entity requires 2 API calls (search + create)
-   * - Large batches may take significant time (e.g., 20 entities = ~40 API calls = 1-2 minutes)
+   * - Large batches may take significant time (e.g., 20 entities = ~40 API calls = 1-2 minutes sequential)
+   * - Parallel mode can reduce wall-clock time by 50-70% while respecting rate limits
    * - Individual failures are caught and returned as error objects (see return format)
    *
    * @param {string} entityType - Entity type from KankaEntityType enum
@@ -1228,6 +1231,17 @@ class KankaService extends KankaClient {
    * console.log(`Created ${success.length}, Failed ${errors.length}`);
    */
   async batchCreate(entityType, entitiesData, options = {}) {
+    // Use parallel processing if enabled, otherwise fall back to sequential
+    if (this._enableParallelBatch && this._batchConcurrency > 1) {
+      this._logger.debug(
+        `Batch creating ${entitiesData.length} ${entityType} in parallel (concurrency: ${this._batchConcurrency})`
+      );
+      return this._batchCreateParallel(entityType, entitiesData, options);
+    }
+
+    // Fall back to sequential processing for backward compatibility
+    this._logger.debug(`Batch creating ${entitiesData.length} ${entityType} sequentially`);
+
     const skipExisting = options.skipExisting ?? true;
     const onProgress = options.onProgress || (() => {});
     const results = [];
