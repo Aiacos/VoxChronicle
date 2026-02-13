@@ -247,120 +247,74 @@ Hooks.on('getSceneControlButtons', (controls) => {
 });
 
 /**
- * Inject validation buttons into the settings configuration UI
- * Adds "Test Connection" buttons next to API key fields for immediate validation feedback
+ * Delay before resetting validation button state (ms)
+ * @type {number}
+ */
+const VALIDATION_RESET_DELAY_MS = 2000;
+
+/**
+ * Create and inject a "Test Connection" validation button next to an API key input field.
+ * Handles loading states, success/error icons, and auto-reset.
+ *
+ * @param {jQuery} inputElement - The input field to attach the button to
+ * @param {string} targetName - Identifier for the validation target (e.g. 'openai', 'kanka')
+ * @param {Function} validateFn - Async function that returns boolean validation result
+ */
+function injectValidationButton(inputElement, targetName, validateFn) {
+  if (inputElement.length === 0) return;
+
+  const validateButton = $(`
+    <button type="button" class="vox-chronicle-validate-button" data-validation-target="${targetName}">
+      <i class="fa-solid fa-plug"></i> Test Connection
+    </button>
+  `);
+
+  inputElement.parent().append(validateButton);
+
+  validateButton.on('click', async (event) => {
+    event.preventDefault();
+    const button = $(event.currentTarget);
+    const icon = button.find('i');
+
+    button.prop('disabled', true);
+    icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
+
+    try {
+      const isValid = await validateFn();
+      icon.removeClass('fa-spinner fa-spin').addClass(isValid ? 'fa-check' : 'fa-times');
+    } catch (error) {
+      icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
+      logger.error(`${targetName} validation error:`, error);
+    }
+
+    setTimeout(() => {
+      icon.removeClass('fa-check fa-times').addClass('fa-plug');
+      button.prop('disabled', false);
+    }, VALIDATION_RESET_DELAY_MS);
+  });
+
+  logger.info(`Validation button injected for ${targetName}`);
+}
+
+/**
+ * Inject validation buttons into the settings configuration UI.
+ * Adds "Test Connection" buttons next to API key fields for immediate validation feedback.
  *
  * @param {SettingsConfig} app - The settings configuration application
  * @param {jQuery} html - The rendered HTML element
  */
 Hooks.on('renderSettingsConfig', (app, html) => {
-  // Only inject buttons for our module's settings
-  const openAIKeyInput = html.find(`input[name="${MODULE_ID}.openaiApiKey"]`);
-  const kankaTokenInput = html.find(`input[name="${MODULE_ID}.kankaApiToken"]`);
+  injectValidationButton(
+    html.find(`input[name="${MODULE_ID}.openaiApiKey"]`),
+    'openai',
+    () => Settings.validateOpenAIKey()
+  );
 
-  // Inject validation button for OpenAI API key
-  // Using fa-solid prefix for Foundry VTT v13 compatibility
-  if (openAIKeyInput.length > 0) {
-    const validateButton = $(`
-      <button type="button" class="vox-chronicle-validate-button" data-validation-target="openai">
-        <i class="fa-solid fa-plug"></i> Test Connection
-      </button>
-    `);
-
-    openAIKeyInput.parent().append(validateButton);
-
-    // Wire up click handler (validation logic will be added in next subtask)
-    validateButton.on('click', async (event) => {
-      event.preventDefault();
-      const button = $(event.currentTarget);
-      const icon = button.find('i');
-
-      // Show loading state
-      button.prop('disabled', true);
-      icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
-
-      try {
-        // Call actual validation method
-        const isValid = await Settings.validateOpenAIKey();
-
-        // Update icon based on result
-        if (isValid) {
-          icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
-        } else {
-          icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        }
-
-        // Reset button after 2 seconds
-        setTimeout(() => {
-          icon.removeClass('fa-check fa-times').addClass('fa-plug');
-          button.prop('disabled', false);
-        }, 2000);
-      } catch (error) {
-        // Error state for unexpected exceptions
-        icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        logger.error('OpenAI validation error:', error);
-
-        setTimeout(() => {
-          icon.removeClass('fa-times').addClass('fa-plug');
-          button.prop('disabled', false);
-        }, 2000);
-      }
-    });
-
-    logger.info('Validation button injected for OpenAI API key');
-  }
-
-  // Inject validation button for Kanka API token
-  // Using fa-solid prefix for Foundry VTT v13 compatibility
-  if (kankaTokenInput.length > 0) {
-    const validateButton = $(`
-      <button type="button" class="vox-chronicle-validate-button" data-validation-target="kanka">
-        <i class="fa-solid fa-plug"></i> Test Connection
-      </button>
-    `);
-
-    kankaTokenInput.parent().append(validateButton);
-
-    // Wire up click handler (validation logic will be added in next subtask)
-    validateButton.on('click', async (event) => {
-      event.preventDefault();
-      const button = $(event.currentTarget);
-      const icon = button.find('i');
-
-      // Show loading state
-      button.prop('disabled', true);
-      icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
-
-      try {
-        // Call actual validation method
-        const isValid = await Settings.validateKankaToken();
-
-        // Update icon based on result
-        if (isValid) {
-          icon.removeClass('fa-spinner fa-spin').addClass('fa-check');
-        } else {
-          icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        }
-
-        // Reset button after 2 seconds
-        setTimeout(() => {
-          icon.removeClass('fa-check fa-times').addClass('fa-plug');
-          button.prop('disabled', false);
-        }, 2000);
-      } catch (error) {
-        // Error state for unexpected exceptions
-        icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
-        logger.error('Kanka validation error:', error);
-
-        setTimeout(() => {
-          icon.removeClass('fa-times').addClass('fa-plug');
-          button.prop('disabled', false);
-        }, 2000);
-      }
-    });
-
-    logger.info('Validation button injected for Kanka API token');
-  }
+  injectValidationButton(
+    html.find(`input[name="${MODULE_ID}.kankaApiToken"]`),
+    'kanka',
+    () => Settings.validateKankaToken()
+  );
 });
 
 // Re-export module ID for backward compatibility
