@@ -509,6 +509,12 @@ class CompendiumSearcher {
     if (str1 === str2) return 1;
     if (str1.length === 0 || str2.length === 0) return 0;
 
+    // Early rejection: if length difference is >60%, strings are too dissimilar
+    // Strings with >60% length difference have max 40% similarity, below typical thresholds
+    const maxLength = Math.max(str1.length, str2.length);
+    const lengthDiff = Math.abs(str1.length - str2.length);
+    if (lengthDiff / maxLength > 0.6) return 0;
+
     // Levenshtein distance
     const matrix = [];
 
@@ -532,7 +538,6 @@ class CompendiumSearcher {
     }
 
     const distance = matrix[str1.length][str2.length];
-    const maxLength = Math.max(str1.length, str2.length);
 
     return 1 - distance / maxLength;
   }
