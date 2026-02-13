@@ -618,18 +618,20 @@ class CompendiumSearcher {
   async findMatchingActors(names, options = {}) {
     const results = new Map();
 
-    for (const name of names) {
-      const matches = await this.searchActor(name, {
-        mode: SearchMode.FUZZY,
-        fuzzyThreshold: 0.7,
-        limit: 3,
-        ...options
-      });
+    await Promise.all(
+      names.map(async (name) => {
+        const matches = await this.searchActor(name, {
+          mode: SearchMode.FUZZY,
+          fuzzyThreshold: 0.7,
+          limit: 3,
+          ...options
+        });
 
-      if (matches.length > 0) {
-        results.set(name, matches);
-      }
-    }
+        if (matches.length > 0) {
+          results.set(name, matches);
+        }
+      })
+    );
 
     return results;
   }
