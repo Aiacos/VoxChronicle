@@ -1185,17 +1185,31 @@ class KankaService extends KankaClient {
    * Batch create multiple entities of the same type
    *
    * Creates multiple entities with progress tracking and error handling.
-   * Uses parallel or sequential processing depending on configuration.
+   * Uses parallel or sequential processing depending on configuration set in constructor.
    * This is useful for importing entities extracted from session transcripts or other
    * bulk operations.
    *
-   * IMPORTANT NOTES:
-   * - Default behavior (sequential): Entities are created one at a time to respect rate limits
-   * - Parallel mode (enableParallelBatch=true): Processes entities in parallel batches up to batchConcurrency limit
+   * CONCURRENCY CONTROL:
+   * Processing mode is controlled by constructor options:
+   * - enableParallelBatch: Enable/disable parallel processing (default: false)
+   * - batchConcurrency: Maximum concurrent API calls (default: 1 for sequential)
+   *
+   * Sequential mode (default):
+   * - Processes entities one at a time in order
+   * - Safest option for respecting rate limits
+   * - Predictable timing but slower for large batches
+   *
+   * Parallel mode (enableParallelBatch=true, batchConcurrency>1):
+   * - Processes entities in parallel batches up to concurrency limit
+   * - Reduces wall-clock time by 50-70% for large batches
+   * - Still respects rate limits via KankaClient's rate limiter
+   * - Example: batchConcurrency=3 processes 3 entities simultaneously
+   *
+   * RATE LIMIT CONSIDERATIONS:
    * - Free tier: 30 req/min, Premium: 90 req/min
    * - With skipExisting=true, each entity requires 2 API calls (search + create)
    * - Large batches may take significant time (e.g., 20 entities = ~40 API calls = 1-2 minutes sequential)
-   * - Parallel mode can reduce wall-clock time by 50-70% while respecting rate limits
+   * - Parallel mode reduces wait time without violating rate limits (rate limiter queues requests)
    * - Individual failures are caught and returned as error objects (see return format)
    *
    * @param {string} entityType - Entity type from KankaEntityType enum
@@ -1205,6 +1219,25 @@ class KankaService extends KankaClient {
    * @param {Function} [options.onProgress] - Progress callback: (current, total, entity) => void
    * @returns {Promise<Array<object>>} Array of created entities (may include error objects for failures)
    * @throws {KankaError} Only throws for critical errors; individual entity failures are in results
+   *
+   * @example
+   * // Sequential processing (default) - one entity at a time
+   * const service = new KankaService('token', 'campaign-id');
+   * const results = await service.batchCreate(
+   *   KankaEntityType.CHARACTER,
+   *   [{ name: 'NPC1' }, { name: 'NPC2' }]
+   * );
+   *
+   * @example
+   * // Parallel processing - 3 entities at a time
+   * const service = new KankaService('token', 'campaign-id', {
+   *   enableParallelBatch: true,
+   *   batchConcurrency: 3
+   * });
+   * const results = await service.batchCreate(
+   *   KankaEntityType.CHARACTER,
+   *   [{ name: 'NPC1' }, { name: 'NPC2' }, { name: 'NPC3' }]
+   * );
    *
    * @example
    * // Batch create NPCs from transcript with progress tracking
