@@ -1034,6 +1034,101 @@ describe('CompendiumSearcher', () => {
   });
 
   // ============================================================================
+  // Performance and Early Termination Tests
+  // ============================================================================
+
+  describe('performance and early termination', () => {
+    it('should reject strings with >60% length difference immediately', () => {
+      // Strings with large length differences should return 0 without full matrix computation
+      // "a" vs "abcdefghijklmnop" has 93.75% length difference
+      const similarity1 = searcher._calculateSimilarity('a', 'abcdefghijklmnop');
+      expect(similarity1).toBe(0);
+
+      // "test" vs "verylongstringthatisverylong" has 85.7% length difference
+      const similarity2 = searcher._calculateSimilarity('test', 'verylongstringthatisverylong');
+      expect(similarity2).toBe(0);
+
+      // Reversed order should also work
+      const similarity3 = searcher._calculateSimilarity('verylongstringthatisverylong', 'test');
+      expect(similarity3).toBe(0);
+    });
+
+    it('should terminate early for very dissimilar strings during matrix computation', () => {
+      // Strings under 60% length difference but very dissimilar should terminate early
+      // These are close enough in length to start matrix computation but should terminate early
+      const similarity1 = searcher._calculateSimilarity('abcdef', 'xyzwvu');
+      expect(similarity1).toBe(0); // Completely different characters, should terminate early
+
+      const similarity2 = searcher._calculateSimilarity('dragon', '123456');
+      expect(similarity2).toBe(0); // No character overlap, should terminate early
+    });
+
+    it('should produce accurate results despite early termination optimizations', () => {
+      // Verify that early termination doesn't affect accuracy of similarity scores
+
+      // High similarity - should complete matrix and return accurate score
+      const highSim = searcher._calculateSimilarity('dragon', 'dragn');
+      expect(highSim).toBeGreaterThan(0.7);
+      expect(highSim).toBeLessThanOrEqual(1);
+
+      // Medium similarity - should complete matrix
+      const medSim = searcher._calculateSimilarity('dragon', 'drake');
+      expect(medSim).toBeGreaterThan(0.3);
+      expect(medSim).toBeLessThan(0.7);
+
+      // Low but not zero similarity - strings within length threshold
+      const lowSim = searcher._calculateSimilarity('dragon', 'wizard');
+      expect(lowSim).toBeGreaterThanOrEqual(0);
+      expect(lowSim).toBeLessThan(0.5);
+    });
+
+    it('should handle edge cases at length difference boundary', () => {
+      // Test strings right at the 60% length difference threshold
+      // "abc" vs "abcdefgh" has 62.5% length difference - should be rejected
+      const similarity1 = searcher._calculateSimilarity('abc', 'abcdefgh');
+      expect(similarity1).toBe(0);
+
+      // "abcd" vs "abcdefgh" has 50% length difference - should be computed
+      const similarity2 = searcher._calculateSimilarity('abcd', 'abcdefgh');
+      expect(similarity2).toBeGreaterThan(0); // Has some character overlap
+    });
+
+    it('should maintain consistent results regardless of string order', () => {
+      // Early termination should work the same regardless of which string is longer
+      const similarity1 = searcher._calculateSimilarity('short', 'verylongstring');
+      const similarity2 = searcher._calculateSimilarity('verylongstring', 'short');
+
+      expect(similarity1).toBe(similarity2);
+      expect(similarity1).toBe(0); // Both should be rejected early
+    });
+
+    it('should efficiently reject many dissimilar strings', () => {
+      // Simulate searching through a compendium with many entries
+      const searchTerm = 'dragon';
+      const dissimilarNames = [
+        'completely-different-name',
+        'xyz',
+        'a',
+        'verylongstringthatisverydifferent',
+        '12345',
+        'qwerty'
+      ];
+
+      // All of these should return 0 (either via length check or early termination)
+      const startTime = performance.now();
+      for (const name of dissimilarNames) {
+        const similarity = searcher._calculateSimilarity(searchTerm, name);
+        expect(similarity).toBe(0);
+      }
+      const endTime = performance.now();
+
+      // This is not a strict performance test, but verifies all return 0
+      // In a real scenario with hundreds of entries, early termination provides significant speedup
+      expect(endTime - startTime).toBeLessThan(100); // Should be very fast
+    });
+  });
+
+  // ============================================================================
   // Exported Constants Tests
   // ============================================================================
 

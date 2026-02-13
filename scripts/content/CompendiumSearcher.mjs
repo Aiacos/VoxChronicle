@@ -509,7 +509,16 @@ class CompendiumSearcher {
     if (str1 === str2) return 1;
     if (str1.length === 0 || str2.length === 0) return 0;
 
-    // Levenshtein distance
+    // Early rejection: if length difference is >60%, strings are too dissimilar
+    // Strings with >60% length difference have max 40% similarity, below typical thresholds
+    const maxLength = Math.max(str1.length, str2.length);
+    const lengthDiff = Math.abs(str1.length - str2.length);
+    if (lengthDiff / maxLength > 0.6) return 0;
+
+    // Levenshtein distance with early termination
+    // Calculate maximum allowed distance for reasonable similarity (>0.3)
+    // This allows early termination when strings are clearly too dissimilar
+    const maxAllowedDistance = Math.floor(maxLength * 0.7);
     const matrix = [];
 
     for (let i = 0; i <= str1.length; i++) {
@@ -521,6 +530,8 @@ class CompendiumSearcher {
     }
 
     for (let i = 1; i <= str1.length; i++) {
+      let rowMin = Infinity;
+
       for (let j = 1; j <= str2.length; j++) {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
         matrix[i][j] = Math.min(
@@ -528,11 +539,19 @@ class CompendiumSearcher {
           matrix[i][j - 1] + 1, // insertion
           matrix[i - 1][j - 1] + cost // substitution
         );
+
+        // Track minimum distance in this row
+        rowMin = Math.min(rowMin, matrix[i][j]);
+      }
+
+      // Early termination: if minimum distance in row exceeds threshold,
+      // the final distance will be too large for meaningful similarity
+      if (rowMin > maxAllowedDistance) {
+        return 0;
       }
     }
 
     const distance = matrix[str1.length][str2.length];
-    const maxLength = Math.max(str1.length, str2.length);
 
     return 1 - distance / maxLength;
   }
