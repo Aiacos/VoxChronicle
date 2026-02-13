@@ -27,12 +27,6 @@ vi.mock('../../scripts/constants.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
 
-// Mock VoxChronicleConfig to avoid FormApplication dependency
-// VoxChronicleConfig extends FormApplication which is only available in Foundry VTT
-vi.mock('../../scripts/ui/VoxChronicleConfig.mjs', () => ({
-  VoxChronicleConfig: class MockVoxChronicleConfig {}
-}));
-
 // Mock Logger before importing Settings
 // Logger mock routes all log methods to console.log for test compatibility
 // Tests expect consoleLogSpy (console.log) to be called

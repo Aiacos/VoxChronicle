@@ -306,28 +306,6 @@
       "DefaultTitle": "Session Chronicle - {date}"
     },
 
-    "Config": {
-      "Title": "VoxChronicle Configuration",
-      "MenuName": "VoxChronicle",
-      "MenuLabel": "Configure",
-      "MenuHint": "Configure VoxChronicle settings including API keys and Kanka integration",
-      "OpenAISection": "OpenAI Settings",
-      "KankaSection": "Kanka Integration",
-      "CampaignLabel": "Kanka Campaign",
-      "CampaignHint": "Select the Kanka campaign to publish chronicles to",
-      "CampaignPlaceholder": "Select a campaign...",
-      "CampaignLoading": "Loading campaigns...",
-      "CampaignError": "Failed to load campaigns",
-      "CampaignNone": "No campaigns available",
-      "CampaignNeedsToken": "Please set a Kanka API token first",
-      "RefreshCampaigns": "Refresh Campaigns",
-      "TestConnection": "Test Connection",
-      "TestSuccess": "Connection successful!",
-      "TestFailed": "Connection failed: {error}",
-      "Save": "Save Settings",
-      "Cancel": "Cancel"
-    },
-
     "RelationshipGraph": {
       "Title": "Entity Relationships",
       "Description": "Visualize how entities are connected across your sessions",

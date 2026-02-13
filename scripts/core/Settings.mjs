@@ -12,7 +12,6 @@
  */
 
 import { MODULE_ID } from '../constants.mjs';
-import { VoxChronicleConfig } from '../ui/VoxChronicleConfig.mjs';
 import { Logger } from '../utils/Logger.mjs';
 
 // Create logger instance for Settings
@@ -30,21 +29,6 @@ class Settings {
    * @static
    */
   static registerSettings() {
-    // ==========================================
-    // Settings Menu Registration
-    // ==========================================
-
-    // Register the configuration menu that opens VoxChronicleConfig
-    // Using fa-solid prefix for Foundry VTT v13 compatibility
-    game.settings.registerMenu(MODULE_ID, 'config', {
-      name: 'VOXCHRONICLE.Config.MenuName',
-      label: 'VOXCHRONICLE.Config.MenuLabel',
-      hint: 'VOXCHRONICLE.Config.MenuHint',
-      icon: 'fa-solid fa-cogs',
-      type: VoxChronicleConfig,
-      restricted: false
-    });
-
     // ==========================================
     // API Key Settings
     // ==========================================
