@@ -1193,6 +1193,277 @@ describe('EntityPreview', () => {
     });
   });
 
+  describe('Batched Rendering', () => {
+    let preview;
+    let renderSpy;
+
+    beforeEach(() => {
+      preview = new EntityPreview();
+      // Spy on the render method to track calls
+      renderSpy = vi.spyOn(preview, 'render');
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it('should immediately render when time threshold exceeded', () => {
+      vi.useFakeTimers();
+
+      // Set last render time to 600ms ago (exceeds 500ms threshold)
+      preview._lastRenderTime = Date.now() - 600;
+
+      preview._batchedRender();
+
+      // Should render immediately
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(preview._renderBatchCounter).toBe(0);
+      expect(preview._pendingRender).toBe(false);
+    });
+
+    it('should immediately render when count threshold exceeded', () => {
+      vi.useFakeTimers();
+
+      // Set batch counter to 2 (next call will reach threshold of 3)
+      preview._renderBatchCounter = 2;
+      preview._lastRenderTime = Date.now();
+
+      preview._batchedRender();
+
+      // Should render immediately
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(preview._renderBatchCounter).toBe(0);
+      expect(preview._pendingRender).toBe(false);
+    });
+
+    it('should defer render when both thresholds not met', () => {
+      vi.useFakeTimers();
+
+      // Set last render time to just now (0ms ago)
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+
+      preview._batchedRender();
+
+      // Should NOT render immediately
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(preview._pendingRender).toBe(true);
+      expect(preview._renderTimeout).not.toBeNull();
+
+      // Advance time to trigger deferred render
+      vi.advanceTimersByTime(500);
+
+      // Now should have rendered
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(preview._pendingRender).toBe(false);
+      expect(preview._renderBatchCounter).toBe(0);
+    });
+
+    it('should coalesce multiple deferred renders into single render', () => {
+      vi.useFakeTimers();
+
+      // Set last render time to just now
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+
+      // Call batchedRender multiple times
+      preview._batchedRender(); // First call schedules deferred render
+      expect(renderSpy).not.toHaveBeenCalled();
+
+      preview._batchedRender(); // Second call - should not schedule another
+      expect(renderSpy).not.toHaveBeenCalled();
+
+      preview._batchedRender(); // Third call - count threshold reached
+      expect(renderSpy).toHaveBeenCalledTimes(1); // Renders immediately on threshold
+
+      renderSpy.mockClear();
+
+      // Reset and test time-based coalescing
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+
+      preview._batchedRender(); // Schedules deferred render
+      preview._batchedRender(); // Should not schedule another (already pending)
+
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(preview._pendingRender).toBe(true);
+
+      // Advance time
+      vi.advanceTimersByTime(500);
+
+      // Should have rendered only once despite multiple calls
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(preview._pendingRender).toBe(false);
+    });
+
+    it('should force immediate render with _flushRender even when thresholds not met', () => {
+      vi.useFakeTimers();
+
+      // Set conditions where normal render would be deferred
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+
+      // Schedule a deferred render
+      preview._batchedRender();
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(preview._pendingRender).toBe(true);
+
+      renderSpy.mockClear();
+
+      // Flush should render immediately and clear pending
+      preview._flushRender();
+
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(preview._pendingRender).toBe(false);
+      expect(preview._renderTimeout).toBeNull();
+      expect(preview._renderBatchCounter).toBe(0);
+
+      // Advance time - deferred render should NOT fire (was cleared)
+      vi.advanceTimersByTime(500);
+      expect(renderSpy).toHaveBeenCalledTimes(1); // Still only 1 call
+    });
+
+    it('should reset batch counter after immediate render', () => {
+      vi.useFakeTimers();
+
+      // Build up batch counter
+      preview._renderBatchCounter = 2;
+      preview._lastRenderTime = Date.now();
+
+      // This should trigger immediate render (reaches count threshold)
+      preview._batchedRender();
+
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(preview._renderBatchCounter).toBe(0);
+
+      renderSpy.mockClear();
+
+      // Now counter is reset, so this should defer
+      preview._batchedRender();
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(preview._renderBatchCounter).toBe(1);
+    });
+
+    it('should update lastRenderTime after render', () => {
+      vi.useFakeTimers();
+
+      const startTime = Date.now();
+      preview._lastRenderTime = 0;
+
+      preview._batchedRender();
+
+      // Should have updated last render time
+      expect(preview._lastRenderTime).toBeGreaterThanOrEqual(startTime);
+    });
+
+    it('should clear pending timeout when rendering immediately after deferred', () => {
+      vi.useFakeTimers();
+
+      // Schedule a deferred render
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+      preview._batchedRender();
+
+      expect(preview._pendingRender).toBe(true);
+      const timeoutId = preview._renderTimeout;
+      expect(timeoutId).not.toBeNull();
+
+      renderSpy.mockClear();
+
+      // Now trigger immediate render (count threshold)
+      preview._renderBatchCounter = 2;
+      preview._batchedRender();
+
+      // Should have cleared the pending timeout
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(preview._pendingRender).toBe(false);
+      expect(preview._renderTimeout).toBeNull();
+
+      // Advance time - deferred render should not fire
+      vi.advanceTimersByTime(500);
+      expect(renderSpy).toHaveBeenCalledTimes(1); // Still only 1
+    });
+
+    it('should batch multiple entity updates into fewer renders - integration test', () => {
+      vi.useFakeTimers();
+
+      const entities = {
+        characters: [
+          { name: 'Hero', description: 'Brave warrior', isNPC: false },
+          { name: 'Villain', description: 'Evil sorcerer', isNPC: true },
+          { name: 'Merchant', description: 'Traveling trader', isNPC: true }
+        ],
+        locations: [
+          { name: 'Castle', description: 'Grand fortress', type: 'fortress' },
+          { name: 'Forest', description: 'Dark woods', type: 'wilderness' }
+        ],
+        items: [
+          { name: 'Sword', description: 'Legendary blade', type: 'weapon' },
+          { name: 'Potion', description: 'Healing elixir', type: 'consumable' }
+        ]
+      };
+
+      preview.setEntities(entities);
+
+      // Reset render spy after setEntities (which triggers render)
+      renderSpy.mockClear();
+
+      // Simulate multiple rapid entity selection changes
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+
+      // Toggle multiple entities (each would normally trigger a render)
+      preview._selections.set('characters-0', false);
+      preview._batchedRender();
+      expect(renderSpy).not.toHaveBeenCalled(); // Deferred
+
+      preview._selections.set('locations-0', false);
+      preview._batchedRender();
+      expect(renderSpy).not.toHaveBeenCalled(); // Still deferred (counter = 2)
+
+      preview._selections.set('items-0', false);
+      preview._batchedRender();
+      expect(renderSpy).toHaveBeenCalledTimes(1); // Threshold reached - immediate render
+
+      renderSpy.mockClear();
+
+      // Test time-based batching with more updates
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+
+      // More entity updates
+      preview._selections.set('characters-1', false);
+      preview._batchedRender();
+      expect(renderSpy).not.toHaveBeenCalled(); // Deferred
+
+      preview._selections.set('locations-1', false);
+      preview._batchedRender();
+      expect(renderSpy).not.toHaveBeenCalled(); // Still deferred
+
+      // Advance time to trigger deferred render
+      vi.advanceTimersByTime(500);
+
+      // Should have rendered once for all pending updates
+      expect(renderSpy).toHaveBeenCalledTimes(1);
+      expect(preview._pendingRender).toBe(false);
+
+      // Verify final selection state
+      expect(preview._selections.get('characters-0')).toBe(false);
+      expect(preview._selections.get('characters-1')).toBe(false);
+      expect(preview._selections.get('locations-0')).toBe(false);
+      expect(preview._selections.get('locations-1')).toBe(false);
+      expect(preview._selections.get('items-0')).toBe(false);
+
+      // Total: 5 entity updates resulted in only 2 renders (batched)
+      // Without batching, this would have been 5 renders
+    });
+  });
+
   describe('Enums', () => {
     it('should export EntitySelectionState enum', () => {
       expect(EntitySelectionState.NONE).toBe('none');

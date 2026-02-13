@@ -194,42 +194,11 @@ describe('KankaService', () => {
       expect(service.campaignId).toBe('test-campaign-123');
     });
 
-    it('should use default batch configuration', () => {
+    it('should initialize entity cache', () => {
       const defaultService = new KankaService('test-token', 'test-campaign');
-      expect(defaultService._batchConcurrency).toBe(1);
-      expect(defaultService._enableParallelBatch).toBe(false);
-    });
-
-    it('should accept custom batch concurrency', () => {
-      const customService = new KankaService('test-token', 'test-campaign', {
-        batchConcurrency: 5
-      });
-      expect(customService._batchConcurrency).toBe(5);
-    });
-
-    it('should accept enableParallelBatch option', () => {
-      const parallelService = new KankaService('test-token', 'test-campaign', {
-        enableParallelBatch: true,
-        batchConcurrency: 3
-      });
-      expect(parallelService._enableParallelBatch).toBe(true);
-      expect(parallelService._batchConcurrency).toBe(3);
-    });
-
-    it('should validate batchConcurrency minimum value', () => {
-      const invalidService = new KankaService('test-token', 'test-campaign', {
-        batchConcurrency: 0
-      });
-      // Should default to 1 when invalid
-      expect(invalidService._batchConcurrency).toBe(1);
-    });
-
-    it('should validate batchConcurrency negative value', () => {
-      const invalidService = new KankaService('test-token', 'test-campaign', {
-        batchConcurrency: -5
-      });
-      // Should default to 1 when invalid
-      expect(invalidService._batchConcurrency).toBe(1);
+      expect(defaultService._entityCache).toBeInstanceOf(Map);
+      expect(defaultService._cacheTimestamps).toBeInstanceOf(Map);
+      expect(defaultService._cacheExpiryMs).toBe(300000);
     });
 
     it('should pass isPremium to parent constructor', () => {

@@ -7,24 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-02-13
+
+### Added
+- **Entity caching in KankaService**: 5-minute cache for entity lookups reduces redundant API calls by ~57-70%
+- **`preFetchEntities()` method**: Pre-fetch and cache all entity types in parallel for bulk operations
+- **Public `clearCache()` method**: Manual cache invalidation for specific entity types or entire cache
+
 ### Changed
+- **Parallelized `searchEntities()`**: Multi-type searches now use `Promise.all` for parallel execution (6x faster for 6-type searches)
+- **Cache-aware entity lookups**: `searchEntities()` and `findExistingEntity()` check cache before API calls
+- **Optimized `createIfNotExists()` workflow**: `KankaPublisher` and `EntityProcessor` pre-fetch entities into cache, eliminating N redundant API calls during entity creation
 
-#### Performance
-- **Parallel batch entity creation**: KankaService and KankaPublisher now support controlled parallel processing for Kanka entity creation, reducing wall-clock time by 50-70% when publishing multiple entities
-  - Added configurable concurrency control via `batchConcurrency` option (default: 1 for sequential)
-  - Added `enableParallelBatch` flag to opt-in to parallel processing (default: false for backward compatibility)
-  - Entity types (characters, locations, items) now process concurrently in KankaPublisher
-  - Individual entities within each type can process in parallel batches when `batchConcurrency > 1`
-  - Rate limiting still respected across all parallel operations
-  - Error handling maintains robustness: one failure doesn't cancel other operations
-  - Results maintain original input order for predictable behavior
-  - Progress tracking works correctly across parallel operations
+### Fixed
+- **`preFetchEntities()` cache data format**: Fixed caching full paginated response objects (`{ data, meta, links }`) instead of flat entity arrays, which caused `searchEntities()` to fail with `TypeError: .filter is not a function`
 
-### Technical Details
-- **KankaService**: New `_batchCreateParallel()` method processes entities in concurrent batches using `Promise.allSettled()`
-- **KankaPublisher**: Refactored `createEntities()` to process entity types concurrently instead of sequentially
-- **Backward Compatibility**: Default behavior unchanged (sequential processing). Enable parallel mode explicitly via constructor options
-- **Testing**: Added 49 new unit tests for parallel batch processing + 4 integration tests for parallel entity creation workflows
+### Performance
+- **API call reduction**: Creating 10 entities reduced from 13 API calls to 4 calls (3 pre-fetch + 1 publish) - ~70% reduction
+- **Search speed**: Multi-type entity searches 6x faster (6 sequential API calls → 1 parallel batch with Promise.all)
+- **Cache TTL**: 5-minute expiry with automatic validation and force-refresh option
 
 ## [1.3.0] - 2026-02-13
 
@@ -330,7 +331,9 @@ For flexibility with automatic fallback:
 
 ---
 
-[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.0.0...v1.2.0

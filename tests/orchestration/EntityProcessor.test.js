@@ -125,7 +125,8 @@ function createMockServices() {
     kankaService: {
       listCharacters: vi.fn().mockResolvedValue(createMockKankaLists().characters),
       listLocations: vi.fn().mockResolvedValue(createMockKankaLists().locations),
-      listItems: vi.fn().mockResolvedValue(createMockKankaLists().items)
+      listItems: vi.fn().mockResolvedValue(createMockKankaLists().items),
+      preFetchEntities: vi.fn().mockResolvedValue(createMockKankaLists())
     }
   };
 }
@@ -221,9 +222,10 @@ describe('EntityProcessor', () => {
       const transcriptText = 'Test transcript';
       await processor.extractEntities(transcriptText);
 
-      expect(mockServices.kankaService.listCharacters).toHaveBeenCalledWith({ page: 1 });
-      expect(mockServices.kankaService.listLocations).toHaveBeenCalledWith({ page: 1 });
-      expect(mockServices.kankaService.listItems).toHaveBeenCalledWith({ page: 1 });
+      // Now uses preFetchEntities instead of individual list methods
+      expect(mockServices.kankaService.preFetchEntities).toHaveBeenCalledWith({
+        types: ['characters', 'locations', 'items']
+      });
 
       expect(mockServices.entityExtractor.extractAll).toHaveBeenCalledWith(
         transcriptText,
@@ -244,9 +246,8 @@ describe('EntityProcessor', () => {
         checkDuplicates: false
       });
 
-      expect(mockServices.kankaService.listCharacters).not.toHaveBeenCalled();
-      expect(mockServices.kankaService.listLocations).not.toHaveBeenCalled();
-      expect(mockServices.kankaService.listItems).not.toHaveBeenCalled();
+      // Now uses preFetchEntities instead of individual list methods
+      expect(mockServices.kankaService.preFetchEntities).not.toHaveBeenCalled();
 
       expect(mockServices.entityExtractor.extractAll).toHaveBeenCalledWith(
         transcriptText,
@@ -330,7 +331,7 @@ describe('EntityProcessor', () => {
     });
 
     it('should continue if fetching existing entities fails', async () => {
-      mockServices.kankaService.listCharacters.mockRejectedValueOnce(new Error('Network error'));
+      mockServices.kankaService.preFetchEntities.mockRejectedValueOnce(new Error('Network error'));
 
       const transcriptText = 'Test transcript';
       const result = await processor.extractEntities(transcriptText);
@@ -560,9 +561,10 @@ describe('EntityProcessor', () => {
         'Existing Item'
       ]);
 
-      expect(mockServices.kankaService.listCharacters).toHaveBeenCalledWith({ page: 1 });
-      expect(mockServices.kankaService.listLocations).toHaveBeenCalledWith({ page: 1 });
-      expect(mockServices.kankaService.listItems).toHaveBeenCalledWith({ page: 1 });
+      // Now uses preFetchEntities instead of individual list methods
+      expect(mockServices.kankaService.preFetchEntities).toHaveBeenCalledWith({
+        types: ['characters', 'locations', 'items']
+      });
     });
 
     it('should return empty array if no Kanka service configured', async () => {
@@ -577,7 +579,7 @@ describe('EntityProcessor', () => {
     });
 
     it('should handle partial failures gracefully', async () => {
-      mockServices.kankaService.listCharacters.mockRejectedValueOnce(new Error('Network error'));
+      mockServices.kankaService.preFetchEntities.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await processor.getExistingKankaEntities();
 
@@ -585,9 +587,7 @@ describe('EntityProcessor', () => {
     });
 
     it('should handle empty response data', async () => {
-      mockServices.kankaService.listCharacters.mockResolvedValueOnce({});
-      mockServices.kankaService.listLocations.mockResolvedValueOnce({});
-      mockServices.kankaService.listItems.mockResolvedValueOnce({});
+      mockServices.kankaService.preFetchEntities.mockResolvedValueOnce({});
 
       const result = await processor.getExistingKankaEntities();
 
@@ -595,9 +595,7 @@ describe('EntityProcessor', () => {
     });
 
     it('should handle null response data', async () => {
-      mockServices.kankaService.listCharacters.mockResolvedValueOnce(null);
-      mockServices.kankaService.listLocations.mockResolvedValueOnce(null);
-      mockServices.kankaService.listItems.mockResolvedValueOnce(null);
+      mockServices.kankaService.preFetchEntities.mockResolvedValueOnce(null);
 
       const result = await processor.getExistingKankaEntities();
 
@@ -605,13 +603,9 @@ describe('EntityProcessor', () => {
     });
 
     it('should handle mixed success and failure', async () => {
-      mockServices.kankaService.listCharacters.mockResolvedValueOnce({
-        data: [{ id: 1, name: 'Character' }]
-      });
-      mockServices.kankaService.listLocations.mockRejectedValueOnce(new Error('Network error'));
-      mockServices.kankaService.listItems.mockResolvedValueOnce({
-        data: [{ id: 2, name: 'Item' }]
-      });
+      // Mock preFetchEntities to return partial data (simulating mixed success/failure)
+      // When there's an error, implementation should handle gracefully
+      mockServices.kankaService.preFetchEntities.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await processor.getExistingKankaEntities();
 

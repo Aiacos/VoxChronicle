@@ -556,7 +556,7 @@ describe('Publication Flow Integration', () => {
     it('should detect and skip existing entities', async () => {
       // Mock duplicate detection - character already exists
       mockFetch.mockImplementation((url, options) => {
-        if (url.includes('/characters') && url.includes('?')) {
+        if (url.includes('/characters') && options?.method === 'GET') {
           // Return existing character
           return Promise.resolve({
             ok: true,
@@ -575,7 +575,7 @@ describe('Publication Flow Integration', () => {
         }
 
         // Other entities don't exist
-        if (url.includes('/locations') && url.includes('?')) {
+        if (url.includes('/locations') && options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -583,7 +583,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/items') && url.includes('?')) {
+        if (url.includes('/items') && options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -679,13 +679,9 @@ describe('Publication Flow Integration', () => {
     });
 
     it('should continue publishing despite individual entity errors', async () => {
-      let callCount = 0;
-
       mockFetch.mockImplementation((url, options) => {
-        callCount++;
-
-        // First character creation fails
-        if (url.includes('/characters') && options?.method === 'POST' && callCount === 2) {
+        // Character creation always fails
+        if (url.includes('/characters') && options?.method === 'POST') {
           return Promise.resolve({
             ok: false,
             status: 500,
@@ -695,8 +691,8 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        // Duplicate checks succeed
-        if (url.includes('?') && (!options?.method || options?.method === 'GET')) {
+        // List/search operations succeed with empty results
+        if (options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -754,8 +750,8 @@ describe('Publication Flow Integration', () => {
 
     it('should handle image upload errors gracefully', async () => {
       mockFetch.mockImplementation((url, options) => {
-        // Entity creation succeeds
-        if (url.includes('/characters') && url.includes('?')) {
+        // List/search operations succeed with empty results
+        if (url.includes('/characters') && options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -782,7 +778,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/locations') && url.includes('?')) {
+        if (url.includes('/locations') && options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -798,7 +794,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/items') && url.includes('?')) {
+        if (url.includes('/items') && options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),

@@ -145,7 +145,12 @@ function createMockServices() {
       uploadCharacterImage: vi.fn().mockResolvedValue({ success: true }),
       listCharacters: vi.fn().mockResolvedValue({ data: [] }),
       listLocations: vi.fn().mockResolvedValue({ data: [] }),
-      listItems: vi.fn().mockResolvedValue({ data: [] })
+      listItems: vi.fn().mockResolvedValue({ data: [] }),
+      preFetchEntities: vi.fn().mockResolvedValue({
+        characters: { data: [] },
+        locations: { data: [] },
+        items: { data: [] }
+      })
     },
     narrativeExporter: {
       export: vi.fn().mockReturnValue({
@@ -605,9 +610,10 @@ describe('SessionOrchestrator', () => {
     it('should fetch existing Kanka entities to avoid duplicates', async () => {
       await orchestrator._extractEntities();
 
-      expect(mockServices.kankaService.listCharacters).toHaveBeenCalled();
-      expect(mockServices.kankaService.listLocations).toHaveBeenCalled();
-      expect(mockServices.kankaService.listItems).toHaveBeenCalled();
+      // Now uses preFetchEntities instead of individual list methods
+      expect(mockServices.kankaService.preFetchEntities).toHaveBeenCalledWith({
+        types: ['characters', 'locations', 'items']
+      });
     });
 
     it('should extract relationships if autoExtractRelationships enabled', async () => {

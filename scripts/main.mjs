@@ -295,16 +295,12 @@ function injectValidationButton(inputElement, targetName, validateFn) {
  * @param {jQuery} html - The rendered HTML element
  */
 Hooks.on('renderSettingsConfig', (app, html) => {
-  injectValidationButton(
-    html.find(`input[name="${MODULE_ID}.openaiApiKey"]`),
-    'openai',
-    () => Settings.validateOpenAIKey()
+  injectValidationButton(html.find(`input[name="${MODULE_ID}.openaiApiKey"]`), 'openai', () =>
+    Settings.validateOpenAIKey()
   );
 
-  injectValidationButton(
-    html.find(`input[name="${MODULE_ID}.kankaApiToken"]`),
-    'kanka',
-    () => Settings.validateKankaToken()
+  injectValidationButton(html.find(`input[name="${MODULE_ID}.kankaApiToken"]`), 'kanka', () =>
+    Settings.validateKankaToken()
   );
 
   // Inject dynamic campaign dropdown to replace text input for kankaCampaignId
@@ -333,8 +329,9 @@ Hooks.on('renderSettingsConfig', (app, html) => {
      * Load Kanka campaigns into the dropdown
      */
     async function loadCampaigns() {
-      const token = html.find(`input[name="${MODULE_ID}.kankaApiToken"]`).val()
-        || Settings.get('kankaApiToken');
+      const token =
+        html.find(`input[name="${MODULE_ID}.kankaApiToken"]`).val() ||
+        Settings.get('kankaApiToken');
 
       if (!token || token.trim().length === 0) {
         campaignSelect.html(

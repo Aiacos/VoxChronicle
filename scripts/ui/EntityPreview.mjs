@@ -38,6 +38,30 @@ const PreviewMode = {
 };
 
 /**
+ * Number of entities to process before forcing a render during batched operations
+ *
+ * This count-based threshold prevents render starvation when processing many entities
+ * rapidly. When this many entities have been processed since the last render, a new
+ * render is triggered regardless of time elapsed.
+ *
+ * @constant {number}
+ * @default 3
+ */
+const RENDER_BATCH_SIZE = 3;
+
+/**
+ * Minimum time interval (in milliseconds) between renders during batched operations
+ *
+ * This time-based threshold prevents excessive render spam when entities are processed
+ * slowly. Renders will occur at most once per interval, reducing CPU usage and improving
+ * UI responsiveness during entity creation.
+ *
+ * @constant {number}
+ * @default 500
+ */
+const RENDER_BATCH_INTERVAL_MS = 500;
+
+/**
  * EntityPreview Application class
  * Provides UI for reviewing extracted entities before publishing to Kanka
  */
@@ -122,6 +146,34 @@ class EntityPreview extends Application {
    * @private
    */
   _imageLoadingStates = new Map();
+
+  /**
+   * Timestamp of the last render call (for batching)
+   * @type {number}
+   * @private
+   */
+  _lastRenderTime = 0;
+
+  /**
+   * Counter for entities processed since last render (for batching)
+   * @type {number}
+   * @private
+   */
+  _renderBatchCounter = 0;
+
+  /**
+   * Whether a deferred render is pending
+   * @type {boolean}
+   * @private
+   */
+  _pendingRender = false;
+
+  /**
+   * Timeout ID for deferred render
+   * @type {number|null}
+   * @private
+   */
+  _renderTimeout = null;
 
   /**
    * Get default options for the Application
@@ -285,6 +337,95 @@ class EntityPreview extends Application {
       ? relationType.charAt(0).toUpperCase() + relationType.slice(1)
       : 'Unknown';
     return game.i18n?.localize(`VOXCHRONICLE.RelationshipGraph.${typeKey}`) || typeKey;
+  }
+
+  /**
+   * Batched render helper - throttles render() calls during entity creation
+   *
+   * Uses hybrid time and count-based batching to reduce excessive re-renders.
+   * Renders will occur immediately if either:
+   * - RENDER_BATCH_INTERVAL_MS milliseconds have passed since last render, OR
+   * - RENDER_BATCH_SIZE entities have been processed since last render
+   *
+   * Otherwise, schedules a deferred render to occur after the remaining time interval.
+   * This prevents both render spam (too frequent) and render starvation (too infrequent).
+   *
+   * Side effects:
+   * - Increments _renderBatchCounter
+   * - May update _lastRenderTime
+   * - May set/clear _renderTimeout and _pendingRender
+   * - May trigger immediate or deferred render()
+   *
+   * @private
+   */
+  _batchedRender() {
+    const now = Date.now();
+    const timeSinceLastRender = now - this._lastRenderTime;
+
+    // Increment batch counter
+    this._renderBatchCounter++;
+
+    // Check if we should render immediately (time threshold OR count threshold exceeded)
+    const shouldRenderNow =
+      timeSinceLastRender >= RENDER_BATCH_INTERVAL_MS ||
+      this._renderBatchCounter >= RENDER_BATCH_SIZE;
+
+    if (shouldRenderNow) {
+      // Clear any pending deferred render
+      if (this._renderTimeout !== null) {
+        clearTimeout(this._renderTimeout);
+        this._renderTimeout = null;
+        this._pendingRender = false;
+      }
+
+      // Render immediately
+      this.render(false);
+      this._lastRenderTime = now;
+      this._renderBatchCounter = 0;
+    } else if (!this._pendingRender) {
+      // Schedule a deferred render
+      this._pendingRender = true;
+      this._renderTimeout = setTimeout(() => {
+        this._pendingRender = false;
+        this._renderTimeout = null;
+        this.render(false);
+        this._lastRenderTime = Date.now();
+        this._renderBatchCounter = 0;
+      }, RENDER_BATCH_INTERVAL_MS - timeSinceLastRender);
+    }
+  }
+
+  /**
+   * Flush any pending renders and force an immediate render
+   *
+   * Cancels any deferred render scheduled by _batchedRender() and forces
+   * an immediate render() call. This ensures the final UI state is always
+   * displayed, even if it falls within the batching interval.
+   *
+   * Should be called when entity creation completes (success or failure)
+   * to guarantee the user sees the final progress and results.
+   *
+   * Side effects:
+   * - Clears _renderTimeout if set
+   * - Resets _pendingRender to false
+   * - Triggers immediate render()
+   * - Updates _lastRenderTime
+   * - Resets _renderBatchCounter to 0
+   *
+   * @private
+   */
+  _flushRender() {
+    // Clear any pending deferred render
+    if (this._renderTimeout !== null) {
+      clearTimeout(this._renderTimeout);
+      this._renderTimeout = null;
+      this._pendingRender = false;
+    }
+
+    // Force immediate render
+    this.render(false);
+    this._lastRenderTime = Date.now();
+    this._renderBatchCounter = 0;
   }
 
   /**
@@ -625,7 +766,7 @@ class EntityPreview extends Application {
     for (const character of selectedEntities.characters) {
       try {
         this._progress.message = `Creating character: ${character.name}`;
-        this.render(false);
+        this._batchedRender();
 
         const result = await kankaService.createCharacter({
           name: character.name,
@@ -646,7 +787,7 @@ class EntityPreview extends Application {
         });
 
         this._progress.current++;
-        this.render(false);
+        this._batchedRender();
       } catch (error) {
         this._logger.error(`Failed to create character ${character.name}:`, error);
         this._results.failed.push({
@@ -662,7 +803,7 @@ class EntityPreview extends Application {
     for (const location of selectedEntities.locations) {
       try {
         this._progress.message = `Creating location: ${location.name}`;
-        this.render(false);
+        this._batchedRender();
 
         const result = await kankaService.createLocation({
           name: location.name,
@@ -683,7 +824,7 @@ class EntityPreview extends Application {
         });
 
         this._progress.current++;
-        this.render(false);
+        this._batchedRender();
       } catch (error) {
         this._logger.error(`Failed to create location ${location.name}:`, error);
         this._results.failed.push({
@@ -699,7 +840,7 @@ class EntityPreview extends Application {
     for (const item of selectedEntities.items) {
       try {
         this._progress.message = `Creating item: ${item.name}`;
-        this.render(false);
+        this._batchedRender();
 
         const result = await kankaService.createItem({
           name: item.name,
@@ -720,7 +861,7 @@ class EntityPreview extends Application {
         });
 
         this._progress.current++;
-        this.render(false);
+        this._batchedRender();
       } catch (error) {
         this._logger.error(`Failed to create item ${item.name}:`, error);
         this._results.failed.push({
@@ -734,6 +875,9 @@ class EntityPreview extends Application {
 
     // Create relationships after all entities are created
     await this._createRelationshipsInKanka(entityNameToId, kankaService);
+
+    // Flush any pending renders to ensure final state is displayed
+    this._flushRender();
 
     // Show notification
     if (this._results.created.length > 0) {
@@ -816,13 +960,13 @@ class EntityPreview extends Application {
     for (const [sourceEntityId, relations] of relationshipsBySource.entries()) {
       try {
         this._progress.message = `Creating ${relations.length} relationship(s) from entity ${sourceEntityId}`;
-        this.render(false);
+        this._batchedRender();
 
         const results = await kankaService.batchCreateRelations(sourceEntityId, relations, {
           continueOnError: true,
           onProgress: (current, total) => {
             this._progress.message = `Creating relationships (${current}/${total})`;
-            this.render(false);
+            this._batchedRender();
           }
         });
 

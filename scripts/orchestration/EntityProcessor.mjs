@@ -196,21 +196,20 @@ class EntityProcessor {
     const names = [];
 
     try {
-      // Fetch first page of each entity type
-      const [characters, locations, items] = await Promise.all([
-        this._kankaService.listCharacters({ page: 1 }),
-        this._kankaService.listLocations({ page: 1 }),
-        this._kankaService.listItems({ page: 1 })
-      ]);
+      // Pre-fetch entity types (uses cache if valid, otherwise fetches fresh)
+      const entities = await this._kankaService.preFetchEntities({
+        types: ['characters', 'locations', 'items']
+      });
 
-      if (characters?.data) {
-        names.push(...characters.data.map((c) => c.name));
+      // Extract names from each entity type
+      if (entities.characters?.data) {
+        names.push(...entities.characters.data.map((c) => c.name));
       }
-      if (locations?.data) {
-        names.push(...locations.data.map((l) => l.name));
+      if (entities.locations?.data) {
+        names.push(...entities.locations.data.map((l) => l.name));
       }
-      if (items?.data) {
-        names.push(...items.data.map((i) => i.name));
+      if (entities.items?.data) {
+        names.push(...entities.items.data.map((i) => i.name));
       }
 
       this._logger.debug(`Found ${names.length} existing entities in Kanka`);
