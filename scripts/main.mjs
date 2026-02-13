@@ -41,6 +41,41 @@ async function getRecorderControls() {
 }
 
 /**
+ * Tool handler functions shared between Foundry v13 and v11/v12 scene controls.
+ * Each handler opens the corresponding UI panel.
+ * @type {Object<string, Function>}
+ */
+const toolHandlers = {
+  recorder: async () => {
+    const recorder = await getRecorderControls();
+    recorder.render(true, { focus: true });
+  },
+  speakerLabels: async () => {
+    const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
+    const speakerLabeling = new SpeakerLabeling();
+    speakerLabeling.render(true, { focus: true });
+  },
+  vocabulary: async () => {
+    const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
+    const vocabularyManager = new VocabularyManager();
+    vocabularyManager.render(true, { focus: true });
+  },
+  relationshipGraph: async () => {
+    const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
+    const graph = new RelationshipGraph();
+    graph.render(true, { focus: true });
+  },
+  settings: () => {
+    const app = new SettingsConfig();
+    app.render(true, { focus: true });
+    setTimeout(() => {
+      const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
+      if (section) section.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }
+};
+
+/**
  * Initialize module - called when Foundry VTT initializes
  * This hook fires before the game is fully ready
  * Use this for registering settings and preparing the module
@@ -115,10 +150,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
           title: 'VOXCHRONICLE.Controls.Recorder',
           order: 0,
           button: true,
-          onChange: async () => {
-            const recorder = await getRecorderControls();
-            recorder.render(true, { focus: true });
-          }
+          onChange: toolHandlers.recorder
         },
         speakerLabels: {
           name: 'speakerLabels',
@@ -126,11 +158,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
           title: 'VOXCHRONICLE.Controls.SpeakerLabels',
           order: 1,
           button: true,
-          onChange: async () => {
-            const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
-            const speakerLabeling = new SpeakerLabeling();
-            speakerLabeling.render(true, { focus: true });
-          }
+          onChange: toolHandlers.speakerLabels
         },
         vocabulary: {
           name: 'vocabulary',
@@ -138,11 +166,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
           title: 'VOXCHRONICLE.Controls.Vocabulary',
           order: 2,
           button: true,
-          onChange: async () => {
-            const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
-            const vocabularyManager = new VocabularyManager();
-            vocabularyManager.render(true, { focus: true });
-          }
+          onChange: toolHandlers.vocabulary
         },
         relationshipGraph: {
           name: 'relationshipGraph',
@@ -150,11 +174,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
           title: 'VOXCHRONICLE.Controls.RelationshipGraph',
           order: 3,
           button: true,
-          onChange: async () => {
-            const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
-            const graph = new RelationshipGraph();
-            graph.render(true, { focus: true });
-          }
+          onChange: toolHandlers.relationshipGraph
         },
         settings: {
           name: 'settings',
@@ -162,14 +182,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
           title: 'VOXCHRONICLE.Controls.Settings',
           order: 4,
           button: true,
-          onChange: () => {
-            const app = new SettingsConfig();
-            app.render(true, { focus: true });
-            setTimeout(() => {
-              const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
-              if (section) section.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }
+          onChange: toolHandlers.settings
         }
       }
     };
@@ -187,57 +200,35 @@ Hooks.on('getSceneControlButtons', (controls) => {
           title: 'VOXCHRONICLE.Controls.Recorder',
           icon: 'fa-solid fa-microphone',
           button: true,
-          onClick: async () => {
-            const recorder = await getRecorderControls();
-            recorder.render(true, { focus: true });
-          }
+          onClick: toolHandlers.recorder
         },
         {
           name: 'speaker-labels',
           title: 'VOXCHRONICLE.Controls.SpeakerLabels',
           icon: 'fa-solid fa-users',
           button: true,
-          onClick: async () => {
-            const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
-            const speakerLabeling = new SpeakerLabeling();
-            speakerLabeling.render(true, { focus: true });
-          }
+          onClick: toolHandlers.speakerLabels
         },
         {
           name: 'vocabulary',
           title: 'VOXCHRONICLE.Controls.Vocabulary',
           icon: 'fa-solid fa-book',
           button: true,
-          onClick: async () => {
-            const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
-            const vocabularyManager = new VocabularyManager();
-            vocabularyManager.render(true, { focus: true });
-          }
+          onClick: toolHandlers.vocabulary
         },
         {
           name: 'relationship-graph',
           title: 'VOXCHRONICLE.Controls.RelationshipGraph',
           icon: 'fa-solid fa-project-diagram',
           button: true,
-          onClick: async () => {
-            const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
-            const graph = new RelationshipGraph();
-            graph.render(true, { focus: true });
-          }
+          onClick: toolHandlers.relationshipGraph
         },
         {
           name: 'settings',
           title: 'VOXCHRONICLE.Controls.Settings',
           icon: 'fa-solid fa-cog',
           button: true,
-          onClick: () => {
-            const app = new SettingsConfig();
-            app.render(true, { focus: true });
-            setTimeout(() => {
-              const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
-              if (section) section.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }
+          onClick: toolHandlers.settings
         }
       ]
     });
