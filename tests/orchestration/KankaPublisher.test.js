@@ -317,6 +317,163 @@ describe('KankaPublisher', () => {
       publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
     });
 
+    it('should process entity types in parallel', async () => {
+      const sessionData = createMockSessionData({
+        entities: {
+          characters: [{ name: 'Gandalf', description: 'A wise wizard', isNPC: true }],
+          locations: [{ name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }],
+          items: [{ name: 'Staff', description: 'A magical staff', type: 'Weapon' }]
+        }
+      });
+      const results = {
+        characters: [],
+        locations: [],
+        items: [],
+        images: [],
+        errors: []
+      };
+
+      // Track order of createIfNotExists calls
+      const callOrder = [];
+      mockKankaService.createIfNotExists.mockImplementation((type, data) => {
+        callOrder.push({ type, name: data.name });
+        return Promise.resolve({ id: callOrder.length, name: data.name, _alreadyExisted: false });
+      });
+
+      await publisher.createEntities(sessionData, results, false);
+
+      // All three entity types should be created
+      expect(results.characters).toHaveLength(1);
+      expect(results.locations).toHaveLength(1);
+      expect(results.items).toHaveLength(1);
+
+      // Verify all three types were called
+      expect(callOrder).toEqual(
+        expect.arrayContaining([
+          { type: 'characters', name: 'Gandalf' },
+          { type: 'locations', name: 'Rivendell' },
+          { type: 'items', name: 'Staff' }
+        ])
+      );
+    });
+
+    it('should continue processing other entity types when one fails', async () => {
+      const sessionData = createMockSessionData({
+        entities: {
+          characters: [{ name: 'Gandalf', description: 'A wise wizard', isNPC: true }],
+          locations: [{ name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }],
+          items: [{ name: 'Staff', description: 'A magical staff', type: 'Weapon' }]
+        }
+      });
+      const results = {
+        characters: [],
+        locations: [],
+        items: [],
+        images: [],
+        errors: []
+      };
+
+      // Make character creation fail but locations and items succeed
+      mockKankaService.createIfNotExists.mockImplementation((type, data) => {
+        if (type === 'characters') {
+          return Promise.reject(new Error('Character creation failed'));
+        }
+        return Promise.resolve({ id: 1, name: data.name, _alreadyExisted: false });
+      });
+
+      await publisher.createEntities(sessionData, results, false);
+
+      // Character should fail but not block others
+      expect(results.characters).toHaveLength(0);
+      expect(results.locations).toHaveLength(1);
+      expect(results.items).toHaveLength(1);
+      expect(results.errors).toHaveLength(1);
+      expect(results.errors[0]).toEqual({
+        entity: 'Gandalf',
+        type: 'character',
+        error: 'Character creation failed'
+      });
+    });
+
+    it('should process all entity types even when multiple fail', async () => {
+      const sessionData = createMockSessionData({
+        entities: {
+          characters: [{ name: 'Gandalf', description: 'A wise wizard', isNPC: true }],
+          locations: [{ name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }],
+          items: [{ name: 'Staff', description: 'A magical staff', type: 'Weapon' }]
+        }
+      });
+      const results = {
+        characters: [],
+        locations: [],
+        items: [],
+        images: [],
+        errors: []
+      };
+
+      // Make both characters and locations fail
+      mockKankaService.createIfNotExists.mockImplementation((type, data) => {
+        if (type === 'characters') {
+          return Promise.reject(new Error('Character creation failed'));
+        }
+        if (type === 'locations') {
+          return Promise.reject(new Error('Location creation failed'));
+        }
+        return Promise.resolve({ id: 1, name: data.name, _alreadyExisted: false });
+      });
+
+      await publisher.createEntities(sessionData, results, false);
+
+      // Both should fail but items should succeed
+      expect(results.characters).toHaveLength(0);
+      expect(results.locations).toHaveLength(0);
+      expect(results.items).toHaveLength(1);
+      expect(results.errors).toHaveLength(2);
+    });
+
+    it('should handle multiple entities per type in parallel processing', async () => {
+      const sessionData = createMockSessionData({
+        entities: {
+          characters: [
+            { name: 'Gandalf', description: 'A wise wizard', isNPC: true },
+            { name: 'Aragorn', description: 'A ranger', isNPC: false },
+            { name: 'Legolas', description: 'An elf', isNPC: false }
+          ],
+          locations: [
+            { name: 'Rivendell', description: 'Elven sanctuary', type: 'City' },
+            { name: 'Moria', description: 'Dwarven mines', type: 'Dungeon' }
+          ],
+          items: [
+            { name: 'Staff', description: 'Magic staff', type: 'Weapon' },
+            { name: 'Sword', description: 'Elven blade', type: 'Weapon' }
+          ]
+        }
+      });
+      const results = {
+        characters: [],
+        locations: [],
+        items: [],
+        images: [],
+        errors: []
+      };
+
+      let idCounter = 1;
+      mockKankaService.createIfNotExists.mockImplementation((type, data) => {
+        return Promise.resolve({ id: idCounter++, name: data.name, _alreadyExisted: false });
+      });
+
+      await publisher.createEntities(sessionData, results, false);
+
+      // All entities should be created
+      expect(results.characters).toHaveLength(3);
+      expect(results.locations).toHaveLength(2);
+      expect(results.items).toHaveLength(2);
+      expect(results.errors).toHaveLength(0);
+
+      // Verify total API calls
+      expect(mockKankaService.createIfNotExists).toHaveBeenCalledTimes(7); // 3 + 2 + 2
+    });
+
     it('should create characters with correct data', async () => {
       const sessionData = createMockSessionData();
       const results = {

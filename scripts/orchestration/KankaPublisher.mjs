@@ -177,6 +177,10 @@ class KankaPublisher {
   /**
    * Create entities in Kanka
    *
+   * Processes entity types (characters, locations, items) in parallel for improved performance.
+   * Each entity type is processed independently, allowing concurrent API calls while respecting
+   * rate limits through KankaService's built-in throttling.
+   *
    * @param {SessionData} sessionData - Session data containing entities
    * @param {KankaPublishResult} results - Results object to populate
    * @param {boolean} uploadImages - Whether to upload images
@@ -190,8 +194,10 @@ class KankaPublisher {
       return;
     }
 
-    // Create characters
-    if (entities.characters?.length > 0) {
+    // Create helper functions for each entity type
+    const createCharacters = async () => {
+      if (!entities.characters?.length) return;
+
       this._reportProgress(20, 'Creating characters...');
 
       for (const character of entities.characters) {
@@ -225,10 +231,11 @@ class KankaPublisher {
           results.errors.push({ entity: character.name, type: 'character', error: error.message });
         }
       }
-    }
+    };
 
-    // Create locations
-    if (entities.locations?.length > 0) {
+    const createLocations = async () => {
+      if (!entities.locations?.length) return;
+
       this._reportProgress(40, 'Creating locations...');
 
       for (const location of entities.locations) {
@@ -246,10 +253,11 @@ class KankaPublisher {
           results.errors.push({ entity: location.name, type: 'location', error: error.message });
         }
       }
-    }
+    };
 
-    // Create items
-    if (entities.items?.length > 0) {
+    const createItems = async () => {
+      if (!entities.items?.length) return;
+
       this._reportProgress(60, 'Creating items...');
 
       for (const item of entities.items) {
@@ -267,7 +275,11 @@ class KankaPublisher {
           results.errors.push({ entity: item.name, type: 'item', error: error.message });
         }
       }
-    }
+    };
+
+    // Process all entity types in parallel
+    // Using Promise.allSettled ensures one failure doesn't cancel other operations
+    await Promise.allSettled([createCharacters(), createLocations(), createItems()]);
   }
 
   /**
