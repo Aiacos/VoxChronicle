@@ -111,6 +111,34 @@ class RateLimiter {
     this._pausedUntil = null;
 
     /**
+     * Total number of requests made (lifetime counter)
+     * @type {number}
+     * @private
+     */
+    this._totalRequests = 0;
+
+    /**
+     * Array of wait times in milliseconds for averaging
+     * @type {number[]}
+     * @private
+     */
+    this._waitTimes = [];
+
+    /**
+     * Maximum queue length observed
+     * @type {number}
+     * @private
+     */
+    this._peakQueueLength = 0;
+
+    /**
+     * Total number of retries across all requests
+     * @type {number}
+     * @private
+     */
+    this._retryCount = 0;
+
+    /**
      * Logger for this instance
      * @type {object}
      * @private
