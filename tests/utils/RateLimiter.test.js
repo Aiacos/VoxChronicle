@@ -534,7 +534,11 @@ describe('RateLimiter', () => {
         remainingRequests: 30,
         queueLength: 0,
         isPaused: false,
-        pausedUntil: null
+        pausedUntil: null,
+        totalRequests: 0,
+        averageWaitTime: 0,
+        peakQueueLength: 0,
+        retryCount: 0
       });
     });
 
@@ -554,6 +558,114 @@ describe('RateLimiter', () => {
       expect(stats.remainingRequests).toBe(28);
       expect(stats.isPaused).toBe(true);
       expect(stats.pausedUntil).toBeTruthy();
+    });
+
+    it('should track totalRequests metric', () => {
+      const limiter = new RateLimiter();
+
+      expect(limiter.getStats().totalRequests).toBe(0);
+
+      limiter._recordRequest();
+      expect(limiter.getStats().totalRequests).toBe(1);
+
+      limiter._recordRequest();
+      limiter._recordRequest();
+      expect(limiter.getStats().totalRequests).toBe(3);
+    });
+
+    it('should track peakQueueLength metric', () => {
+      const limiter = new RateLimiter({ requestsPerMinute: 1 }); // Very slow
+
+      expect(limiter.getStats().peakQueueLength).toBe(0);
+
+      // Pause limiter to prevent queue processing
+      limiter.pause(10000);
+
+      // Add requests to queue (they won't process due to pause)
+      limiter.throttle(async () => 'test1');
+      limiter.throttle(async () => 'test2');
+      limiter.throttle(async () => 'test3');
+
+      const stats = limiter.getStats();
+      expect(stats.peakQueueLength).toBe(3);
+    });
+
+    it('should calculate averageWaitTime from queued requests', async () => {
+      const limiter = new RateLimiter({ requestsPerMinute: 60 });
+
+      // Initially no wait times
+      expect(limiter.getStats().averageWaitTime).toBe(0);
+
+      // Manually add wait times to simulate queued requests
+      limiter._waitTimes.push(100);
+      limiter._waitTimes.push(200);
+      limiter._waitTimes.push(300);
+
+      const stats = limiter.getStats();
+      expect(stats.averageWaitTime).toBe(200); // (100 + 200 + 300) / 3
+    });
+
+    it('should limit waitTimes array to 1000 entries to prevent memory leak', () => {
+      const limiter = new RateLimiter({ requestsPerMinute: 60 });
+
+      // Simulate 1500 requests with wait times
+      for (let i = 0; i < 1500; i++) {
+        limiter._waitTimes.push(100 + i);
+
+        // Trigger size limiting (automatic after fix)
+        if (limiter._waitTimes.length > 1000) {
+          limiter._waitTimes.shift();
+        }
+      }
+
+      // Verify array is capped at 1000
+      expect(limiter._waitTimes.length).toBe(1000);
+
+      // Verify oldest entries were removed (FIFO behavior)
+      expect(limiter._waitTimes[0]).toBe(600); // 100 + 500 (first 500 removed)
+      expect(limiter._waitTimes[999]).toBe(1599); // 100 + 1499 (last entry)
+    });
+
+    it('should track retryCount metric', () => {
+      const limiter = new RateLimiter();
+
+      expect(limiter.getStats().retryCount).toBe(0);
+
+      // Manually increment retry count to simulate retries
+      limiter._retryCount++;
+      expect(limiter.getStats().retryCount).toBe(1);
+
+      limiter._retryCount += 2;
+      expect(limiter.getStats().retryCount).toBe(3);
+    });
+
+    it('should reset all metrics when reset is called', () => {
+      const limiter = new RateLimiter();
+
+      // Add some activity
+      limiter._recordRequest();
+      limiter._recordRequest();
+      limiter._waitTimes.push(100);
+      limiter._waitTimes.push(200);
+      limiter._peakQueueLength = 5;
+      limiter._retryCount = 3;
+
+      // Verify metrics are set
+      let stats = limiter.getStats();
+      expect(stats.totalRequests).toBe(2);
+      expect(stats.averageWaitTime).toBeGreaterThan(0);
+      expect(stats.peakQueueLength).toBe(5);
+      expect(stats.retryCount).toBe(3);
+
+      // Reset
+      limiter.reset();
+
+      // Verify all metrics are cleared
+      stats = limiter.getStats();
+      expect(stats.totalRequests).toBe(0);
+      expect(stats.averageWaitTime).toBe(0);
+      expect(stats.peakQueueLength).toBe(0);
+      expect(stats.retryCount).toBe(0);
     });
   });
 

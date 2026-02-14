@@ -111,6 +111,34 @@ class RateLimiter {
     this._pausedUntil = null;
 
     /**
+     * Total number of requests made (lifetime counter)
+     * @type {number}
+     * @private
+     */
+    this._totalRequests = 0;
+
+    /**
+     * Array of wait times in milliseconds for averaging
+     * @type {number[]}
+     * @private
+     */
+    this._waitTimes = [];
+
+    /**
+     * Maximum queue length observed
+     * @type {number}
+     * @private
+     */
+    this._peakQueueLength = 0;
+
+    /**
+     * Total number of retries across all requests
+     * @type {number}
+     * @private
+     */
+    this._retryCount = 0;
+
+    /**
      * Logger for this instance
      * @type {object}
      * @private
@@ -236,6 +264,7 @@ class RateLimiter {
   _recordRequest() {
     this._requestTimestamps.push(Date.now());
     this._cleanupOldTimestamps();
+    this._totalRequests++;
   }
 
   /**
@@ -275,13 +304,19 @@ class RateLimiter {
         return;
       }
 
-      // Add to queue
+      // Add to queue with timestamp for wait time tracking
       this._queue.push({
         resolve,
         reject,
         fn,
-        retries: 0
+        retries: 0,
+        enqueuedAt: Date.now()
       });
+
+      // Track peak queue length
+      if (this._queue.length > this._peakQueueLength) {
+        this._peakQueueLength = this._queue.length;
+      }
 
       this._logger.debug(`Request queued. Queue length: ${this._queue.length}`);
 
@@ -385,6 +420,17 @@ class RateLimiter {
           break;
         }
 
+        // Track wait time if timestamp available
+        if (item.enqueuedAt) {
+          const waitTime = Date.now() - item.enqueuedAt;
+          this._waitTimes.push(waitTime);
+
+          // Keep only last 1000 entries to prevent memory growth
+          if (this._waitTimes.length > 1000) {
+            this._waitTimes.shift();
+          }
+        }
+
         // Execute the request
         try {
           this._recordRequest();
@@ -402,6 +448,7 @@ class RateLimiter {
             // Re-queue the request if retries available
             if (item.retries < this._maxRetries) {
               item.retries++;
+              this._retryCount++;
               this._queue.unshift(item);
               this._logger.info(
                 `Re-queued request for retry (attempt ${item.retries}/${this._maxRetries})`
@@ -466,6 +513,10 @@ class RateLimiter {
     this.clear();
     this._paused = false;
     this._pausedUntil = null;
+    this._totalRequests = 0;
+    this._waitTimes = [];
+    this._peakQueueLength = 0;
+    this._retryCount = 0;
     this._logger.info('Rate limiter reset');
   }
 
@@ -484,7 +535,18 @@ class RateLimiter {
   /**
    * Get current limiter statistics
    *
-   * @returns {object} Statistics object
+   * @returns {object} Statistics object with rate limiter metrics
+   * @property {string} name - Name of this rate limiter instance
+   * @property {number} requestsPerMinute - Configured rate limit (requests per minute)
+   * @property {number} currentWindowRequests - Number of requests in current sliding window
+   * @property {number} remainingRequests - Available request slots in current window
+   * @property {number} queueLength - Current number of requests waiting in queue
+   * @property {boolean} isPaused - Whether the limiter is currently paused
+   * @property {string|null} pausedUntil - ISO timestamp when pause will end, or null if not paused
+   * @property {number} totalRequests - Total number of requests processed (lifetime counter)
+   * @property {number} averageWaitTime - Average wait time in milliseconds for queued requests
+   * @property {number} peakQueueLength - Maximum queue length observed during lifetime
+   * @property {number} retryCount - Total number of retries across all requests
    */
   getStats() {
     return {
@@ -494,7 +556,13 @@ class RateLimiter {
       remainingRequests: this.remainingRequests,
       queueLength: this.queueLength,
       isPaused: this.isPaused,
-      pausedUntil: this._pausedUntil ? new Date(this._pausedUntil).toISOString() : null
+      pausedUntil: this._pausedUntil ? new Date(this._pausedUntil).toISOString() : null,
+      totalRequests: this._totalRequests,
+      averageWaitTime: this._waitTimes.length > 0
+        ? this._waitTimes.reduce((a, b) => a + b, 0) / this._waitTimes.length
+        : 0,
+      peakQueueLength: this._peakQueueLength,
+      retryCount: this._retryCount
     };
   }
 }
