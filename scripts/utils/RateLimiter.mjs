@@ -424,6 +424,11 @@ class RateLimiter {
         if (item.enqueuedAt) {
           const waitTime = Date.now() - item.enqueuedAt;
           this._waitTimes.push(waitTime);
+
+          // Keep only last 1000 entries to prevent memory growth
+          if (this._waitTimes.length > 1000) {
+            this._waitTimes.shift();
+          }
         }
 
         // Execute the request
@@ -531,17 +536,17 @@ class RateLimiter {
    * Get current limiter statistics
    *
    * @returns {object} Statistics object with rate limiter metrics
-   * @returns {string} return.name - Name of this rate limiter instance
-   * @returns {number} return.requestsPerMinute - Configured rate limit (requests per minute)
-   * @returns {number} return.currentWindowRequests - Number of requests in current sliding window
-   * @returns {number} return.remainingRequests - Available request slots in current window
-   * @returns {number} return.queueLength - Current number of requests waiting in queue
-   * @returns {boolean} return.isPaused - Whether the limiter is currently paused
-   * @returns {string|null} return.pausedUntil - ISO timestamp when pause will end, or null if not paused
-   * @returns {number} return.totalRequests - Total number of requests processed (lifetime counter)
-   * @returns {number} return.averageWaitTime - Average wait time in milliseconds for queued requests
-   * @returns {number} return.peakQueueLength - Maximum queue length observed during lifetime
-   * @returns {number} return.retryCount - Total number of retries across all requests
+   * @property {string} name - Name of this rate limiter instance
+   * @property {number} requestsPerMinute - Configured rate limit (requests per minute)
+   * @property {number} currentWindowRequests - Number of requests in current sliding window
+   * @property {number} remainingRequests - Available request slots in current window
+   * @property {number} queueLength - Current number of requests waiting in queue
+   * @property {boolean} isPaused - Whether the limiter is currently paused
+   * @property {string|null} pausedUntil - ISO timestamp when pause will end, or null if not paused
+   * @property {number} totalRequests - Total number of requests processed (lifetime counter)
+   * @property {number} averageWaitTime - Average wait time in milliseconds for queued requests
+   * @property {number} peakQueueLength - Maximum queue length observed during lifetime
+   * @property {number} retryCount - Total number of retries across all requests
    */
   getStats() {
     return {
@@ -553,7 +558,9 @@ class RateLimiter {
       isPaused: this.isPaused,
       pausedUntil: this._pausedUntil ? new Date(this._pausedUntil).toISOString() : null,
       totalRequests: this._totalRequests,
-      averageWaitTime: this._waitTimes.length > 0 ? this._waitTimes.reduce((a, b) => a + b, 0) / this._waitTimes.length : 0,
+      averageWaitTime: this._waitTimes.length > 0
+        ? this._waitTimes.reduce((a, b) => a + b, 0) / this._waitTimes.length
+        : 0,
       peakQueueLength: this._peakQueueLength,
       retryCount: this._retryCount
     };

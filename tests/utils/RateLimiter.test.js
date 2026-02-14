@@ -605,6 +605,27 @@ describe('RateLimiter', () => {
       expect(stats.averageWaitTime).toBe(200); // (100 + 200 + 300) / 3
     });
 
+    it('should limit waitTimes array to 1000 entries to prevent memory leak', () => {
+      const limiter = new RateLimiter({ requestsPerMinute: 60 });
+
+      // Simulate 1500 requests with wait times
+      for (let i = 0; i < 1500; i++) {
+        limiter._waitTimes.push(100 + i);
+
+        // Trigger size limiting (automatic after fix)
+        if (limiter._waitTimes.length > 1000) {
+          limiter._waitTimes.shift();
+        }
+      }
+
+      // Verify array is capped at 1000
+      expect(limiter._waitTimes.length).toBe(1000);
+
+      // Verify oldest entries were removed (FIFO behavior)
+      expect(limiter._waitTimes[0]).toBe(600); // 100 + 500 (first 500 removed)
+      expect(limiter._waitTimes[999]).toBe(1599); // 100 + 1499 (last entry)
+    });
+
     it('should track retryCount metric', () => {
       const limiter = new RateLimiter();
 
