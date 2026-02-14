@@ -989,4 +989,152 @@ describe('KankaEntityManager', () => {
       await expect(manager.searchEntities('Dragon', 'characters')).rejects.toThrow(apiError);
     });
   });
+
+  // ============================================================================
+  // searchEntities Caching Tests
+  // ============================================================================
+
+  describe('searchEntities caching', () => {
+    it('should make API call on cache miss (first search)', async () => {
+      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+
+      mockGet.mockResolvedValue({ data: mockResults });
+
+      const result = await manager.searchEntities('Dragon', 'characters');
+
+      // Should call API on first search (cache miss)
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?name=Dragon');
+      expect(result).toEqual(mockResults);
+    });
+
+    it('should use cache on second search (cache hit)', async () => {
+      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+
+      mockGet.mockResolvedValue({ data: mockResults });
+
+      // First search - cache miss
+      const result1 = await manager.searchEntities('Dragon', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(result1).toEqual(mockResults);
+
+      // Second search - cache hit
+      const result2 = await manager.searchEntities('Dragon', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(1); // Still only 1 call (no new API call)
+      expect(result2).toEqual(mockResults);
+      expect(result2).toBe(result1); // Should return same cached array
+    });
+
+    it('should maintain separate caches for different queries', async () => {
+      const dragonResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      const knightResults = [createMockEntity('character', { id: 2, name: 'Knight Commander' })];
+
+      mockGet
+        .mockResolvedValueOnce({ data: dragonResults })
+        .mockResolvedValueOnce({ data: knightResults });
+
+      // Search for "Dragon"
+      const result1 = await manager.searchEntities('Dragon', 'characters');
+      expect(result1).toEqual(dragonResults);
+      expect(mockGet).toHaveBeenCalledTimes(1);
+
+      // Search for "Knight" - different query, should call API
+      const result2 = await manager.searchEntities('Knight', 'characters');
+      expect(result2).toEqual(knightResults);
+      expect(mockGet).toHaveBeenCalledTimes(2);
+
+      // Search for "Dragon" again - should use cache
+      const result3 = await manager.searchEntities('Dragon', 'characters');
+      expect(result3).toEqual(dragonResults);
+      expect(mockGet).toHaveBeenCalledTimes(2); // No new API call
+    });
+
+    it('should maintain separate caches for specific vs all entity types', async () => {
+      const specificResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      const allTypesCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      const allTypesLocations = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
+
+      // First search - specific entity type
+      mockGet.mockResolvedValueOnce({ data: specificResults });
+      const result1 = await manager.searchEntities('Dragon', 'characters');
+      expect(result1).toEqual(specificResults);
+      expect(mockGet).toHaveBeenCalledTimes(1);
+
+      // Second search - all entity types (should not use cache from specific search)
+      mockGet
+        .mockResolvedValueOnce({ data: allTypesCharacters })
+        .mockResolvedValueOnce({ data: allTypesLocations })
+        .mockResolvedValue({ data: [] });
+
+      const result2 = await manager.searchEntities('Dragon');
+      expect(mockGet).toHaveBeenCalledTimes(7); // 1 + 6 for all types
+      expect(result2).toHaveLength(2);
+      expect(result2[0]).toHaveProperty('entity_type', 'characters');
+      expect(result2[1]).toHaveProperty('entity_type', 'locations');
+
+      // Third search - specific entity type again (should use first cache)
+      const result3 = await manager.searchEntities('Dragon', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(7); // No new API call
+      expect(result3).toEqual(specificResults);
+
+      // Fourth search - all entity types again (should use second cache)
+      const result4 = await manager.searchEntities('Dragon');
+      expect(mockGet).toHaveBeenCalledTimes(7); // No new API call
+      expect(result4).toEqual(result2);
+    });
+
+    it('should maintain separate caches for different specific entity types', async () => {
+      const characterResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      const locationResults = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
+
+      mockGet
+        .mockResolvedValueOnce({ data: characterResults })
+        .mockResolvedValueOnce({ data: locationResults });
+
+      // Search characters
+      const result1 = await manager.searchEntities('Dragon', 'characters');
+      expect(result1).toEqual(characterResults);
+      expect(mockGet).toHaveBeenCalledTimes(1);
+
+      // Search locations - different entity type, should call API
+      const result2 = await manager.searchEntities('Dragon', 'locations');
+      expect(result2).toEqual(locationResults);
+      expect(mockGet).toHaveBeenCalledTimes(2);
+
+      // Search characters again - should use cache
+      const result3 = await manager.searchEntities('Dragon', 'characters');
+      expect(result3).toEqual(characterResults);
+      expect(mockGet).toHaveBeenCalledTimes(2); // No new API call
+
+      // Search locations again - should use cache
+      const result4 = await manager.searchEntities('Dragon', 'locations');
+      expect(result4).toEqual(locationResults);
+      expect(mockGet).toHaveBeenCalledTimes(2); // No new API call
+    });
+
+    it('should cache empty results', async () => {
+      mockGet.mockResolvedValue({ data: [] });
+
+      // First search - cache miss
+      const result1 = await manager.searchEntities('NonExistent', 'characters');
+      expect(result1).toEqual([]);
+      expect(mockGet).toHaveBeenCalledTimes(1);
+
+      // Second search - cache hit (even for empty results)
+      const result2 = await manager.searchEntities('NonExistent', 'characters');
+      expect(result2).toEqual([]);
+      expect(mockGet).toHaveBeenCalledTimes(1); // No new API call
+    });
+
+    it('should not cache results for empty queries', async () => {
+      // Empty query returns early without caching
+      const result1 = await manager.searchEntities('');
+      expect(result1).toEqual([]);
+      expect(mockGet).not.toHaveBeenCalled();
+
+      // Check cache stats - should be empty
+      const stats = manager.getCacheStats();
+      expect(stats.entries).toBe(0);
+    });
+  });
 });
