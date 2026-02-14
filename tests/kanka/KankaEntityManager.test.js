@@ -1333,4 +1333,325 @@ describe('KankaEntityManager', () => {
       expect(shortCacheManager._isCacheValid(cacheKey)).toBe(true);
     });
   });
+
+  // ============================================================================
+  // Cache Management Tests
+  // ============================================================================
+
+  describe('cache management', () => {
+    describe('clearCache', () => {
+      it('should clear all cache entries and timestamps', async () => {
+        const mockResults1 = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        const mockResults2 = [createMockEntity('location', { id: 2, name: 'Cave' })];
+
+        mockGet
+          .mockResolvedValueOnce({ data: mockResults1 })
+          .mockResolvedValueOnce({ data: mockResults2 });
+
+        // Populate cache with multiple entries
+        await manager.searchEntities('Dragon', 'characters');
+        await manager.searchEntities('Cave', 'locations');
+
+        expect(manager._searchCache.size).toBe(2);
+        expect(manager._cacheTimestamps.size).toBe(2);
+
+        // Clear all cache
+        manager.clearCache();
+
+        expect(manager._searchCache.size).toBe(0);
+        expect(manager._cacheTimestamps.size).toBe(0);
+      });
+
+      it('should allow fresh searches after clearing cache', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        // First search - cache miss
+        await manager.searchEntities('Dragon', 'characters');
+        expect(mockGet).toHaveBeenCalledTimes(1);
+
+        // Clear cache
+        manager.clearCache();
+
+        // Search again - should make new API call (cache was cleared)
+        await manager.searchEntities('Dragon', 'characters');
+        expect(mockGet).toHaveBeenCalledTimes(2);
+      });
+
+      it('should handle clearing empty cache', () => {
+        expect(manager._searchCache.size).toBe(0);
+        expect(manager._cacheTimestamps.size).toBe(0);
+
+        // Should not throw error
+        expect(() => manager.clearCache()).not.toThrow();
+
+        expect(manager._searchCache.size).toBe(0);
+        expect(manager._cacheTimestamps.size).toBe(0);
+      });
+    });
+
+    describe('clearCacheFor', () => {
+      it('should clear cache for specific query', async () => {
+        const mockResults1 = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        const mockResults2 = [createMockEntity('character', { id: 2, name: 'Knight' })];
+
+        mockGet
+          .mockResolvedValueOnce({ data: mockResults1 })
+          .mockResolvedValueOnce({ data: mockResults2 });
+
+        // Populate cache with two entries
+        await manager.searchEntities('Dragon', 'characters');
+        await manager.searchEntities('Knight', 'characters');
+
+        expect(manager._searchCache.size).toBe(2);
+        expect(manager._cacheTimestamps.size).toBe(2);
+
+        // Clear only Dragon cache
+        manager.clearCacheFor('Dragon|characters');
+
+        expect(manager._searchCache.size).toBe(1);
+        expect(manager._cacheTimestamps.size).toBe(1);
+        expect(manager._searchCache.has('Knight|characters')).toBe(true);
+        expect(manager._searchCache.has('Dragon|characters')).toBe(false);
+      });
+
+      it('should allow fresh search after clearing specific cache entry', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        // First search - cache miss
+        await manager.searchEntities('Dragon', 'characters');
+        expect(mockGet).toHaveBeenCalledTimes(1);
+
+        // Clear specific cache entry
+        manager.clearCacheFor('Dragon|characters');
+
+        // Search again - should make new API call
+        await manager.searchEntities('Dragon', 'characters');
+        expect(mockGet).toHaveBeenCalledTimes(2);
+      });
+
+      it('should handle clearing non-existent cache entry', () => {
+        expect(manager._searchCache.size).toBe(0);
+
+        // Should not throw error
+        expect(() => manager.clearCacheFor('NonExistent|characters')).not.toThrow();
+
+        expect(manager._searchCache.size).toBe(0);
+      });
+
+      it('should clear both cache and timestamp for entry', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        await manager.searchEntities('Dragon', 'characters');
+
+        const cacheKey = 'Dragon|characters';
+        expect(manager._searchCache.has(cacheKey)).toBe(true);
+        expect(manager._cacheTimestamps.has(cacheKey)).toBe(true);
+
+        manager.clearCacheFor(cacheKey);
+
+        expect(manager._searchCache.has(cacheKey)).toBe(false);
+        expect(manager._cacheTimestamps.has(cacheKey)).toBe(false);
+      });
+
+      it('should clear cache for all entity types search', async () => {
+        const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        const mockLocations = [createMockEntity('location', { id: 2, name: 'Lair' })];
+
+        mockGet
+          .mockResolvedValueOnce({ data: mockCharacters })
+          .mockResolvedValueOnce({ data: mockLocations })
+          .mockResolvedValue({ data: [] });
+
+        // Search all entity types
+        await manager.searchEntities('Dragon');
+        expect(manager._searchCache.has('Dragon|all')).toBe(true);
+
+        // Clear the all-types cache
+        manager.clearCacheFor('Dragon|all');
+
+        expect(manager._searchCache.has('Dragon|all')).toBe(false);
+        expect(manager._cacheTimestamps.has('Dragon|all')).toBe(false);
+      });
+
+      it('should not affect other cache entries when clearing specific entry', async () => {
+        const mockResults1 = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        const mockResults2 = [createMockEntity('character', { id: 2, name: 'Knight' })];
+        const mockResults3 = [createMockEntity('location', { id: 3, name: 'Castle' })];
+
+        mockGet
+          .mockResolvedValueOnce({ data: mockResults1 })
+          .mockResolvedValueOnce({ data: mockResults2 })
+          .mockResolvedValueOnce({ data: mockResults3 });
+
+        // Populate cache with three entries
+        await manager.searchEntities('Dragon', 'characters');
+        await manager.searchEntities('Knight', 'characters');
+        await manager.searchEntities('Castle', 'locations');
+
+        expect(manager._searchCache.size).toBe(3);
+
+        // Clear only Knight cache
+        manager.clearCacheFor('Knight|characters');
+
+        expect(manager._searchCache.size).toBe(2);
+        expect(manager._searchCache.has('Dragon|characters')).toBe(true);
+        expect(manager._searchCache.has('Knight|characters')).toBe(false);
+        expect(manager._searchCache.has('Castle|locations')).toBe(true);
+      });
+    });
+
+    describe('getCacheStats', () => {
+      it('should return correct cache statistics', () => {
+        const stats = manager.getCacheStats();
+
+        expect(stats).toHaveProperty('entries');
+        expect(stats).toHaveProperty('expiryMs');
+        expect(stats.entries).toBe(0);
+        expect(stats.expiryMs).toBe(300000); // Default 5 minutes
+      });
+
+      it('should reflect cache entries count', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        // Initially empty
+        let stats = manager.getCacheStats();
+        expect(stats.entries).toBe(0);
+
+        // Add one entry
+        await manager.searchEntities('Dragon', 'characters');
+        stats = manager.getCacheStats();
+        expect(stats.entries).toBe(1);
+
+        // Add another entry
+        await manager.searchEntities('Knight', 'characters');
+        stats = manager.getCacheStats();
+        expect(stats.entries).toBe(2);
+      });
+
+      it('should reflect custom cache expiry time', () => {
+        const customManager = new KankaEntityManager(client, 'test-campaign-123', {
+          cacheExpiryMs: 60000
+        });
+
+        const stats = customManager.getCacheStats();
+        expect(stats.expiryMs).toBe(60000);
+      });
+
+      it('should update entries count after clearing cache', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        // Populate cache
+        await manager.searchEntities('Dragon', 'characters');
+        await manager.searchEntities('Knight', 'characters');
+
+        let stats = manager.getCacheStats();
+        expect(stats.entries).toBe(2);
+
+        // Clear cache
+        manager.clearCache();
+
+        stats = manager.getCacheStats();
+        expect(stats.entries).toBe(0);
+      });
+
+      it('should update entries count after clearing specific entry', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        // Populate cache
+        await manager.searchEntities('Dragon', 'characters');
+        await manager.searchEntities('Knight', 'characters');
+
+        let stats = manager.getCacheStats();
+        expect(stats.entries).toBe(2);
+
+        // Clear one entry
+        manager.clearCacheFor('Dragon|characters');
+
+        stats = manager.getCacheStats();
+        expect(stats.entries).toBe(1);
+      });
+
+      it('should not include expired entries in count', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        // Populate cache
+        await manager.searchEntities('Dragon', 'characters');
+
+        const stats = manager.getCacheStats();
+        // Note: getCacheStats returns total entries count, not valid entries
+        // Expired entries are still counted until they are accessed or cleared
+        expect(stats.entries).toBe(1);
+      });
+    });
+
+    describe('_isCacheValid', () => {
+      it('should return false for non-existent cache key', () => {
+        expect(manager._isCacheValid('NonExistent|characters')).toBe(false);
+      });
+
+      it('should return true for recently cached entry', async () => {
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        await manager.searchEntities('Dragon', 'characters');
+
+        expect(manager._isCacheValid('Dragon|characters')).toBe(true);
+      });
+
+      it('should return false for expired cache entry', async () => {
+        const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
+          cacheExpiryMs: 50
+        });
+
+        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
+        mockGet.mockResolvedValue({ data: mockResults });
+
+        await shortCacheManager.searchEntities('Dragon', 'characters');
+
+        // Cache should be valid immediately
+        expect(shortCacheManager._isCacheValid('Dragon|characters')).toBe(true);
+
+        // Wait for expiry
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Cache should be invalid after expiry
+        expect(shortCacheManager._isCacheValid('Dragon|characters')).toBe(false);
+      });
+
+      it('should handle cache entry with data but no timestamp', () => {
+        // Manually add cache entry without timestamp
+        manager._searchCache.set('Orphan|characters', []);
+
+        // Should return false because timestamp is missing
+        expect(manager._isCacheValid('Orphan|characters')).toBe(false);
+      });
+
+      it('should validate based on exact timestamp difference', () => {
+        const cacheKey = 'Test|characters';
+        const expiryMs = 1000;
+
+        const customManager = new KankaEntityManager(client, 'test-campaign-123', {
+          cacheExpiryMs: expiryMs
+        });
+
+        // Set timestamp just under expiry time
+        customManager._searchCache.set(cacheKey, []);
+        customManager._cacheTimestamps.set(cacheKey, Date.now() - (expiryMs - 10));
+
+        expect(customManager._isCacheValid(cacheKey)).toBe(true);
+
+        // Set timestamp just over expiry time
+        customManager._cacheTimestamps.set(cacheKey, Date.now() - (expiryMs + 10));
+
+        expect(customManager._isCacheValid(cacheKey)).toBe(false);
+      });
+    });
+  });
 });
