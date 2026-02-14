@@ -304,13 +304,19 @@ class RateLimiter {
         return;
       }
 
-      // Add to queue
+      // Add to queue with timestamp for wait time tracking
       this._queue.push({
         resolve,
         reject,
         fn,
-        retries: 0
+        retries: 0,
+        enqueuedAt: Date.now()
       });
+
+      // Track peak queue length
+      if (this._queue.length > this._peakQueueLength) {
+        this._peakQueueLength = this._queue.length;
+      }
 
       this._logger.debug(`Request queued. Queue length: ${this._queue.length}`);
 
@@ -414,6 +420,12 @@ class RateLimiter {
           break;
         }
 
+        // Track wait time if timestamp available
+        if (item.enqueuedAt) {
+          const waitTime = Date.now() - item.enqueuedAt;
+          this._waitTimes.push(waitTime);
+        }
+
         // Execute the request
         try {
           this._recordRequest();
@@ -431,6 +443,7 @@ class RateLimiter {
             // Re-queue the request if retries available
             if (item.retries < this._maxRetries) {
               item.retries++;
+              this._retryCount++;
               this._queue.unshift(item);
               this._logger.info(
                 `Re-queued request for retry (attempt ${item.retries}/${this._maxRetries})`
