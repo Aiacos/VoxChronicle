@@ -536,7 +536,11 @@ class RateLimiter {
       remainingRequests: this.remainingRequests,
       queueLength: this.queueLength,
       isPaused: this.isPaused,
-      pausedUntil: this._pausedUntil ? new Date(this._pausedUntil).toISOString() : null
+      pausedUntil: this._pausedUntil ? new Date(this._pausedUntil).toISOString() : null,
+      totalRequests: this._totalRequests,
+      averageWaitTime: this._waitTimes.length > 0 ? this._waitTimes.reduce((a, b) => a + b, 0) / this._waitTimes.length : 0,
+      peakQueueLength: this._peakQueueLength,
+      retryCount: this._retryCount
     };
   }
 }
