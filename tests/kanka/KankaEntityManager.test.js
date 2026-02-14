@@ -1137,4 +1137,200 @@ describe('KankaEntityManager', () => {
       expect(stats.entries).toBe(0);
     });
   });
+
+  // ============================================================================
+  // Cache Expiry Tests
+  // ============================================================================
+
+  describe('cache expiry', () => {
+    it('should expire cache after timeout', async () => {
+      // Create manager with short expiry time
+      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
+        cacheExpiryMs: 100
+      });
+
+      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      mockGet.mockResolvedValue({ data: mockResults });
+
+      // First search - cache miss
+      await shortCacheManager.searchEntities('Dragon', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(shortCacheManager._searchCache.size).toBe(1);
+
+      const firstCacheTime = shortCacheManager._cacheTimestamps.get('Dragon|characters');
+      expect(firstCacheTime).toBeDefined();
+
+      // Wait for cache to expire
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Second search - cache expired, should fetch fresh data
+      await shortCacheManager.searchEntities('Dragon', 'characters');
+
+      // Should have made a second API call
+      expect(mockGet).toHaveBeenCalledTimes(2);
+
+      // Cache timestamp should be updated
+      const secondCacheTime = shortCacheManager._cacheTimestamps.get('Dragon|characters');
+      expect(secondCacheTime).toBeGreaterThan(firstCacheTime);
+    });
+
+    it('should not expire cache before timeout', async () => {
+      // Create manager with longer expiry time
+      const longCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
+        cacheExpiryMs: 10000 // 10 seconds
+      });
+
+      const mockResults = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
+      mockGet.mockResolvedValue({ data: mockResults });
+
+      // First search - cache miss
+      await longCacheManager.searchEntities('Dragon', 'locations');
+      expect(mockGet).toHaveBeenCalledTimes(1);
+
+      const firstCacheTime = longCacheManager._cacheTimestamps.get('Dragon|locations');
+
+      // Wait a bit but not enough to expire
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Second search - cache still valid
+      await longCacheManager.searchEntities('Dragon', 'locations');
+
+      // Should not have made a second API call
+      expect(mockGet).toHaveBeenCalledTimes(1);
+
+      // Cache timestamp should be unchanged
+      const secondCacheTime = longCacheManager._cacheTimestamps.get('Dragon|locations');
+      expect(secondCacheTime).toBe(firstCacheTime);
+    });
+
+    it('should handle multiple cache entries with different expiry times', async () => {
+      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
+        cacheExpiryMs: 100
+      });
+
+      const dragonResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      const knightResults = [createMockEntity('character', { id: 2, name: 'Knight Commander' })];
+
+      mockGet
+        .mockResolvedValueOnce({ data: dragonResults })
+        .mockResolvedValueOnce({ data: knightResults })
+        .mockResolvedValueOnce({ data: dragonResults }); // For re-fetch after expiry
+
+      // Search for "Dragon" - cache miss
+      await shortCacheManager.searchEntities('Dragon', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(1);
+
+      // Wait 50ms, then search for "Knight" - cache miss
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await shortCacheManager.searchEntities('Knight', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(2);
+
+      // Wait another 70ms (total 120ms from first search, 70ms from second)
+      await new Promise((resolve) => setTimeout(resolve, 70));
+
+      // Search for "Dragon" again - should be expired (120ms > 100ms)
+      await shortCacheManager.searchEntities('Dragon', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(3);
+
+      // Search for "Knight" again - should still be cached (70ms < 100ms)
+      await shortCacheManager.searchEntities('Knight', 'characters');
+      expect(mockGet).toHaveBeenCalledTimes(3); // No new API call
+    });
+
+    it('should respect custom cache expiry time from constructor', async () => {
+      const customManager = new KankaEntityManager(client, 'test-campaign-123', {
+        cacheExpiryMs: 200
+      });
+
+      expect(customManager._cacheExpiryMs).toBe(200);
+
+      const stats = customManager.getCacheStats();
+      expect(stats.expiryMs).toBe(200);
+    });
+
+    it('should use default cache expiry when not specified', async () => {
+      const defaultManager = new KankaEntityManager(client, 'test-campaign-123');
+
+      expect(defaultManager._cacheExpiryMs).toBe(300000); // 5 minutes default
+
+      const stats = defaultManager.getCacheStats();
+      expect(stats.expiryMs).toBe(300000);
+    });
+
+    it('should handle cache expiry for all entity types search', async () => {
+      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
+        cacheExpiryMs: 100
+      });
+
+      const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      const mockLocations = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
+
+      // First search - all entity types
+      mockGet
+        .mockResolvedValueOnce({ data: mockCharacters })
+        .mockResolvedValueOnce({ data: mockLocations })
+        .mockResolvedValue({ data: [] });
+
+      await shortCacheManager.searchEntities('Dragon');
+      expect(mockGet).toHaveBeenCalledTimes(6); // 6 entity types
+
+      // Wait for cache to expire
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Second search - cache expired, should fetch fresh data
+      mockGet
+        .mockResolvedValueOnce({ data: mockCharacters })
+        .mockResolvedValueOnce({ data: mockLocations })
+        .mockResolvedValue({ data: [] });
+
+      await shortCacheManager.searchEntities('Dragon');
+
+      // Should have made another 6 API calls
+      expect(mockGet).toHaveBeenCalledTimes(12);
+    });
+
+    it('should clear expired cache entries with clearCache', async () => {
+      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
+        cacheExpiryMs: 100
+      });
+
+      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+      mockGet.mockResolvedValue({ data: mockResults });
+
+      // Populate cache
+      await shortCacheManager.searchEntities('Dragon', 'characters');
+      expect(shortCacheManager._searchCache.size).toBe(1);
+      expect(shortCacheManager._cacheTimestamps.size).toBe(1);
+
+      // Wait for cache to expire
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Clear cache manually
+      shortCacheManager.clearCache();
+
+      expect(shortCacheManager._searchCache.size).toBe(0);
+      expect(shortCacheManager._cacheTimestamps.size).toBe(0);
+    });
+
+    it('should validate cache based on timestamp, not just existence', async () => {
+      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
+        cacheExpiryMs: 100
+      });
+
+      const cacheKey = 'Test|characters';
+
+      // Manually set an old timestamp
+      shortCacheManager._searchCache.set(cacheKey, []);
+      shortCacheManager._cacheTimestamps.set(cacheKey, Date.now() - 200); // 200ms ago
+
+      // Cache should be invalid even though it exists
+      expect(shortCacheManager._isCacheValid(cacheKey)).toBe(false);
+
+      // Set a recent timestamp
+      shortCacheManager._cacheTimestamps.set(cacheKey, Date.now());
+
+      // Cache should be valid
+      expect(shortCacheManager._isCacheValid(cacheKey)).toBe(true);
+    });
+  });
 });
