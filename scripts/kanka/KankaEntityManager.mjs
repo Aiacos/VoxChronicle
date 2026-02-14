@@ -88,14 +88,17 @@ class KankaEntityManager {
    *
    * @param {object} client - KankaClient instance for making API requests
    * @param {string} campaignId - Kanka campaign ID
+   * @param {object} [options] - Configuration options
+   * @param {number} [options.cacheExpiryMs=300000] - Cache expiry time in milliseconds
    */
-  constructor(client, campaignId) {
+  constructor(client, campaignId, options = {}) {
     if (!client) {
       throw new KankaError('KankaClient instance is required', KankaErrorType.VALIDATION_ERROR);
     }
 
     this._client = client;
     this._campaignId = campaignId || '';
+    this._cacheExpiryMs = options.cacheExpiryMs ?? 300000;
     this._logger = Logger.createChild('KankaEntityManager');
     this._logger.debug(`KankaEntityManager initialized for campaign: ${campaignId}`);
   }
