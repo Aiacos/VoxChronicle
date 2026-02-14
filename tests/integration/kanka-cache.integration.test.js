@@ -418,11 +418,11 @@ describe('Kanka Cache Integration', () => {
       // Create entities without pre-fetching
       // Each createIfNotExists will call findExistingEntity which calls searchEntities
       // This should result in multiple GET requests (one per entity)
-      const char1 = await kankaService.createIfNotExists(
+      const _char1 = await kankaService.createIfNotExists(
         'characters',
         sessionData.entities.characters[0]
       );
-      const char2 = await kankaService.createIfNotExists(
+      const _char2 = await kankaService.createIfNotExists(
         'characters',
         sessionData.entities.characters[1]
       );
@@ -444,11 +444,11 @@ describe('Kanka Cache Integration', () => {
       mockFetch.mockClear();
 
       // Now create entities - should use cache, no additional GET requests
-      const char3 = await kankaService.createIfNotExists(
+      const _char3 = await kankaService.createIfNotExists(
         'characters',
         sessionData.entities.characters[0]
       );
-      const char4 = await kankaService.createIfNotExists(
+      const _char4 = await kankaService.createIfNotExists(
         'characters',
         sessionData.entities.characters[1]
       );

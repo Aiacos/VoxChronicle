@@ -127,12 +127,8 @@ vi.mock('../../scripts/kanka/KankaEntityManager.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import {
-  KankaService,
-  KankaEntityType,
-  CharacterType
-} from '../../scripts/kanka/KankaService.mjs';
-import { KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
+import { KankaService, KankaEntityType, CharacterType } from '../../scripts/kanka/KankaService.mjs';
+import { KankaError } from '../../scripts/kanka/KankaClient.mjs';
 
 /**
  * Create a mock entity response
@@ -350,9 +346,9 @@ describe('KankaService', () => {
     });
 
     it('should throw error if name is missing', async () => {
-      await expect(
-        service.createIfNotExists(KankaEntityType.CHARACTER, {})
-      ).rejects.toThrow(KankaError);
+      await expect(service.createIfNotExists(KankaEntityType.CHARACTER, {})).rejects.toThrow(
+        KankaError
+      );
 
       await expect(
         service.createIfNotExists(KankaEntityType.CHARACTER, { name: '' })
@@ -366,11 +362,7 @@ describe('KankaService', () => {
 
   describe('batchCreate - sequential mode (default)', () => {
     it('should create multiple entities sequentially', async () => {
-      const entities = [
-        { name: 'Character 1' },
-        { name: 'Character 2' },
-        { name: 'Character 3' }
-      ];
+      const entities = [{ name: 'Character 1' }, { name: 'Character 2' }, { name: 'Character 3' }];
 
       // Mock search returns empty (no existing entities)
       mockGet.mockResolvedValue(createMockSearchResponse([]));
@@ -390,10 +382,7 @@ describe('KankaService', () => {
     });
 
     it('should skip existing entities when skipExisting is true', async () => {
-      const entities = [
-        { name: 'New Character' },
-        { name: 'Existing Character' }
-      ];
+      const entities = [{ name: 'New Character' }, { name: 'Existing Character' }];
 
       // Mock search for first entity (not found)
       mockGet.mockResolvedValueOnce(createMockSearchResponse([]));
@@ -410,11 +399,9 @@ describe('KankaService', () => {
         createMockEntity('character', { name: 'New Character' })
       );
 
-      const results = await service.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities,
-        { skipExisting: true }
-      );
+      const results = await service.batchCreate(KankaEntityType.CHARACTER, entities, {
+        skipExisting: true
+      });
 
       expect(results).toHaveLength(2);
       expect(mockEntityManagerCreate).toHaveBeenCalledTimes(1); // Only one created
@@ -422,20 +409,15 @@ describe('KankaService', () => {
     });
 
     it('should create all entities when skipExisting is false', async () => {
-      const entities = [
-        { name: 'Character 1' },
-        { name: 'Character 2' }
-      ];
+      const entities = [{ name: 'Character 1' }, { name: 'Character 2' }];
 
       mockEntityManagerCreate.mockImplementation((type, data) => {
         return Promise.resolve(createMockEntity('character', data));
       });
 
-      const results = await service.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities,
-        { skipExisting: false }
-      );
+      const results = await service.batchCreate(KankaEntityType.CHARACTER, entities, {
+        skipExisting: false
+      });
 
       expect(results).toHaveLength(2);
       expect(mockGet).not.toHaveBeenCalled(); // No search performed
@@ -462,11 +444,7 @@ describe('KankaService', () => {
     });
 
     it('should handle errors and continue processing', async () => {
-      const entities = [
-        { name: 'Success 1' },
-        { name: 'Failure' },
-        { name: 'Success 2' }
-      ];
+      const entities = [{ name: 'Success 1' }, { name: 'Failure' }, { name: 'Success 2' }];
 
       mockGet.mockResolvedValue(createMockSearchResponse([]));
 
@@ -519,10 +497,7 @@ describe('KankaService', () => {
         return Promise.resolve(createMockEntity('character', data));
       });
 
-      const results = await parallelService.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities
-      );
+      const results = await parallelService.batchCreate(KankaEntityType.CHARACTER, entities);
 
       expect(results).toHaveLength(5);
       expect(mockEntityManagerCreate).toHaveBeenCalledTimes(5);
@@ -531,12 +506,7 @@ describe('KankaService', () => {
     });
 
     it('should maintain original input order in results', async () => {
-      const entities = [
-        { name: 'Alpha' },
-        { name: 'Beta' },
-        { name: 'Gamma' },
-        { name: 'Delta' }
-      ];
+      const entities = [{ name: 'Alpha' }, { name: 'Beta' }, { name: 'Gamma' }, { name: 'Delta' }];
 
       mockGet.mockResolvedValue(createMockSearchResponse([]));
       mockEntityManagerCreate.mockImplementation((type, data) => {
@@ -549,10 +519,7 @@ describe('KankaService', () => {
         });
       });
 
-      const results = await parallelService.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities
-      );
+      const results = await parallelService.batchCreate(KankaEntityType.CHARACTER, entities);
 
       expect(results[0].name).toBe('Alpha');
       expect(results[1].name).toBe('Beta');
@@ -577,10 +544,7 @@ describe('KankaService', () => {
         return Promise.resolve(createMockEntity('character', data));
       });
 
-      const results = await parallelService.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities
-      );
+      const results = await parallelService.batchCreate(KankaEntityType.CHARACTER, entities);
 
       expect(results).toHaveLength(5);
       expect(results[0].name).toBe('Success 1');
@@ -643,19 +607,13 @@ describe('KankaService', () => {
     });
 
     it('should handle skipExisting in parallel mode', async () => {
-      const entities = [
-        { name: 'New 1' },
-        { name: 'Existing' },
-        { name: 'New 2' }
-      ];
+      const entities = [{ name: 'New 1' }, { name: 'Existing' }, { name: 'New 2' }];
 
       // Mock search results
       mockGet.mockImplementation((endpoint) => {
         if (endpoint.includes('name=Existing')) {
           return Promise.resolve(
-            createMockSearchResponse([
-              createMockEntity('character', { id: 999, name: 'Existing' })
-            ])
+            createMockSearchResponse([createMockEntity('character', { id: 999, name: 'Existing' })])
           );
         }
         return Promise.resolve(createMockSearchResponse([]));
@@ -665,11 +623,9 @@ describe('KankaService', () => {
         return Promise.resolve(createMockEntity('character', data));
       });
 
-      const results = await parallelService.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities,
-        { skipExisting: true }
-      );
+      const results = await parallelService.batchCreate(KankaEntityType.CHARACTER, entities, {
+        skipExisting: true
+      });
 
       expect(results).toHaveLength(3);
       expect(results[1]._alreadyExisted).toBe(true);
@@ -689,10 +645,7 @@ describe('KankaService', () => {
         return Promise.resolve(createMockEntity('character', data));
       });
 
-      const results = await sequentialService.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities
-      );
+      const results = await sequentialService.batchCreate(KankaEntityType.CHARACTER, entities);
 
       expect(results).toHaveLength(2);
       expect(mockEntityManagerCreate).toHaveBeenCalledTimes(2);
@@ -711,10 +664,7 @@ describe('KankaService', () => {
         return Promise.resolve(createMockEntity('character', data));
       });
 
-      const results = await disabledService.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities
-      );
+      const results = await disabledService.batchCreate(KankaEntityType.CHARACTER, entities);
 
       expect(results).toHaveLength(2);
       // In sequential mode, entities are processed one by one
@@ -735,11 +685,9 @@ describe('KankaService', () => {
       mockEntityManagerCreate.mockResolvedValue(createMockEntity('character'));
       const entities = [{ name: 'Char 1' }, { name: 'Char 2' }];
 
-      const results = await service.batchCreate(
-        KankaEntityType.CHARACTER,
-        entities,
-        { skipExisting: false }
-      );
+      const results = await service.batchCreate(KankaEntityType.CHARACTER, entities, {
+        skipExisting: false
+      });
 
       expect(results).toHaveLength(2);
     });
@@ -748,11 +696,9 @@ describe('KankaService', () => {
       mockEntityManagerCreate.mockResolvedValue(createMockEntity('location'));
       const entities = [{ name: 'Loc 1' }, { name: 'Loc 2' }];
 
-      const results = await service.batchCreate(
-        KankaEntityType.LOCATION,
-        entities,
-        { skipExisting: false }
-      );
+      const results = await service.batchCreate(KankaEntityType.LOCATION, entities, {
+        skipExisting: false
+      });
 
       expect(results).toHaveLength(2);
     });
@@ -761,11 +707,9 @@ describe('KankaService', () => {
       mockEntityManagerCreate.mockResolvedValue(createMockEntity('item'));
       const entities = [{ name: 'Item 1' }, { name: 'Item 2' }];
 
-      const results = await service.batchCreate(
-        KankaEntityType.ITEM,
-        entities,
-        { skipExisting: false }
-      );
+      const results = await service.batchCreate(KankaEntityType.ITEM, entities, {
+        skipExisting: false
+      });
 
       expect(results).toHaveLength(2);
     });
@@ -774,11 +718,9 @@ describe('KankaService', () => {
       mockEntityManagerCreate.mockResolvedValue(createMockEntity('journal'));
       const entities = [{ name: 'Journal 1' }, { name: 'Journal 2' }];
 
-      const results = await service.batchCreate(
-        KankaEntityType.JOURNAL,
-        entities,
-        { skipExisting: false }
-      );
+      const results = await service.batchCreate(KankaEntityType.JOURNAL, entities, {
+        skipExisting: false
+      });
 
       expect(results).toHaveLength(2);
     });
@@ -787,11 +729,9 @@ describe('KankaService', () => {
       mockEntityManagerCreate.mockResolvedValue(createMockEntity('organisation'));
       const entities = [{ name: 'Org 1' }, { name: 'Org 2' }];
 
-      const results = await service.batchCreate(
-        KankaEntityType.ORGANISATION,
-        entities,
-        { skipExisting: false }
-      );
+      const results = await service.batchCreate(KankaEntityType.ORGANISATION, entities, {
+        skipExisting: false
+      });
 
       expect(results).toHaveLength(2);
     });
@@ -800,11 +740,9 @@ describe('KankaService', () => {
       mockEntityManagerCreate.mockResolvedValue(createMockEntity('quest'));
       const entities = [{ name: 'Quest 1' }, { name: 'Quest 2' }];
 
-      const results = await service.batchCreate(
-        KankaEntityType.QUEST,
-        entities,
-        { skipExisting: false }
-      );
+      const results = await service.batchCreate(KankaEntityType.QUEST, entities, {
+        skipExisting: false
+      });
 
       expect(results).toHaveLength(2);
     });
@@ -838,9 +776,7 @@ describe('KankaService', () => {
 
       const results = await service.searchEntities('Elara', KankaEntityType.CHARACTER);
 
-      expect(mockGet).toHaveBeenCalledWith(
-        expect.stringContaining('characters')
-      );
+      expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('characters'));
       expect(results).toEqual(mockResults);
     });
   });
@@ -859,10 +795,7 @@ describe('KankaService', () => {
     it('should return null when no match found', async () => {
       mockGet.mockResolvedValue(createMockSearchResponse([]));
 
-      const result = await service.findExistingEntity(
-        'NonExistent',
-        KankaEntityType.CHARACTER
-      );
+      const result = await service.findExistingEntity('NonExistent', KankaEntityType.CHARACTER);
 
       expect(result).toBeNull();
     });

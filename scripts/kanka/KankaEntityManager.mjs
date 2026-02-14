@@ -63,18 +63,42 @@ class KankaEntityManager {
   _campaignId = '';
 
   /**
+   * Cache of search results
+   * @type {Map<string, Array<object>>}
+   * @private
+   */
+  _searchCache = new Map();
+
+  /**
+   * Cache expiry time in milliseconds (5 minutes)
+   * @type {number}
+   * @private
+   */
+  _cacheExpiryMs = 300000;
+
+  /**
+   * Timestamps for cache entries
+   * @type {Map<string, number>}
+   * @private
+   */
+  _cacheTimestamps = new Map();
+
+  /**
    * Create a new KankaEntityManager instance
    *
    * @param {object} client - KankaClient instance for making API requests
    * @param {string} campaignId - Kanka campaign ID
+   * @param {object} [options] - Configuration options
+   * @param {number} [options.cacheExpiryMs=300000] - Cache expiry time in milliseconds
    */
-  constructor(client, campaignId) {
+  constructor(client, campaignId, options = {}) {
     if (!client) {
       throw new KankaError('KankaClient instance is required', KankaErrorType.VALIDATION_ERROR);
     }
 
     this._client = client;
     this._campaignId = campaignId || '';
+    this._cacheExpiryMs = options.cacheExpiryMs ?? 300000;
     this._logger = Logger.createChild('KankaEntityManager');
     this._logger.debug(`KankaEntityManager initialized for campaign: ${campaignId}`);
   }
@@ -430,6 +454,99 @@ class KankaEntityManager {
   }
 
   // ============================================================================
+  // Cache Management
+  // ============================================================================
+
+  /**
+   * Check if a cache entry is still valid
+   *
+   * Validates cache entries based on their timestamp and the configured expiry time.
+   * Used internally by search operations to determine if cached results can be returned
+   * or if a fresh API call is needed.
+   *
+   * @param {string} cacheKey - Cache key to validate
+   * @returns {boolean} True if cache entry exists and is still valid, false otherwise
+   * @private
+   *
+   * @example
+   * if (this._isCacheValid('characters:Dragon')) {
+   *   return this._searchCache.get('characters:Dragon');
+   * }
+   */
+  _isCacheValid(cacheKey) {
+    const timestamp = this._cacheTimestamps.get(cacheKey);
+    if (!timestamp) {
+      return false;
+    }
+
+    const age = Date.now() - timestamp;
+    return age < this._cacheExpiryMs;
+  }
+
+  /**
+   * Clear all search cache entries
+   *
+   * Removes all cached search results and their timestamps. Use this when you need
+   * to force fresh API calls for all searches, such as after bulk entity updates or
+   * campaign changes.
+   *
+   * @example
+   * // After bulk entity updates
+   * manager.clearCache();
+   */
+  clearCache() {
+    this._searchCache.clear();
+    this._cacheTimestamps.clear();
+    this._logger.debug('Search cache cleared');
+  }
+
+  /**
+   * Clear cache for a specific search query
+   *
+   * Removes the cache entry for a specific search query. Use this when you know
+   * a particular entity has been updated and cached search results may be stale.
+   *
+   * @param {string} cacheKey - Cache key to clear (format: "query|entityType")
+   *
+   * @example
+   * // After updating a character named "Dragon"
+   * manager.clearCacheFor('Dragon|characters');
+   *
+   * @example
+   * // After general update - clear all searches for query
+   * manager.clearCacheFor('Dragon|all');
+   */
+  clearCacheFor(cacheKey) {
+    if (this._searchCache.has(cacheKey)) {
+      this._searchCache.delete(cacheKey);
+      this._cacheTimestamps.delete(cacheKey);
+      this._logger.debug(`Cache cleared for: ${cacheKey}`);
+    }
+  }
+
+  /**
+   * Get cache statistics
+   *
+   * Returns information about the current state of the search cache, including
+   * the number of cached entries and the configured expiry time.
+   *
+   * @returns {{entries: number, expiryMs: number}} Cache statistics
+   * @property {number} entries - Number of cached search results
+   * @property {number} expiryMs - Cache expiry time in milliseconds
+   *
+   * @example
+   * const stats = manager.getCacheStats();
+   * console.log(`Cache has ${stats.entries} entries`);
+   * console.log(`Cache expires after ${stats.expiryMs}ms`);
+   */
+  getCacheStats() {
+    return {
+      entries: this._searchCache.size,
+      expiryMs: this._cacheExpiryMs
+    };
+  }
+
+  // ============================================================================
   // Search Operations
   // ============================================================================
 
@@ -442,6 +559,9 @@ class KankaEntityManager {
    *
    * IMPORTANT: Searching all entity types makes 6 API calls. Use specific entity
    * type when possible to conserve rate limits (30/min free, 90/min premium).
+   *
+   * Results are cached for 5 minutes (configurable) to reduce API calls for repeated
+   * searches. Each query+entityType combination has its own cache entry.
    *
    * @param {string} query - Search query (searches in entity names, partial matches supported)
    * @param {string} [entityType] - Limit search to specific entity type (e.g., 'characters', 'locations')
@@ -463,55 +583,72 @@ class KankaEntityManager {
       return [];
     }
 
+    // Build cache key for this search
+    const cacheKey = `${query}|${entityType || 'all'}`;
+
+    // Check cache first
+    if (this._isCacheValid(cacheKey)) {
+      this._logger.debug(`Cache hit for search: ${cacheKey}`);
+      return this._searchCache.get(cacheKey);
+    }
+
+    this._logger.debug(`Cache miss for search: ${cacheKey}`);
+
     // Build query parameters for Kanka API name filter
     const params = [`name=${encodeURIComponent(query)}`];
+
+    let results;
 
     // If entity type is specified, search only that type (single API call)
     if (entityType) {
       const endpoint = this._buildCampaignEndpoint(entityType);
       this._logger.debug(`Searching ${entityType} for: ${query}`);
       const response = await this._client.get(`${endpoint}?${params.join('&')}`);
-      return response.data || [];
-    }
+      results = response.data || [];
+    } else {
+      // No specific entity type - search across common types
+      // WARNING: This requires multiple API calls and counts against rate limits
+      // Free tier: 30 req/min, Premium: 90 req/min
+      this._logger.debug(`Searching all entities for: ${query}`);
+      results = [];
 
-    // No specific entity type - search across common types
-    // WARNING: This requires multiple API calls and counts against rate limits
-    // Free tier: 30 req/min, Premium: 90 req/min
-    this._logger.debug(`Searching all entities for: ${query}`);
-    const results = [];
+      // Common entity types to search (excludes less common types like families, events, maps)
+      // This is a balance between coverage and API usage
+      const types = [
+        'characters', // NPCs, PCs, monsters
+        'locations', // Places, cities, dungeons
+        'items', // Weapons, armor, artifacts
+        'journals', // Session chronicles, notes
+        'organisations', // Guilds, factions, governments
+        'quests' // Missions, tasks, bounties
+      ];
 
-    // Common entity types to search (excludes less common types like families, events, maps)
-    // This is a balance between coverage and API usage
-    const types = [
-      'characters', // NPCs, PCs, monsters
-      'locations', // Places, cities, dungeons
-      'items', // Weapons, armor, artifacts
-      'journals', // Session chronicles, notes
-      'organisations', // Guilds, factions, governments
-      'quests' // Missions, tasks, bounties
-    ];
-
-    // Search each entity type sequentially
-    // Note: We continue even if one type fails to maximize results
-    for (const type of types) {
-      try {
-        const endpoint = this._buildCampaignEndpoint(type);
-        const response = await this._client.get(`${endpoint}?${params.join('&')}`);
-        if (response.data?.length) {
-          // Add entity_type field to each result so caller can distinguish types
-          // This is important because different types may have same names
-          const typedResults = response.data.map((entity) => ({
-            ...entity,
-            entity_type: type
-          }));
-          results.push(...typedResults);
+      // Search each entity type sequentially
+      // Note: We continue even if one type fails to maximize results
+      for (const type of types) {
+        try {
+          const endpoint = this._buildCampaignEndpoint(type);
+          const response = await this._client.get(`${endpoint}?${params.join('&')}`);
+          if (response.data?.length) {
+            // Add entity_type field to each result so caller can distinguish types
+            // This is important because different types may have same names
+            const typedResults = response.data.map((entity) => ({
+              ...entity,
+              entity_type: type
+            }));
+            results.push(...typedResults);
+          }
+        } catch (error) {
+          // Log error but continue searching other types
+          // This prevents one failure from blocking all results
+          this._logger.warn(`Failed to search ${type}: ${error.message}`);
         }
-      } catch (error) {
-        // Log error but continue searching other types
-        // This prevents one failure from blocking all results
-        this._logger.warn(`Failed to search ${type}: ${error.message}`);
       }
     }
+
+    // Cache the results
+    this._searchCache.set(cacheKey, results);
+    this._cacheTimestamps.set(cacheKey, Date.now());
 
     return results;
   }
