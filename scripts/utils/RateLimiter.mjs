@@ -530,7 +530,18 @@ class RateLimiter {
   /**
    * Get current limiter statistics
    *
-   * @returns {object} Statistics object
+   * @returns {object} Statistics object with rate limiter metrics
+   * @returns {string} return.name - Name of this rate limiter instance
+   * @returns {number} return.requestsPerMinute - Configured rate limit (requests per minute)
+   * @returns {number} return.currentWindowRequests - Number of requests in current sliding window
+   * @returns {number} return.remainingRequests - Available request slots in current window
+   * @returns {number} return.queueLength - Current number of requests waiting in queue
+   * @returns {boolean} return.isPaused - Whether the limiter is currently paused
+   * @returns {string|null} return.pausedUntil - ISO timestamp when pause will end, or null if not paused
+   * @returns {number} return.totalRequests - Total number of requests processed (lifetime counter)
+   * @returns {number} return.averageWaitTime - Average wait time in milliseconds for queued requests
+   * @returns {number} return.peakQueueLength - Maximum queue length observed during lifetime
+   * @returns {number} return.retryCount - Total number of retries across all requests
    */
   getStats() {
     return {
