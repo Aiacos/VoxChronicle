@@ -497,6 +497,9 @@ class KankaEntityManager {
    * IMPORTANT: Searching all entity types makes 6 API calls. Use specific entity
    * type when possible to conserve rate limits (30/min free, 90/min premium).
    *
+   * Results are cached for 5 minutes (configurable) to reduce API calls for repeated
+   * searches. Each query+entityType combination has its own cache entry.
+   *
    * @param {string} query - Search query (searches in entity names, partial matches supported)
    * @param {string} [entityType] - Limit search to specific entity type (e.g., 'characters', 'locations')
    * @returns {Promise<Array>} Matching entities (with entity_type added for multi-type searches)
@@ -517,55 +520,72 @@ class KankaEntityManager {
       return [];
     }
 
+    // Build cache key for this search
+    const cacheKey = `${query}|${entityType || 'all'}`;
+
+    // Check cache first
+    if (this._isCacheValid(cacheKey)) {
+      this._logger.debug(`Cache hit for search: ${cacheKey}`);
+      return this._searchCache.get(cacheKey);
+    }
+
+    this._logger.debug(`Cache miss for search: ${cacheKey}`);
+
     // Build query parameters for Kanka API name filter
     const params = [`name=${encodeURIComponent(query)}`];
+
+    let results;
 
     // If entity type is specified, search only that type (single API call)
     if (entityType) {
       const endpoint = this._buildCampaignEndpoint(entityType);
       this._logger.debug(`Searching ${entityType} for: ${query}`);
       const response = await this._client.get(`${endpoint}?${params.join('&')}`);
-      return response.data || [];
-    }
+      results = response.data || [];
+    } else {
+      // No specific entity type - search across common types
+      // WARNING: This requires multiple API calls and counts against rate limits
+      // Free tier: 30 req/min, Premium: 90 req/min
+      this._logger.debug(`Searching all entities for: ${query}`);
+      results = [];
 
-    // No specific entity type - search across common types
-    // WARNING: This requires multiple API calls and counts against rate limits
-    // Free tier: 30 req/min, Premium: 90 req/min
-    this._logger.debug(`Searching all entities for: ${query}`);
-    const results = [];
+      // Common entity types to search (excludes less common types like families, events, maps)
+      // This is a balance between coverage and API usage
+      const types = [
+        'characters', // NPCs, PCs, monsters
+        'locations', // Places, cities, dungeons
+        'items', // Weapons, armor, artifacts
+        'journals', // Session chronicles, notes
+        'organisations', // Guilds, factions, governments
+        'quests' // Missions, tasks, bounties
+      ];
 
-    // Common entity types to search (excludes less common types like families, events, maps)
-    // This is a balance between coverage and API usage
-    const types = [
-      'characters', // NPCs, PCs, monsters
-      'locations', // Places, cities, dungeons
-      'items', // Weapons, armor, artifacts
-      'journals', // Session chronicles, notes
-      'organisations', // Guilds, factions, governments
-      'quests' // Missions, tasks, bounties
-    ];
-
-    // Search each entity type sequentially
-    // Note: We continue even if one type fails to maximize results
-    for (const type of types) {
-      try {
-        const endpoint = this._buildCampaignEndpoint(type);
-        const response = await this._client.get(`${endpoint}?${params.join('&')}`);
-        if (response.data?.length) {
-          // Add entity_type field to each result so caller can distinguish types
-          // This is important because different types may have same names
-          const typedResults = response.data.map((entity) => ({
-            ...entity,
-            entity_type: type
-          }));
-          results.push(...typedResults);
+      // Search each entity type sequentially
+      // Note: We continue even if one type fails to maximize results
+      for (const type of types) {
+        try {
+          const endpoint = this._buildCampaignEndpoint(type);
+          const response = await this._client.get(`${endpoint}?${params.join('&')}`);
+          if (response.data?.length) {
+            // Add entity_type field to each result so caller can distinguish types
+            // This is important because different types may have same names
+            const typedResults = response.data.map((entity) => ({
+              ...entity,
+              entity_type: type
+            }));
+            results.push(...typedResults);
+          }
+        } catch (error) {
+          // Log error but continue searching other types
+          // This prevents one failure from blocking all results
+          this._logger.warn(`Failed to search ${type}: ${error.message}`);
         }
-      } catch (error) {
-        // Log error but continue searching other types
-        // This prevents one failure from blocking all results
-        this._logger.warn(`Failed to search ${type}: ${error.message}`);
       }
     }
+
+    // Cache the results
+    this._searchCache.set(cacheKey, results);
+    this._cacheTimestamps.set(cacheKey, Date.now());
 
     return results;
   }
