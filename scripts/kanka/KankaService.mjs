@@ -135,7 +135,7 @@ const QuestType = {
  *   date: '2024-01-15'
  * });
  *
- * @performance
+ * Performance:
  * - Entity cache reduces API calls by ~57-70% for bulk operations
  * - Parallel searches (Promise.all) provide 6x speedup for multi-type queries
  * - Cache automatically expires after 5 minutes (configurable via _cacheExpiryMs)
@@ -1166,7 +1166,7 @@ class KankaService extends KankaClient {
    * // Search all entity types in parallel
    * const all = await kankaService.searchEntities('Dragon');
    *
-   * @performance
+   * Performance:
    * - Cache hit: O(n) filtering, 0 API calls
    * - Multi-type search: 6 parallel API calls vs 6 sequential (6x faster)
    */
@@ -1184,8 +1184,8 @@ class KankaService extends KankaClient {
 
       if (cachedEntities) {
         // Filter cached results by name query
-        const filtered = cachedEntities.filter((entity) =>
-          entity.name && entity.name.toLowerCase().includes(query.toLowerCase())
+        const filtered = cachedEntities.filter(
+          (entity) => entity.name && entity.name.toLowerCase().includes(query.toLowerCase())
         );
         this._logger.debug(`Cache hit for ${entityType}, filtered to ${filtered.length} results`);
         return filtered;
@@ -1220,8 +1220,8 @@ class KankaService extends KankaClient {
         let entities;
         if (cachedEntities) {
           // Use cached data and filter by name
-          entities = cachedEntities.filter((entity) =>
-            entity.name && entity.name.toLowerCase().includes(query.toLowerCase())
+          entities = cachedEntities.filter(
+            (entity) => entity.name && entity.name.toLowerCase().includes(query.toLowerCase())
           );
           this._logger.debug(`Cache hit for ${type}, filtered to ${entities.length} results`);
         } else {
@@ -1259,7 +1259,9 @@ class KankaService extends KankaClient {
       return null;
     }
 
-    this._logger.debug(`Finding existing entity: "${name}" in ${entityType} (uses cache if available)`);
+    this._logger.debug(
+      `Finding existing entity: "${name}" in ${entityType} (uses cache if available)`
+    );
 
     const results = await this.searchEntities(name, entityType);
 
@@ -1270,7 +1272,9 @@ class KankaService extends KankaClient {
     );
 
     if (exactMatch) {
-      this._logger.debug(`Found existing entity: "${name}" (ID: ${exactMatch.id}) in ${entityType}`);
+      this._logger.debug(
+        `Found existing entity: "${name}" (ID: ${exactMatch.id}) in ${entityType}`
+      );
     } else {
       this._logger.debug(`No existing entity found for: "${name}" in ${entityType}`);
     }

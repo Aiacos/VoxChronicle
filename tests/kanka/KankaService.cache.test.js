@@ -512,9 +512,9 @@ describe('KankaService - Cache Methods', () => {
     it('should throw error on API failure', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(
-        service.preFetchEntities({ types: ['characters'] })
-      ).rejects.toThrow('Network error');
+      await expect(service.preFetchEntities({ types: ['characters'] })).rejects.toThrow(
+        'Network error'
+      );
     });
 
     it('should return empty result when all types are cached', async () => {

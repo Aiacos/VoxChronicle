@@ -530,9 +530,9 @@ class KankaEntityManager {
    * Returns information about the current state of the search cache, including
    * the number of cached entries and the configured expiry time.
    *
-   * @returns {object} Cache statistics
-   * @returns {number} return.entries - Number of cached search results
-   * @returns {number} return.expiryMs - Cache expiry time in milliseconds
+   * @returns {{entries: number, expiryMs: number}} Cache statistics
+   * @property {number} entries - Number of cached search results
+   * @property {number} expiryMs - Cache expiry time in milliseconds
    *
    * @example
    * const stats = manager.getCacheStats();
