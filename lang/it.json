@@ -56,7 +56,9 @@
       "CampaignPlaceholder": "Seleziona una campagna...",
       "CampaignNone": "Nessuna campagna disponibile",
       "CampaignNeedsToken": "Inserisci prima il token API di Kanka",
-      "CampaignError": "Impossibile caricare le campagne"
+      "CampaignError": "Impossibile caricare le campagne",
+      "VocabularyDictionary": "Dizionario Vocabolario",
+      "VocabularyDictionaryHint": "Termini personalizzati per migliorare la precisione della trascrizione (gestito tramite interfaccia Vocabolario)"
     },
 
     "Validation": {
@@ -319,6 +321,20 @@
       "BuildingGraph": "Costruzione grafo delle relazioni...",
       "GraphReady": "Grafo delle relazioni pronto",
       "GraphError": "Errore nella costruzione del grafo delle relazioni",
+      "ErrorMessage": "Si è verificato un errore durante il caricamento del grafo delle relazioni.",
+      "NoRelationships": "Nessuna relazione trovata.",
+      "NoRelationshipsHint": "Estrai entità dalle trascrizioni per scoprire le relazioni.",
+      "FilterByEntity": "Filtra per Entità",
+      "FilterByRelation": "Filtra per Relazione",
+      "Refresh": "Aggiorna",
+      "Export": "Esporta",
+      "ExportSuccess": "Grafo esportato con successo",
+      "ExportError": "Esportazione grafo fallita",
+      "Legend": "Legenda",
+      "RelationshipTypes": "Tipi di Relazione",
+      "Entities": "Entità",
+      "Relationships": "Relazioni",
+      "Close": "Chiudi",
       "Nodes": "Nodi",
       "Edges": "Archi",
       "NodeCount": "{count} entità",
@@ -372,6 +388,19 @@
       "HighlightConnections": "Evidenzia Connessioni",
       "SelectedNode": "Selezionato: {name}",
       "NoSelection": "Nessuna entità selezionata"
+    },
+
+    "RelationshipType": {
+      "ally": "Alleato",
+      "enemy": "Nemico",
+      "family": "Famiglia",
+      "employer": "Datore di Lavoro",
+      "employee": "Dipendente",
+      "romantic": "Romantico",
+      "friend": "Amico",
+      "rival": "Rivale",
+      "neutral": "Neutrale",
+      "unknown": "Sconosciuto"
     },
 
     "Errors": {

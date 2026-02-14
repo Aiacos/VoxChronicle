@@ -56,7 +56,9 @@
       "CampaignPlaceholder": "Select a campaign...",
       "CampaignNone": "No campaigns available",
       "CampaignNeedsToken": "Set Kanka API token first",
-      "CampaignError": "Failed to load campaigns"
+      "CampaignError": "Failed to load campaigns",
+      "VocabularyDictionary": "Vocabulary Dictionary",
+      "VocabularyDictionaryHint": "Custom vocabulary terms for improved transcription accuracy (managed via Vocabulary UI)"
     },
 
     "Validation": {
@@ -319,6 +321,20 @@
       "BuildingGraph": "Building relationship graph...",
       "GraphReady": "Relationship graph ready",
       "GraphError": "Failed to build relationship graph",
+      "ErrorMessage": "An error occurred while loading the relationship graph.",
+      "NoRelationships": "No relationships found yet.",
+      "NoRelationshipsHint": "Extract entities from transcriptions to discover relationships.",
+      "FilterByEntity": "Filter by Entity",
+      "FilterByRelation": "Filter by Relation",
+      "Refresh": "Refresh",
+      "Export": "Export",
+      "ExportSuccess": "Graph exported successfully",
+      "ExportError": "Failed to export graph",
+      "Legend": "Legend",
+      "RelationshipTypes": "Relationship Types",
+      "Entities": "Entities",
+      "Relationships": "Relationships",
+      "Close": "Close",
       "Nodes": "Nodes",
       "Edges": "Edges",
       "NodeCount": "{count} entities",
@@ -372,6 +388,19 @@
       "HighlightConnections": "Highlight Connections",
       "SelectedNode": "Selected: {name}",
       "NoSelection": "No entity selected"
+    },
+
+    "RelationshipType": {
+      "ally": "Ally",
+      "enemy": "Enemy",
+      "family": "Family",
+      "employer": "Employer",
+      "employee": "Employee",
+      "romantic": "Romantic",
+      "friend": "Friend",
+      "rival": "Rival",
+      "neutral": "Neutral",
+      "unknown": "Unknown"
     },
 
     "Errors": {

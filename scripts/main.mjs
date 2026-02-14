@@ -89,7 +89,7 @@ Hooks.once('init', () => {
 
   // Store module reference on game object for global access
   game[MODULE_ID] = {
-    version: '1.0.0',
+    version: game.modules.get(MODULE_ID)?.version ?? '0.0.0',
     ready: false
   };
 
