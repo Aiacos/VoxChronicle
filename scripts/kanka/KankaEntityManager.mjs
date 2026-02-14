@@ -483,6 +483,69 @@ class KankaEntityManager {
     return age < this._cacheExpiryMs;
   }
 
+  /**
+   * Clear all search cache entries
+   *
+   * Removes all cached search results and their timestamps. Use this when you need
+   * to force fresh API calls for all searches, such as after bulk entity updates or
+   * campaign changes.
+   *
+   * @example
+   * // After bulk entity updates
+   * manager.clearCache();
+   */
+  clearCache() {
+    this._searchCache.clear();
+    this._cacheTimestamps.clear();
+    this._logger.debug('Search cache cleared');
+  }
+
+  /**
+   * Clear cache for a specific search query
+   *
+   * Removes the cache entry for a specific search query. Use this when you know
+   * a particular entity has been updated and cached search results may be stale.
+   *
+   * @param {string} cacheKey - Cache key to clear (format: "query|entityType")
+   *
+   * @example
+   * // After updating a character named "Dragon"
+   * manager.clearCacheFor('Dragon|characters');
+   *
+   * @example
+   * // After general update - clear all searches for query
+   * manager.clearCacheFor('Dragon|all');
+   */
+  clearCacheFor(cacheKey) {
+    if (this._searchCache.has(cacheKey)) {
+      this._searchCache.delete(cacheKey);
+      this._cacheTimestamps.delete(cacheKey);
+      this._logger.debug(`Cache cleared for: ${cacheKey}`);
+    }
+  }
+
+  /**
+   * Get cache statistics
+   *
+   * Returns information about the current state of the search cache, including
+   * the number of cached entries and the configured expiry time.
+   *
+   * @returns {object} Cache statistics
+   * @returns {number} return.entries - Number of cached search results
+   * @returns {number} return.expiryMs - Cache expiry time in milliseconds
+   *
+   * @example
+   * const stats = manager.getCacheStats();
+   * console.log(`Cache has ${stats.entries} entries`);
+   * console.log(`Cache expires after ${stats.expiryMs}ms`);
+   */
+  getCacheStats() {
+    return {
+      entries: this._searchCache.size,
+      expiryMs: this._cacheExpiryMs
+    };
+  }
+
   // ============================================================================
   // Search Operations
   // ============================================================================
