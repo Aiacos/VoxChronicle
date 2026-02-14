@@ -508,6 +508,10 @@ class RateLimiter {
     this.clear();
     this._paused = false;
     this._pausedUntil = null;
+    this._totalRequests = 0;
+    this._waitTimes = [];
+    this._peakQueueLength = 0;
+    this._retryCount = 0;
     this._logger.info('Rate limiter reset');
   }
 
