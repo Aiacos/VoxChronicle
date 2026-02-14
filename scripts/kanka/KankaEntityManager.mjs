@@ -63,6 +63,27 @@ class KankaEntityManager {
   _campaignId = '';
 
   /**
+   * Cache of search results
+   * @type {Map<string, Array<object>>}
+   * @private
+   */
+  _searchCache = new Map();
+
+  /**
+   * Cache expiry time in milliseconds (5 minutes)
+   * @type {number}
+   * @private
+   */
+  _cacheExpiryMs = 300000;
+
+  /**
+   * Timestamps for cache entries
+   * @type {Map<string, number>}
+   * @private
+   */
+  _cacheTimestamps = new Map();
+
+  /**
    * Create a new KankaEntityManager instance
    *
    * @param {object} client - KankaClient instance for making API requests
