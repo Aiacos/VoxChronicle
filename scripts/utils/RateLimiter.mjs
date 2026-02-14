@@ -264,6 +264,7 @@ class RateLimiter {
   _recordRequest() {
     this._requestTimestamps.push(Date.now());
     this._cleanupOldTimestamps();
+    this._totalRequests++;
   }
 
   /**
