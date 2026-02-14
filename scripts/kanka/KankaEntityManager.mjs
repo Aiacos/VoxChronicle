@@ -454,6 +454,36 @@ class KankaEntityManager {
   }
 
   // ============================================================================
+  // Cache Management
+  // ============================================================================
+
+  /**
+   * Check if a cache entry is still valid
+   *
+   * Validates cache entries based on their timestamp and the configured expiry time.
+   * Used internally by search operations to determine if cached results can be returned
+   * or if a fresh API call is needed.
+   *
+   * @param {string} cacheKey - Cache key to validate
+   * @returns {boolean} True if cache entry exists and is still valid, false otherwise
+   * @private
+   *
+   * @example
+   * if (this._isCacheValid('characters:Dragon')) {
+   *   return this._searchCache.get('characters:Dragon');
+   * }
+   */
+  _isCacheValid(cacheKey) {
+    const timestamp = this._cacheTimestamps.get(cacheKey);
+    if (!timestamp) {
+      return false;
+    }
+
+    const age = Date.now() - timestamp;
+    return age < this._cacheExpiryMs;
+  }
+
+  // ============================================================================
   // Search Operations
   // ============================================================================
 
