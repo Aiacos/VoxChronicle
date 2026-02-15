@@ -559,6 +559,100 @@ class SpeakerLabeling extends FormApplication {
       return $(html);
     }
   }
+
+  /**
+   * Rename a speaker retroactively in stored labels.
+   *
+   * Updates all label entries where the value matches oldName, replacing
+   * with newName. This enables retroactive rename: if speaker "SPEAKER_00"
+   * was labeled "Alice" and you rename "Alice" to "Alicia", the stored label
+   * for SPEAKER_00 becomes "Alicia". Also renames any key that matches oldName
+   * (for custom speaker IDs that are not SPEAKER_XX patterns).
+   *
+   * @param {string} oldName - The current speaker name to rename
+   * @param {string} newName - The new name to assign
+   * @returns {Promise<number>} The number of labels that were updated
+   * @static
+   */
+  static async renameSpeaker(oldName, newName) {
+    if (!oldName || !newName || typeof oldName !== 'string' || typeof newName !== 'string') {
+      return 0;
+    }
+
+    const trimmedOld = oldName.trim();
+    const trimmedNew = newName.trim();
+
+    if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) {
+      return 0;
+    }
+
+    const logger = Logger.createChild('SpeakerLabeling');
+
+    try {
+      const labels = Settings.getSpeakerLabels() || {};
+      const updatedLabels = {};
+      let renameCount = 0;
+
+      for (const [speakerId, label] of Object.entries(labels)) {
+        if (speakerId === trimmedOld) {
+          // Key matches oldName — rename the key to newName and keep the value
+          updatedLabels[trimmedNew] = label === trimmedOld ? trimmedNew : label;
+          renameCount++;
+        } else if (label === trimmedOld) {
+          // Value matches oldName — update the value to newName
+          updatedLabels[speakerId] = trimmedNew;
+          renameCount++;
+        } else {
+          // No match — keep as-is
+          updatedLabels[speakerId] = label;
+        }
+      }
+
+      if (renameCount > 0) {
+        await Settings.setSpeakerLabels(updatedLabels);
+        logger.log(`Renamed speaker "${trimmedOld}" to "${trimmedNew}" (${renameCount} label(s) updated)`);
+      }
+
+      return renameCount;
+    } catch (error) {
+      logger.error('Failed to rename speaker:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Apply stored speaker labels to an array of transcript segments.
+   *
+   * For each segment that has a `speaker` property matching a stored label key,
+   * the speaker value is replaced with the stored label. Segments without a
+   * matching label keep their original speaker value unchanged.
+   *
+   * This differs from {@link mapSpeakerLabels} in that it does NOT fall back
+   * to "Unknown Speaker" for missing speakers — it preserves the original value.
+   * This makes it suitable for incremental/partial label application.
+   *
+   * @param {Array<object>} segments - Array of transcript segments with speaker property
+   * @returns {Array<object>} New array with labels applied (originals not mutated)
+   * @static
+   */
+  static applyLabelsToSegments(segments) {
+    if (!Array.isArray(segments)) {
+      return [];
+    }
+
+    const labels = Settings.getSpeakerLabels() || {};
+
+    return segments.map((segment) => {
+      const updatedSegment = { ...segment };
+
+      if (segment.speaker && labels[segment.speaker]) {
+        updatedSegment.speaker = labels[segment.speaker];
+      }
+
+      return updatedSegment;
+    });
+  }
+
 }
 
 // Export the class

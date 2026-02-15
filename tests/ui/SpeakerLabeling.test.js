@@ -995,4 +995,299 @@ describe('SpeakerLabeling', () => {
       expect(html).toContain('&lt;script&gt;');
     });
   });
+
+  describe('Static Method: renameSpeaker', () => {
+    beforeEach(() => {
+      mockSettings.getSpeakerLabels.mockClear();
+      mockSettings.setSpeakerLabels.mockClear();
+    });
+
+    it('should rename speaker label values matching oldName', async () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice',
+        SPEAKER_01: 'Bob'
+      });
+
+      const count = await SpeakerLabeling.renameSpeaker('Alice', 'Alicia');
+
+      expect(count).toBe(1);
+      expect(mockSettings.setSpeakerLabels).toHaveBeenCalledWith({
+        SPEAKER_00: 'Alicia',
+        SPEAKER_01: 'Bob'
+      });
+    });
+
+    it('should rename multiple labels matching oldName', async () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice',
+        SPEAKER_01: 'Bob',
+        SPEAKER_02: 'Alice'
+      });
+
+      const count = await SpeakerLabeling.renameSpeaker('Alice', 'Alicia');
+
+      expect(count).toBe(2);
+      expect(mockSettings.setSpeakerLabels).toHaveBeenCalledWith({
+        SPEAKER_00: 'Alicia',
+        SPEAKER_01: 'Bob',
+        SPEAKER_02: 'Alicia'
+      });
+    });
+
+    it('should rename speaker keys matching oldName', async () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        'CustomSpeaker': 'Some Label',
+        SPEAKER_01: 'Bob'
+      });
+
+      const count = await SpeakerLabeling.renameSpeaker('CustomSpeaker', 'NewSpeaker');
+
+      expect(count).toBe(1);
+      expect(mockSettings.setSpeakerLabels).toHaveBeenCalledWith({
+        'NewSpeaker': 'Some Label',
+        SPEAKER_01: 'Bob'
+      });
+    });
+
+    it('should rename key and update value when both match oldName', async () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        'Alice': 'Alice',
+        SPEAKER_01: 'Bob'
+      });
+
+      const count = await SpeakerLabeling.renameSpeaker('Alice', 'Alicia');
+
+      expect(count).toBe(1);
+      expect(mockSettings.setSpeakerLabels).toHaveBeenCalledWith({
+        'Alicia': 'Alicia',
+        SPEAKER_01: 'Bob'
+      });
+    });
+
+    it('should return 0 and not save when no labels match', async () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice',
+        SPEAKER_01: 'Bob'
+      });
+
+      const count = await SpeakerLabeling.renameSpeaker('Charlie', 'Charles');
+
+      expect(count).toBe(0);
+      expect(mockSettings.setSpeakerLabels).not.toHaveBeenCalled();
+    });
+
+    it('should return 0 for null oldName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker(null, 'NewName');
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 for null newName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker('OldName', null);
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 for empty string oldName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker('', 'NewName');
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 for empty string newName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker('OldName', '');
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 for whitespace-only oldName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker('   ', 'NewName');
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 when oldName equals newName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker('Alice', 'Alice');
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 for non-string oldName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker(123, 'NewName');
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 for non-string newName', async () => {
+      const count = await SpeakerLabeling.renameSpeaker('OldName', 123);
+      expect(count).toBe(0);
+    });
+
+    it('should trim whitespace from oldName and newName', async () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice'
+      });
+
+      const count = await SpeakerLabeling.renameSpeaker('  Alice  ', '  Alicia  ');
+
+      expect(count).toBe(1);
+      expect(mockSettings.setSpeakerLabels).toHaveBeenCalledWith({
+        SPEAKER_00: 'Alicia'
+      });
+    });
+
+    it('should handle settings error gracefully', async () => {
+      mockSettings.getSpeakerLabels.mockImplementation(() => {
+        throw new Error('Settings error');
+      });
+
+      const count = await SpeakerLabeling.renameSpeaker('Alice', 'Alicia');
+
+      expect(count).toBe(0);
+    });
+
+    it('should handle empty labels object', async () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({});
+
+      const count = await SpeakerLabeling.renameSpeaker('Alice', 'Alicia');
+
+      expect(count).toBe(0);
+      expect(mockSettings.setSpeakerLabels).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Static Method: applyLabelsToSegments', () => {
+    beforeEach(() => {
+      mockSettings.getSpeakerLabels.mockClear();
+    });
+
+    it('should apply stored labels to matching segments', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice',
+        SPEAKER_01: 'Bob'
+      });
+
+      const segments = [
+        { text: 'Hello', speaker: 'SPEAKER_00' },
+        { text: 'Hi there', speaker: 'SPEAKER_01' }
+      ];
+
+      const result = SpeakerLabeling.applyLabelsToSegments(segments);
+
+      expect(result[0].speaker).toBe('Alice');
+      expect(result[1].speaker).toBe('Bob');
+    });
+
+    it('should preserve original speaker when no label exists', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice'
+      });
+
+      const segments = [
+        { text: 'Hello', speaker: 'SPEAKER_00' },
+        { text: 'Hi there', speaker: 'SPEAKER_02' }
+      ];
+
+      const result = SpeakerLabeling.applyLabelsToSegments(segments);
+
+      expect(result[0].speaker).toBe('Alice');
+      expect(result[1].speaker).toBe('SPEAKER_02');
+    });
+
+    it('should not mutate original segments', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice'
+      });
+
+      const segments = [
+        { text: 'Hello', speaker: 'SPEAKER_00' }
+      ];
+
+      const result = SpeakerLabeling.applyLabelsToSegments(segments);
+
+      expect(result[0].speaker).toBe('Alice');
+      expect(segments[0].speaker).toBe('SPEAKER_00');
+    });
+
+    it('should preserve other segment properties', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({
+        SPEAKER_00: 'Alice'
+      });
+
+      const segments = [
+        { text: 'Hello', speaker: 'SPEAKER_00', start: 0, end: 2.5, confidence: 0.95 }
+      ];
+
+      const result = SpeakerLabeling.applyLabelsToSegments(segments);
+
+      expect(result[0].text).toBe('Hello');
+      expect(result[0].start).toBe(0);
+      expect(result[0].end).toBe(2.5);
+      expect(result[0].confidence).toBe(0.95);
+      expect(result[0].speaker).toBe('Alice');
+    });
+
+    it('should return empty array for non-array input', () => {
+      expect(SpeakerLabeling.applyLabelsToSegments(null)).toEqual([]);
+      expect(SpeakerLabeling.applyLabelsToSegments(undefined)).toEqual([]);
+      expect(SpeakerLabeling.applyLabelsToSegments('not an array')).toEqual([]);
+      expect(SpeakerLabeling.applyLabelsToSegments(42)).toEqual([]);
+    });
+
+    it('should handle empty array', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({ SPEAKER_00: 'Alice' });
+
+      const result = SpeakerLabeling.applyLabelsToSegments([]);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle segments without speaker property', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({ SPEAKER_00: 'Alice' });
+
+      const segments = [
+        { text: 'Hello' },
+        { text: 'World', speaker: 'SPEAKER_00' }
+      ];
+
+      const result = SpeakerLabeling.applyLabelsToSegments(segments);
+
+      expect(result[0].speaker).toBeUndefined();
+      expect(result[1].speaker).toBe('Alice');
+    });
+
+    it('should handle empty labels object', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({});
+
+      const segments = [
+        { text: 'Hello', speaker: 'SPEAKER_00' }
+      ];
+
+      const result = SpeakerLabeling.applyLabelsToSegments(segments);
+
+      expect(result[0].speaker).toBe('SPEAKER_00');
+    });
+
+    it('should handle null from getSpeakerLabels', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue(null);
+
+      const segments = [
+        { text: 'Hello', speaker: 'SPEAKER_00' }
+      ];
+
+      const result = SpeakerLabeling.applyLabelsToSegments(segments);
+
+      expect(result[0].speaker).toBe('SPEAKER_00');
+    });
+
+    it('should differ from mapSpeakerLabels by not defaulting to Unknown Speaker', () => {
+      mockSettings.getSpeakerLabels.mockReturnValue({});
+
+      const segments = [
+        { text: 'Hello' }
+      ];
+
+      // applyLabelsToSegments preserves undefined speaker
+      const applied = SpeakerLabeling.applyLabelsToSegments(segments);
+      expect(applied[0].speaker).toBeUndefined();
+
+      // mapSpeakerLabels defaults to 'Unknown Speaker'
+      const mapped = SpeakerLabeling.mapSpeakerLabels(segments);
+      expect(mapped[0].speaker).toBe('Unknown Speaker');
+    });
+  });
+
 });
