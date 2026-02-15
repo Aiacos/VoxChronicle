@@ -354,6 +354,159 @@ class Settings {
       default: 0
     });
 
+    // ==========================================
+    // Narrator Master Settings
+    // ==========================================
+
+    // Multi-language transcription mode
+    game.settings.register(MODULE_ID, 'multiLanguageMode', {
+      name: 'VOXCHRONICLE.Settings.MultiLanguageMode',
+      hint: 'VOXCHRONICLE.Settings.MultiLanguageModeHint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: false
+    });
+
+    // Transcription batch duration for live mode
+    game.settings.register(MODULE_ID, 'transcriptionBatchDuration', {
+      name: 'VOXCHRONICLE.Settings.TranscriptionBatchDuration',
+      hint: 'VOXCHRONICLE.Settings.TranscriptionBatchDurationHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 5000, max: 30000, step: 1000 },
+      default: 10000
+    });
+
+    // Off-track sensitivity level
+    game.settings.register(MODULE_ID, 'offTrackSensitivity', {
+      name: 'VOXCHRONICLE.Settings.OffTrackSensitivity',
+      hint: 'VOXCHRONICLE.Settings.OffTrackSensitivityHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'medium',
+      choices: {
+        low: 'VOXCHRONICLE.Settings.SensitivityLow',
+        medium: 'VOXCHRONICLE.Settings.SensitivityMedium',
+        high: 'VOXCHRONICLE.Settings.SensitivityHigh'
+      }
+    });
+
+    // Enable rules detection
+    game.settings.register(MODULE_ID, 'rulesDetection', {
+      name: 'VOXCHRONICLE.Settings.RulesDetection',
+      hint: 'VOXCHRONICLE.Settings.RulesDetectionHint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true
+    });
+
+    // Rules source
+    game.settings.register(MODULE_ID, 'rulesSource', {
+      name: 'VOXCHRONICLE.Settings.RulesSource',
+      hint: 'VOXCHRONICLE.Settings.RulesSourceHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'auto',
+      choices: {
+        auto: 'VOXCHRONICLE.Settings.RulesSourceAuto',
+        dnd5e: 'VOXCHRONICLE.Settings.RulesSourceDnD5e'
+      }
+    });
+
+    // Debug mode
+    game.settings.register(MODULE_ID, 'debugMode', {
+      name: 'VOXCHRONICLE.Settings.DebugMode',
+      hint: 'VOXCHRONICLE.Settings.DebugModeHint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: (value) => Logger.setDebugMode(value)
+    });
+
+    // ==========================================
+    // API Retry Settings
+    // ==========================================
+
+    // Enable API retry
+    game.settings.register(MODULE_ID, 'apiRetryEnabled', {
+      name: 'VOXCHRONICLE.Settings.ApiRetryEnabled',
+      hint: 'VOXCHRONICLE.Settings.ApiRetryEnabledHint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true
+    });
+
+    // Maximum retry attempts
+    game.settings.register(MODULE_ID, 'apiRetryMaxAttempts', {
+      name: 'VOXCHRONICLE.Settings.ApiRetryMaxAttempts',
+      hint: 'VOXCHRONICLE.Settings.ApiRetryMaxAttemptsHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 0, max: 10, step: 1 },
+      default: 3
+    });
+
+    // Base delay between retries
+    game.settings.register(MODULE_ID, 'apiRetryBaseDelay', {
+      name: 'VOXCHRONICLE.Settings.ApiRetryBaseDelay',
+      hint: 'VOXCHRONICLE.Settings.ApiRetryBaseDelayHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 500, max: 10000, step: 500 },
+      default: 1000
+    });
+
+    // Maximum delay between retries
+    game.settings.register(MODULE_ID, 'apiRetryMaxDelay', {
+      name: 'VOXCHRONICLE.Settings.ApiRetryMaxDelay',
+      hint: 'VOXCHRONICLE.Settings.ApiRetryMaxDelayHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 5000, max: 120000, step: 5000 },
+      default: 60000
+    });
+
+    // Maximum API queue size
+    game.settings.register(MODULE_ID, 'apiQueueMaxSize', {
+      name: 'VOXCHRONICLE.Settings.ApiQueueMaxSize',
+      hint: 'VOXCHRONICLE.Settings.ApiQueueMaxSizeHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 5, max: 100, step: 5 },
+      default: 100
+    });
+
+    // ==========================================
+    // Hidden Internal Settings (Narrator Master)
+    // ==========================================
+
+    // Image gallery storage
+    game.settings.register(MODULE_ID, 'imageGallery', {
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {}
+    });
+
+    // Panel position storage (client-scoped)
+    game.settings.register(MODULE_ID, 'panelPosition', {
+      scope: 'client',
+      config: false,
+      type: Object,
+      default: {}
+    });
+
     logger.info('Settings registered successfully');
   }
 
@@ -661,6 +814,49 @@ class Settings {
       confidenceThreshold: Settings.get('relationshipConfidenceThreshold'),
       maxPerSession: Settings.get('maxRelationshipsPerSession')
     };
+  }
+
+  /**
+   * Get all narrator/live-mode related settings
+   *
+   * @returns {object} Narrator settings configuration
+   * @static
+   */
+  static getNarratorSettings() {
+    return {
+      multiLanguageMode: Settings.get('multiLanguageMode'),
+      transcriptionBatchDuration: Settings.get('transcriptionBatchDuration'),
+      offTrackSensitivity: Settings.get('offTrackSensitivity'),
+      rulesDetection: Settings.get('rulesDetection'),
+      rulesSource: Settings.get('rulesSource'),
+      debugMode: Settings.get('debugMode')
+    };
+  }
+
+  /**
+   * Get API retry configuration settings
+   *
+   * @returns {object} Retry settings configuration
+   * @static
+   */
+  static getRetrySettings() {
+    return {
+      enabled: Settings.get('apiRetryEnabled'),
+      maxAttempts: Settings.get('apiRetryMaxAttempts'),
+      baseDelay: Settings.get('apiRetryBaseDelay'),
+      maxDelay: Settings.get('apiRetryMaxDelay'),
+      queueMaxSize: Settings.get('apiQueueMaxSize')
+    };
+  }
+
+  /**
+   * Check if narrator/live features have required settings
+   *
+   * @returns {boolean} True if narrator features can be used
+   * @static
+   */
+  static isNarratorConfigured() {
+    return Settings.isOpenAIConfigured();
   }
 }
 

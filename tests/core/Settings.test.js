@@ -45,6 +45,7 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
         console.log(...args);
       }
     }),
+    setDebugMode: vi.fn(),
     debug: (...args) => console.log(...args),
     info: (...args) => console.log(...args),
     log: (...args) => console.log(...args),
@@ -184,6 +185,21 @@ describe('Settings', () => {
       // Session Storage
       expect(registerCalls.some((call) => call[1] === 'pendingSessions')).toBe(true);
       expect(registerCalls.some((call) => call[1] === 'knownSpeakers')).toBe(true);
+
+      // Narrator Master Settings
+      expect(registerCalls.some((call) => call[1] === 'multiLanguageMode')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'transcriptionBatchDuration')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'offTrackSensitivity')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'rulesDetection')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'rulesSource')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'debugMode')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'apiRetryEnabled')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'apiRetryMaxAttempts')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'apiRetryBaseDelay')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'apiRetryMaxDelay')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'apiQueueMaxSize')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'imageGallery')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'panelPosition')).toBe(true);
 
       // Verify console.log was called
       expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -708,6 +724,149 @@ describe('Settings', () => {
 
       expect(result).toBe(false);
       expect(mockNotifications.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('getNarratorSettings', () => {
+    it('should return narrator configuration object', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        const values = {
+          multiLanguageMode: true,
+          transcriptionBatchDuration: 15000,
+          offTrackSensitivity: 'high',
+          rulesDetection: false,
+          rulesSource: 'dnd5e',
+          debugMode: true
+        };
+        return values[key] ?? '';
+      });
+      const result = Settings.getNarratorSettings();
+      expect(result).toEqual({
+        multiLanguageMode: true,
+        transcriptionBatchDuration: 15000,
+        offTrackSensitivity: 'high',
+        rulesDetection: false,
+        rulesSource: 'dnd5e',
+        debugMode: true
+      });
+    });
+  });
+
+  describe('getRetrySettings', () => {
+    it('should return retry configuration object', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        const values = {
+          apiRetryEnabled: true,
+          apiRetryMaxAttempts: 5,
+          apiRetryBaseDelay: 2000,
+          apiRetryMaxDelay: 30000,
+          apiQueueMaxSize: 50
+        };
+        return values[key] ?? '';
+      });
+      const result = Settings.getRetrySettings();
+      expect(result).toEqual({
+        enabled: true,
+        maxAttempts: 5,
+        baseDelay: 2000,
+        maxDelay: 30000,
+        queueMaxSize: 50
+      });
+    });
+  });
+
+  describe('isNarratorConfigured', () => {
+    it('should return true when OpenAI is configured', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test-key';
+        return '';
+      });
+      expect(Settings.isNarratorConfigured()).toBe(true);
+    });
+
+    it('should return false when OpenAI is not configured', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockReturnValue('');
+      expect(Settings.isNarratorConfigured()).toBeFalsy();
+    });
+  });
+
+  describe('Narrator Master settings registration', () => {
+    it('should register offTrackSensitivity with choices', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'offTrackSensitivity');
+      expect(call).toBeDefined();
+      expect(call[2].choices).toBeDefined();
+      expect(call[2].choices).toHaveProperty('low');
+      expect(call[2].choices).toHaveProperty('medium');
+      expect(call[2].choices).toHaveProperty('high');
+      expect(call[2].default).toBe('medium');
+    });
+
+    it('should register transcriptionBatchDuration with range', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'transcriptionBatchDuration');
+      expect(call).toBeDefined();
+      expect(call[2].range).toBeDefined();
+      expect(call[2].range.min).toBe(5000);
+      expect(call[2].range.max).toBe(30000);
+      expect(call[2].range.step).toBe(1000);
+      expect(call[2].default).toBe(10000);
+    });
+
+    it('should register debugMode with onChange handler', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'debugMode');
+      expect(call).toBeDefined();
+      expect(typeof call[2].onChange).toBe('function');
+    });
+
+    it('should register imageGallery as hidden', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'imageGallery');
+      expect(call).toBeDefined();
+      expect(call[2].config).toBe(false);
+      expect(call[2].type).toBe(Object);
+    });
+
+    it('should register panelPosition as client-scoped', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'panelPosition');
+      expect(call).toBeDefined();
+      expect(call[2].scope).toBe('client');
+      expect(call[2].config).toBe(false);
+    });
+
+    it('should register apiRetry settings with correct ranges', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+
+      const maxAttempts = registerCalls.find((c) => c[1] === 'apiRetryMaxAttempts');
+      expect(maxAttempts[2].range.min).toBe(0);
+      expect(maxAttempts[2].range.max).toBe(10);
+      expect(maxAttempts[2].default).toBe(3);
+
+      const baseDelay = registerCalls.find((c) => c[1] === 'apiRetryBaseDelay');
+      expect(baseDelay[2].range.min).toBe(500);
+      expect(baseDelay[2].default).toBe(1000);
+
+      const maxDelay = registerCalls.find((c) => c[1] === 'apiRetryMaxDelay');
+      expect(maxDelay[2].range.max).toBe(120000);
+      expect(maxDelay[2].default).toBe(60000);
     });
   });
 });
