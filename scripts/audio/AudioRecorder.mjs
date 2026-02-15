@@ -627,9 +627,7 @@ class AudioRecorder {
       return this._startMicrophoneCapture(options);
     }
 
-    // Try to get the local stream from Foundry's AV system
-    // v13+: Use localStream property
-    // v11/v12: Use getLocalStream() method
+    // Get the local stream from Foundry's AV system
     const localStream = avClient.localStream || avClient.getLocalStream?.();
 
     if (localStream && localStream.getAudioTracks().length > 0) {

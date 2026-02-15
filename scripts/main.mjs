@@ -22,33 +22,38 @@ import { Logger } from './utils/Logger.mjs';
 const logger = Logger.createChild('main');
 
 /**
- * Singleton reference to the RecorderControls Application
+ * Singleton reference to the MainPanel Application
  * Lazy-loaded when first needed
- * @type {RecorderControls|null}
+ * @type {MainPanel|null}
  */
-let recorderControlsApp = null;
+let mainPanelApp = null;
 
 /**
- * Get or create the RecorderControls application instance
- * @returns {Promise<RecorderControls>} The recorder controls application
+ * Get or create the MainPanel application instance
+ * @returns {Promise<MainPanel>} The main panel application
  */
-async function getRecorderControls() {
-  if (!recorderControlsApp) {
-    const { RecorderControls } = await import('./ui/RecorderControls.mjs');
-    recorderControlsApp = new RecorderControls();
+async function getMainPanel() {
+  if (!mainPanelApp) {
+    const { MainPanel } = await import('./ui/MainPanel.mjs');
+    const voxChronicle = VoxChronicle.getInstance();
+    mainPanelApp = MainPanel.getInstance(voxChronicle.sessionOrchestrator);
   }
-  return recorderControlsApp;
+  return mainPanelApp;
 }
 
 /**
- * Tool handler functions shared between Foundry v13 and v11/v12 scene controls.
+ * Tool handler functions for scene controls.
  * Each handler opens the corresponding UI panel.
  * @type {Object<string, Function>}
  */
 const toolHandlers = {
-  recorder: async () => {
-    const recorder = await getRecorderControls();
-    recorder.render(true, { focus: true });
+  panel: async () => {
+    const panel = await getMainPanel();
+    if (panel.isRendered) {
+      panel.close();
+    } else {
+      panel.render(true);
+    }
   },
   speakerLabels: async () => {
     const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
@@ -112,6 +117,13 @@ Hooks.once('ready', async () => {
     // Mark module as ready
     game[MODULE_ID].ready = true;
 
+    // Enable debug logging if configured in settings
+    const debugMode = game.settings.get(MODULE_ID, 'debugMode');
+    if (debugMode) {
+      Logger.setDebugMode(true);
+      logger.info('Debug mode enabled from settings');
+    }
+
     logger.info('All services initialized successfully');
   } catch (error) {
     logger.error('Failed to initialize module:', error);
@@ -122,117 +134,104 @@ Hooks.once('ready', async () => {
 });
 
 /**
+ * Track scene changes for chapter management
+ * Updates the chapter tracker when the active scene changes
+ */
+Hooks.on('canvasReady', () => {
+  const vc = VoxChronicle.getInstance();
+  if (vc.chapterTracker) {
+    const scene = canvas?.scene;
+    if (scene) {
+      vc.chapterTracker.onSceneChange(scene.name, scene.id);
+    }
+  }
+});
+
+/**
+ * Invalidate journal parser cache when journal entries are modified
+ * Ensures the parser picks up changes to journal content
+ */
+Hooks.on('updateJournalEntry', () => {
+  const vc = VoxChronicle.getInstance();
+  if (vc.journalParser) {
+    vc.journalParser.invalidateCache?.();
+  }
+});
+
+Hooks.on('createJournalEntry', () => {
+  const vc = VoxChronicle.getInstance();
+  if (vc.journalParser) {
+    vc.journalParser.invalidateCache?.();
+  }
+});
+
+Hooks.on('deleteJournalEntry', () => {
+  const vc = VoxChronicle.getInstance();
+  if (vc.journalParser) {
+    vc.journalParser.invalidateCache?.();
+  }
+});
+
+/**
  * Register VoxChronicle controls in the scene controls sidebar
  * This hook adds a new tool group for session recording controls
  *
- * @param {SceneControl[]} controls - The array of scene control groups
+ * @param {Object<string, SceneControl>} controls - The scene control groups object
  */
 Hooks.on('getSceneControlButtons', (controls) => {
   // Only show controls to GMs
   if (!game.user?.isGM) return;
 
-  const isV13 = typeof controls === 'object' && !Array.isArray(controls);
-
-  if (isV13) {
-    // Foundry v13: SceneControl requires name, title, icon, activeTool, order, tools
-    // SceneControlTool requires name, title, icon, order, and uses onChange (not onClick)
-    controls[MODULE_ID] = {
-      name: MODULE_ID,
-      icon: 'fa-solid fa-microphone',
-      title: 'VOXCHRONICLE.Controls.Title',
-      activeTool: 'recorder',
-      order: 100,
-      visible: true,
-      tools: {
-        recorder: {
-          name: 'recorder',
-          icon: 'fa-solid fa-microphone',
-          title: 'VOXCHRONICLE.Controls.Recorder',
-          order: 0,
-          button: true,
-          onChange: toolHandlers.recorder
-        },
-        speakerLabels: {
-          name: 'speakerLabels',
-          icon: 'fa-solid fa-users',
-          title: 'VOXCHRONICLE.Controls.SpeakerLabels',
-          order: 1,
-          button: true,
-          onChange: toolHandlers.speakerLabels
-        },
-        vocabulary: {
-          name: 'vocabulary',
-          icon: 'fa-solid fa-book',
-          title: 'VOXCHRONICLE.Controls.Vocabulary',
-          order: 2,
-          button: true,
-          onChange: toolHandlers.vocabulary
-        },
-        relationshipGraph: {
-          name: 'relationshipGraph',
-          icon: 'fa-solid fa-project-diagram',
-          title: 'VOXCHRONICLE.Controls.RelationshipGraph',
-          order: 3,
-          button: true,
-          onChange: toolHandlers.relationshipGraph
-        },
-        settings: {
-          name: 'settings',
-          icon: 'fa-solid fa-cog',
-          title: 'VOXCHRONICLE.Controls.Settings',
-          order: 4,
-          button: true,
-          onChange: toolHandlers.settings
-        }
+  controls[MODULE_ID] = {
+    name: MODULE_ID,
+    icon: 'fa-solid fa-microphone',
+    title: 'VOXCHRONICLE.Controls.Title',
+    activeTool: 'panel',
+    order: 100,
+    visible: true,
+    tools: {
+      panel: {
+        name: 'panel',
+        icon: 'fa-solid fa-microphone',
+        title: 'VOXCHRONICLE.Controls.Panel',
+        order: 0,
+        button: true,
+        onChange: toolHandlers.panel
+      },
+      speakerLabels: {
+        name: 'speakerLabels',
+        icon: 'fa-solid fa-users',
+        title: 'VOXCHRONICLE.Controls.SpeakerLabels',
+        order: 1,
+        button: true,
+        onChange: toolHandlers.speakerLabels
+      },
+      vocabulary: {
+        name: 'vocabulary',
+        icon: 'fa-solid fa-book',
+        title: 'VOXCHRONICLE.Controls.Vocabulary',
+        order: 2,
+        button: true,
+        onChange: toolHandlers.vocabulary
+      },
+      relationshipGraph: {
+        name: 'relationshipGraph',
+        icon: 'fa-solid fa-project-diagram',
+        title: 'VOXCHRONICLE.Controls.RelationshipGraph',
+        order: 3,
+        button: true,
+        onChange: toolHandlers.relationshipGraph
+      },
+      settings: {
+        name: 'settings',
+        icon: 'fa-solid fa-cog',
+        title: 'VOXCHRONICLE.Controls.Settings',
+        order: 4,
+        button: true,
+        onChange: toolHandlers.settings
       }
-    };
-  } else if (Array.isArray(controls)) {
-    // Foundry v11/v12: controls is an array, tools is an array
-    controls.push({
-      name: MODULE_ID,
-      title: 'VOXCHRONICLE.Controls.Title',
-      icon: 'fa-solid fa-microphone',
-      layer: 'controls',
-      visible: true,
-      tools: [
-        {
-          name: 'recorder',
-          title: 'VOXCHRONICLE.Controls.Recorder',
-          icon: 'fa-solid fa-microphone',
-          button: true,
-          onClick: toolHandlers.recorder
-        },
-        {
-          name: 'speaker-labels',
-          title: 'VOXCHRONICLE.Controls.SpeakerLabels',
-          icon: 'fa-solid fa-users',
-          button: true,
-          onClick: toolHandlers.speakerLabels
-        },
-        {
-          name: 'vocabulary',
-          title: 'VOXCHRONICLE.Controls.Vocabulary',
-          icon: 'fa-solid fa-book',
-          button: true,
-          onClick: toolHandlers.vocabulary
-        },
-        {
-          name: 'relationship-graph',
-          title: 'VOXCHRONICLE.Controls.RelationshipGraph',
-          icon: 'fa-solid fa-project-diagram',
-          button: true,
-          onClick: toolHandlers.relationshipGraph
-        },
-        {
-          name: 'settings',
-          title: 'VOXCHRONICLE.Controls.Settings',
-          icon: 'fa-solid fa-cog',
-          button: true,
-          onClick: toolHandlers.settings
-        }
-      ]
-    });
-  }
+    }
+  };
 
   logger.info('Scene control buttons registered');
 });
