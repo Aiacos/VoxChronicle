@@ -100,6 +100,24 @@ class Logger {
   }
 
   /**
+   * Alias for setDebugEnabled - used by Settings onChange callback
+   *
+   * @param {boolean} enabled - Whether to enable debug mode
+   */
+  static setDebugMode(enabled) {
+    Logger.setDebugEnabled(enabled);
+  }
+
+  /**
+   * Check if debug mode is currently enabled
+   *
+   * @returns {boolean} True if debug mode is enabled
+   */
+  static isDebugMode() {
+    return Logger._debugEnabled;
+  }
+
+  /**
    * Check if a log level should be displayed
    *
    * @param {number} level - The log level to check
