@@ -2192,3 +2192,608 @@ form .form-group .vox-chronicle-validate-button {
     justify-content: flex-end;
   }
 }
+
+/* ============================================================
+   Narrator Master Panel Styles (Merged)
+   ============================================================ */
+
+/* --- Panel Layout --- */
+.vox-chronicle-panel {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-primary, 'Signika', sans-serif);
+  background: var(--color-bg, #1a1a2e);
+  color: var(--color-text, #e0e0e0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.vox-chronicle-panel__warning {
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  color: #e74c3c;
+  padding: 8px 12px;
+  margin: 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Panel Header & Controls --- */
+.vox-chronicle-panel__header {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vox-chronicle-panel__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.vox-chronicle-panel__duration {
+  font-family: monospace;
+  font-size: 0.9em;
+  color: rgba(255, 255, 255, 0.7);
+  margin-left: auto;
+}
+
+.vox-chronicle-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8em;
+}
+
+.vox-chronicle-panel__mode-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.vox-chronicle-panel__mode-badge--api {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+
+.vox-chronicle-panel__mode-badge--local {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+}
+
+.vox-chronicle-panel__mode-badge--auto {
+  background: rgba(155, 89, 182, 0.2);
+  color: #9b59b6;
+}
+
+.vox-chronicle-panel__chapter {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Audio Level Meter --- */
+.vox-chronicle-panel__level-meter {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.vox-chronicle-panel__level-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c);
+  transition: width 0.1s ease;
+  border-radius: 2px;
+}
+
+/* --- Buttons --- */
+.vox-chronicle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.vox-chronicle-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.vox-chronicle-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vox-chronicle-btn--record {
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #e74c3c;
+}
+
+.vox-chronicle-btn--record:hover:not(:disabled) {
+  background: rgba(231, 76, 60, 0.15);
+}
+
+.vox-chronicle-btn--small {
+  padding: 3px 8px;
+  font-size: 0.8em;
+}
+
+.vox-chronicle-btn--secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* --- Tab Navigation --- */
+.vox-chronicle-panel__tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.vox-chronicle-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75em;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.2s, border-color 0.2s;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  position: relative;
+}
+
+.vox-chronicle-tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.vox-chronicle-tab--active {
+  color: #9b59b6;
+  border-bottom-color: #9b59b6;
+}
+
+.vox-chronicle-tab__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: #9b59b6;
+  color: white;
+  font-size: 0.7em;
+  line-height: 14px;
+  text-align: center;
+}
+
+.vox-chronicle-tab__badge--warning {
+  background: #e74c3c;
+}
+
+/* --- Tab Content --- */
+.vox-chronicle-panel__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.vox-chronicle-tab-pane.hidden {
+  display: none;
+}
+
+.vox-chronicle-panel__empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+  text-align: center;
+  padding: 24px 12px;
+  font-size: 0.85em;
+}
+
+/* --- Suggestions --- */
+.vox-chronicle-panel__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vox-chronicle-suggestion {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.vox-chronicle-suggestion__type {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.7em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: rgba(155, 89, 182, 0.2);
+  color: #9b59b6;
+  margin-bottom: 4px;
+}
+
+.vox-chronicle-suggestion p {
+  margin: 4px 0 0;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+/* --- Off-track Warning --- */
+.vox-chronicle-panel__off-track {
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.35);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e74c3c;
+  font-size: 0.85em;
+}
+
+/* --- Transcript Segments --- */
+.vox-chronicle-panel__transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vox-chronicle-segment {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.vox-chronicle-segment__speaker {
+  font-weight: 600;
+  color: #9b59b6;
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+.vox-chronicle-segment__speaker:hover {
+  text-decoration: underline;
+}
+
+.vox-chronicle-segment--scene-break {
+  text-align: center;
+  border: none;
+  padding: 8px 0;
+}
+
+.vox-chronicle-segment__break {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+  font-size: 0.8em;
+}
+
+/* --- Image Gallery --- */
+.vox-chronicle-panel__gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.vox-chronicle-panel__image-card {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vox-chronicle-panel__image-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* --- Analytics --- */
+.vox-chronicle-analytics {
+  padding: 4px 0;
+}
+
+.vox-chronicle-analytics__summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.vox-chronicle-analytics__stat {
+  text-align: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.vox-chronicle-analytics__label {
+  display: block;
+  font-size: 0.7em;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.vox-chronicle-analytics__value {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #9b59b6;
+}
+
+.vox-chronicle-analytics__speakers {
+  margin-bottom: 16px;
+}
+
+.vox-chronicle-analytics__speaker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.85em;
+}
+
+.vox-chronicle-analytics__speaker-name {
+  width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vox-chronicle-analytics__bar-container {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.vox-chronicle-analytics__bar {
+  height: 100%;
+  background: #9b59b6;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.vox-chronicle-analytics__percentage {
+  width: 40px;
+  text-align: right;
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.vox-chronicle-analytics__timeline-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 60px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vox-chronicle-analytics__timeline-bucket {
+  flex: 1;
+  background: rgba(155, 89, 182, 0.4);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: height 0.3s ease;
+}
+
+.vox-chronicle-analytics__timeline-bucket:hover {
+  background: rgba(155, 89, 182, 0.7);
+}
+
+.vox-chronicle-analytics__empty {
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding: 16px;
+  font-style: italic;
+}
+
+/* --- Journal Picker --- */
+.vox-chronicle-journal-picker {
+  padding: 12px;
+}
+
+.vox-chronicle-journal-picker__search {
+  margin-bottom: 12px;
+}
+
+.vox-chronicle-journal-picker__input {
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 0.85em;
+}
+
+.vox-chronicle-journal-picker__list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.vox-chronicle-journal-picker__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+  font-size: 0.85em;
+}
+
+.vox-chronicle-journal-picker__item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.vox-chronicle-journal-picker__item--selected {
+  background: rgba(155, 89, 182, 0.15);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+}
+
+.vox-chronicle-journal-picker__pages {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8em;
+}
+
+.vox-chronicle-journal-picker__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* --- Chapter Navigation --- */
+.vox-chronicle-panel__chapter-nav {
+  margin-top: 12px;
+}
+
+.vox-chronicle-panel__chapter-path {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 6px;
+}
+
+.vox-chronicle-panel__chapter-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.vox-chronicle-panel__chapter-nav li {
+  padding: 4px 0;
+}
+
+.vox-chronicle-panel__chapter-nav a {
+  color: #9b59b6;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+
+.vox-chronicle-panel__chapter-nav a:hover {
+  text-decoration: underline;
+}
+
+/* --- NPC Dialogue & Narrative Bridge --- */
+.vox-chronicle-panel__npc-dialogue,
+.vox-chronicle-panel__bridge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.vox-chronicle-panel__npc-dialogue h4,
+.vox-chronicle-panel__bridge h4 {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.vox-chronicle-panel__npc-dialogue p,
+.vox-chronicle-panel__bridge p {
+  margin: 0;
+  font-size: 0.9em;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* --- Rules Q&A --- */
+.vox-chronicle-panel__rules {
+  background: rgba(52, 152, 219, 0.08);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.vox-chronicle-panel__rules h4 {
+  font-size: 0.8em;
+  color: #3498db;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.vox-chronicle-panel__rules p {
+  margin: 0;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.vox-chronicle-panel__rules cite {
+  display: block;
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 4px;
+}
+
+/* --- Progress Bar --- */
+.vox-chronicle-panel__progress {
+  margin-top: 8px;
+  position: relative;
+}
+
+.vox-chronicle-panel__progress-bar {
+  height: 6px;
+  background: #9b59b6;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.vox-chronicle-panel__progress span {
+  display: block;
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+/* --- Animations --- */
+@keyframes vox-chronicle-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.vox-chronicle-recording-pulse {
+  animation: vox-chronicle-pulse 1.5s infinite;
+}
+
+@keyframes vox-chronicle-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.vox-chronicle-spinner {
+  animation: vox-chronicle-spin 1s linear infinite;
+}
