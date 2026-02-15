@@ -1178,4 +1178,241 @@ describe('SessionOrchestrator', () => {
       });
     });
   });
+
+  describe('Live Mode', () => {
+    let liveOrchestrator;
+    let mockRecorder;
+    let mockTranscriptionService;
+    let mockAIAssistant;
+    let mockChapterTracker;
+    let mockSceneDetector;
+    let mockSessionAnalytics;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+
+      mockRecorder = {
+        startRecording: vi.fn().mockResolvedValue(undefined),
+        stopRecording: vi.fn().mockResolvedValue(createMockAudioBlob()),
+        pause: vi.fn(),
+        resume: vi.fn(),
+        cancel: vi.fn()
+      };
+      mockTranscriptionService = {
+        transcribe: vi.fn().mockResolvedValue(createMockTranscriptionResult())
+      };
+      mockAIAssistant = {
+        generateSuggestion: vi.fn().mockResolvedValue({ text: 'Suggestion' }),
+        detectOffTrack: vi.fn().mockResolvedValue({ isOffTrack: false })
+      };
+      mockChapterTracker = {
+        updateFromScene: vi.fn(),
+        getCurrentChapter: vi.fn().mockReturnValue({ id: 'ch1', title: 'Chapter 1' })
+      };
+      mockSceneDetector = {
+        analyzeText: vi.fn()
+      };
+      mockSessionAnalytics = {
+        addSegment: vi.fn()
+      };
+
+      liveOrchestrator = new SessionOrchestrator({
+        audioRecorder: mockRecorder,
+        transcriptionService: mockTranscriptionService,
+        aiAssistant: mockAIAssistant,
+        chapterTracker: mockChapterTracker,
+        sceneDetector: mockSceneDetector,
+        sessionAnalytics: mockSessionAnalytics
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should start live mode', async () => {
+      await liveOrchestrator.startLiveMode();
+      expect(liveOrchestrator.isLiveMode).toBe(true);
+      expect(liveOrchestrator.state).toBe(SessionState.LIVE_LISTENING);
+      expect(mockRecorder.startRecording).toHaveBeenCalled();
+    });
+
+    it('should throw if live mode already active', async () => {
+      await liveOrchestrator.startLiveMode();
+      await expect(liveOrchestrator.startLiveMode()).rejects.toThrow('already active');
+    });
+
+    it('should throw if no audio recorder', async () => {
+      const noRecorder = new SessionOrchestrator({});
+      await expect(noRecorder.startLiveMode()).rejects.toThrow('Audio recorder');
+    });
+
+    it('should throw if no transcription service', async () => {
+      const noTranscription = new SessionOrchestrator({
+        audioRecorder: mockRecorder
+      });
+      await expect(noTranscription.startLiveMode()).rejects.toThrow('Transcription service');
+    });
+
+    it('should stop live mode', async () => {
+      await liveOrchestrator.startLiveMode();
+      const session = await liveOrchestrator.stopLiveMode();
+      expect(liveOrchestrator.isLiveMode).toBe(false);
+      expect(liveOrchestrator.state).toBe(SessionState.IDLE);
+      expect(session).not.toBeNull();
+    });
+
+    it('should throw when stopping if not in live mode', async () => {
+      await expect(liveOrchestrator.stopLiveMode()).rejects.toThrow('not active');
+    });
+
+    it('should consolidate live transcript on stop', async () => {
+      await liveOrchestrator.startLiveMode();
+      liveOrchestrator._liveTranscript = [
+        { text: 'Hello', speaker: 'A', start: 0, end: 1 },
+        { text: 'World', speaker: 'B', start: 1, end: 2 }
+      ];
+      const session = await liveOrchestrator.stopLiveMode();
+      expect(session.transcript.text).toBe('Hello World');
+      expect(session.transcript.segments).toHaveLength(2);
+    });
+
+    it('should schedule live cycle timer', async () => {
+      await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+      expect(liveOrchestrator._liveCycleTimer).not.toBeNull();
+    });
+
+    it('should run live cycle and transcribe', async () => {
+      mockRecorder.getLatestChunk = vi.fn().mockResolvedValue(createMockAudioBlob());
+      mockTranscriptionService.transcribe.mockResolvedValue(
+        createMockTranscriptionResult({ text: 'Test transcript' })
+      );
+
+      await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(mockTranscriptionService.transcribe).toHaveBeenCalled();
+    });
+
+    it('should update analytics during live cycle', async () => {
+      mockRecorder.getLatestChunk = vi.fn().mockResolvedValue(createMockAudioBlob());
+      mockTranscriptionService.transcribe.mockResolvedValue(
+        createMockTranscriptionResult()
+      );
+
+      await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(mockSessionAnalytics.addSegment).toHaveBeenCalled();
+    });
+
+    it('should detect scene transitions during live cycle', async () => {
+      mockRecorder.getLatestChunk = vi.fn().mockResolvedValue(createMockAudioBlob());
+      mockTranscriptionService.transcribe.mockResolvedValue(
+        createMockTranscriptionResult({ text: 'The party moves to the forest' })
+      );
+
+      await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(mockSceneDetector.analyzeText).toHaveBeenCalled();
+    });
+
+    it('should run AI analysis during live cycle', async () => {
+      mockRecorder.getLatestChunk = vi.fn().mockResolvedValue(createMockAudioBlob());
+      mockTranscriptionService.transcribe.mockResolvedValue(
+        createMockTranscriptionResult()
+      );
+
+      await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(mockAIAssistant.generateSuggestion).toHaveBeenCalled();
+    });
+
+    it('should detect silence when no audio chunk', async () => {
+      mockRecorder.getLatestChunk = vi.fn().mockResolvedValue(null);
+      const onSilence = vi.fn();
+      liveOrchestrator.setCallbacks({ onSilenceDetected: onSilence });
+
+      await liveOrchestrator.startLiveMode({ batchDuration: 1000 });
+
+      // First cycle sets silence start
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(onSilence).not.toHaveBeenCalled();
+
+      // After silence threshold passes
+      await vi.advanceTimersByTimeAsync(30000);
+      expect(onSilence).toHaveBeenCalled();
+    });
+
+    it('should update chapter from scene', () => {
+      const scene = { id: 's1', name: 'Forest' };
+      liveOrchestrator.updateChapter(scene);
+      expect(mockChapterTracker.updateFromScene).toHaveBeenCalledWith(scene);
+    });
+
+    it('should return AI suggestions', () => {
+      liveOrchestrator._lastAISuggestions = { text: 'Try this' };
+      expect(liveOrchestrator.getAISuggestions()).toEqual({ text: 'Try this' });
+    });
+
+    it('should return off-track status', () => {
+      liveOrchestrator._lastOffTrackStatus = { isOffTrack: true };
+      expect(liveOrchestrator.getOffTrackStatus()).toEqual({ isOffTrack: true });
+    });
+
+    it('should return current chapter', () => {
+      const chapter = liveOrchestrator.getCurrentChapter();
+      expect(chapter).toEqual({ id: 'ch1', title: 'Chapter 1' });
+    });
+
+    it('should include live services in getServicesStatus', () => {
+      const status = liveOrchestrator.getServicesStatus();
+      expect(status.aiAssistant).toBe(true);
+      expect(status.chapterTracker).toBe(true);
+      expect(status.sceneDetector).toBe(true);
+      expect(status.sessionAnalytics).toBe(true);
+      expect(status.canLiveMode).toBe(true);
+    });
+
+    it('should report canLiveMode false without AI assistant', () => {
+      const limited = new SessionOrchestrator({
+        audioRecorder: mockRecorder,
+        transcriptionService: mockTranscriptionService
+      });
+      const status = limited.getServicesStatus();
+      expect(status.canLiveMode).toBe(false);
+    });
+
+    it('should clear live state on reset', async () => {
+      await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+      liveOrchestrator._liveTranscript = [{ text: 'test' }];
+      liveOrchestrator._lastAISuggestions = { text: 'suggestion' };
+
+      liveOrchestrator.reset();
+
+      expect(liveOrchestrator.isLiveMode).toBe(false);
+      expect(liveOrchestrator._liveTranscript).toEqual([]);
+      expect(liveOrchestrator._lastAISuggestions).toBeNull();
+      expect(liveOrchestrator._liveCycleTimer).toBeNull();
+    });
+
+    it('should handle live cycle errors gracefully', async () => {
+      mockRecorder.getLatestChunk = vi.fn().mockRejectedValue(new Error('Audio error'));
+
+      await liveOrchestrator.startLiveMode({ batchDuration: 1000 });
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(liveOrchestrator.isLiveMode).toBe(true);
+      expect(liveOrchestrator.state).toBe(SessionState.LIVE_LISTENING);
+    });
+
+    it('should include new states in SessionState export', () => {
+      expect(SessionState.LIVE_LISTENING).toBe('live_listening');
+      expect(SessionState.LIVE_TRANSCRIBING).toBe('live_transcribing');
+      expect(SessionState.LIVE_ANALYZING).toBe('live_analyzing');
+    });
+  });
 });

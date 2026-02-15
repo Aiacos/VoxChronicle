@@ -22,7 +22,10 @@ const SessionState = {
   GENERATING_IMAGES: 'generating_images',
   PUBLISHING: 'publishing',
   COMPLETE: 'complete',
-  ERROR: 'error'
+  ERROR: 'error',
+  LIVE_LISTENING: 'live_listening',
+  LIVE_TRANSCRIBING: 'live_transcribing',
+  LIVE_ANALYZING: 'live_analyzing'
 };
 
 const DEFAULT_SESSION_OPTIONS = {
@@ -58,8 +61,25 @@ class SessionOrchestrator {
     onStateChange: null,
     onProgress: null,
     onError: null,
-    onSessionComplete: null
+    onSessionComplete: null,
+    onSilenceDetected: null
   };
+
+  // Live mode services
+  _aiAssistant = null;
+  _chapterTracker = null;
+  _sceneDetector = null;
+  _sessionAnalytics = null;
+
+  // Live mode state
+  _liveMode = false;
+  _liveCycleTimer = null;
+  _liveBatchDuration = 10000;
+  _liveTranscript = [];
+  _silenceStartTime = null;
+  _silenceThreshold = 30000;
+  _lastAISuggestions = null;
+  _lastOffTrackStatus = null;
   _transcriptionConfig = null;
   _transcriptionProcessor = null;
   _entityProcessor = null;
@@ -81,6 +101,10 @@ class SessionOrchestrator {
     this._imageGenerationService = services.imageGenerationService || null;
     this._kankaService = services.kankaService || null;
     this._narrativeExporter = services.narrativeExporter || null;
+    this._aiAssistant = services.aiAssistant || null;
+    this._chapterTracker = services.chapterTracker || null;
+    this._sceneDetector = services.sceneDetector || null;
+    this._sessionAnalytics = services.sessionAnalytics || null;
     this._options = { ...DEFAULT_SESSION_OPTIONS, ...options };
     this._initializeProcessors();
     this._logger.debug('SessionOrchestrator initialized');
@@ -516,6 +540,10 @@ class SessionOrchestrator {
     if (services.narrativeExporter !== undefined) {
       this._narrativeExporter = services.narrativeExporter;
     }
+    if (services.aiAssistant !== undefined) this._aiAssistant = services.aiAssistant;
+    if (services.chapterTracker !== undefined) this._chapterTracker = services.chapterTracker;
+    if (services.sceneDetector !== undefined) this._sceneDetector = services.sceneDetector;
+    if (services.sessionAnalytics !== undefined) this._sessionAnalytics = services.sessionAnalytics;
 
     this._initializeProcessors();
     this._logger.debug('Services updated');
@@ -551,7 +579,12 @@ class SessionOrchestrator {
       narrativeExporter: !!this._narrativeExporter,
       canRecord: !!this._audioRecorder,
       canTranscribe: !!this._transcriptionService,
-      canPublish: !!this._kankaService
+      canPublish: !!this._kankaService,
+      aiAssistant: !!this._aiAssistant,
+      chapterTracker: !!this._chapterTracker,
+      sceneDetector: !!this._sceneDetector,
+      sessionAnalytics: !!this._sessionAnalytics,
+      canLiveMode: !!this._audioRecorder && !!this._transcriptionService && !!this._aiAssistant
     };
   }
 
@@ -578,12 +611,277 @@ class SessionOrchestrator {
   }
 
   reset() {
+    if (this._liveCycleTimer) {
+      clearTimeout(this._liveCycleTimer);
+      this._liveCycleTimer = null;
+    }
+    this._liveMode = false;
+    this._liveTranscript = [];
+    this._silenceStartTime = null;
+    this._lastAISuggestions = null;
+    this._lastOffTrackStatus = null;
+
     if (this._audioRecorder?.cancel) {
       this._audioRecorder.cancel();
     }
     this._currentSession = null;
     this._state = SessionState.IDLE;
     this._logger.debug('Orchestrator reset');
+  }
+
+  /**
+   * Check if live mode is active
+   * @returns {boolean}
+   */
+  get isLiveMode() {
+    return this._liveMode;
+  }
+
+  /**
+   * Start live mode - periodic transcription + AI analysis
+   * @param {object} [options={}] - Live mode options
+   * @returns {Promise<void>}
+   */
+  async startLiveMode(options = {}) {
+    if (this._liveMode) {
+      throw new Error('Live mode is already active.');
+    }
+    if (!this._audioRecorder) {
+      throw new Error('Audio recorder not configured.');
+    }
+    if (!this._transcriptionService) {
+      throw new Error('Transcription service not configured for live mode.');
+    }
+
+    this._logger.log('Starting live mode...');
+    this._liveMode = true;
+    this._liveBatchDuration = options.batchDuration || this._liveBatchDuration;
+    this._liveTranscript = [];
+    this._silenceStartTime = null;
+    this._lastAISuggestions = null;
+    this._lastOffTrackStatus = null;
+
+    if (!this._currentSession) {
+      this._currentSession = {
+        id: this._generateSessionId(),
+        title: options.title || `Live Session ${new Date().toLocaleDateString()}`,
+        date: new Date().toISOString().split('T')[0],
+        startTime: Date.now(),
+        endTime: null,
+        speakerMap: options.speakerMap || {},
+        language: options.language || null,
+        audioBlob: null,
+        transcript: null,
+        entities: null,
+        relationships: null,
+        moments: null,
+        images: [],
+        chronicle: null,
+        kankaResults: null,
+        errors: []
+      };
+    }
+
+    try {
+      await this._audioRecorder.startRecording(options.recordingOptions || {});
+      this._updateState(SessionState.LIVE_LISTENING);
+      this._scheduleLiveCycle();
+      this._logger.log('Live mode started');
+    } catch (error) {
+      this._liveMode = false;
+      this._logger.error('Failed to start live mode:', error);
+      this._handleError(error, 'startLiveMode');
+      throw error;
+    }
+  }
+
+  /**
+   * Stop live mode
+   * @returns {Promise<object>} Session data with accumulated transcript
+   */
+  async stopLiveMode() {
+    if (!this._liveMode) {
+      throw new Error('Live mode is not active.');
+    }
+
+    this._logger.log('Stopping live mode...');
+    this._liveMode = false;
+
+    if (this._liveCycleTimer) {
+      clearTimeout(this._liveCycleTimer);
+      this._liveCycleTimer = null;
+    }
+
+    try {
+      const audioBlob = await this._audioRecorder.stopRecording();
+      if (this._currentSession) {
+        this._currentSession.endTime = Date.now();
+        this._currentSession.audioBlob = audioBlob;
+        if (this._liveTranscript.length > 0) {
+          this._currentSession.transcript = {
+            text: this._liveTranscript.map(s => s.text).join(' '),
+            segments: this._liveTranscript,
+            language: this._currentSession.language
+          };
+        }
+      }
+
+      this._updateState(SessionState.IDLE);
+      this._logger.log('Live mode stopped');
+      return this._currentSession;
+    } catch (error) {
+      this._logger.error('Failed to stop live mode:', error);
+      this._handleError(error, 'stopLiveMode');
+      throw error;
+    }
+  }
+
+  /**
+   * Schedule next live cycle iteration
+   * @private
+   */
+  _scheduleLiveCycle() {
+    if (!this._liveMode) return;
+    this._liveCycleTimer = setTimeout(() => this._liveCycle(), this._liveBatchDuration);
+  }
+
+  /**
+   * Single live transcription + analysis cycle
+   * @private
+   */
+  async _liveCycle() {
+    if (!this._liveMode) return;
+
+    try {
+      this._updateState(SessionState.LIVE_TRANSCRIBING);
+
+      const audioChunk = this._audioRecorder.getLatestChunk
+        ? await this._audioRecorder.getLatestChunk()
+        : null;
+
+      if (audioChunk && audioChunk.size > 0) {
+        this._silenceStartTime = null;
+
+        const result = await this._transcriptionService.transcribe(audioChunk, {
+          language: this._currentSession?.language,
+          speakerMap: this._currentSession?.speakerMap
+        });
+
+        if (result?.segments?.length > 0) {
+          this._liveTranscript.push(...result.segments);
+
+          if (this._sessionAnalytics) {
+            this._sessionAnalytics.addSegment(result.segments);
+          }
+
+          if (this._sceneDetector) {
+            this._sceneDetector.analyzeText(result.text || '');
+          }
+
+          this._updateState(SessionState.LIVE_ANALYZING);
+          await this._runAIAnalysis(result);
+        }
+      } else {
+        this._handleSilence();
+      }
+    } catch (error) {
+      this._logger.error('Live cycle error:', error);
+      if (this._currentSession) {
+        this._currentSession.errors.push({
+          stage: 'live_cycle',
+          error: error.message,
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    this._updateState(SessionState.LIVE_LISTENING);
+    this._scheduleLiveCycle();
+  }
+
+  /**
+   * Run AI analysis on transcription result
+   * @param {object} transcriptionResult - Transcription result
+   * @private
+   */
+  async _runAIAnalysis(transcriptionResult) {
+    if (!this._aiAssistant) return;
+
+    try {
+      const fullText = this._liveTranscript.map(s => s.text).join(' ');
+
+      const suggestions = await this._aiAssistant.generateSuggestion({
+        transcript: fullText,
+        currentChapter: this._chapterTracker?.getCurrentChapter?.() || null
+      });
+
+      if (suggestions) {
+        this._lastAISuggestions = suggestions;
+      }
+
+      const offTrack = await this._aiAssistant.detectOffTrack?.({
+        transcript: fullText
+      });
+
+      if (offTrack !== undefined) {
+        this._lastOffTrackStatus = offTrack;
+      }
+    } catch (error) {
+      this._logger.warn('AI analysis error:', error.message);
+    }
+  }
+
+  /**
+   * Handle silence detection
+   * @private
+   */
+  _handleSilence() {
+    if (!this._silenceStartTime) {
+      this._silenceStartTime = Date.now();
+      return;
+    }
+
+    const silenceDuration = Date.now() - this._silenceStartTime;
+    if (silenceDuration >= this._silenceThreshold) {
+      this._logger.debug('Silence detected for over 30s');
+      if (this._callbacks.onSilenceDetected) {
+        this._callbacks.onSilenceDetected(silenceDuration);
+      }
+    }
+  }
+
+  /**
+   * Update chapter from scene change
+   * @param {object} scene - Foundry scene object
+   */
+  updateChapter(scene) {
+    if (this._chapterTracker) {
+      this._chapterTracker.updateFromScene(scene);
+    }
+  }
+
+  /**
+   * Get current AI suggestions
+   * @returns {object|null} Latest AI suggestions
+   */
+  getAISuggestions() {
+    return this._lastAISuggestions;
+  }
+
+  /**
+   * Get current off-track status
+   * @returns {object|null} Latest off-track detection result
+   */
+  getOffTrackStatus() {
+    return this._lastOffTrackStatus;
+  }
+
+  /**
+   * Get current chapter info
+   * @returns {object|null} Current chapter info
+   */
+  getCurrentChapter() {
+    return this._chapterTracker?.getCurrentChapter?.() || null;
   }
 
   getSessionSummary() {
