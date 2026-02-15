@@ -669,4 +669,369 @@ describe('TranscriptionService', () => {
       expect(ChunkingStrategy.NONE).toBe('none');
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Multi-language mode tests
+  // -------------------------------------------------------------------------
+
+  describe('multi-language mode', () => {
+    it('should default to disabled', () => {
+      expect(service.isMultiLanguageMode()).toBe(false);
+    });
+
+    it('should be configurable via constructor', () => {
+      const mlService = new TranscriptionService('test-key', {
+        multiLanguageMode: true
+      });
+      expect(mlService.isMultiLanguageMode()).toBe(true);
+    });
+
+    it('should enable and disable via setMultiLanguageMode', () => {
+      service.setMultiLanguageMode(true);
+      expect(service.isMultiLanguageMode()).toBe(true);
+
+      service.setMultiLanguageMode(false);
+      expect(service.isMultiLanguageMode()).toBe(false);
+    });
+
+    it('should only accept true as truthy for setMultiLanguageMode', () => {
+      service.setMultiLanguageMode('yes');
+      expect(service.isMultiLanguageMode()).toBe(false);
+
+      service.setMultiLanguageMode(1);
+      expect(service.isMultiLanguageMode()).toBe(false);
+
+      service.setMultiLanguageMode(true);
+      expect(service.isMultiLanguageMode()).toBe(true);
+    });
+
+    it('should omit language parameter from FormData when enabled', async () => {
+      service.setMultiLanguageMode(true);
+      service.setLanguage('en');
+
+      const audioBlob = createMockAudioBlob(1024);
+      const mockResponse = createMockTranscriptionResponse();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      await service.transcribe(audioBlob, { language: 'it' });
+
+      const formData = mockFetch.mock.calls[0][1].body;
+      expect(formData.get('language')).toBeNull();
+    });
+
+    it('should include language parameter when multi-language mode is disabled', async () => {
+      service.setMultiLanguageMode(false);
+
+      const audioBlob = createMockAudioBlob(1024);
+      const mockResponse = createMockTranscriptionResponse();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      await service.transcribe(audioBlob, { language: 'it' });
+
+      const formData = mockFetch.mock.calls[0][1].body;
+      expect(formData.get('language')).toBe('it');
+    });
+
+    it('should tag segments with detected language when enabled', async () => {
+      service.setMultiLanguageMode(true);
+
+      const audioBlob = createMockAudioBlob(1024);
+      const mockResponse = createMockTranscriptionResponse({
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 2, language: 'en' },
+          { speaker: 'SPEAKER_01', text: 'Ciao mondo', start: 2, end: 4, language: 'it' }
+        ],
+        language: 'en'
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      const result = await service.transcribe(audioBlob);
+
+      // Segments should have language-tagged speakers
+      expect(result.segments[0].speaker).toContain('(en)');
+      expect(result.segments[1].speaker).toContain('(it)');
+      // Segments should have language field
+      expect(result.segments[0].language).toBe('en');
+      expect(result.segments[1].language).toBe('it');
+    });
+
+    it('should use top-level language as fallback for segments without language', async () => {
+      service.setMultiLanguageMode(true);
+
+      const audioBlob = createMockAudioBlob(1024);
+      const mockResponse = createMockTranscriptionResponse({
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 2 }
+        ],
+        language: 'en'
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      const result = await service.transcribe(audioBlob);
+
+      // Should fall back to top-level language
+      expect(result.segments[0].speaker).toContain('(en)');
+      expect(result.segments[0].language).toBe('en');
+    });
+
+    it('should not tag segments when multi-language mode is disabled', async () => {
+      service.setMultiLanguageMode(false);
+
+      const audioBlob = createMockAudioBlob(1024);
+      const mockResponse = createMockTranscriptionResponse({
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 2, language: 'en' }
+        ],
+        language: 'en'
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      const result = await service.transcribe(audioBlob);
+
+      // Speaker should NOT have language tag
+      expect(result.segments[0].speaker).not.toContain('(en)');
+    });
+
+    it('should handle empty segments gracefully in multi-language mode', async () => {
+      service.setMultiLanguageMode(true);
+
+      const audioBlob = createMockAudioBlob(1024);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ text: 'No segments here' })
+      });
+
+      const result = await service.transcribe(audioBlob);
+
+      expect(result.text).toBe('No segments here');
+      expect(result.segments).toEqual([]);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Circuit breaker tests
+  // -------------------------------------------------------------------------
+
+  describe('circuit breaker', () => {
+    it('should start with circuit closed and zero errors', () => {
+      const status = service.getCircuitBreakerStatus();
+      expect(status.isOpen).toBe(false);
+      expect(status.consecutiveErrors).toBe(0);
+      expect(status.maxErrors).toBe(5);
+    });
+
+    it('should accept custom maxConsecutiveErrors via constructor', () => {
+      const customService = new TranscriptionService('test-key', {
+        maxConsecutiveErrors: 3
+      });
+
+      const status = customService.getCircuitBreakerStatus();
+      expect(status.maxErrors).toBe(3);
+    });
+
+    it('should increment error count on transcription failure', async () => {
+      // Use 401 (non-retryable) to avoid retry delays
+      const noRetryService = new TranscriptionService('test-key', {
+        retryEnabled: false
+      });
+
+      const audioBlob = createMockAudioBlob(1024);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: () => Promise.resolve(JSON.stringify({ error: { message: 'Invalid API key' } })),
+        headers: new Headers()
+      });
+
+      await expect(noRetryService.transcribe(audioBlob)).rejects.toThrow();
+
+      const status = noRetryService.getCircuitBreakerStatus();
+      expect(status.consecutiveErrors).toBe(1);
+      expect(status.isOpen).toBe(false);
+    });
+
+    it('should reset error count on successful transcription', async () => {
+      // Disable retry to avoid multiple fetch calls per failure
+      const noRetryService = new TranscriptionService('test-key', {
+        retryEnabled: false
+      });
+
+      const audioBlob = createMockAudioBlob(1024);
+
+      // Fail twice first
+      for (let i = 0; i < 2; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          text: () => Promise.resolve(JSON.stringify({ error: { message: 'Invalid API key' } })),
+          headers: new Headers()
+        });
+
+        await expect(noRetryService.transcribe(audioBlob)).rejects.toThrow();
+      }
+
+      expect(noRetryService.getCircuitBreakerStatus().consecutiveErrors).toBe(2);
+
+      // Now succeed
+      const mockResponse = createMockTranscriptionResponse();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      await noRetryService.transcribe(audioBlob);
+
+      expect(noRetryService.getCircuitBreakerStatus().consecutiveErrors).toBe(0);
+    });
+
+    it('should open circuit after maxConsecutiveErrors failures', async () => {
+      const customService = new TranscriptionService('test-key', {
+        maxConsecutiveErrors: 3,
+        retryEnabled: false
+      });
+
+      const audioBlob = createMockAudioBlob(1024);
+
+      // Fail 3 times to trigger circuit breaker
+      for (let i = 0; i < 3; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          text: () => Promise.resolve(JSON.stringify({ error: { message: 'Invalid API key' } })),
+          headers: new Headers()
+        });
+
+        await expect(customService.transcribe(audioBlob)).rejects.toThrow();
+      }
+
+      const status = customService.getCircuitBreakerStatus();
+      expect(status.isOpen).toBe(true);
+      expect(status.consecutiveErrors).toBe(3);
+    });
+
+    it('should reject immediately when circuit is open', async () => {
+      const customService = new TranscriptionService('test-key', {
+        maxConsecutiveErrors: 2,
+        retryEnabled: false
+      });
+
+      const audioBlob = createMockAudioBlob(1024);
+
+      // Fail twice to open circuit
+      for (let i = 0; i < 2; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          text: () => Promise.resolve(JSON.stringify({ error: { message: 'Invalid API key' } })),
+          headers: new Headers()
+        });
+
+        await expect(customService.transcribe(audioBlob)).rejects.toThrow();
+      }
+
+      // Next call should fail immediately without hitting the API
+      await expect(customService.transcribe(audioBlob)).rejects.toThrow(
+        /circuit breaker is open/i
+      );
+
+      // Verify fetch was NOT called for the third attempt (only 2 calls for the 2 failures)
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should allow requests again after resetCircuitBreaker', async () => {
+      const customService = new TranscriptionService('test-key', {
+        maxConsecutiveErrors: 2,
+        retryEnabled: false
+      });
+
+      const audioBlob = createMockAudioBlob(1024);
+
+      // Open the circuit
+      for (let i = 0; i < 2; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          text: () => Promise.resolve(JSON.stringify({ error: { message: 'Invalid API key' } })),
+          headers: new Headers()
+        });
+
+        await expect(customService.transcribe(audioBlob)).rejects.toThrow();
+      }
+
+      expect(customService.getCircuitBreakerStatus().isOpen).toBe(true);
+
+      // Reset the circuit breaker
+      customService.resetCircuitBreaker();
+
+      const status = customService.getCircuitBreakerStatus();
+      expect(status.isOpen).toBe(false);
+      expect(status.consecutiveErrors).toBe(0);
+
+      // Now a successful call should work
+      const mockResponse = createMockTranscriptionResponse();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      const result = await customService.transcribe(audioBlob);
+      expect(result.text).toBe('Hello, this is a test transcription.');
+    });
+
+    it('should not count invalid input errors toward circuit breaker', async () => {
+      // Invalid input throws before the try/catch that manages the circuit breaker
+      // but AFTER the circuit breaker check. The OpenAIError for invalid input is thrown
+      // before the API call, so it should still go through the catch block.
+      // However, since the error is thrown before the try block in transcribe(),
+      // it does NOT increment the counter.
+      await expect(service.transcribe(null)).rejects.toThrow(OpenAIError);
+
+      const status = service.getCircuitBreakerStatus();
+      // Invalid input error is thrown before the try/catch, so counter stays at 0
+      expect(status.consecutiveErrors).toBe(0);
+    });
+
+    it('should return correct status structure from getCircuitBreakerStatus', () => {
+      const status = service.getCircuitBreakerStatus();
+
+      expect(status).toHaveProperty('isOpen');
+      expect(status).toHaveProperty('consecutiveErrors');
+      expect(status).toHaveProperty('maxErrors');
+      expect(typeof status.isOpen).toBe('boolean');
+      expect(typeof status.consecutiveErrors).toBe('number');
+      expect(typeof status.maxErrors).toBe('number');
+    });
+
+    it('should use default maxConsecutiveErrors of 5', () => {
+      const defaultService = new TranscriptionService('test-key');
+      expect(defaultService.getCircuitBreakerStatus().maxErrors).toBe(5);
+    });
+  });
 });

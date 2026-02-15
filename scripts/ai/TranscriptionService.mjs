@@ -106,6 +106,34 @@ class TranscriptionService extends OpenAIClient {
   _defaultSpeakerMap = {};
 
   /**
+   * Whether multi-language mode is enabled (auto-detect language per segment)
+   * @type {boolean}
+   * @private
+   */
+  _multiLanguageMode = false;
+
+  /**
+   * Number of consecutive transcription errors (circuit breaker counter)
+   * @type {number}
+   * @private
+   */
+  _consecutiveErrors = 0;
+
+  /**
+   * Maximum consecutive errors before circuit breaker opens
+   * @type {number}
+   * @private
+   */
+  _maxConsecutiveErrors = 5;
+
+  /**
+   * Whether the circuit breaker is open (blocking requests)
+   * @type {boolean}
+   * @private
+   */
+  _circuitOpen = false;
+
+  /**
    * Create a new TranscriptionService instance
    *
    * @param {string} apiKey - OpenAI API key
@@ -113,6 +141,8 @@ class TranscriptionService extends OpenAIClient {
    * @param {string} [options.defaultLanguage] - Default transcription language (e.g., 'en', 'it')
    * @param {object} [options.defaultSpeakerMap] - Default speaker ID to name mapping
    * @param {number} [options.timeout=600000] - Request timeout in milliseconds
+   * @param {boolean} [options.multiLanguageMode=false] - Enable multi-language mode with auto-detection
+   * @param {number} [options.maxConsecutiveErrors=5] - Max consecutive errors before circuit opens
    */
   constructor(apiKey, options = {}) {
     super(apiKey, {
@@ -122,6 +152,8 @@ class TranscriptionService extends OpenAIClient {
 
     this._defaultLanguage = options.defaultLanguage || null;
     this._defaultSpeakerMap = options.defaultSpeakerMap || {};
+    this._multiLanguageMode = options.multiLanguageMode === true;
+    this._maxConsecutiveErrors = options.maxConsecutiveErrors ?? 5;
     this._chunker = new AudioChunker();
 
     this._logger.debug('TranscriptionService initialized');
@@ -141,6 +173,15 @@ class TranscriptionService extends OpenAIClient {
    * @returns {Promise<TranscriptionResult>} Transcription result with speaker-labeled segments
    */
   async transcribe(audioBlob, options = {}) {
+    // Circuit breaker check - fail fast if too many consecutive errors
+    if (this._isCircuitOpen()) {
+      throw new OpenAIError(
+        'Circuit breaker is open: too many consecutive transcription failures. ' +
+          'Call resetCircuitBreaker() to retry.',
+        OpenAIErrorType.API_ERROR
+      );
+    }
+
     if (!audioBlob || !(audioBlob instanceof Blob)) {
       throw new OpenAIError(
         'Invalid audio input: expected Blob or File',
@@ -172,12 +213,36 @@ class TranscriptionService extends OpenAIClient {
       }
     }
 
-    // Check if audio exceeds size limit and needs chunking
-    if (this._chunker.needsChunking(audioBlob)) {
-      return this._transcribeChunked(audioBlob, options);
-    }
+    try {
+      let result;
 
-    return this._transcribeSingle(audioBlob, options);
+      // Check if audio exceeds size limit and needs chunking
+      if (this._chunker.needsChunking(audioBlob)) {
+        result = await this._transcribeChunked(audioBlob, options);
+      } else {
+        result = await this._transcribeSingle(audioBlob, options);
+      }
+
+      // Success - reset circuit breaker counter
+      this._consecutiveErrors = 0;
+
+      // If multi-language mode is enabled, tag segments with detected language
+      if (this._multiLanguageMode && result.segments) {
+        result = this._tagSegmentsWithLanguage(result);
+      }
+
+      return result;
+    } catch (error) {
+      // Increment circuit breaker counter on failure
+      this._consecutiveErrors++;
+      if (this._consecutiveErrors >= this._maxConsecutiveErrors) {
+        this._circuitOpen = true;
+        this._logger.error(
+          `Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -213,9 +278,13 @@ class TranscriptionService extends OpenAIClient {
     formData.append('chunking_strategy', ChunkingStrategy.AUTO);
 
     // Optional: specify language for improved accuracy
-    if (language) {
+    // When multi-language mode is enabled, omit the language parameter to let
+    // the API auto-detect language per segment
+    if (language && !this._multiLanguageMode) {
       formData.append('language', language);
       this._logger.debug(`Using language: ${language}`);
+    } else if (this._multiLanguageMode) {
+      this._logger.debug('Multi-language mode: language parameter omitted for auto-detection');
     }
 
     // Optional: context prompt
@@ -427,13 +496,20 @@ class TranscriptionService extends OpenAIClient {
       // Example: speakerMap["SPEAKER_02"] = undefined → mappedName = "SPEAKER_02" (fallback)
       const mappedName = speakerMap[originalSpeaker] || originalSpeaker;
 
-      return {
+      const mapped = {
         speaker: mappedName,
         originalSpeaker: originalSpeaker,
         text: segment.text || '',
         start: segment.start || 0,
         end: segment.end || 0
       };
+
+      // Preserve per-segment language if present (used by multi-language mode)
+      if (segment.language) {
+        mapped.language = segment.language;
+      }
+
+      return mapped;
     });
 
     // Build speaker list with mapping info
@@ -512,6 +588,111 @@ class TranscriptionService extends OpenAIClient {
    */
   getLanguage() {
     return this._defaultLanguage;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Multi-language mode
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Enable or disable multi-language mode
+   *
+   * When enabled, the language parameter is omitted from API calls to allow
+   * automatic per-segment language detection. After transcription, segments
+   * are tagged with their detected language.
+   *
+   * @param {boolean} enabled - Whether to enable multi-language mode
+   */
+  setMultiLanguageMode(enabled) {
+    this._multiLanguageMode = enabled === true;
+    this._logger.debug(`Multi-language mode: ${this._multiLanguageMode ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Check if multi-language mode is enabled
+   *
+   * @returns {boolean} True if multi-language mode is enabled
+   */
+  isMultiLanguageMode() {
+    return this._multiLanguageMode;
+  }
+
+  /**
+   * Tag segments with detected language information
+   *
+   * When multi-language mode is active, each segment's speaker label is
+   * augmented with the detected language code, e.g., "Speaker (en): text".
+   * Each segment also gets a `language` field from the API response.
+   *
+   * @param {TranscriptionResult} result - Transcription result to tag
+   * @returns {TranscriptionResult} Result with language-tagged segments
+   * @private
+   */
+  _tagSegmentsWithLanguage(result) {
+    if (!result.segments || result.segments.length === 0) {
+      return result;
+    }
+
+    const taggedSegments = result.segments.map((segment) => {
+      // Use segment-level language if available, fall back to top-level language
+      const segmentLanguage = segment.language || result.language || result.raw?.language;
+
+      return {
+        ...segment,
+        language: segmentLanguage || undefined,
+        // Tag the speaker with detected language for display
+        speaker: segmentLanguage
+          ? `${segment.speaker} (${segmentLanguage})`
+          : segment.speaker
+      };
+    });
+
+    return {
+      ...result,
+      segments: taggedSegments
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Circuit breaker
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Check if the circuit breaker is currently open
+   *
+   * @returns {boolean} True if the circuit is open (blocking requests)
+   * @private
+   */
+  _isCircuitOpen() {
+    return this._circuitOpen;
+  }
+
+  /**
+   * Manually reset the circuit breaker
+   *
+   * Resets the consecutive error counter and closes the circuit,
+   * allowing transcription requests to proceed again.
+   */
+  resetCircuitBreaker() {
+    this._consecutiveErrors = 0;
+    this._circuitOpen = false;
+    this._logger.debug('Circuit breaker reset');
+  }
+
+  /**
+   * Get the current circuit breaker status
+   *
+   * @returns {object} Circuit breaker status
+   * @returns {boolean} returns.isOpen - Whether the circuit is open
+   * @returns {number} returns.consecutiveErrors - Current consecutive error count
+   * @returns {number} returns.maxErrors - Maximum errors before circuit opens
+   */
+  getCircuitBreakerStatus() {
+    return {
+      isOpen: this._circuitOpen,
+      consecutiveErrors: this._consecutiveErrors,
+      maxErrors: this._maxConsecutiveErrors
+    };
   }
 
   /**
