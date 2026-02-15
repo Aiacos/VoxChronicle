@@ -1,9 +1,12 @@
 /**
  * OpenAIClient - Base API Client for OpenAI Services
  *
- * Provides authentication, error handling, and common request functionality
- * for interacting with OpenAI's REST API. Used as a base for TranscriptionService
- * and ImageGenerationService.
+ * Provides authentication, error handling, retry with exponential backoff,
+ * sequential request queue, and common request functionality for interacting
+ * with OpenAI's REST API. Used as a base for TranscriptionService,
+ * ImageGenerationService, and EntityExtractor.
+ *
+ * Retry/queue system adapted from Narrator Master's OpenAIServiceBase.
  *
  * @class OpenAIClient
  * @module vox-chronicle
@@ -84,6 +87,13 @@ class OpenAIError extends Error {
 /**
  * OpenAIClient base class for OpenAI API interactions
  *
+ * Features:
+ * - Rate limiting via sliding window (RateLimiter)
+ * - Retry with exponential backoff and jitter (from NM)
+ * - Sequential request queue with priority support (from NM)
+ * - Operation history tracking (from NM)
+ * - Fetch with timeout via AbortController
+ *
  * @example
  * const client = new OpenAIClient('your-api-key');
  * const response = await client.request('/chat/completions', {
@@ -134,7 +144,13 @@ class OpenAIClient {
    * @param {object} [options] - Configuration options
    * @param {string} [options.baseUrl] - Custom API base URL
    * @param {number} [options.timeout=120000] - Request timeout in milliseconds
-   * @param {number} [options.maxRetries=3] - Maximum retry attempts for failed requests
+   * @param {number} [options.maxRetries=3] - Maximum retry attempts for failed requests (RateLimiter)
+   * @param {boolean} [options.retryEnabled=true] - Enable automatic retry with exponential backoff
+   * @param {number} [options.retryMaxAttempts=3] - Maximum retry attempts for backoff retries
+   * @param {number} [options.retryBaseDelay=1000] - Base delay in ms for exponential backoff
+   * @param {number} [options.retryMaxDelay=60000] - Maximum delay in ms between retries
+   * @param {number} [options.maxQueueSize=100] - Maximum number of requests that can be queued
+   * @param {number} [options.maxHistorySize=50] - Maximum operation history entries to keep
    */
   constructor(apiKey, options = {}) {
     this._apiKey = apiKey || '';
@@ -147,6 +163,23 @@ class OpenAIClient {
       name: 'OpenAI',
       maxRetries: this._maxRetries
     });
+
+    // Retry configuration (from NM OpenAIServiceBase)
+    this._retryConfig = {
+      enabled: options.retryEnabled ?? true,
+      maxAttempts: options.retryMaxAttempts ?? 3,
+      baseDelay: options.retryBaseDelay ?? 1000,
+      maxDelay: options.retryMaxDelay ?? 60000
+    };
+
+    // Request queue (from NM OpenAIServiceBase)
+    this._requestQueue = [];
+    this._isProcessingQueue = false;
+    this._maxQueueSize = options.maxQueueSize ?? 100;
+
+    // Operation history (from NM OpenAIServiceBase)
+    this._history = [];
+    this._maxHistorySize = options.maxHistorySize ?? 50;
 
     this._logger.debug('OpenAIClient instance created');
   }
@@ -307,8 +340,313 @@ class OpenAIClient {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Retry with exponential backoff (from NM OpenAIServiceBase)
+  // ---------------------------------------------------------------------------
+
   /**
-   * Make a request to the OpenAI API
+   * Determines if an error should be retried
+   *
+   * @param {Error|OpenAIError} error - The error to check
+   * @returns {boolean} True if the error should be retried
+   * @private
+   */
+  _shouldRetry(error) {
+    // OpenAIError has a built-in isRetryable getter
+    if (error instanceof OpenAIError) {
+      return error.isRetryable;
+    }
+
+    // Network errors are always retryable
+    if (error.isNetworkError) {
+      return true;
+    }
+
+    // Check HTTP status codes on raw error objects
+    if (error.status) {
+      if (error.status === 429) return true;
+      if (error.status >= 500 && error.status < 600) return true;
+      if (error.status >= 400 && error.status < 500) return false;
+    }
+
+    return false;
+  }
+
+  /**
+   * Parses the Retry-After header from an API response or OpenAIError
+   *
+   * Supports both numeric (seconds) and HTTP-date formats.
+   *
+   * @param {Response|null} response - The fetch response object (or null)
+   * @returns {number|null} Delay in milliseconds, or null if header is absent/invalid
+   * @private
+   */
+  _parseRetryAfter(response) {
+    const retryAfter = response?.headers?.get?.('Retry-After') ?? response?.headers?.get?.('retry-after');
+    if (!retryAfter) {
+      return null;
+    }
+
+    // Try parsing as seconds (numeric format)
+    const seconds = parseInt(retryAfter, 10);
+    if (!isNaN(seconds) && seconds > 0) {
+      return seconds * 1000;
+    }
+
+    // Try parsing as HTTP-date
+    try {
+      const date = new Date(retryAfter);
+      const now = new Date();
+      const delayMs = date.getTime() - now.getTime();
+      if (!isNaN(delayMs) && delayMs > 0) {
+        return delayMs;
+      }
+    } catch {
+      // Invalid date format, fall through to null
+    }
+
+    return null;
+  }
+
+  /**
+   * Executes an operation with exponential backoff retry logic
+   *
+   * Delay formula: min(baseDelay * 2^attempt, maxDelay) + jitter
+   * Jitter is a random value between 0 and 25% of the capped delay.
+   *
+   * @param {Function} operation - Async function to execute
+   * @param {object} [context={}] - Context information for logging
+   * @param {string} [context.operationName] - Name of the operation being retried
+   * @returns {Promise<*>} Result of the operation
+   * @throws {Error} If operation fails after all retries or with non-retryable error
+   * @private
+   */
+  async _retryWithBackoff(operation, context = {}) {
+    const { operationName = 'API request' } = context;
+
+    // If retry is disabled, just execute once
+    if (!this._retryConfig.enabled) {
+      return await operation();
+    }
+
+    let lastError;
+    const maxAttempts = Math.max(1, this._retryConfig.maxAttempts);
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const result = await operation();
+
+        // Log retry success if this wasn't the first attempt
+        if (attempt > 0) {
+          this._logger.info(`${operationName} succeeded after ${attempt + 1} attempts`);
+        }
+
+        return result;
+      } catch (error) {
+        lastError = error;
+
+        const isRetryable = this._shouldRetry(error);
+        const isLastAttempt = attempt === maxAttempts - 1;
+
+        if (!isRetryable || isLastAttempt) {
+          if (!isRetryable) {
+            this._logger.warn(`${operationName} failed with non-retryable error: ${error.message}`);
+          } else {
+            this._logger.warn(`${operationName} failed after ${maxAttempts} attempts`);
+          }
+          throw error;
+        }
+
+        // Check for retryAfter on the error (from OpenAIError or response)
+        let retryAfterDelay = null;
+        if (error.retryAfter && error.retryAfter > 0) {
+          retryAfterDelay = error.retryAfter;
+        }
+
+        // Calculate delay with exponential backoff: baseDelay * 2^attempt
+        const exponentialDelay = this._retryConfig.baseDelay * Math.pow(2, attempt);
+        const cappedDelay = Math.min(exponentialDelay, this._retryConfig.maxDelay);
+
+        // Use Retry-After delay if it's larger than the exponential delay
+        const baseWait = retryAfterDelay ? Math.max(cappedDelay, retryAfterDelay) : cappedDelay;
+
+        // Add jitter: random value between 0 and 25% of the delay
+        const jitter = Math.random() * baseWait * 0.25;
+        const finalDelay = baseWait + jitter;
+
+        this._logger.warn(
+          `${operationName} failed (attempt ${attempt + 1}/${maxAttempts}), retrying in ${Math.round(finalDelay)}ms: ${error.message}`
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, finalDelay));
+      }
+    }
+
+    // Should never reach here, but throw last error if we do
+    throw lastError;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sequential request queue (from NM OpenAIServiceBase)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Enqueues a request for sequential processing with optional priority
+   *
+   * Requests are processed one at a time to avoid overwhelming the API.
+   * Higher priority requests are processed before lower priority ones.
+   *
+   * @param {Function} operation - Async function to execute
+   * @param {object} [context={}] - Context information for the request
+   * @param {number} [priority=0] - Priority level (higher = more important, 0 = normal)
+   * @returns {Promise<*>} Promise that resolves with the operation result
+   * @throws {Error} If queue is full
+   * @private
+   */
+  _enqueueRequest(operation, context = {}, priority = 0) {
+    if (this._requestQueue.length >= this._maxQueueSize) {
+      throw new Error(`Request queue full (${this._maxQueueSize} requests). Try again later.`);
+    }
+
+    return new Promise((resolve, reject) => {
+      const request = {
+        operation,
+        resolve,
+        reject,
+        context,
+        priority
+      };
+
+      // Insert based on priority (higher priority first)
+      if (priority > 0) {
+        const insertIndex = this._requestQueue.findIndex((req) => req.priority < priority);
+        if (insertIndex === -1) {
+          this._requestQueue.push(request);
+        } else {
+          this._requestQueue.splice(insertIndex, 0, request);
+        }
+      } else {
+        this._requestQueue.push(request);
+      }
+
+      // Start processing the queue if not already processing
+      this._processQueue();
+    });
+  }
+
+  /**
+   * Processes the request queue sequentially (one at a time)
+   *
+   * Each request is executed with retry logic. If a request fails after
+   * all retries, the error is propagated to the caller while the queue
+   * continues processing remaining requests.
+   *
+   * @private
+   */
+  async _processQueue() {
+    if (this._isProcessingQueue) {
+      return;
+    }
+
+    this._isProcessingQueue = true;
+
+    try {
+      while (this._requestQueue.length > 0) {
+        const request = this._requestQueue.shift();
+
+        try {
+          const result = await request.operation();
+          request.resolve(result);
+        } catch (error) {
+          request.reject(error);
+        }
+      }
+    } finally {
+      this._isProcessingQueue = false;
+    }
+  }
+
+  /**
+   * Gets the current size of the request queue
+   *
+   * @returns {number} Number of requests currently queued
+   */
+  getQueueSize() {
+    return this._requestQueue.length;
+  }
+
+  /**
+   * Clears all pending requests from the queue.
+   * All queued promises will be rejected with a cancellation error.
+   */
+  clearQueue() {
+    const queueSize = this._requestQueue.length;
+
+    const cancellationError = new Error('Request cancelled: queue cleared');
+    cancellationError.isCancelled = true;
+
+    while (this._requestQueue.length > 0) {
+      const request = this._requestQueue.shift();
+      request.reject(cancellationError);
+    }
+
+    if (queueSize > 0) {
+      this._logger.warn(`Cleared ${queueSize} pending request(s) from queue`);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Operation history (from NM OpenAIServiceBase)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Adds an entry to the operation history
+   *
+   * @param {object} entry - The entry to add
+   * @private
+   */
+  _addToHistory(entry) {
+    this._history.push({
+      ...entry,
+      timestamp: new Date()
+    });
+
+    // Trim history if exceeds max size
+    if (this._history.length > this._maxHistorySize) {
+      this._history = this._history.slice(-this._maxHistorySize);
+    }
+  }
+
+  /**
+   * Gets the operation history
+   *
+   * @param {number} [limit] - Maximum number of entries to return
+   * @returns {Array} Array of history entries (most recent last)
+   */
+  getHistory(limit) {
+    const history = [...this._history];
+    if (limit && limit > 0) {
+      return history.slice(-limit);
+    }
+    return history;
+  }
+
+  /**
+   * Clears the operation history
+   */
+  clearHistory() {
+    this._history = [];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Core request methods
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Execute a single raw fetch request to the OpenAI API (no retry/queue).
+   *
+   * This is the inner implementation that handles authentication, timeout,
+   * rate-limiter integration, error parsing, and response handling.
    *
    * @param {string} endpoint - API endpoint (e.g., '/chat/completions')
    * @param {object} [options] - Fetch options
@@ -318,15 +656,9 @@ class OpenAIClient {
    * @param {number} [options.timeout] - Custom timeout for this request
    * @returns {Promise<object>} Parsed JSON response
    * @throws {OpenAIError} If the request fails
+   * @private
    */
-  async request(endpoint, options = {}) {
-    if (!this.isConfigured) {
-      throw new OpenAIError(
-        'OpenAI API key not configured. Please add your API key in module settings.',
-        OpenAIErrorType.AUTHENTICATION_ERROR
-      );
-    }
-
+  async _makeRequest(endpoint, options = {}) {
     const url = this._buildUrl(endpoint);
     const method = options.method || 'GET';
 
@@ -393,7 +725,6 @@ class OpenAIClient {
 
         // Handle abort/timeout
         if (error.name === 'AbortError') {
-          // Sanitize endpoint to prevent exposing sensitive query parameters
           const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
           throw new OpenAIError(
             `Request to ${sanitizedEndpoint} timed out after ${this._timeout}ms`,
@@ -403,7 +734,6 @@ class OpenAIClient {
 
         // Handle network errors
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          // Sanitize error message to prevent exposing sensitive data
           const sanitizedError = SensitiveDataFilter.sanitizeString(error.message);
           throw new OpenAIError(
             'Network error. Please check your internet connection.',
@@ -419,7 +749,6 @@ class OpenAIClient {
         }
 
         // Wrap unknown errors
-        // Sanitize error message and details to prevent exposing sensitive data
         const sanitizedMessage = SensitiveDataFilter.sanitizeString(
           error.message || 'Unknown error occurred'
         );
@@ -429,6 +758,54 @@ class OpenAIClient {
         });
       }
     });
+  }
+
+  /**
+   * Make a request to the OpenAI API
+   *
+   * When the request queue is enabled (default), requests are processed
+   * sequentially with retry logic. Set `options.useQueue` to `false` to
+   * bypass the queue (still uses retry). Set `options.useRetry` to `false`
+   * to also bypass retry logic.
+   *
+   * @param {string} endpoint - API endpoint (e.g., '/chat/completions')
+   * @param {object} [options] - Fetch options
+   * @param {string} [options.method='GET'] - HTTP method
+   * @param {object} [options.headers] - Additional headers
+   * @param {string|FormData} [options.body] - Request body
+   * @param {number} [options.timeout] - Custom timeout for this request
+   * @param {boolean} [options.useQueue=true] - Whether to use the sequential request queue
+   * @param {boolean} [options.useRetry=true] - Whether to use retry with backoff
+   * @param {number} [options.priority=0] - Queue priority (higher = processed first)
+   * @returns {Promise<object>} Parsed JSON response
+   * @throws {OpenAIError} If the request fails
+   */
+  async request(endpoint, options = {}) {
+    if (!this.isConfigured) {
+      throw new OpenAIError(
+        'OpenAI API key not configured. Please add your API key in module settings.',
+        OpenAIErrorType.AUTHENTICATION_ERROR
+      );
+    }
+
+    // Extract queue/retry options (not passed to _makeRequest)
+    const { useQueue = true, useRetry = true, priority = 0, ...requestOptions } = options;
+
+    // The raw fetch operation
+    const operation = () => this._makeRequest(endpoint, requestOptions);
+
+    // Wrap with retry if enabled
+    const retryWrapped =
+      useRetry && this._retryConfig.enabled
+        ? () => this._retryWithBackoff(operation, { operationName: endpoint })
+        : operation;
+
+    // Wrap with queue if enabled
+    if (useQueue) {
+      return this._enqueueRequest(retryWrapped, { operationName: endpoint }, priority);
+    }
+
+    return retryWrapped();
   }
 
   /**
@@ -475,7 +852,8 @@ class OpenAIClient {
 
     try {
       // Make a minimal request to models endpoint to validate key
-      await this.request('/models', { method: 'GET' });
+      // Bypass queue/retry for validation
+      await this.request('/models', { method: 'GET', useQueue: false, useRetry: false });
       this._logger.log('API key validated successfully');
       return true;
     } catch (error) {
@@ -484,7 +862,6 @@ class OpenAIClient {
         return false;
       }
       // Other errors might be temporary, log but don't invalidate
-      // Sanitize error message to prevent exposing sensitive data
       const sanitizedMessage = SensitiveDataFilter.sanitizeString(error.message);
       this._logger.warn('API key validation check failed:', sanitizedMessage);
       return true; // Assume valid if error is not auth-related
