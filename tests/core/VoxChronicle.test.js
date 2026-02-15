@@ -37,6 +37,7 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
         globalThis.console.log?.(...args);
       }
     }),
+    setDebugMode: vi.fn(),
     debug: (...args) => globalThis.console.log?.(...args),
     info: (...args) => {
       globalThis.console.info?.(...args);
@@ -160,6 +161,74 @@ vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => {
   };
 });
 
+vi.mock('../../scripts/narrator/JournalParser.mjs', () => {
+  class MockJournalParser {
+    constructor() {
+      this.parseJournal = vi.fn();
+      this.clearCache = vi.fn();
+    }
+  }
+  return { JournalParser: MockJournalParser };
+});
+
+vi.mock('../../scripts/narrator/CompendiumParser.mjs', () => {
+  class MockCompendiumParser {
+    constructor() {
+      this.parseCompendium = vi.fn();
+    }
+  }
+  return { CompendiumParser: MockCompendiumParser };
+});
+
+vi.mock('../../scripts/narrator/ChapterTracker.mjs', () => {
+  class MockChapterTracker {
+    constructor(journalParser) {
+      this.journalParser = journalParser;
+      this.updateFromScene = vi.fn();
+    }
+  }
+  return { ChapterTracker: MockChapterTracker };
+});
+
+vi.mock('../../scripts/narrator/SceneDetector.mjs', () => {
+  class MockSceneDetector {
+    constructor() {
+      this.detectTransition = vi.fn();
+    }
+  }
+  return { SceneDetector: MockSceneDetector };
+});
+
+vi.mock('../../scripts/narrator/AIAssistant.mjs', () => {
+  class MockAIAssistant {
+    constructor(apiKey, options) {
+      this.apiKey = apiKey;
+      this.options = options;
+      this.generateSuggestion = vi.fn();
+    }
+  }
+  return { AIAssistant: MockAIAssistant };
+});
+
+vi.mock('../../scripts/narrator/RulesReference.mjs', () => {
+  class MockRulesReference {
+    constructor(compendiumParser) {
+      this.compendiumParser = compendiumParser;
+      this.lookupRule = vi.fn();
+    }
+  }
+  return { RulesReference: MockRulesReference };
+});
+
+vi.mock('../../scripts/narrator/SessionAnalytics.mjs', () => {
+  class MockSessionAnalytics {
+    constructor() {
+      this.addSegment = vi.fn();
+    }
+  }
+  return { SessionAnalytics: MockSessionAnalytics };
+});
+
 // Import after mocks are set up
 import { VoxChronicle } from '../../scripts/core/VoxChronicle.mjs';
 import { TranscriptionFactory } from '../../scripts/ai/TranscriptionFactory.mjs';
@@ -178,6 +247,8 @@ function setupFoundryMocks(settingsData = {}) {
     'vox-chronicle.whisperBackendUrl': 'http://localhost:8080',
     'vox-chronicle.speakerLabels': {},
     'vox-chronicle.transcriptionLanguage': '',
+    'vox-chronicle.rulesDetection': true,
+    'vox-chronicle.debugMode': false,
     ...settingsData
   };
 
@@ -279,6 +350,13 @@ describe('VoxChronicle', () => {
       expect(instance.entityExtractor).toBeNull();
       expect(instance.narrativeExporter).toBeNull();
       expect(instance.sessionOrchestrator).toBeNull();
+      expect(instance.journalParser).toBeNull();
+      expect(instance.compendiumParser).toBeNull();
+      expect(instance.chapterTracker).toBeNull();
+      expect(instance.sceneDetector).toBeNull();
+      expect(instance.aiAssistant).toBeNull();
+      expect(instance.rulesReference).toBeNull();
+      expect(instance.sessionAnalytics).toBeNull();
     });
 
     it('should initialize with default state', () => {
@@ -494,6 +572,88 @@ describe('VoxChronicle', () => {
     });
   });
 
+  describe('Narrator Master Service Initialization', () => {
+    it('should initialize all narrator services', async () => {
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(instance.journalParser).toBeTruthy();
+      expect(instance.compendiumParser).toBeTruthy();
+      expect(instance.chapterTracker).toBeTruthy();
+      expect(instance.sceneDetector).toBeTruthy();
+      expect(instance.sessionAnalytics).toBeTruthy();
+    });
+
+    it('should initialize AIAssistant when OpenAI is configured', async () => {
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(instance.aiAssistant).toBeTruthy();
+    });
+
+    it('should not initialize AIAssistant when OpenAI is missing', async () => {
+      setupFoundryMocks({
+        'vox-chronicle.openaiApiKey': ''
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(instance.aiAssistant).toBeNull();
+    });
+
+    it('should initialize RulesReference when rulesDetection is enabled', async () => {
+      setupFoundryMocks({
+        'vox-chronicle.rulesDetection': true
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(instance.rulesReference).toBeTruthy();
+    });
+
+    it('should not initialize RulesReference when rulesDetection is disabled', async () => {
+      setupFoundryMocks({
+        'vox-chronicle.rulesDetection': false
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(instance.rulesReference).toBeNull();
+    });
+
+    it('should pass JournalParser to ChapterTracker', async () => {
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(instance.chapterTracker.journalParser).toBe(instance.journalParser);
+    });
+
+    it('should pass CompendiumParser to RulesReference', async () => {
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(instance.rulesReference.compendiumParser).toBe(instance.compendiumParser);
+    });
+
+    it('should include narrator services in getServicesStatus', async () => {
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      const status = instance.getServicesStatus();
+
+      expect(status.services.journalParser).toBe(true);
+      expect(status.services.compendiumParser).toBe(true);
+      expect(status.services.chapterTracker).toBe(true);
+      expect(status.services.sceneDetector).toBe(true);
+      expect(status.services.sessionAnalytics).toBe(true);
+      expect(status.services.aiAssistant).toBe(true);
+      expect(status.services.rulesReference).toBe(true);
+    });
+  });
+
   describe('Settings Handling', () => {
     it('should safely get existing settings', () => {
       const instance = VoxChronicle.getInstance();
@@ -674,7 +834,14 @@ describe('VoxChronicle', () => {
           kanka: false,
           entityExtractor: false,
           narrativeExporter: false,
-          sessionOrchestrator: false
+          sessionOrchestrator: false,
+          journalParser: false,
+          compendiumParser: false,
+          chapterTracker: false,
+          sceneDetector: false,
+          aiAssistant: false,
+          rulesReference: false,
+          sessionAnalytics: false
         },
         settings: {
           openaiConfigured: true,
@@ -699,6 +866,13 @@ describe('VoxChronicle', () => {
       expect(status.services.entityExtractor).toBe(true);
       expect(status.services.narrativeExporter).toBe(true);
       expect(status.services.sessionOrchestrator).toBe(true);
+      expect(status.services.journalParser).toBe(true);
+      expect(status.services.compendiumParser).toBe(true);
+      expect(status.services.chapterTracker).toBe(true);
+      expect(status.services.sceneDetector).toBe(true);
+      expect(status.services.aiAssistant).toBe(true);
+      expect(status.services.rulesReference).toBe(true);
+      expect(status.services.sessionAnalytics).toBe(true);
 
       // Verify settings
       expect(status.settings.openaiConfigured).toBe(true);

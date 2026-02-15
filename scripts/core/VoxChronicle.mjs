@@ -19,6 +19,13 @@ import { KankaService } from '../kanka/KankaService.mjs';
 import { EntityExtractor } from '../ai/EntityExtractor.mjs';
 import { NarrativeExporter } from '../kanka/NarrativeExporter.mjs';
 import { VocabularyDictionary } from './VocabularyDictionary.mjs';
+import { JournalParser } from '../narrator/JournalParser.mjs';
+import { CompendiumParser } from '../narrator/CompendiumParser.mjs';
+import { ChapterTracker } from '../narrator/ChapterTracker.mjs';
+import { SceneDetector } from '../narrator/SceneDetector.mjs';
+import { AIAssistant } from '../narrator/AIAssistant.mjs';
+import { RulesReference } from '../narrator/RulesReference.mjs';
+import { SessionAnalytics } from '../narrator/SessionAnalytics.mjs';
 import { Logger } from '../utils/Logger.mjs';
 
 // Create logger instance for VoxChronicle
@@ -58,6 +65,28 @@ class VoxChronicle {
 
     /** @type {object | null} Session orchestrator */
     this.sessionOrchestrator = null;
+
+    // Narrator Master services
+    /** @type {object | null} Journal content parser */
+    this.journalParser = null;
+
+    /** @type {object | null} Compendium content parser */
+    this.compendiumParser = null;
+
+    /** @type {object | null} Chapter tracking for live sessions */
+    this.chapterTracker = null;
+
+    /** @type {object | null} Scene transition detector */
+    this.sceneDetector = null;
+
+    /** @type {object | null} AI assistant for GM suggestions */
+    this.aiAssistant = null;
+
+    /** @type {object | null} Rules reference lookup */
+    this.rulesReference = null;
+
+    /** @type {object | null} Session analytics tracker */
+    this.sessionAnalytics = null;
 
     // State tracking
     /** @type {boolean} Whether the module is fully initialized */
@@ -170,6 +199,32 @@ class VoxChronicle {
       const vocabularyDictionary = new VocabularyDictionary();
       await vocabularyDictionary.initialize();
 
+      // Initialize Narrator Master services
+      this.journalParser = new JournalParser();
+      this.compendiumParser = new CompendiumParser();
+      this.chapterTracker = new ChapterTracker(this.journalParser);
+      this.sceneDetector = new SceneDetector();
+      this.sessionAnalytics = new SessionAnalytics();
+
+      // Initialize AI-dependent narrator services (if OpenAI configured)
+      if (openaiApiKey) {
+        this.aiAssistant = new AIAssistant(openaiApiKey, {
+          journalParser: this.journalParser
+        });
+      }
+
+      // Initialize rules reference (if enabled)
+      const rulesDetection = this._getSetting('rulesDetection');
+      if (rulesDetection !== false) {
+        this.rulesReference = new RulesReference(this.compendiumParser);
+      }
+
+      // Connect debug mode
+      const debugMode = this._getSetting('debugMode');
+      if (debugMode) {
+        Logger.setDebugMode(true);
+      }
+
       // Mark as initialized
       this.isInitialized = true;
       logger.info('VoxChronicle services initialized successfully');
@@ -269,7 +324,14 @@ class VoxChronicle {
         kanka: !!this.kankaService,
         entityExtractor: !!this.entityExtractor,
         narrativeExporter: !!this.narrativeExporter,
-        sessionOrchestrator: !!this.sessionOrchestrator
+        sessionOrchestrator: !!this.sessionOrchestrator,
+        journalParser: !!this.journalParser,
+        compendiumParser: !!this.compendiumParser,
+        chapterTracker: !!this.chapterTracker,
+        sceneDetector: !!this.sceneDetector,
+        aiAssistant: !!this.aiAssistant,
+        rulesReference: !!this.rulesReference,
+        sessionAnalytics: !!this.sessionAnalytics
       },
       settings: {
         openaiConfigured: !!this._getSetting('openaiApiKey'),
