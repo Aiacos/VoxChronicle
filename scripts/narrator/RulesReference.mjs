@@ -77,7 +77,7 @@ export class RulesReference {
      * @type {string}
      * @private
      */
-    this._language = options.language || 'it';
+    this._language = options.language || 'en';
 
     /**
      * Maximum search results to return

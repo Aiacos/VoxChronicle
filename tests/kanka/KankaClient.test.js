@@ -772,23 +772,19 @@ describe('KankaClient', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should return true for non-auth errors (assume valid)', async () => {
+    it('should throw for non-auth errors', async () => {
       mockFetch.mockResolvedValueOnce(createMockErrorResponse(500, 'Server error'));
 
-      const result = await client.validateApiToken();
-
-      // Non-auth errors are treated as temporary, token is assumed valid
-      expect(result).toBe(true);
+      // Non-auth errors now propagate as thrown errors
+      await expect(client.validateApiToken()).rejects.toThrow();
     });
 
-    it('should handle network errors during validation', async () => {
+    it('should throw on network errors during validation', async () => {
       const networkError = new TypeError('Failed to fetch');
       mockFetch.mockRejectedValueOnce(networkError);
 
-      const result = await client.validateApiToken();
-
-      // Network errors are treated as temporary, token is assumed valid
-      expect(result).toBe(true);
+      // Network errors now propagate as thrown errors
+      await expect(client.validateApiToken()).rejects.toThrow();
     });
   });
 

@@ -539,10 +539,9 @@ describe('Unified Live + Chronicle Workflow', () => {
       aiAssistant = new AIAssistant({ openaiClient: mockAIClient });
       aiAssistant.setAdventureContext('The party explores ancient ruins in search of a lost artifact.');
 
-      // The orchestrator calls generateSuggestion (singular) and detectOffTrack with
-      // an object parameter. These are adapter-style calls that differ from the
-      // AIAssistant public API. Mock them on the instance so the orchestrator can invoke them.
-      aiAssistant.generateSuggestion = vi.fn().mockResolvedValue({
+      // The orchestrator calls generateSuggestions and detectOffTrack.
+      // Mock them on the instance so the orchestrator can invoke them.
+      aiAssistant.generateSuggestions = vi.fn().mockResolvedValue({
         type: 'narration',
         content: 'The shadows deepen as you explore the ruins',
         confidence: 0.85
@@ -598,8 +597,7 @@ describe('Unified Live + Chronicle Workflow', () => {
       await orchestrator._liveCycle();
 
       // After a live cycle, AI suggestions should have been generated
-      // The orchestrator calls aiAssistant.generateSuggestion (singular)
-      expect(aiAssistant.generateSuggestion).toHaveBeenCalled();
+      expect(aiAssistant.generateSuggestions).toHaveBeenCalled();
 
       const suggestions = orchestrator.getAISuggestions();
       expect(suggestions).toBeDefined();

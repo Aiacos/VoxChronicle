@@ -396,7 +396,7 @@ describe('ErrorNotificationHelper', () => {
 
       // game.i18n.format should have been called for localization
       expect(globalThis.game.i18n.format).toHaveBeenCalledWith(
-        'vox-chronicle.Errors.NetworkError',
+        'VOXCHRONICLE.Errors.NetworkError',
         { operation: 'transcription' }
       );
     });
@@ -407,7 +407,7 @@ describe('ErrorNotificationHelper', () => {
       ErrorNotificationHelper.handleApiError(rateError, 'transcription');
 
       expect(globalThis.game.i18n.format).toHaveBeenCalledWith(
-        'vox-chronicle.Errors.RateLimited',
+        'VOXCHRONICLE.Errors.RateLimited',
         { operation: 'transcription' }
       );
     });
@@ -418,7 +418,7 @@ describe('ErrorNotificationHelper', () => {
       ErrorNotificationHelper.handleApiError(apiError, 'analysis');
 
       expect(globalThis.game.i18n.format).toHaveBeenCalledWith(
-        'vox-chronicle.Errors.ApiError',
+        'VOXCHRONICLE.Errors.ApiError',
         { operation: 'analysis', error: 'Something failed' }
       );
     });
@@ -533,7 +533,7 @@ describe('ErrorNotificationHelper', () => {
       const result = ErrorNotificationHelper._localizeApiError(err, 'transcription');
 
       expect(globalThis.game.i18n.format).toHaveBeenCalledWith(
-        'vox-chronicle.Errors.NetworkError',
+        'VOXCHRONICLE.Errors.NetworkError',
         { operation: 'transcription' }
       );
       expect(result).not.toBeNull();
@@ -545,7 +545,7 @@ describe('ErrorNotificationHelper', () => {
       const result = ErrorNotificationHelper._localizeApiError(err, 'images');
 
       expect(globalThis.game.i18n.format).toHaveBeenCalledWith(
-        'vox-chronicle.Errors.RateLimited',
+        'VOXCHRONICLE.Errors.RateLimited',
         { operation: 'images' }
       );
       expect(result).not.toBeNull();
@@ -557,7 +557,7 @@ describe('ErrorNotificationHelper', () => {
       const result = ErrorNotificationHelper._localizeApiError(err, 'analysis');
 
       expect(globalThis.game.i18n.format).toHaveBeenCalledWith(
-        'vox-chronicle.Errors.ApiError',
+        'VOXCHRONICLE.Errors.ApiError',
         { operation: 'analysis', error: 'unknown' }
       );
       expect(result).not.toBeNull();

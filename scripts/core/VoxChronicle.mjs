@@ -26,6 +26,7 @@ import { SceneDetector } from '../narrator/SceneDetector.mjs';
 import { AIAssistant } from '../narrator/AIAssistant.mjs';
 import { RulesReference } from '../narrator/RulesReference.mjs';
 import { SessionAnalytics } from '../narrator/SessionAnalytics.mjs';
+import { OpenAIClient } from '../ai/OpenAIClient.mjs';
 import { Logger } from '../utils/Logger.mjs';
 
 // Create logger instance for VoxChronicle
@@ -135,6 +136,7 @@ class VoxChronicle {
       // Get transcription mode settings
       const transcriptionMode = this._getSetting('transcriptionMode') || 'auto';
       const whisperBackendUrl = this._getSetting('whisperBackendUrl');
+      const transcriptionLanguage = this._getSetting('transcriptionLanguage');
 
       // Validate and warn about missing settings
       if (!openaiApiKey && transcriptionMode !== 'local') {
@@ -202,22 +204,33 @@ class VoxChronicle {
       // Initialize Narrator Master services
       this.journalParser = new JournalParser();
       this.compendiumParser = new CompendiumParser();
-      this.chapterTracker = new ChapterTracker(this.journalParser);
+      this.chapterTracker = new ChapterTracker({ journalParser: this.journalParser });
       this.sceneDetector = new SceneDetector();
       this.sessionAnalytics = new SessionAnalytics();
 
       // Initialize AI-dependent narrator services (if OpenAI configured)
       if (openaiApiKey) {
-        this.aiAssistant = new AIAssistant(openaiApiKey, {
-          journalParser: this.journalParser
+        this.aiAssistant = new AIAssistant({
+          openaiClient: new OpenAIClient(openaiApiKey),
+          primaryLanguage: transcriptionLanguage || 'en'
         });
       }
 
       // Initialize rules reference (if enabled)
       const rulesDetection = this._getSetting('rulesDetection');
       if (rulesDetection !== false) {
-        this.rulesReference = new RulesReference(this.compendiumParser);
+        this.rulesReference = new RulesReference({
+          language: transcriptionLanguage || 'en'
+        });
       }
+
+      // Connect narrator services to orchestrator for live mode
+      this.sessionOrchestrator.setNarratorServices({
+        aiAssistant: this.aiAssistant || null,
+        chapterTracker: this.chapterTracker,
+        sceneDetector: this.sceneDetector,
+        sessionAnalytics: this.sessionAnalytics
+      });
 
       // Connect debug mode
       const debugMode = this._getSetting('debugMode');

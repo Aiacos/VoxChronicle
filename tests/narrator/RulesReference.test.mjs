@@ -55,7 +55,7 @@ describe('RulesReference', () => {
 
   describe('constructor', () => {
     it('should create instance with default options', () => {
-      expect(service.getLanguage()).toBe('it');
+      expect(service.getLanguage()).toBe('en');
       expect(service.getResultLimit()).toBe(5);
       expect(service.isConfigured()).toBe(false);
     });

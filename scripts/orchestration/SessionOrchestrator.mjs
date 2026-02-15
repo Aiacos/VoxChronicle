@@ -565,6 +565,18 @@ class SessionOrchestrator {
     this._logger.debug('Transcription config updated for fallback support');
   }
 
+  /**
+   * Set narrator services after initialization
+   * @param {object} services - Narrator service instances
+   */
+  setNarratorServices(services = {}) {
+    if (services.aiAssistant) this._aiAssistant = services.aiAssistant;
+    if (services.chapterTracker) this._chapterTracker = services.chapterTracker;
+    if (services.sceneDetector) this._sceneDetector = services.sceneDetector;
+    if (services.sessionAnalytics) this._sessionAnalytics = services.sessionAnalytics;
+    this._logger.debug('Narrator services connected');
+  }
+
   getOptions() {
     return { ...this._options };
   }
@@ -793,6 +805,9 @@ class SessionOrchestrator {
           timestamp: Date.now()
         });
       }
+      if (this._callbacks.onError) {
+        this._callbacks.onError(error, 'live_cycle');
+      }
     }
 
     this._updateState(SessionState.LIVE_LISTENING);
@@ -810,8 +825,7 @@ class SessionOrchestrator {
     try {
       const fullText = this._liveTranscript.map(s => s.text).join(' ');
 
-      const suggestions = await this._aiAssistant.generateSuggestion({
-        transcript: fullText,
+      const suggestions = await this._aiAssistant.generateSuggestions(fullText, {
         currentChapter: this._chapterTracker?.getCurrentChapter?.() || null
       });
 
@@ -827,7 +841,10 @@ class SessionOrchestrator {
         this._lastOffTrackStatus = offTrack;
       }
     } catch (error) {
-      this._logger.warn('AI analysis error:', error.message);
+      this._logger.error('AI analysis error:', error.message);
+      if (this._callbacks.onError) {
+        this._callbacks.onError(error, 'ai_analysis');
+      }
     }
   }
 

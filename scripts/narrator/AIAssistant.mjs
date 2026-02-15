@@ -165,7 +165,7 @@ class AIAssistant {
      * @type {string}
      * @private
      */
-    this._primaryLanguage = options.primaryLanguage || 'it';
+    this._primaryLanguage = options.primaryLanguage || 'en';
 
     /**
      * Previous transcription text for scene comparison

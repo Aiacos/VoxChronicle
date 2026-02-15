@@ -142,7 +142,7 @@ Hooks.on('canvasReady', () => {
   if (vc.chapterTracker) {
     const scene = canvas?.scene;
     if (scene) {
-      vc.chapterTracker.onSceneChange(scene.name, scene.id);
+      vc.chapterTracker.updateFromScene(scene);
     }
   }
 });
@@ -154,21 +154,21 @@ Hooks.on('canvasReady', () => {
 Hooks.on('updateJournalEntry', () => {
   const vc = VoxChronicle.getInstance();
   if (vc.journalParser) {
-    vc.journalParser.invalidateCache?.();
+    vc.journalParser.clearAllCache?.();
   }
 });
 
 Hooks.on('createJournalEntry', () => {
   const vc = VoxChronicle.getInstance();
   if (vc.journalParser) {
-    vc.journalParser.invalidateCache?.();
+    vc.journalParser.clearAllCache?.();
   }
 });
 
 Hooks.on('deleteJournalEntry', () => {
   const vc = VoxChronicle.getInstance();
   if (vc.journalParser) {
-    vc.journalParser.invalidateCache?.();
+    vc.journalParser.clearAllCache?.();
   }
 });
 

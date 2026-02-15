@@ -69,6 +69,7 @@ vi.mock('../../scripts/orchestration/SessionOrchestrator.mjs', () => {
     constructor(services) {
       this.services = services;
       this.setTranscriptionConfig = vi.fn();
+      this.setNarratorServices = vi.fn();
     }
   }
 
@@ -136,6 +137,18 @@ vi.mock('../../scripts/ai/EntityExtractor.mjs', () => {
   };
 });
 
+vi.mock('../../scripts/ai/OpenAIClient.mjs', () => {
+  class MockOpenAIClient {
+    constructor(apiKey) {
+      this.apiKey = apiKey;
+    }
+  }
+
+  return {
+    OpenAIClient: MockOpenAIClient
+  };
+});
+
 vi.mock('../../scripts/kanka/NarrativeExporter.mjs', () => {
   class MockNarrativeExporter {
     constructor() {
@@ -182,7 +195,7 @@ vi.mock('../../scripts/narrator/CompendiumParser.mjs', () => {
 
 vi.mock('../../scripts/narrator/ChapterTracker.mjs', () => {
   class MockChapterTracker {
-    constructor(journalParser) {
+    constructor({ journalParser } = {}) {
       this.journalParser = journalParser;
       this.updateFromScene = vi.fn();
     }
@@ -201,9 +214,9 @@ vi.mock('../../scripts/narrator/SceneDetector.mjs', () => {
 
 vi.mock('../../scripts/narrator/AIAssistant.mjs', () => {
   class MockAIAssistant {
-    constructor(apiKey, options) {
-      this.apiKey = apiKey;
-      this.options = options;
+    constructor({ openaiClient, primaryLanguage } = {}) {
+      this.openaiClient = openaiClient;
+      this.primaryLanguage = primaryLanguage;
       this.generateSuggestion = vi.fn();
     }
   }
@@ -212,8 +225,8 @@ vi.mock('../../scripts/narrator/AIAssistant.mjs', () => {
 
 vi.mock('../../scripts/narrator/RulesReference.mjs', () => {
   class MockRulesReference {
-    constructor(compendiumParser) {
-      this.compendiumParser = compendiumParser;
+    constructor({ language } = {}) {
+      this.language = language;
       this.lookupRule = vi.fn();
     }
   }
@@ -631,11 +644,11 @@ describe('VoxChronicle', () => {
       expect(instance.chapterTracker.journalParser).toBe(instance.journalParser);
     });
 
-    it('should pass CompendiumParser to RulesReference', async () => {
+    it('should pass language to RulesReference', async () => {
       const instance = VoxChronicle.getInstance();
       await instance.initialize();
 
-      expect(instance.rulesReference.compendiumParser).toBe(instance.compendiumParser);
+      expect(instance.rulesReference.language).toBe('en');
     });
 
     it('should include narrator services in getServicesStatus', async () => {

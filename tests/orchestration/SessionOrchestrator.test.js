@@ -1202,7 +1202,7 @@ describe('SessionOrchestrator', () => {
         transcribe: vi.fn().mockResolvedValue(createMockTranscriptionResult())
       };
       mockAIAssistant = {
-        generateSuggestion: vi.fn().mockResolvedValue({ text: 'Suggestion' }),
+        generateSuggestions: vi.fn().mockResolvedValue({ text: 'Suggestion' }),
         detectOffTrack: vi.fn().mockResolvedValue({ isOffTrack: false })
       };
       mockChapterTracker = {
@@ -1328,7 +1328,7 @@ describe('SessionOrchestrator', () => {
       await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
       await vi.advanceTimersByTimeAsync(5000);
 
-      expect(mockAIAssistant.generateSuggestion).toHaveBeenCalled();
+      expect(mockAIAssistant.generateSuggestions).toHaveBeenCalled();
     });
 
     it('should detect silence when no audio chunk', async () => {

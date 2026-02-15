@@ -185,14 +185,14 @@ export class ErrorNotificationHelper {
       if (!i18n) return null;
 
       if (error.isNetworkError) {
-        return i18n.format(`${MODULE_ID}.Errors.NetworkError`, { operation });
+        return i18n.format('VOXCHRONICLE.Errors.NetworkError', { operation });
       }
 
       if (error.message?.includes('rate') || error.message?.includes('limite')) {
-        return i18n.format(`${MODULE_ID}.Errors.RateLimited`, { operation });
+        return i18n.format('VOXCHRONICLE.Errors.RateLimited', { operation });
       }
 
-      return i18n.format(`${MODULE_ID}.Errors.ApiError`, {
+      return i18n.format('VOXCHRONICLE.Errors.ApiError', {
         operation,
         error: error.message || String(error)
       });

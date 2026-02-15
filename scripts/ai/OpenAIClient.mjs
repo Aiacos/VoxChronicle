@@ -861,10 +861,10 @@ class OpenAIClient {
         this._logger.warn('API key validation failed: Invalid key');
         return false;
       }
-      // Other errors might be temporary, log but don't invalidate
+      // Non-auth errors mean we cannot verify — don't assume valid
       const sanitizedMessage = SensitiveDataFilter.sanitizeString(error.message);
-      this._logger.warn('API key validation check failed:', sanitizedMessage);
-      return true; // Assume valid if error is not auth-related
+      this._logger.error('API key validation could not be completed:', sanitizedMessage);
+      throw error;
     }
   }
 

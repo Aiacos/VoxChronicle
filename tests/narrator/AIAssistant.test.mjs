@@ -105,7 +105,7 @@ describe('AIAssistant', () => {
       const a = new AIAssistant();
       expect(a.getModel()).toBe(DEFAULT_MODEL);
       expect(a.getSensitivity()).toBe('medium');
-      expect(a.getPrimaryLanguage()).toBe('it');
+      expect(a.getPrimaryLanguage()).toBe('en');
       expect(a.isConfigured()).toBe(false);
     });
 
@@ -818,7 +818,7 @@ describe('AIAssistant', () => {
 
       expect(stats.model).toBe(DEFAULT_MODEL);
       expect(stats.sensitivity).toBe('medium');
-      expect(stats.primaryLanguage).toBe('it');
+      expect(stats.primaryLanguage).toBe('en');
       expect(stats.hasContext).toBe(true);
       expect(stats.contextLength).toBeGreaterThan(0);
       expect(stats.isConfigured).toBe(true);

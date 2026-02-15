@@ -664,22 +664,35 @@ describe('OpenAIClient', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should return true for non-auth errors', async () => {
+    it('should throw non-auth errors', async () => {
       mockFetch.mockResolvedValueOnce(createMockErrorResponse(500, 'Server error', 'api_error'));
 
-      const isValid = await client.validateApiKey();
+      await expect(client.validateApiKey()).rejects.toThrow(OpenAIError);
 
-      // Assumes valid if error is not auth-related
-      expect(isValid).toBe(true);
+      try {
+        mockFetch.mockResolvedValueOnce(createMockErrorResponse(500, 'Server error', 'api_error'));
+        await client.validateApiKey();
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(OpenAIError);
+        expect(error.type).toBe(OpenAIErrorType.API_ERROR);
+        expect(error.status).toBe(500);
+      }
     });
 
-    it('should handle network errors gracefully', async () => {
+    it('should throw network errors', async () => {
       mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
-      const isValid = await client.validateApiKey();
+      await expect(client.validateApiKey()).rejects.toThrow(OpenAIError);
 
-      // Assumes valid if network error (temporary)
-      expect(isValid).toBe(true);
+      try {
+        mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+        await client.validateApiKey();
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(OpenAIError);
+        expect(error.type).toBe(OpenAIErrorType.NETWORK_ERROR);
+      }
     });
   });
 
