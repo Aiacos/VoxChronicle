@@ -1,9 +1,12 @@
 /**
- * ImageGenerationService - OpenAI DALL-E 3 Image Generation
+ * ImageGenerationService - OpenAI gpt-image-1 Image Generation
  *
- * Provides AI image generation using OpenAI's DALL-E 3 model for creating
+ * Provides AI image generation using OpenAI's gpt-image-1 model for creating
  * portraits, scene illustrations, and item images for RPG sessions.
  * Generated images are used for Kanka entity portraits and chronicle illustrations.
+ *
+ * Features base64 caching (OpenAI URLs expire in 60 minutes) and persistent
+ * gallery storage via Foundry VTT settings.
  *
  * @class ImageGenerationService
  * @module vox-chronicle
@@ -11,52 +14,55 @@
 
 import { OpenAIClient, OpenAIError, OpenAIErrorType } from './OpenAIClient.mjs';
 import { Logger } from '../utils/Logger.mjs';
+import { CacheManager } from '../utils/CacheManager.mjs';
+import { MODULE_ID } from '../constants.mjs';
 
 /**
  * Image generation model options
  * @enum {string}
  */
 const ImageModel = {
-  /** DALL-E 3 - Latest, highest quality model */
-  DALLE_3: 'dall-e-3',
-  /** DALL-E 2 - Faster, lower cost option */
-  DALLE_2: 'dall-e-2'
+  /** gpt-image-1 - Current recommended model (dall-e-3 deprecated May 2026) */
+  GPT_IMAGE_1: 'gpt-image-1'
 };
 
 /**
  * Image size options
- * Note: DALL-E 3 only supports 1024x1024, 1024x1792, 1792x1024
+ * gpt-image-1 supports: 256x256, 512x512, 1024x1024, 1024x1536, 1536x1024, 1024x1792, 1792x1024
  * @enum {string}
  */
 const ImageSize = {
+  /** Small square - fast generation, lower cost */
+  SMALL: '256x256',
+  /** Medium square - balanced speed and quality */
+  MEDIUM: '512x512',
   /** Square format - ideal for portraits and icons */
   SQUARE: '1024x1024',
   /** Portrait/vertical format - ideal for character portraits */
   PORTRAIT: '1024x1792',
   /** Landscape format - ideal for scene illustrations */
-  LANDSCAPE: '1792x1024'
+  LANDSCAPE: '1792x1024',
+  /** Tall format - alternate portrait aspect ratio */
+  TALL: '1024x1536',
+  /** Wide format - alternate landscape aspect ratio */
+  WIDE: '1536x1024'
 };
 
 /**
- * Image quality options (DALL-E 3 only)
+ * Image quality options
  * @enum {string}
  */
 const ImageQuality = {
-  /** Standard quality - faster, lower cost */
+  /** Low quality - fastest, lowest cost */
+  LOW: 'low',
+  /** Medium quality - balanced */
+  MEDIUM: 'medium',
+  /** Standard quality - good default */
   STANDARD: 'standard',
   /** HD quality - more detail and consistency */
-  HD: 'hd'
-};
-
-/**
- * Image style options (DALL-E 3 only)
- * @enum {string}
- */
-const ImageStyle = {
-  /** Vivid - hyper-real and dramatic */
-  VIVID: 'vivid',
-  /** Natural - more realistic, less stylized */
-  NATURAL: 'natural'
+  HD: 'hd',
+  /** High quality - highest detail */
+  HIGH: 'high'
 };
 
 /**
@@ -85,7 +91,13 @@ const IMAGE_GENERATION_TIMEOUT_MS = 300000;
 const IMAGE_URL_EXPIRY_MS = 3600000;
 
 /**
- * ImageGenerationService class for DALL-E 3 image generation
+ * Maximum gallery size to prevent excessive storage usage
+ * @constant {number}
+ */
+const MAX_GALLERY_SIZE = 50;
+
+/**
+ * ImageGenerationService class for gpt-image-1 image generation
  *
  * @augments OpenAIClient
  * @example
@@ -110,13 +122,6 @@ class ImageGenerationService extends OpenAIClient {
   _defaultQuality = ImageQuality.STANDARD;
 
   /**
-   * Default image style setting
-   * @type {string}
-   * @private
-   */
-  _defaultStyle = ImageStyle.VIVID;
-
-  /**
    * Campaign/world style descriptor for consistent aesthetics
    * @type {string}
    * @private
@@ -124,12 +129,25 @@ class ImageGenerationService extends OpenAIClient {
   _campaignStyle = '';
 
   /**
+   * Image cache for base64 data (URLs expire in 60 minutes)
+   * @type {CacheManager}
+   * @private
+   */
+  _imageCache = null;
+
+  /**
+   * In-memory gallery of generated images
+   * @type {Array<object>}
+   * @private
+   */
+  _gallery = [];
+
+  /**
    * Create a new ImageGenerationService instance
    *
    * @param {string} apiKey - OpenAI API key
    * @param {object} [options] - Configuration options
    * @param {string} [options.quality='standard'] - Default image quality
-   * @param {string} [options.style='vivid'] - Default image style
    * @param {string} [options.campaignStyle=''] - Campaign/world style descriptor
    * @param {number} [options.timeout=300000] - Request timeout in milliseconds
    */
@@ -140,10 +158,17 @@ class ImageGenerationService extends OpenAIClient {
     });
 
     this._defaultQuality = options.quality || ImageQuality.STANDARD;
-    this._defaultStyle = options.style || ImageStyle.VIVID;
     this._campaignStyle = options.campaignStyle || '';
 
-    this._logger.debug('ImageGenerationService initialized');
+    // Initialize image cache with 24-hour default TTL
+    this._imageCache = new CacheManager({
+      name: 'ImageGenerationCache',
+      maxSize: 100
+    });
+
+    this._gallery = [];
+
+    this._logger.debug('ImageGenerationService initialized with gpt-image-1');
   }
 
   /**
@@ -154,7 +179,6 @@ class ImageGenerationService extends OpenAIClient {
    * @param {object} [options] - Generation options
    * @param {string} [options.size] - Image size (use ImageSize enum)
    * @param {string} [options.quality] - Image quality (use ImageQuality enum)
-   * @param {string} [options.style] - Image style (use ImageStyle enum)
    * @param {string} [options.additionalContext] - Additional context for the prompt
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
@@ -172,7 +196,6 @@ class ImageGenerationService extends OpenAIClient {
     // Determine appropriate size based on entity type if not specified
     const size = options.size || this._getDefaultSizeForEntityType(validEntityType);
     const quality = options.quality || this._defaultQuality;
-    const style = options.style || this._defaultStyle;
 
     // Build the optimized prompt
     const prompt = this._buildPrompt(validEntityType, description, options.additionalContext);
@@ -180,33 +203,46 @@ class ImageGenerationService extends OpenAIClient {
     this._logger.log(`Generating ${validEntityType} image: ${size}, ${quality} quality`);
     this._logger.debug(`Prompt: ${prompt.substring(0, 100)}...`);
 
+    // gpt-image-1: no style parameter, no response_format (returns b64_json by default)
     const requestBody = {
-      model: ImageModel.DALLE_3, // MUST specify dall-e-3, defaults to dall-e-2
+      model: ImageModel.GPT_IMAGE_1,
       prompt: prompt,
-      n: 1, // DALL-E 3 only supports n=1
+      n: 1,
       size: size,
-      quality: quality,
-      style: style,
-      response_format: 'url' // Returns URL instead of base64
+      quality: quality
     };
 
     try {
       const response = await this.post('/images/generations', requestBody);
 
-      // IMPORTANT: URL expires in 60 minutes - save immediately
+      // IMPORTANT: URL expires in 60 minutes - cache immediately
       const imageData = response.data[0];
 
       const result = {
-        url: imageData.url,
-        revisedPrompt: imageData.revised_prompt, // DALL-E 3 may revise the prompt
+        url: imageData.url || '',
+        base64: imageData.b64_json || null,
+        revisedPrompt: imageData.revised_prompt,
         entityType: validEntityType,
         originalDescription: description,
         size,
         quality,
-        style,
         generatedAt: Date.now(),
         expiresAt: Date.now() + IMAGE_URL_EXPIRY_MS
       };
+
+      // Cache image as base64 if we got a URL but no base64
+      if (result.url && !result.base64) {
+        await this._cacheImage(result.url, prompt);
+      } else if (result.base64) {
+        // Cache the base64 directly
+        const cacheKey = CacheManager.generateCacheKey(prompt, 'img');
+        const expiresAt = new Date(Date.now() + IMAGE_URL_EXPIRY_MS * 24); // 24 hours for base64
+        this._imageCache.set(cacheKey, result.base64, expiresAt, {
+          prompt,
+          entityType: validEntityType,
+          size
+        });
+      }
 
       this._logger.log('Image generated successfully');
       return result;
@@ -374,6 +410,163 @@ class ImageGenerationService extends OpenAIClient {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Base64 caching (from NM ImageGenerator, adapted to use CacheManager)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Download a URL and cache the image as base64
+   * OpenAI image URLs expire in 60 minutes, so caching is essential
+   *
+   * @param {string} url - Image URL to download and cache
+   * @param {string} prompt - The prompt used to generate the image (used as cache key)
+   * @returns {Promise<string|null>} Base64 encoded image data, or null on failure
+   * @private
+   */
+  async _cacheImage(url, prompt) {
+    if (!url) { return null; }
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        this._logger.warn(`Failed to cache image: HTTP ${response.status}`);
+        return null;
+      }
+
+      const blob = await response.blob();
+      const base64 = await CacheManager.blobToBase64(blob);
+
+      // Store in cache with 24-hour expiry (base64 doesn't expire like URLs)
+      const cacheKey = CacheManager.generateCacheKey(prompt, 'img');
+      const expiresAt = new Date(Date.now() + IMAGE_URL_EXPIRY_MS * 24);
+      this._imageCache.set(cacheKey, base64, expiresAt, { prompt });
+
+      this._logger.debug('Image cached as base64 successfully');
+      return base64;
+    } catch (error) {
+      this._logger.warn('Failed to cache image as base64:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Get a cached base64 image by prompt
+   *
+   * @param {string} prompt - The prompt used to generate the image
+   * @returns {string|null} Base64 encoded image data, or null if not cached
+   */
+  getCachedImage(prompt) {
+    const cacheKey = CacheManager.generateCacheKey(prompt, 'img');
+    return this._imageCache.get(cacheKey);
+  }
+
+  /**
+   * Get the image cache instance
+   *
+   * @returns {CacheManager} The cache manager instance
+   */
+  getImageCache() {
+    return this._imageCache;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gallery persistence (from NM ImageGenerator)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Save an image to the persistent gallery
+   * Each gallery entry: { id, prompt, base64, createdAt, size, entityType }
+   *
+   * @param {object} imageData - Image data to save
+   * @param {string} [imageData.id] - Unique identifier (generated if not provided)
+   * @param {string} imageData.prompt - The prompt used to generate the image
+   * @param {string} [imageData.base64] - Base64 encoded image data
+   * @param {string} [imageData.size] - Image size
+   * @param {string} [imageData.entityType] - Entity type
+   * @returns {Promise<void>}
+   */
+  async saveToGallery(imageData) {
+    try {
+      let gallery = await this.loadGallery();
+
+      const galleryEntry = {
+        id: imageData.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        prompt: imageData.prompt || '',
+        base64: imageData.base64 || null,
+        createdAt: imageData.createdAt || Date.now(),
+        size: imageData.size || ImageSize.SQUARE,
+        entityType: imageData.entityType || EntityType.SCENE
+      };
+
+      gallery.push(galleryEntry);
+
+      // Enforce storage limit
+      if (gallery.length > MAX_GALLERY_SIZE) {
+        gallery.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        const removedCount = gallery.length - MAX_GALLERY_SIZE;
+        gallery = gallery.slice(-MAX_GALLERY_SIZE);
+        this._logger.warn(`Gallery limit reached. Removed ${removedCount} oldest image(s).`);
+      }
+
+      // Update in-memory gallery
+      this._gallery = gallery;
+
+      // Persist to settings
+      await game.settings.set(MODULE_ID, 'imageGallery', gallery);
+
+      this._logger.debug('Image saved to gallery');
+    } catch (error) {
+      this._logger.error('Failed to save image to gallery:', error.message);
+      // Don't throw - gallery persistence is non-critical
+    }
+  }
+
+  /**
+   * Load the gallery from persistent storage
+   *
+   * @returns {Promise<Array<object>>} The gallery array
+   */
+  async loadGallery() {
+    try {
+      const gallery = await game.settings.get(MODULE_ID, 'imageGallery');
+      this._gallery = gallery || [];
+      return this._gallery;
+    } catch (error) {
+      // Setting may not be registered yet (Task 18)
+      this._logger.debug('Gallery setting not available yet, using empty gallery');
+      this._gallery = [];
+      return this._gallery;
+    }
+  }
+
+  /**
+   * Clear the entire gallery and persist
+   *
+   * @returns {Promise<void>}
+   */
+  async clearGallery() {
+    try {
+      this._gallery = [];
+      await game.settings.set(MODULE_ID, 'imageGallery', []);
+      this._logger.info('Gallery cleared');
+    } catch (error) {
+      this._logger.error('Failed to clear gallery:', error.message);
+    }
+  }
+
+  /**
+   * Get the current in-memory gallery
+   *
+   * @returns {Array<object>} Current gallery entries
+   */
+  getGallery() {
+    return [...this._gallery];
+  }
+
+  // ---------------------------------------------------------------------------
+  // URL validation
+  // ---------------------------------------------------------------------------
+
   /**
    * Check if an image URL is still valid (not expired)
    *
@@ -400,6 +593,10 @@ class ImageGenerationService extends OpenAIClient {
     const remaining = result.expiresAt - Date.now();
     return Math.max(0, remaining);
   }
+
+  // ---------------------------------------------------------------------------
+  // Prompt building
+  // ---------------------------------------------------------------------------
 
   /**
    * Build an optimized prompt for the entity type
@@ -431,7 +628,8 @@ class ImageGenerationService extends OpenAIClient {
       prompt += ` ${additionalContext}`;
     }
 
-    // Ensure prompt doesn't exceed limits (DALL-E 3 has a 4000 character limit)
+    // Ensure prompt doesn't exceed limits (gpt-image-1 has a 32000 character limit,
+    // but keeping 4000 as practical limit for quality)
     if (prompt.length > 4000) {
       prompt = `${prompt.substring(0, 3997)}...`;
       this._logger.warn('Prompt was truncated to 4000 characters');
@@ -503,6 +701,10 @@ class ImageGenerationService extends OpenAIClient {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Settings management
+  // ---------------------------------------------------------------------------
+
   /**
    * Set the campaign style descriptor
    *
@@ -534,50 +736,51 @@ class ImageGenerationService extends OpenAIClient {
     }
   }
 
-  /**
-   * Set default style setting
-   *
-   * @param {string} style - Style setting (use ImageStyle enum)
-   */
-  setDefaultStyle(style) {
-    if (Object.values(ImageStyle).includes(style)) {
-      this._defaultStyle = style;
-      this._logger.debug(`Set default style: ${style}`);
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Cost estimation
+  // ---------------------------------------------------------------------------
 
   /**
    * Estimate generation cost for an image
+   * gpt-image-1 pricing (approximate):
+   *   - low quality: ~$0.02/image (small), ~$0.04/image (medium/square)
+   *   - medium/standard quality: ~$0.04/image (square), ~$0.08/image (landscape/portrait)
+   *   - high/hd quality: ~$0.08/image (square), ~$0.12/image (landscape/portrait)
    *
    * @param {string} [quality='standard'] - Image quality
    * @param {string} [size='1024x1024'] - Image size
    * @returns {object} Cost estimate
    */
   estimateCost(quality = ImageQuality.STANDARD, size = ImageSize.SQUARE) {
-    // Pricing as of spec (subject to change)
-    const pricing = {
-      [ImageQuality.STANDARD]: {
-        [ImageSize.SQUARE]: 0.04,
-        [ImageSize.PORTRAIT]: 0.08,
-        [ImageSize.LANDSCAPE]: 0.08
-      },
-      [ImageQuality.HD]: {
-        [ImageSize.SQUARE]: 0.08,
-        [ImageSize.PORTRAIT]: 0.12,
-        [ImageSize.LANDSCAPE]: 0.12
-      }
-    };
+    // Size categories
+    const smallSizes = [ImageSize.SMALL, ImageSize.MEDIUM];
+    const largeSizes = [ImageSize.PORTRAIT, ImageSize.LANDSCAPE, ImageSize.TALL, ImageSize.WIDE];
 
-    const qualityPricing = pricing[quality] || pricing[ImageQuality.STANDARD];
-    const price = qualityPricing[size] || qualityPricing[ImageSize.SQUARE];
+    // Base pricing by quality
+    let price;
+    const isSmall = smallSizes.includes(size);
+    const isLarge = largeSizes.includes(size);
+
+    if (quality === ImageQuality.LOW) {
+      price = isSmall ? 0.02 : isLarge ? 0.04 : 0.03;
+    } else if (quality === ImageQuality.HD || quality === ImageQuality.HIGH) {
+      price = isSmall ? 0.04 : isLarge ? 0.12 : 0.08;
+    } else {
+      // standard / medium
+      price = isSmall ? 0.03 : isLarge ? 0.08 : 0.04;
+    }
 
     return {
       quality,
       size,
       estimatedCostUSD: price,
-      model: ImageModel.DALLE_3
+      model: ImageModel.GPT_IMAGE_1
     };
   }
+
+  // ---------------------------------------------------------------------------
+  // Static metadata methods
+  // ---------------------------------------------------------------------------
 
   /**
    * Get available image sizes
@@ -586,6 +789,18 @@ class ImageGenerationService extends OpenAIClient {
    */
   static getAvailableSizes() {
     return [
+      {
+        id: ImageSize.SMALL,
+        name: 'Small (256x256)',
+        description: 'Fast generation, lower detail',
+        aspectRatio: '1:1'
+      },
+      {
+        id: ImageSize.MEDIUM,
+        name: 'Medium (512x512)',
+        description: 'Balanced speed and quality',
+        aspectRatio: '1:1'
+      },
       {
         id: ImageSize.SQUARE,
         name: 'Square (1024x1024)',
@@ -603,6 +818,18 @@ class ImageGenerationService extends OpenAIClient {
         name: 'Landscape (1792x1024)',
         description: 'Wide format for scenes and locations',
         aspectRatio: '16:9'
+      },
+      {
+        id: ImageSize.TALL,
+        name: 'Tall (1024x1536)',
+        description: 'Alternate vertical format',
+        aspectRatio: '2:3'
+      },
+      {
+        id: ImageSize.WIDE,
+        name: 'Wide (1536x1024)',
+        description: 'Alternate landscape format',
+        aspectRatio: '3:2'
       }
     ];
   }
@@ -615,9 +842,15 @@ class ImageGenerationService extends OpenAIClient {
   static getAvailableQualities() {
     return [
       {
+        id: ImageQuality.LOW,
+        name: 'Low',
+        description: 'Fastest generation, lower detail',
+        costMultiplier: 0.5
+      },
+      {
         id: ImageQuality.STANDARD,
         name: 'Standard',
-        description: 'Good quality, faster generation',
+        description: 'Good quality, balanced generation',
         costMultiplier: 1
       },
       {
@@ -625,26 +858,6 @@ class ImageGenerationService extends OpenAIClient {
         name: 'HD',
         description: 'Higher detail and consistency',
         costMultiplier: 2
-      }
-    ];
-  }
-
-  /**
-   * Get available style options
-   *
-   * @returns {Array<object>} List of style options
-   */
-  static getAvailableStyles() {
-    return [
-      {
-        id: ImageStyle.VIVID,
-        name: 'Vivid',
-        description: 'Hyper-real, dramatic, and stylized'
-      },
-      {
-        id: ImageStyle.NATURAL,
-        name: 'Natural',
-        description: 'More realistic and subtle'
       }
     ];
   }
@@ -687,12 +900,12 @@ class ImageGenerationService extends OpenAIClient {
 /**
  * @typedef {object} ImageGenerationResult
  * @property {string} url - Generated image URL (expires in 60 minutes!)
- * @property {string} [revisedPrompt] - Prompt as revised by DALL-E 3
+ * @property {string} [base64] - Base64 encoded image data (if returned by API or cached)
+ * @property {string} [revisedPrompt] - Prompt as revised by the model
  * @property {string} entityType - Type of entity generated
  * @property {string} originalDescription - Original description provided
  * @property {string} size - Image size
  * @property {string} quality - Image quality
- * @property {string} style - Image style
  * @property {number} generatedAt - Timestamp when image was generated
  * @property {number} expiresAt - Timestamp when URL expires
  */
@@ -703,8 +916,8 @@ export {
   ImageModel,
   ImageSize,
   ImageQuality,
-  ImageStyle,
   EntityType,
   IMAGE_GENERATION_TIMEOUT_MS,
-  IMAGE_URL_EXPIRY_MS
+  IMAGE_URL_EXPIRY_MS,
+  MAX_GALLERY_SIZE
 };
