@@ -4,78 +4,123 @@ This file provides context and instructions for AI assistants working on the Vox
 
 ## Project Overview
 
-**VoxChronicle** is a Foundry VTT module that automatically transcribes tabletop RPG sessions and publishes them as adventure chronicles to Kanka. The plugin:
+**VoxChronicle** is an AI-powered session transcription, real-time DM assistant, and Kanka chronicle publisher for Foundry VTT. The module operates in two modes:
+
+- **Live Mode**: Real-time AI assistance during game sessions (narration suggestions, off-track detection, NPC dialogue, rules Q&A, scene tracking, analytics)
+- **Chronicle Mode**: Post-session workflow for transcription, entity extraction, image generation, and Kanka publishing
+
+Core capabilities:
 
 - Captures audio from game sessions (Foundry VTT WebRTC or browser microphone)
 - Transcribes audio using OpenAI's GPT-4o with speaker diarization
 - Extracts entities (NPCs, locations, items) from transcripts using AI
-- Generates AI images using DALL-E 3 for characters, locations, and scenes
+- Generates AI images using gpt-image-1 for characters, locations, and scenes
+- Provides real-time DM assistance (suggestions, rules lookup, scene detection)
 - Publishes chronicles and entities to Kanka campaign management platform
 
 ## Tech Stack
 
 - **Language**: JavaScript (ES6+ modules with `.mjs` extension)
-- **Framework**: Foundry VTT Module API v11/v12
+- **Framework**: Foundry VTT Module API v12/v13
 - **UI Framework**: Foundry VTT Application classes
 - **Templates**: Handlebars (.hbs)
 - **Styling**: CSS with `.vox-chronicle` namespace
-- **Testing**: Vitest with jsdom environment
-- **External APIs**: OpenAI (transcription, images), Kanka (campaign management)
+- **Testing**: Vitest with jsdom environment (3094+ tests across 55+ files)
+- **External APIs**: OpenAI (transcription, images, chat), Kanka (campaign management)
 
 ## Project Structure
 
 ```
-vox-chronicle/
+VoxChronicle/
 ├── module.json                    # Foundry VTT manifest (compatibility, entry points)
 ├── scripts/
 │   ├── main.mjs                   # Entry point - hooks registration, scene controls
+│   ├── constants.mjs              # MODULE_ID constant (dependency-free leaf module)
 │   ├── core/
 │   │   ├── VoxChronicle.mjs       # Main singleton - service orchestration
-│   │   └── Settings.mjs           # Foundry settings registration
+│   │   ├── Settings.mjs           # Foundry settings registration
+│   │   └── VocabularyDictionary.mjs # Custom vocabulary for transcription accuracy
 │   ├── audio/
-│   │   ├── AudioRecorder.mjs      # MediaRecorder wrapper, WebRTC/mic capture
+│   │   ├── AudioRecorder.mjs      # MediaRecorder wrapper, WebRTC/mic capture, level metering
 │   │   └── AudioChunker.mjs       # Split large audio for 25MB API limit
 │   ├── ai/
-│   │   ├── OpenAIClient.mjs       # Base API client with auth, rate limiting
-│   │   ├── TranscriptionService.mjs  # GPT-4o transcribe with diarization
-│   │   ├── ImageGenerationService.mjs # DALL-E 3 image generation
+│   │   ├── OpenAIClient.mjs       # Base API client with auth, retry, queue, circuit breaker
+│   │   ├── TranscriptionService.mjs  # GPT-4o transcribe with diarization, multi-language
+│   │   ├── TranscriptionFactory.mjs  # Factory for cloud/local/auto transcription modes
+│   │   ├── LocalWhisperService.mjs   # Local Whisper backend client
+│   │   ├── WhisperBackend.mjs        # HTTP client for whisper.cpp server
+│   │   ├── ImageGenerationService.mjs # gpt-image-1 image generation
 │   │   └── EntityExtractor.mjs    # Extract NPCs/locations/items from text
+│   ├── narrator/                   # Real-time DM assistant services (from Narrator Master)
+│   │   ├── AIAssistant.mjs         # Contextual AI suggestions (narration, dialogue, action, reference)
+│   │   ├── ChapterTracker.mjs      # Chapter/scene tracking from Foundry journals
+│   │   ├── CompendiumParser.mjs    # Parse Foundry compendiums for rules content
+│   │   ├── JournalParser.mjs       # Parse Foundry journal entries for story context
+│   │   ├── RulesReference.mjs      # D&D rules Q&A with compendium citations
+│   │   ├── SceneDetector.mjs       # Scene type detection (combat, social, exploration, rest)
+│   │   └── SessionAnalytics.mjs    # Speaker participation, timeline, session stats
 │   ├── kanka/
 │   │   ├── KankaClient.mjs        # Base API client with rate limiting
 │   │   ├── KankaService.mjs       # CRUD for journals, characters, locations, items
+│   │   ├── KankaEntityManager.mjs # Entity lifecycle management
+│   │   ├── KankaRelationshipManager.mjs # Entity relationship management
 │   │   └── NarrativeExporter.mjs  # Format transcripts for Kanka journals
 │   ├── orchestration/
-│   │   └── SessionOrchestrator.mjs # Main workflow: record → transcribe → publish
+│   │   ├── SessionOrchestrator.mjs # Dual-mode workflow: live + chronicle
+│   │   ├── TranscriptionProcessor.mjs # Audio transcription workflow
+│   │   ├── EntityProcessor.mjs     # Entity extraction workflow
+│   │   ├── ImageProcessor.mjs      # Image generation workflow
+│   │   └── KankaPublisher.mjs      # Kanka publishing workflow
 │   ├── content/
 │   │   └── CompendiumSearcher.mjs # Search Foundry compendiums for duplicates
+│   ├── data/
+│   │   ├── dnd-terms.mjs          # D&D terminology for transcription prompts
+│   │   └── dnd-vocabulary.mjs     # D&D vocabulary dictionary
 │   ├── ui/
+│   │   ├── MainPanel.mjs          # Unified floating panel (6 tabs) - singleton
 │   │   ├── RecorderControls.mjs   # Recording start/stop/pause UI
-│   │   ├── SpeakerLabeling.mjs    # Map speaker IDs to player names
+│   │   ├── SpeakerLabeling.mjs    # Map speaker IDs to player names (inline rename)
 │   │   ├── EntityPreview.mjs      # Review entities before Kanka publish
-│   │   └── RelationshipGraph.mjs  # Visualize entity relationships
+│   │   ├── RelationshipGraph.mjs  # Visualize entity relationships
+│   │   └── VocabularyManager.mjs  # Custom vocabulary management UI
 │   └── utils/
 │       ├── Logger.mjs             # Module-prefixed logging utility
 │       ├── RateLimiter.mjs        # Request throttling with queue
 │       ├── AudioUtils.mjs         # MIME detection, blob conversion
 │       ├── SensitiveDataFilter.mjs # Filter API keys from logs
 │       ├── HtmlUtils.mjs          # HTML sanitization and formatting
-│       └── ApiKeyValidator.mjs    # Validate API keys before use
+│       ├── ApiKeyValidator.mjs    # Validate API keys before use
+│       ├── CacheManager.mjs       # Generic cache with TTL and invalidation
+│       ├── DomUtils.mjs           # DOM manipulation helpers
+│       └── ErrorNotificationHelper.mjs # Consistent error notifications to users
 ├── styles/
 │   └── vox-chronicle.css          # All module styles with .vox-chronicle prefix
 ├── templates/
+│   ├── main-panel.hbs             # Unified 6-tab floating panel
 │   ├── recorder.hbs               # Recording controls template
 │   ├── speaker-labeling.hbs       # Speaker mapping form
 │   ├── entity-preview.hbs         # Entity review dialog
-│   └── relationship-graph.hbs     # Relationship visualization template
+│   ├── relationship-graph.hbs     # Relationship visualization template
+│   ├── vocabulary-manager.hbs     # Vocabulary management template
+│   ├── analytics-tab.hbs          # Session analytics tab
+│   └── journal-picker.hbs         # Journal/chapter picker for live mode
 ├── lang/
-│   ├── en.json                    # English localization
-│   └── it.json                    # Italian localization
+│   ├── en.json                    # English (775 keys)
+│   ├── it.json                    # Italian
+│   ├── de.json                    # German
+│   ├── es.json                    # Spanish
+│   ├── fr.json                    # French
+│   ├── ja.json                    # Japanese
+│   ├── pt.json                    # Portuguese
+│   └── template.json             # Translation template
 ├── tests/
-│   └── services/                  # Unit tests for services
+│   └── ...                        # 55+ test files, 3094+ tests
 ├── docs/
 │   ├── ARCHITECTURE.md            # System design documentation
 │   ├── API_REFERENCE.md           # Service class documentation
-│   └── USER_GUIDE.md              # End-user instructions
+│   ├── USER_GUIDE.md              # End-user instructions
+│   ├── WHISPER_SETUP.md           # Local Whisper backend setup
+│   └── GPT4O_TRANSCRIBE_API.md   # Diarization API documentation
 ├── README.md                      # Project overview and setup
 ├── CHANGELOG.md                   # Version history
 ├── CLAUDE.md                      # This file - AI development context
@@ -86,10 +131,14 @@ vox-chronicle/
 
 ### Module Constants
 
-All module code uses a shared MODULE_ID constant:
+All module code uses a shared MODULE_ID constant from a dependency-free leaf module:
 
 ```javascript
-const MODULE_ID = 'vox-chronicle';
+// scripts/constants.mjs
+export const MODULE_ID = 'vox-chronicle';
+
+// All other files import from constants.mjs (NOT main.mjs)
+import { MODULE_ID } from '../constants.mjs';
 ```
 
 ### Singleton Pattern (VoxChronicle)
@@ -107,6 +156,112 @@ class VoxChronicle {
     return VoxChronicle.instance;
   }
 }
+```
+
+### MainPanel Singleton
+
+The unified UI panel uses the same singleton pattern with explicit reset for testing:
+
+```javascript
+class MainPanel extends Application {
+  static #instance = null;
+
+  static getInstance() {
+    if (!MainPanel.#instance) {
+      MainPanel.#instance = new MainPanel();
+    }
+    return MainPanel.#instance;
+  }
+
+  static resetInstance() {
+    MainPanel.#instance = null;
+  }
+}
+```
+
+### SessionOrchestrator Dual Mode
+
+The orchestrator supports two operation modes:
+
+```javascript
+class SessionOrchestrator {
+  // Live Mode: real-time AI assistance during gameplay
+  async startLiveMode(options) {
+    // Starts audio recording + narrator services
+    // AIAssistant, SceneDetector, ChapterTracker, SessionAnalytics
+  }
+
+  // Chronicle Mode: post-session publishing workflow
+  async startChronicleMode(options) {
+    // Record → Transcribe → Extract entities → Generate images → Publish
+  }
+}
+```
+
+### Narrator Service Pattern
+
+Services in `scripts/narrator/` follow a consistent pattern with context-aware methods:
+
+```javascript
+export class AIAssistant {
+  constructor(openAIClient, options = {}) {
+    this.client = openAIClient;
+    this.logger = Logger.createChild('AIAssistant');
+  }
+
+  // Generate contextual suggestion based on current scene/transcript
+  async getSuggestion(context) {
+    // context: { transcript, sceneType, chapter, characters }
+    // Returns: { type: 'narration'|'dialogue'|'action'|'reference', content: '...' }
+  }
+}
+```
+
+### Retry/Queue Pattern (OpenAIClient)
+
+All OpenAI API calls use retry with exponential backoff + jitter and sequential request queuing:
+
+```javascript
+class OpenAIClient {
+  // Retry with exponential backoff + jitter
+  async _retryWithBackoff(fn, maxRetries = 3) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (attempt === maxRetries) throw error;
+        const delay = Math.min(1000 * 2 ** attempt, 30000) + Math.random() * 1000;
+        await this._sleep(delay);
+      }
+    }
+  }
+
+  // Sequential request queue to prevent rate limiting
+  async _enqueueRequest(fn) {
+    // Queues requests and processes them sequentially
+  }
+
+  // Circuit breaker: auto-stops after consecutive failures
+  _checkCircuitBreaker() {
+    if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+      throw new Error('Circuit breaker open: too many consecutive failures');
+    }
+  }
+}
+```
+
+### ErrorNotificationHelper Pattern
+
+Consistent user-facing error notifications:
+
+```javascript
+import { ErrorNotificationHelper } from '../utils/ErrorNotificationHelper.mjs';
+
+// Instead of scattered ui.notifications.error() calls:
+ErrorNotificationHelper.notify('transcription', error, {
+  context: 'recording session',
+  showDetails: true
+});
 ```
 
 ### Foundry VTT Hooks
@@ -202,7 +357,7 @@ export class ServiceName {
 API clients extend base classes with authentication:
 
 ```javascript
-// OpenAI client
+// OpenAI client with retry, queue, and circuit breaker
 export class OpenAIClient {
   constructor(apiKey) {
     this.apiKey = apiKey;
@@ -210,14 +365,19 @@ export class OpenAIClient {
   }
 
   async request(endpoint, options) {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        ...options.headers
-      }
-    });
-    // Handle errors, rate limits
+    return this._enqueueRequest(() =>
+      this._retryWithBackoff(async () => {
+        this._checkCircuitBreaker();
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+          ...options,
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            ...options.headers
+          }
+        });
+        // Handle errors, rate limits
+      })
+    );
   }
 }
 ```
@@ -251,7 +411,7 @@ export class MyApplication extends Application {
 
 ### Localization
 
-All user-facing strings use i18n:
+All user-facing strings use i18n (7 languages + template):
 
 ```javascript
 // In JavaScript
@@ -293,29 +453,22 @@ const response = await fetch(url, {
 });
 ```
 
-### DALL-E 3 Model Specification
+### gpt-image-1 Model
 
-DALL-E 3 must be explicitly specified:
+gpt-image-1 is the current image generation model:
 
 ```javascript
-// DALL-E 2 is default - ALWAYS specify dall-e-3
+// gpt-image-1 returns base64 images (NOT URLs like dall-e-3)
 body: JSON.stringify({
-  model: 'dall-e-3',  // Required!
+  model: 'gpt-image-1',
   prompt: '...',
-  n: 1,  // DALL-E 3 only supports n=1
-  size: '1024x1024'
+  size: '1024x1024',  // Also supports 1024x1536, 1536x1024, auto
+  quality: 'medium'   // low, medium, high
 })
-```
 
-### Image URL Expiration
-
-OpenAI image URLs expire in 60 minutes:
-
-```javascript
-const imageUrl = result.data[0].url;
-// Download immediately before uploading to Kanka
-const imageResponse = await fetch(imageUrl);
-const imageBlob = await imageResponse.blob();
+// Response contains base64 data (NOT a URL)
+const imageBase64 = result.data[0].b64_json;
+const imageBlob = base64ToBlob(imageBase64, 'image/png');
 ```
 
 ### Kanka Rate Limiting
@@ -446,7 +599,7 @@ game.settings.register(MODULE_ID, 'newSetting', {
 });
 ```
 
-2. Add localization strings in `lang/en.json` and `lang/it.json`:
+2. Add localization strings in all 8 lang files (`lang/en.json`, `lang/it.json`, `lang/de.json`, `lang/es.json`, `lang/fr.json`, `lang/ja.json`, `lang/pt.json`, `lang/template.json`):
 
 ```json
 {
@@ -461,23 +614,23 @@ game.settings.register(MODULE_ID, 'newSetting', {
 
 ### Adding a New Service
 
-1. Create file in appropriate directory (e.g., `scripts/services/NewService.mjs`)
+1. Create file in appropriate directory (e.g., `scripts/narrator/NewService.mjs`)
 2. Import Logger and any dependencies
 3. Export the class
 4. Register in VoxChronicle singleton if needed
-5. Add to SessionOrchestrator if part of workflow
+5. Add to SessionOrchestrator if part of workflow (live or chronicle mode)
 
 ### Adding UI Controls
 
 1. Create Application class in `scripts/ui/`
 2. Create Handlebars template in `templates/`
 3. Add CSS in `styles/vox-chronicle.css`
-4. Add localization strings
+4. Add localization strings to all 8 lang files
 5. Register in scene controls if needed (in `main.mjs`)
 
 ### Adding Tests
 
-1. Create test file in `tests/services/`
+1. Create test file in `tests/`
 2. Mock external dependencies (fetch, game object)
 3. Test happy path and error cases
 4. Run with `npm test`
@@ -493,23 +646,28 @@ Before starting any work, check `TODO.md` for known issues and open tasks. After
 - Use `const MODULE_ID = 'vox-chronicle'` for all settings/storage keys
 - Use Logger utility for all console output
 - Handle errors with try/catch and user-friendly notifications
-- Use localization for ALL user-facing strings
+- Use ErrorNotificationHelper for consistent user-facing error messages
+- Use localization for ALL user-facing strings (7 languages + template)
 - Namespace all CSS classes with `vox-chronicle`
 - Document public methods with JSDoc comments
 - Test API response parsing thoroughly
 - Validate API keys before making requests
+- Use retry logic with exponential backoff for all API calls
+- Use `_enqueueRequest` for sequential API request processing
 
 ### DON'T
 
 - Don't access `game` object before 'init' hook
 - Don't send audio as JSON (use FormData)
-- Don't forget `model: 'dall-e-3'` (defaults to dall-e-2)
+- Don't use dall-e-3 (use gpt-image-1)
 - Don't exceed rate limits (implement throttling)
 - Don't store API keys in source code
 - Don't use `console.log` directly (use Logger)
 - Don't create entities without checking for duplicates
 - Don't skip error handling for API calls
 - Don't hardcode English strings (use i18n)
+- Don't forget retry logic for API calls (use OpenAIClient._retryWithBackoff)
+- Don't import MODULE_ID from main.mjs (import from constants.mjs)
 
 ## Gotchas
 
@@ -520,6 +678,9 @@ Before starting any work, check `TODO.md` for known issues and open tasks. After
 5. **WebRTC Capture**: May not capture all peer audio depending on Foundry version
 6. **Permission Errors**: Microphone access requires HTTPS or localhost
 7. **Large Recordings**: Must chunk audio > 25MB for OpenAI API
+8. **gpt-image-1 returns base64**: Unlike dall-e-3, gpt-image-1 returns base64 data, not URLs. No need to download before uploading to Kanka.
+9. **Circular imports**: Always import MODULE_ID from `constants.mjs`, never from `main.mjs`
+10. **MainPanel singleton**: Use `MainPanel.getInstance()` - never construct directly
 
 ## Testing
 
@@ -527,7 +688,7 @@ Run tests with:
 
 ```bash
 npm install      # Install dependencies
-npm test         # Run all tests
+npm test         # Run all 3094+ tests across 55+ files
 npm run test:ui  # Run with Vitest UI
 ```
 
@@ -558,6 +719,8 @@ Logger.setLevel(LogLevel.DEBUG);
 
 Check browser console for `VoxChronicle |` prefixed messages.
 
+Debug mode can also be toggled in module settings (Settings > Module Settings > VoxChronicle > Debug Mode).
+
 ## API Reference Quick Links
 
 - **GPT-4o Transcribe (Diarization)**: [GPT4O_TRANSCRIBE_API.md](docs/GPT4O_TRANSCRIBE_API.md) - Comprehensive guide for speaker diarization, chunking, and API specifics
@@ -573,8 +736,8 @@ When testing with real APIs:
 | Service | Cost |
 |---------|------|
 | Transcription (GPT-4o) | $0.006/minute |
-| Images (DALL-E 3 Standard) | $0.04/image |
-| Images (DALL-E 3 HD) | $0.08/image |
+| Images (gpt-image-1 Standard) | $0.02/image |
+| Images (gpt-image-1 HD) | $0.04/image |
 
 Use mocks for development and save real API calls for integration testing.
 

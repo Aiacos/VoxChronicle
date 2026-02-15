@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-02-15
+
+### Major: Narrator Master Integration
+VoxChronicle now includes all features from the Narrator Master module, creating a unified real-time DM assistant + session chronicle publisher.
+
+### Added
+- **Live Mode**: Real-time AI assistance during game sessions
+  - AI-powered contextual suggestions (narration, dialogue, action, reference)
+  - Off-track detection with configurable sensitivity
+  - Narrative bridge generation to guide players back to story
+  - NPC dialogue generation
+  - D&D rules Q&A with compendium citations
+  - Chapter/scene tracking from Foundry journals
+  - Scene type detection (combat, social, exploration, rest)
+  - Session analytics (speaker participation, timeline)
+  - Silence detection with chapter recovery UI
+- **Unified Panel**: Single floating panel with 6 tabs (Live, Chronicle, Images, Transcript, Entities, Analytics)
+- **Audio Level Metering**: Real-time audio level visualization
+- **gpt-image-1**: Updated image generation model (replaces deprecated DALL-E 3)
+- **Multi-language transcription**: Support for multiple languages in same session
+- **5 new localizations**: German, Spanish, French, Japanese, Portuguese
+- **API retry system**: Exponential backoff with jitter for all OpenAI requests
+- **Request queue**: Sequential request processing to prevent rate limiting
+- **Circuit breaker**: Auto-stops after consecutive failures
+- **Debug mode**: Verbose logging toggle in settings
+
+### Changed
+- Minimum Foundry VTT version: v12 (dropped v11 support)
+- Image generation model: gpt-image-1 (was dall-e-3)
+- OpenAI client: Added retry/queue/backoff (from Narrator Master)
+- AudioRecorder: Added level metering and silence detection
+- TranscriptionService: Added multi-language mode
+- SpeakerLabeling: Added inline rename and retroactive apply
+
+### Deprecated
+- Narrator Master module is now archived. All features are included in VoxChronicle v2.0.0.
+
 ## [1.4.0] - 2026-02-13
 
 ### Added
@@ -331,7 +368,8 @@ For flexibility with automatic fallback:
 
 ---
 
-[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.4.0...v2.0.0
 [1.4.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.1...v1.2.2
