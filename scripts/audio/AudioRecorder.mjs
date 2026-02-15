@@ -5,6 +5,9 @@
  * using the MediaRecorder API. Supports multiple capture modes with
  * automatic fallback to microphone if WebRTC is unavailable.
  *
+ * Includes audio level metering via Web Audio API AnalyserNode and
+ * silence detection with configurable thresholds (merged from Narrator Master).
+ *
  * @class AudioRecorder
  * @module vox-chronicle
  */
@@ -39,6 +42,18 @@ const CaptureSource = {
 const DEFAULT_TIMESLICE = 10000;
 
 /**
+ * Default maximum recording duration (5 minutes in milliseconds)
+ * @constant {number}
+ */
+const DEFAULT_MAX_DURATION = 300000;
+
+/**
+ * Default silence detection threshold (0.0-1.0)
+ * @constant {number}
+ */
+const DEFAULT_SILENCE_THRESHOLD = 0.01;
+
+/**
  * AudioRecorder class for capturing audio from microphone or WebRTC
  *
  * @example
@@ -46,6 +61,17 @@ const DEFAULT_TIMESLICE = 10000;
  * await recorder.startRecording({ source: 'microphone' });
  * // ... recording ...
  * const audioBlob = await recorder.stopRecording();
+ *
+ * @example
+ * // With audio level metering and silence detection
+ * const recorder = new AudioRecorder({
+ *   silenceThreshold: 0.02,
+ *   maxDuration: 600000,
+ *   onLevelChange: (level) => updateMeter(level),
+ *   onSilenceDetected: (duration) => console.log(`Silence for ${duration}ms`),
+ *   onSoundDetected: () => console.log('Sound resumed'),
+ *   onAutoStop: () => console.log('Max duration reached')
+ * });
  */
 class AudioRecorder {
   /**
@@ -105,13 +131,113 @@ class AudioRecorder {
   _callbacks = {
     onDataAvailable: null,
     onError: null,
-    onStateChange: null
+    onStateChange: null,
+    onLevelChange: null,
+    onSilenceDetected: null,
+    onSoundDetected: null,
+    onAutoStop: null
   };
+
+  // --- Audio Analysis fields (from Narrator Master) ---
+
+  /**
+   * AudioContext instance for Web Audio API analysis
+   * @type {AudioContext|null}
+   * @private
+   */
+  _audioContext = null;
+
+  /**
+   * AnalyserNode for FFT frequency analysis
+   * @type {AnalyserNode|null}
+   * @private
+   */
+  _analyserNode = null;
+
+  /**
+   * MediaStreamSource node connecting the stream to the audio graph
+   * @type {MediaStreamAudioSourceNode|null}
+   * @private
+   */
+  _sourceNode = null;
+
+  /**
+   * requestAnimationFrame ID for the level monitoring loop
+   * @type {number|null}
+   * @private
+   */
+  _levelMonitorId = null;
+
+  // --- Silence detection fields ---
+
+  /**
+   * Audio level threshold below which audio is considered silent (0.0-1.0)
+   * @type {number}
+   * @private
+   */
+  _silenceThreshold = DEFAULT_SILENCE_THRESHOLD;
+
+  /**
+   * Whether the audio is currently silent
+   * @type {boolean}
+   * @private
+   */
+  _isSilent = false;
+
+  /**
+   * Timestamp when silence began (for duration tracking)
+   * @type {number|null}
+   * @private
+   */
+  _silenceStartTime = null;
+
+  // --- Auto-stop fields ---
+
+  /**
+   * Maximum recording duration in milliseconds (0 = no limit)
+   * @type {number}
+   * @private
+   */
+  _maxDuration = DEFAULT_MAX_DURATION;
+
+  /**
+   * Timeout ID for the auto-stop timer
+   * @type {number|null}
+   * @private
+   */
+  _maxDurationTimeout = null;
 
   /**
    * Create a new AudioRecorder instance
+   *
+   * @param {object} [options] - Constructor options
+   * @param {number} [options.silenceThreshold=0.01] - Audio level threshold for silence detection (0.0-1.0)
+   * @param {number} [options.maxDuration=300000] - Maximum recording duration in ms (0 = no limit)
+   * @param {Function} [options.onLevelChange] - Called with current audio level (0.0-1.0) each animation frame
+   * @param {Function} [options.onSilenceDetected] - Called with silence duration (ms) when silence exceeds threshold
+   * @param {Function} [options.onSoundDetected] - Called when sound resumes after silence
+   * @param {Function} [options.onAutoStop] - Called when recording auto-stops at max duration
    */
-  constructor() {
+  constructor(options = {}) {
+    if (options.silenceThreshold !== undefined) {
+      this._silenceThreshold = options.silenceThreshold;
+    }
+    if (options.maxDuration !== undefined) {
+      this._maxDuration = options.maxDuration;
+    }
+    if (options.onLevelChange) {
+      this._callbacks.onLevelChange = options.onLevelChange;
+    }
+    if (options.onSilenceDetected) {
+      this._callbacks.onSilenceDetected = options.onSilenceDetected;
+    }
+    if (options.onSoundDetected) {
+      this._callbacks.onSoundDetected = options.onSoundDetected;
+    }
+    if (options.onAutoStop) {
+      this._callbacks.onAutoStop = options.onAutoStop;
+    }
+
     this._logger.debug('AudioRecorder instance created');
   }
 
@@ -155,6 +281,10 @@ class AudioRecorder {
    * @param {Function} [callbacks.onDataAvailable] - Called when audio chunk is available
    * @param {Function} [callbacks.onError] - Called when an error occurs
    * @param {Function} [callbacks.onStateChange] - Called when recording state changes
+   * @param {Function} [callbacks.onLevelChange] - Called with current audio level (0.0-1.0)
+   * @param {Function} [callbacks.onSilenceDetected] - Called with silence duration (ms)
+   * @param {Function} [callbacks.onSoundDetected] - Called when sound resumes
+   * @param {Function} [callbacks.onAutoStop] - Called when auto-stop triggers
    */
   setCallbacks(callbacks) {
     this._callbacks = { ...this._callbacks, ...callbacks };
@@ -198,6 +328,13 @@ class AudioRecorder {
       // Initialize the MediaRecorder
       await this._initializeRecorder(options.timeslice);
 
+      // Set up audio analysis and level monitoring
+      this._setupAudioAnalysis(this._stream);
+      this._startLevelMonitoring();
+
+      // Set up auto-stop timer
+      this._startAutoStopTimer();
+
       this._captureSource = source;
       this._startTime = Date.now();
       this._updateState(RecordingState.RECORDING);
@@ -222,6 +359,10 @@ class AudioRecorder {
     }
 
     this._logger.log('Stopping recording...');
+
+    // Stop level monitoring and auto-stop timer
+    this._stopLevelMonitoring();
+    this._clearAutoStopTimer();
 
     return new Promise((resolve, reject) => {
       if (!this._mediaRecorder || this._mediaRecorder.state === 'inactive') {
@@ -311,6 +452,10 @@ class AudioRecorder {
 
     this._logger.log('Recording cancelled');
 
+    // Stop level monitoring and auto-stop timer
+    this._stopLevelMonitoring();
+    this._clearAutoStopTimer();
+
     if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
       this._mediaRecorder.stop();
     }
@@ -328,6 +473,31 @@ class AudioRecorder {
     if (this._mediaRecorder && this._mediaRecorder.state === 'recording') {
       this._mediaRecorder.requestData();
     }
+  }
+
+  /**
+   * Get the current audio level (0.0-1.0)
+   * Uses RMS calculation over frequency data from the AnalyserNode.
+   *
+   * @returns {number} The current audio level normalized to 0.0-1.0, or 0 if no analyser
+   */
+  getAudioLevel() {
+    if (!this._analyserNode) {
+      return 0;
+    }
+
+    const dataArray = new Uint8Array(this._analyserNode.frequencyBinCount);
+    this._analyserNode.getByteFrequencyData(dataArray);
+
+    // Calculate RMS (Root Mean Square) of frequency data
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      sum += dataArray[i] * dataArray[i];
+    }
+    const rms = Math.sqrt(sum / dataArray.length);
+
+    // Normalize to 0.0-1.0 range (byte frequency data max is ~255, /128 gives ~2 max, clamped to 1)
+    return Math.min(1, rms / 128);
   }
 
   /**
@@ -569,6 +739,178 @@ class AudioRecorder {
     this._logger.debug(`MediaRecorder started with ${effectiveTimeslice}ms timeslice`);
   }
 
+  // --- Audio Analysis Methods (from Narrator Master) ---
+
+  /**
+   * Set up Web Audio API analysis pipeline for the recording stream.
+   * Creates an AudioContext, a MediaStreamSource, and an AnalyserNode
+   * connected in series for real-time frequency analysis.
+   *
+   * @param {MediaStream} stream - The active media stream to analyse
+   * @private
+   */
+  _setupAudioAnalysis(stream) {
+    if (!stream) {
+      this._logger.warn('Cannot setup audio analysis without a stream');
+      return;
+    }
+
+    try {
+      const AudioContextClass =
+        typeof AudioContext !== 'undefined'
+          ? AudioContext
+          : typeof webkitAudioContext !== 'undefined'
+            ? webkitAudioContext
+            : null;
+
+      if (!AudioContextClass) {
+        this._logger.warn('AudioContext not available, audio level metering disabled');
+        return;
+      }
+
+      this._audioContext = new AudioContextClass();
+      this._sourceNode = this._audioContext.createMediaStreamSource(stream);
+      this._analyserNode = this._audioContext.createAnalyser();
+      this._analyserNode.fftSize = 256;
+      this._sourceNode.connect(this._analyserNode);
+
+      this._logger.debug('Audio analysis pipeline initialized');
+    } catch (error) {
+      this._logger.warn('Failed to initialize audio analysis:', error);
+      // Non-fatal: recording continues without level metering
+      this._audioContext = null;
+      this._analyserNode = null;
+      this._sourceNode = null;
+    }
+  }
+
+  /**
+   * Start the requestAnimationFrame-based level monitoring loop.
+   * Each frame reads the current audio level and checks for silence.
+   *
+   * @private
+   */
+  _startLevelMonitoring() {
+    if (!this._analyserNode) {
+      return;
+    }
+
+    const monitor = () => {
+      // Only monitor while recording (not paused or inactive)
+      if (this._state !== RecordingState.RECORDING) {
+        this._levelMonitorId = requestAnimationFrame(monitor);
+        return;
+      }
+
+      const level = this.getAudioLevel();
+
+      // Notify level change callback
+      if (this._callbacks.onLevelChange) {
+        this._callbacks.onLevelChange(level);
+      }
+
+      // Silence detection
+      this._detectSilence(level);
+
+      this._levelMonitorId = requestAnimationFrame(monitor);
+    };
+
+    this._levelMonitorId = requestAnimationFrame(monitor);
+    this._logger.debug('Level monitoring started');
+  }
+
+  /**
+   * Stop the level monitoring loop and reset silence state.
+   *
+   * @private
+   */
+  _stopLevelMonitoring() {
+    if (this._levelMonitorId !== null) {
+      cancelAnimationFrame(this._levelMonitorId);
+      this._levelMonitorId = null;
+      this._logger.debug('Level monitoring stopped');
+    }
+
+    // Reset silence tracking
+    this._isSilent = false;
+    this._silenceStartTime = null;
+  }
+
+  /**
+   * Check the current audio level against the silence threshold.
+   * Fires onSilenceDetected when silence duration exceeds a meaningful period,
+   * and onSoundDetected when sound resumes after silence.
+   *
+   * @param {number} level - Current audio level (0.0-1.0)
+   * @private
+   */
+  _detectSilence(level) {
+    const now = Date.now();
+
+    if (level < this._silenceThreshold) {
+      // Audio is below threshold
+      if (!this._isSilent) {
+        // Transition to silent
+        this._isSilent = true;
+        this._silenceStartTime = now;
+      } else if (this._silenceStartTime && this._callbacks.onSilenceDetected) {
+        // Already silent - report duration
+        const silenceDuration = now - this._silenceStartTime;
+        this._callbacks.onSilenceDetected(silenceDuration);
+      }
+    } else {
+      // Audio is above threshold
+      if (this._isSilent) {
+        // Transition from silent to sound
+        this._isSilent = false;
+        this._silenceStartTime = null;
+
+        if (this._callbacks.onSoundDetected) {
+          this._callbacks.onSoundDetected();
+        }
+      }
+    }
+  }
+
+  // --- Auto-stop methods ---
+
+  /**
+   * Start the auto-stop timer if maxDuration is configured.
+   * When the timer fires, recording is automatically stopped.
+   *
+   * @private
+   */
+  _startAutoStopTimer() {
+    if (this._maxDuration > 0) {
+      this._maxDurationTimeout = setTimeout(() => {
+        this._logger.log(`Max duration reached (${this._maxDuration}ms), auto-stopping recording`);
+
+        if (this._callbacks.onAutoStop) {
+          this._callbacks.onAutoStop();
+        }
+
+        // Auto-stop the recording (fire-and-forget, errors handled internally)
+        this.stopRecording().catch((error) => {
+          this._logger.error('Error during auto-stop:', error);
+        });
+      }, this._maxDuration);
+
+      this._logger.debug(`Auto-stop timer set for ${this._maxDuration}ms`);
+    }
+  }
+
+  /**
+   * Clear the auto-stop timer if active.
+   *
+   * @private
+   */
+  _clearAutoStopTimer() {
+    if (this._maxDurationTimeout !== null) {
+      clearTimeout(this._maxDurationTimeout);
+      this._maxDurationTimeout = null;
+    }
+  }
+
   /**
    * Update recording state and notify listeners
    *
@@ -585,11 +927,18 @@ class AudioRecorder {
   }
 
   /**
-   * Clean up resources after recording
+   * Clean up all resources after recording, including audio analysis nodes.
    *
    * @private
    */
   _cleanup() {
+    // Stop level monitoring and auto-stop timer
+    this._stopLevelMonitoring();
+    this._clearAutoStopTimer();
+
+    // Clean up audio analysis resources
+    this._cleanupAudioAnalysis();
+
     // Stop all stream tracks
     if (this._stream) {
       this._stream.getTracks().forEach((track) => {
@@ -605,6 +954,33 @@ class AudioRecorder {
     this._captureSource = null;
     this._startTime = null;
     this._updateState(RecordingState.INACTIVE);
+  }
+
+  /**
+   * Clean up Web Audio API analysis nodes and close the AudioContext.
+   *
+   * @private
+   */
+  _cleanupAudioAnalysis() {
+    if (this._sourceNode) {
+      try {
+        this._sourceNode.disconnect();
+      } catch {
+        // Ignore disconnect errors (node may already be disconnected)
+      }
+      this._sourceNode = null;
+    }
+
+    this._analyserNode = null;
+
+    if (this._audioContext) {
+      try {
+        this._audioContext.close();
+      } catch {
+        // Ignore close errors (context may already be closed)
+      }
+      this._audioContext = null;
+    }
   }
 }
 
