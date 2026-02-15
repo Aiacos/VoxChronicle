@@ -652,6 +652,7 @@
 
     "Controls": {
       "Title": "VoxChronicle",
+      "Panel": "Pannello VoxChronicle",
       "Recorder": "Registratore Sessione",
       "SpeakerLabels": "Etichette Parlanti",
       "Vocabulary": "Dizionario Vocabolario",

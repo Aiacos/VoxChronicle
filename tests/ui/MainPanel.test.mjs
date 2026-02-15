@@ -7,6 +7,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createMockApplication, createMockFoundryUtils } from '../helpers/foundry-mock.js';
+
+// Set up Foundry globals BEFORE importing MainPanel (which extends Application)
+globalThis.Application = createMockApplication();
+globalThis.foundry = { utils: createMockFoundryUtils() };
 
 vi.mock('../../scripts/constants.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
@@ -28,7 +33,7 @@ vi.mock('../../scripts/utils/DomUtils.mjs', () => ({
   debounce: (fn) => fn
 }));
 
-import { MainPanel } from '../../scripts/ui/MainPanel.mjs';
+const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
 
 /**
  * Create a mock orchestrator with optional overrides
@@ -205,23 +210,17 @@ describe('MainPanel', () => {
   });
 
   describe('render', () => {
-    it('should mark as rendered', async () => {
+    it('should mark as rendered', () => {
       const panel = new MainPanel(mockOrchestrator);
-      await panel.render();
+      panel.render();
       expect(panel.isRendered).toBe(true);
-    });
-
-    it('should return self for chaining', async () => {
-      const panel = new MainPanel(mockOrchestrator);
-      const result = await panel.render();
-      expect(result).toBe(panel);
     });
   });
 
   describe('close', () => {
-    it('should mark as not rendered', async () => {
+    it('should mark as not rendered', () => {
       const panel = new MainPanel(mockOrchestrator);
-      await panel.render();
+      panel.render();
       panel.close();
       expect(panel.isRendered).toBe(false);
     });

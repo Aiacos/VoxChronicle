@@ -632,6 +632,7 @@
     },
     "Controls": {
       "Title": "[EN] VoxChronicle",
+      "Panel": "[EN] VoxChronicle Panel",
       "Recorder": "[EN] Session Recorder",
       "SpeakerLabels": "[EN] Speaker Labels",
       "Vocabulary": "[EN] Vocabulary Dictionary",

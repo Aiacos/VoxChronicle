@@ -6,6 +6,7 @@
  * image generation, transcript viewing, entity management, and analytics.
  *
  * @class MainPanel
+ * @extends Application
  * @module vox-chronicle
  */
 
@@ -23,7 +24,7 @@ const VALID_TABS = ['live', 'chronicle', 'images', 'transcript', 'entities', 'an
  * MainPanel Application class
  * Provides a unified tabbed interface for all VoxChronicle features
  */
-class MainPanel {
+class MainPanel extends Application {
   /** @type {MainPanel|null} */
   static _instance = null;
 
@@ -33,7 +34,7 @@ class MainPanel {
    * @static
    */
   static get defaultOptions() {
-    return {
+    return foundry.utils.mergeObject(super.defaultOptions, {
       id: 'vox-chronicle-main-panel',
       classes: ['vox-chronicle', 'vox-chronicle-panel'],
       template: `modules/${MODULE_ID}/templates/main-panel.hbs`,
@@ -42,7 +43,7 @@ class MainPanel {
       minimizable: true,
       resizable: true,
       title: 'VoxChronicle'
-    };
+    });
   }
 
   /**
@@ -51,12 +52,10 @@ class MainPanel {
    * @param {object} [options] - Application options
    */
   constructor(orchestrator, options = {}) {
+    super(options);
     this._orchestrator = orchestrator;
     this._activeTab = 'live';
     this._logger = Logger.createChild('MainPanel');
-    this._options = { ...MainPanel.defaultOptions, ...options };
-    this._rendered = false;
-    this._element = null;
     this._debouncedRender = debounce(() => this.render(false), 150);
   }
 
@@ -94,7 +93,7 @@ class MainPanel {
    * @returns {boolean} True if rendered
    */
   get isRendered() {
-    return this._rendered;
+    return this.rendered;
   }
 
   /**
@@ -126,6 +125,26 @@ class MainPanel {
   }
 
   /**
+   * Activate event listeners on the rendered HTML
+   * @param {jQuery} html - The rendered HTML element
+   */
+  activateListeners(html) {
+    super.activateListeners(html);
+
+    // Tab switching
+    html.find('.vox-chronicle-tab').on('click', (event) => {
+      const tab = event.currentTarget.dataset.tab;
+      if (tab) this.switchTab(tab);
+    });
+
+    // Data-action buttons
+    html.find('[data-action]').on('click', (event) => {
+      const action = event.currentTarget.dataset.action;
+      this._handleAction(action, event);
+    });
+  }
+
+  /**
    * Switch to a specific tab
    * @param {string} tabName - The tab identifier to switch to
    */
@@ -137,25 +156,7 @@ class MainPanel {
 
     this._activeTab = tabName;
     this._logger.debug(`Switched to tab: ${tabName}`);
-  }
-
-  /**
-   * Render the panel
-   * @param {boolean} [force=true] - Whether to force a full re-render
-   * @returns {Promise<MainPanel>} This instance for chaining
-   */
-  async render(force = true) {
-    this._rendered = true;
-    this._logger.debug('Panel rendered');
-    return this;
-  }
-
-  /**
-   * Close the panel
-   */
-  close() {
-    this._rendered = false;
-    this._logger.debug('Panel closed');
+    this.render(false);
   }
 
   /**
@@ -163,6 +164,17 @@ class MainPanel {
    */
   requestRender() {
     this._debouncedRender();
+  }
+
+  /**
+   * Handle data-action button clicks
+   * @param {string} action - The action identifier
+   * @param {Event} event - The click event
+   * @private
+   */
+  _handleAction(action, event) {
+    this._logger.debug(`Action: ${action}`);
+    // Actions will be wired to orchestrator methods as features are connected
   }
 
   /**
