@@ -35,7 +35,7 @@ const DEFAULT_SESSION_OPTIONS = {
   autoPublishToKanka: false,
   confirmEntityCreation: true,
   maxImagesPerSession: 5,
-  imageQuality: 'medium',
+  imageQuality: 'high',
   includeTranscriptInChronicle: true,
   chronicleFormat: 'full'
 };

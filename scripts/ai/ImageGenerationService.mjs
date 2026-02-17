@@ -57,12 +57,10 @@ const ImageQuality = {
   LOW: 'low',
   /** Medium quality - balanced */
   MEDIUM: 'medium',
-  /** Standard quality - good default */
-  STANDARD: 'standard',
-  /** HD quality - more detail and consistency */
-  HD: 'hd',
   /** High quality - highest detail */
-  HIGH: 'high'
+  HIGH: 'high',
+  /** Auto quality - let the API decide */
+  AUTO: 'auto'
 };
 
 /**
@@ -119,7 +117,7 @@ class ImageGenerationService extends OpenAIClient {
    * @type {string}
    * @private
    */
-  _defaultQuality = ImageQuality.STANDARD;
+  _defaultQuality = ImageQuality.HIGH;
 
   /**
    * Campaign/world style descriptor for consistent aesthetics
@@ -147,7 +145,7 @@ class ImageGenerationService extends OpenAIClient {
    *
    * @param {string} apiKey - OpenAI API key
    * @param {object} [options] - Configuration options
-   * @param {string} [options.quality='standard'] - Default image quality
+   * @param {string} [options.quality='high'] - Default image quality
    * @param {string} [options.campaignStyle=''] - Campaign/world style descriptor
    * @param {number} [options.timeout=300000] - Request timeout in milliseconds
    */
@@ -157,7 +155,7 @@ class ImageGenerationService extends OpenAIClient {
       timeout: options.timeout || IMAGE_GENERATION_TIMEOUT_MS
     });
 
-    this._defaultQuality = options.quality || ImageQuality.STANDARD;
+    this._defaultQuality = options.quality || ImageQuality.HIGH;
     this._campaignStyle = options.campaignStyle || '';
 
     // Initialize image cache with 24-hour default TTL
@@ -747,11 +745,11 @@ class ImageGenerationService extends OpenAIClient {
    *   - medium/standard quality: ~$0.04/image (square), ~$0.08/image (landscape/portrait)
    *   - high/hd quality: ~$0.08/image (square), ~$0.12/image (landscape/portrait)
    *
-   * @param {string} [quality='standard'] - Image quality
+   * @param {string} [quality='high'] - Image quality
    * @param {string} [size='1024x1024'] - Image size
    * @returns {object} Cost estimate
    */
-  estimateCost(quality = ImageQuality.STANDARD, size = ImageSize.SQUARE) {
+  estimateCost(quality = ImageQuality.HIGH, size = ImageSize.SQUARE) {
     // Size categories
     const smallSizes = [ImageSize.SMALL, ImageSize.MEDIUM];
     const largeSizes = [ImageSize.PORTRAIT, ImageSize.LANDSCAPE, ImageSize.TALL, ImageSize.WIDE];
@@ -763,7 +761,7 @@ class ImageGenerationService extends OpenAIClient {
 
     if (quality === ImageQuality.LOW) {
       price = isSmall ? 0.02 : isLarge ? 0.04 : 0.03;
-    } else if (quality === ImageQuality.HD || quality === ImageQuality.HIGH) {
+    } else if (quality === ImageQuality.HIGH) {
       price = isSmall ? 0.04 : isLarge ? 0.12 : 0.08;
     } else {
       // standard / medium
@@ -848,16 +846,22 @@ class ImageGenerationService extends OpenAIClient {
         costMultiplier: 0.5
       },
       {
-        id: ImageQuality.STANDARD,
-        name: 'Standard',
+        id: ImageQuality.MEDIUM,
+        name: 'Medium',
         description: 'Good quality, balanced generation',
         costMultiplier: 1
       },
       {
-        id: ImageQuality.HD,
-        name: 'HD',
-        description: 'Higher detail and consistency',
+        id: ImageQuality.HIGH,
+        name: 'High',
+        description: 'Highest detail and consistency',
         costMultiplier: 2
+      },
+      {
+        id: ImageQuality.AUTO,
+        name: 'Auto',
+        description: 'Let the API choose quality',
+        costMultiplier: 1
       }
     ];
   }

@@ -17,7 +17,7 @@ import { Logger } from '../utils/Logger.mjs';
  */
 const DEFAULT_IMAGE_OPTIONS = {
   maxImagesPerSession: 5,
-  imageQuality: 'standard'
+  imageQuality: 'high'
 };
 
 /**
@@ -28,7 +28,7 @@ const DEFAULT_IMAGE_OPTIONS = {
  *   imageGenerationService: imageServiceInstance,
  *   options: {
  *     maxImagesPerSession: 5,
- *     imageQuality: 'standard'
+ *     imageQuality: 'high'
  *   }
  * });
  *
@@ -65,7 +65,7 @@ class ImageProcessor {
    * @param {object} config.imageGenerationService - ImageGenerationService instance
    * @param {object} [config.options] - Image processing options
    * @param {number} [config.options.maxImagesPerSession=5] - Maximum images to generate per session
-   * @param {string} [config.options.imageQuality='standard'] - Image quality ('standard' or 'hd')
+   * @param {string} [config.options.imageQuality='high'] - Image quality ('low', 'medium', 'high', or 'auto')
    */
   constructor(config = {}) {
     if (!config.imageGenerationService) {

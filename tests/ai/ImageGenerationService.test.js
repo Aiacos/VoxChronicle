@@ -132,18 +132,18 @@ describe('ImageGenerationService', () => {
 
     it('should accept configuration options', () => {
       const options = {
-        quality: ImageQuality.HD,
+        quality: ImageQuality.LOW,
         campaignStyle: 'dark fantasy',
         timeout: 600000
       };
 
       const customService = new ImageGenerationService('test-key', options);
       expect(customService.getCampaignStyle()).toBe('dark fantasy');
-      expect(customService._defaultQuality).toBe(ImageQuality.HD);
+      expect(customService._defaultQuality).toBe(ImageQuality.LOW);
     });
 
     it('should use default values when no options provided', () => {
-      expect(service._defaultQuality).toBe(ImageQuality.STANDARD);
+      expect(service._defaultQuality).toBe(ImageQuality.HIGH);
       expect(service.getCampaignStyle()).toBe('');
     });
 
@@ -291,11 +291,11 @@ describe('ImageGenerationService', () => {
       });
 
       await service.generatePortrait(EntityType.CHARACTER, 'A warrior', {
-        quality: ImageQuality.HD
+        quality: ImageQuality.LOW
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.quality).toBe(ImageQuality.HD);
+      expect(body.quality).toBe(ImageQuality.LOW);
     });
 
     it('should return complete result object', async () => {
@@ -322,7 +322,7 @@ describe('ImageGenerationService', () => {
       expect(result).toHaveProperty('entityType', EntityType.CHARACTER);
       expect(result).toHaveProperty('originalDescription', 'A warrior');
       expect(result).toHaveProperty('size', ImageSize.SQUARE);
-      expect(result).toHaveProperty('quality', ImageQuality.STANDARD);
+      expect(result).toHaveProperty('quality', ImageQuality.HIGH);
       expect(result).toHaveProperty('generatedAt');
       expect(result).toHaveProperty('expiresAt');
     });
@@ -515,11 +515,11 @@ describe('ImageGenerationService', () => {
 
     it('convenience methods should accept custom options', async () => {
       await service.generateCharacterPortrait('A hero', {
-        quality: ImageQuality.HD
+        quality: ImageQuality.LOW
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.quality).toBe(ImageQuality.HD);
+      expect(body.quality).toBe(ImageQuality.LOW);
     });
   });
 
@@ -905,7 +905,7 @@ describe('ImageGenerationService', () => {
 
   describe('default settings', () => {
     it('should set and use default quality', async () => {
-      service.setDefaultQuality(ImageQuality.HD);
+      service.setDefaultQuality(ImageQuality.LOW);
 
       const mockResponse = createMockImageResponse();
       mockFetch.mockResolvedValueOnce({
@@ -921,13 +921,13 @@ describe('ImageGenerationService', () => {
       await service.generatePortrait(EntityType.CHARACTER, 'A warrior');
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.quality).toBe(ImageQuality.HD);
+      expect(body.quality).toBe(ImageQuality.LOW);
     });
 
     it('should ignore invalid quality values', () => {
       service.setDefaultQuality('invalid');
       // Should remain unchanged
-      expect(service._defaultQuality).toBe(ImageQuality.STANDARD);
+      expect(service._defaultQuality).toBe(ImageQuality.HIGH);
     });
 
     it('should accept new quality values like low and medium', () => {
@@ -943,35 +943,35 @@ describe('ImageGenerationService', () => {
   });
 
   describe('estimateCost', () => {
-    it('should calculate cost for standard square image', () => {
-      const estimate = service.estimateCost(ImageQuality.STANDARD, ImageSize.SQUARE);
+    it('should calculate cost for medium square image', () => {
+      const estimate = service.estimateCost(ImageQuality.MEDIUM, ImageSize.SQUARE);
 
       expect(estimate).toEqual({
-        quality: ImageQuality.STANDARD,
+        quality: ImageQuality.MEDIUM,
         size: ImageSize.SQUARE,
         estimatedCostUSD: 0.04,
         model: ImageModel.GPT_IMAGE_1
       });
     });
 
-    it('should calculate cost for HD portrait image', () => {
-      const estimate = service.estimateCost(ImageQuality.HD, ImageSize.PORTRAIT);
+    it('should calculate cost for high portrait image', () => {
+      const estimate = service.estimateCost(ImageQuality.HIGH, ImageSize.PORTRAIT);
 
       expect(estimate).toEqual({
-        quality: ImageQuality.HD,
+        quality: ImageQuality.HIGH,
         size: ImageSize.PORTRAIT,
         estimatedCostUSD: 0.12,
         model: ImageModel.GPT_IMAGE_1
       });
     });
 
-    it('should calculate cost for standard landscape image', () => {
-      const estimate = service.estimateCost(ImageQuality.STANDARD, ImageSize.LANDSCAPE);
+    it('should calculate cost for medium landscape image', () => {
+      const estimate = service.estimateCost(ImageQuality.MEDIUM, ImageSize.LANDSCAPE);
       expect(estimate.estimatedCostUSD).toBe(0.08);
     });
 
     it('should calculate lower cost for small sizes', () => {
-      const estimate = service.estimateCost(ImageQuality.STANDARD, ImageSize.SMALL);
+      const estimate = service.estimateCost(ImageQuality.MEDIUM, ImageSize.SMALL);
       expect(estimate.estimatedCostUSD).toBe(0.03);
     });
 
@@ -983,9 +983,9 @@ describe('ImageGenerationService', () => {
     it('should handle missing parameters with defaults', () => {
       const estimate = service.estimateCost();
 
-      expect(estimate.quality).toBe(ImageQuality.STANDARD);
+      expect(estimate.quality).toBe(ImageQuality.HIGH);
       expect(estimate.size).toBe(ImageSize.SQUARE);
-      expect(estimate.estimatedCostUSD).toBe(0.04);
+      expect(estimate.estimatedCostUSD).toBe(0.08);
     });
 
     it('should report gpt-image-1 as the model', () => {
@@ -1023,19 +1023,22 @@ describe('ImageGenerationService', () => {
       const qualities = ImageGenerationService.getAvailableQualities();
 
       expect(Array.isArray(qualities)).toBe(true);
-      expect(qualities).toHaveLength(3);
+      expect(qualities).toHaveLength(4);
 
       const low = qualities.find((q) => q.id === ImageQuality.LOW);
       expect(low).toBeDefined();
       expect(low.costMultiplier).toBe(0.5);
 
-      const standard = qualities.find((q) => q.id === ImageQuality.STANDARD);
-      expect(standard).toBeDefined();
-      expect(standard.costMultiplier).toBe(1);
+      const medium = qualities.find((q) => q.id === ImageQuality.MEDIUM);
+      expect(medium).toBeDefined();
+      expect(medium.costMultiplier).toBe(1);
 
-      const hd = qualities.find((q) => q.id === ImageQuality.HD);
-      expect(hd).toBeDefined();
-      expect(hd.costMultiplier).toBe(2);
+      const high = qualities.find((q) => q.id === ImageQuality.HIGH);
+      expect(high).toBeDefined();
+      expect(high.costMultiplier).toBe(2);
+
+      const auto = qualities.find((q) => q.id === ImageQuality.AUTO);
+      expect(auto).toBeDefined();
     });
 
     it('getEntityTypes should return entity type list', () => {
@@ -1077,9 +1080,8 @@ describe('ImageGenerationService', () => {
     it('should export ImageQuality enum with all quality options', () => {
       expect(ImageQuality.LOW).toBe('low');
       expect(ImageQuality.MEDIUM).toBe('medium');
-      expect(ImageQuality.STANDARD).toBe('standard');
-      expect(ImageQuality.HD).toBe('hd');
       expect(ImageQuality.HIGH).toBe('high');
+      expect(ImageQuality.AUTO).toBe('auto');
     });
 
     it('should export EntityType enum', () => {

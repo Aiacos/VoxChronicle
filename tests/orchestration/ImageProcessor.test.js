@@ -126,7 +126,7 @@ describe('ImageProcessor', () => {
       expect(processor).toBeInstanceOf(ImageProcessor);
       expect(processor.getOptions()).toEqual({
         maxImagesPerSession: 5,
-        imageQuality: 'standard'
+        imageQuality: 'high'
       });
     });
 
@@ -141,13 +141,13 @@ describe('ImageProcessor', () => {
         imageGenerationService: mockImageService,
         options: {
           maxImagesPerSession: 10,
-          imageQuality: 'hd'
+          imageQuality: 'low'
         }
       });
 
       const options = processor.getOptions();
       expect(options.maxImagesPerSession).toBe(10);
-      expect(options.imageQuality).toBe('hd');
+      expect(options.imageQuality).toBe('low');
     });
 
     it('should merge custom options with defaults', () => {
@@ -161,7 +161,7 @@ describe('ImageProcessor', () => {
 
       const options = processor.getOptions();
       expect(options.maxImagesPerSession).toBe(3);
-      expect(options.imageQuality).toBe('standard');
+      expect(options.imageQuality).toBe('high');
     });
   });
 
@@ -171,7 +171,7 @@ describe('ImageProcessor', () => {
         imageGenerationService: mockImageService,
         options: {
           maxImagesPerSession: 5,
-          imageQuality: 'standard'
+          imageQuality: 'high'
         }
       });
     });
@@ -292,14 +292,14 @@ describe('ImageProcessor', () => {
         moments,
         {},
         {
-          imageQuality: 'hd'
+          imageQuality: 'low'
         }
       );
 
       const calls = mockImageService.generateBatch.mock.calls[0];
       const requests = calls[0];
 
-      expect(requests[0].options.quality).toBe('hd');
+      expect(requests[0].options.quality).toBe('low');
     });
 
     it('should use custom maxImagesPerSession option', async () => {
@@ -444,19 +444,19 @@ describe('ImageProcessor', () => {
     });
 
     it('should update imageQuality', () => {
-      processor.updateOptions({ imageQuality: 'hd' });
+      processor.updateOptions({ imageQuality: 'low' });
 
       const options = processor.getOptions();
-      expect(options.imageQuality).toBe('hd');
+      expect(options.imageQuality).toBe('low');
     });
 
     it('should merge with existing options', () => {
       processor.updateOptions({ maxImagesPerSession: 10 });
-      processor.updateOptions({ imageQuality: 'hd' });
+      processor.updateOptions({ imageQuality: 'low' });
 
       const options = processor.getOptions();
       expect(options.maxImagesPerSession).toBe(10);
-      expect(options.imageQuality).toBe('hd');
+      expect(options.imageQuality).toBe('low');
     });
   });
 
@@ -466,7 +466,7 @@ describe('ImageProcessor', () => {
         imageGenerationService: mockImageService,
         options: {
           maxImagesPerSession: 8,
-          imageQuality: 'hd'
+          imageQuality: 'low'
         }
       });
     });
@@ -476,7 +476,7 @@ describe('ImageProcessor', () => {
 
       expect(options).toEqual({
         maxImagesPerSession: 8,
-        imageQuality: 'hd'
+        imageQuality: 'low'
       });
     });
 
@@ -591,14 +591,14 @@ describe('ImageProcessor', () => {
       expect(requests[0]).toEqual({
         entityType: 'scene',
         description: 'Test prompt',
-        options: { quality: 'standard' },
+        options: { quality: 'high' },
         meta: { momentId: 'test-moment', title: 'Test' }
       });
 
       expect(requests[1]).toEqual({
         entityType: 'character',
         description: 'Test Character: A test character',
-        options: { quality: 'standard' },
+        options: { quality: 'high' },
         meta: { characterName: 'Test Character' }
       });
     });

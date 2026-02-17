@@ -221,7 +221,7 @@ class Settings {
         high: 'VOXCHRONICLE.Settings.ImageQualityHigh',
         auto: 'VOXCHRONICLE.Settings.ImageQualityAuto'
       },
-      default: 'medium'
+      default: 'high'
     });
 
     // Maximum images per session
