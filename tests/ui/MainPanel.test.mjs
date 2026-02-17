@@ -152,7 +152,14 @@ describe('MainPanel', () => {
     });
 
     it('should return recording state', () => {
-      mockOrchestrator.isRecording = true;
+      mockOrchestrator.state = 'recording';
+      const panel = new MainPanel(mockOrchestrator);
+      const data = panel.getData();
+      expect(data.isRecording).toBe(true);
+    });
+
+    it('should return recording state for live mode', () => {
+      mockOrchestrator.state = 'live_listening';
       const panel = new MainPanel(mockOrchestrator);
       const data = panel.getData();
       expect(data.isRecording).toBe(true);

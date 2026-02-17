@@ -42,43 +42,17 @@ async function getMainPanel() {
 }
 
 /**
- * Tool handler functions for scene controls.
- * Each handler opens the corresponding UI panel.
- * @type {Object<string, Function>}
+ * Toggle the MainPanel open/close.
+ * Used as the single scene control tool handler.
  */
-const toolHandlers = {
-  panel: async () => {
-    const panel = await getMainPanel();
-    if (panel.isRendered) {
-      panel.close();
-    } else {
-      panel.render(true);
-    }
-  },
-  speakerLabels: async () => {
-    const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
-    const speakerLabeling = new SpeakerLabeling();
-    speakerLabeling.render(true, { focus: true });
-  },
-  vocabulary: async () => {
-    const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
-    const vocabularyManager = new VocabularyManager();
-    vocabularyManager.render(true, { focus: true });
-  },
-  relationshipGraph: async () => {
-    const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
-    const graph = new RelationshipGraph();
-    graph.render(true, { focus: true });
-  },
-  settings: () => {
-    const app = new SettingsConfig();
-    app.render(true, { focus: true });
-    setTimeout(() => {
-      const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
-      if (section) section.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+async function toggleMainPanel() {
+  const panel = await getMainPanel();
+  if (panel.isRendered) {
+    panel.close();
+  } else {
+    panel.render(true);
   }
-};
+}
 
 /**
  * Initialize module - called when Foundry VTT initializes
@@ -196,39 +170,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Panel',
         order: 0,
         button: true,
-        onChange: toolHandlers.panel
-      },
-      speakerLabels: {
-        name: 'speakerLabels',
-        icon: 'fa-solid fa-users',
-        title: 'VOXCHRONICLE.Controls.SpeakerLabels',
-        order: 1,
-        button: true,
-        onChange: toolHandlers.speakerLabels
-      },
-      vocabulary: {
-        name: 'vocabulary',
-        icon: 'fa-solid fa-book',
-        title: 'VOXCHRONICLE.Controls.Vocabulary',
-        order: 2,
-        button: true,
-        onChange: toolHandlers.vocabulary
-      },
-      relationshipGraph: {
-        name: 'relationshipGraph',
-        icon: 'fa-solid fa-project-diagram',
-        title: 'VOXCHRONICLE.Controls.RelationshipGraph',
-        order: 3,
-        button: true,
-        onChange: toolHandlers.relationshipGraph
-      },
-      settings: {
-        name: 'settings',
-        icon: 'fa-solid fa-cog',
-        title: 'VOXCHRONICLE.Controls.Settings',
-        order: 4,
-        button: true,
-        onChange: toolHandlers.settings
+        onChange: toggleMainPanel
       }
     }
   };

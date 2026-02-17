@@ -107,7 +107,7 @@ class MainPanel extends Application {
 
     return {
       isConfigured: true,
-      isRecording: this._orchestrator?.isRecording || false,
+      isRecording: this._isRecordingActive(),
       isPaused: this._orchestrator?.state === 'paused',
       isProcessing: this._orchestrator?.state === 'processing',
       duration: this._formatDuration(),
@@ -283,6 +283,24 @@ class MainPanel extends Application {
     this._logger.debug(`Action: ${action}`);
 
     switch (action) {
+      case 'toggle-recording':
+        await this._handleToggleRecording();
+        break;
+      case 'toggle-pause':
+        this._handleTogglePause();
+        break;
+      case 'process-session':
+        await this._handleProcessSession();
+        break;
+      case 'publish-kanka':
+        await this._handlePublishKanka();
+        break;
+      case 'generate-image':
+        await this._handleGenerateImage();
+        break;
+      case 'review-entities':
+        await this._handleReviewEntities();
+        break;
       case 'rag-build-index':
         await this._handleRAGBuildIndex();
         break;
@@ -290,9 +308,145 @@ class MainPanel extends Application {
         await this._handleRAGClearIndex();
         break;
       default:
-        // Other actions will be wired to orchestrator methods as features are connected
+        this._logger.warn(`Unknown action: ${action}`);
         break;
     }
+  }
+
+  /**
+   * Toggle recording on/off based on current state
+   * @private
+   */
+  async _handleToggleRecording() {
+    if (!this._orchestrator) {
+      this._logger.error('Orchestrator not available');
+      return;
+    }
+
+    try {
+      if (this._isRecordingActive()) {
+        // Stop recording - use live mode stop if in live mode, otherwise regular stop
+        if (this._orchestrator._liveMode) {
+          await this._orchestrator.stopLiveMode();
+        } else {
+          await this._orchestrator.stopSession({ processImmediately: false });
+        }
+        ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStopped') || 'Recording stopped');
+      } else {
+        // Start recording - use live mode by default (real-time AI assistance)
+        if (this._orchestrator._transcriptionService) {
+          await this._orchestrator.startLiveMode();
+        } else {
+          await this._orchestrator.startSession();
+        }
+        ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStarted') || 'Recording started');
+      }
+      this.render(false);
+    } catch (error) {
+      this._logger.error('Toggle recording failed:', error);
+      ui?.notifications?.error(error.message);
+    }
+  }
+
+  /**
+   * Toggle pause/resume recording
+   * @private
+   */
+  _handleTogglePause() {
+    if (!this._orchestrator) return;
+
+    try {
+      if (this._orchestrator.state === 'paused') {
+        this._orchestrator.resumeRecording();
+      } else {
+        this._orchestrator.pauseRecording();
+      }
+      this.render(false);
+    } catch (error) {
+      this._logger.error('Toggle pause failed:', error);
+      ui?.notifications?.error(error.message);
+    }
+  }
+
+  /**
+   * Process the session (transcribe audio)
+   * @private
+   */
+  async _handleProcessSession() {
+    if (!this._orchestrator?.currentSession?.audioBlob) {
+      ui?.notifications?.warn(game.i18n?.localize('VOXCHRONICLE.Panel.NoTranscriptVC') || 'No audio to process');
+      return;
+    }
+
+    try {
+      await this._orchestrator.processTranscription();
+      this.render(false);
+    } catch (error) {
+      this._logger.error('Process session failed:', error);
+      ui?.notifications?.error(error.message);
+    }
+  }
+
+  /**
+   * Publish entities and chronicle to Kanka
+   * @private
+   */
+  async _handlePublishKanka() {
+    if (!this._orchestrator?.currentSession?.entities) {
+      ui?.notifications?.warn(game.i18n?.localize('VOXCHRONICLE.Panel.NoEntities') || 'No entities to publish');
+      return;
+    }
+
+    try {
+      await this._orchestrator.publishToKanka();
+      this.render(false);
+    } catch (error) {
+      this._logger.error('Publish to Kanka failed:', error);
+      ui?.notifications?.error(error.message);
+    }
+  }
+
+  /**
+   * Generate an AI image from current session context
+   * @private
+   */
+  async _handleGenerateImage() {
+    if (!this._orchestrator) return;
+
+    try {
+      await this._orchestrator.generateImage?.();
+      this.render(false);
+    } catch (error) {
+      this._logger.error('Generate image failed:', error);
+      ui?.notifications?.error(error.message);
+    }
+  }
+
+  /**
+   * Open entity review dialog
+   * @private
+   */
+  async _handleReviewEntities() {
+    try {
+      const { EntityPreview } = await import('./EntityPreview.mjs');
+      const preview = new EntityPreview(this._orchestrator?.currentSession?.entities);
+      preview.render(true, { focus: true });
+    } catch (error) {
+      this._logger.error('Review entities failed:', error);
+      ui?.notifications?.error(error.message);
+    }
+  }
+
+  /**
+   * Check if recording is currently active (any mode)
+   * @returns {boolean}
+   * @private
+   */
+  _isRecordingActive() {
+    if (!this._orchestrator) return false;
+    const state = this._orchestrator.state;
+    return state === 'recording' || state === 'paused' ||
+           state === 'live_listening' || state === 'live_transcribing' || state === 'live_analyzing';
   }
 
   /**

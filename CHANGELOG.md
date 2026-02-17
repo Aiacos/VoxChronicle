@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-02-17
+
+### Fixed
+- **Record button now works** — wired all MainPanel button actions (toggle-recording, toggle-pause, process-session, publish-kanka, generate-image, review-entities) that were silently falling through an empty `default` case
+- **Live mode recording state** — `isRecording` template variable now correctly reflects live mode states (LIVE_LISTENING, LIVE_TRANSCRIBING, LIVE_ANALYZING), not just chronicle mode
+- **Removed deprecated `SettingsConfig` global** — eliminated `new SettingsConfig()` that triggered v13 deprecation warning
+
+### Improved
+- **Simplified scene controls** — reduced from 5 cluttered toolbar buttons to a single panel toggle; all features (speaker labels, vocabulary, relationship graph, settings) are accessible from within the unified panel
+
 ## [2.1.3] - 2026-02-17
 
 ### Improved
