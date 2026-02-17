@@ -1414,5 +1414,108 @@ describe('SessionOrchestrator', () => {
       expect(SessionState.LIVE_TRANSCRIBING).toBe('live_transcribing');
       expect(SessionState.LIVE_ANALYZING).toBe('live_analyzing');
     });
+
+    describe('pause/resume in live mode', () => {
+      it('should pause from LIVE_LISTENING state', async () => {
+        await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+        expect(liveOrchestrator.state).toBe(SessionState.LIVE_LISTENING);
+
+        liveOrchestrator.pauseRecording();
+
+        expect(liveOrchestrator.state).toBe(SessionState.PAUSED);
+        expect(mockRecorder.pause).toHaveBeenCalled();
+        expect(liveOrchestrator._liveCycleTimer).toBeNull();
+      });
+
+      it('should resume from paused live mode to LIVE_LISTENING', async () => {
+        await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+        liveOrchestrator.pauseRecording();
+
+        liveOrchestrator.resumeRecording();
+
+        expect(liveOrchestrator.state).toBe(SessionState.LIVE_LISTENING);
+        expect(mockRecorder.resume).toHaveBeenCalled();
+        expect(liveOrchestrator._liveCycleTimer).not.toBeNull();
+      });
+
+      it('should stop live cycle timer when pausing', async () => {
+        await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+        expect(liveOrchestrator._liveCycleTimer).not.toBeNull();
+
+        liveOrchestrator.pauseRecording();
+
+        expect(liveOrchestrator._liveCycleTimer).toBeNull();
+      });
+
+      it('should restart live cycle timer when resuming', async () => {
+        await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+        liveOrchestrator.pauseRecording();
+        expect(liveOrchestrator._liveCycleTimer).toBeNull();
+
+        liveOrchestrator.resumeRecording();
+
+        expect(liveOrchestrator._liveCycleTimer).not.toBeNull();
+      });
+
+      it('should maintain liveMode flag through pause/resume', async () => {
+        await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+        expect(liveOrchestrator.isLiveMode).toBe(true);
+
+        liveOrchestrator.pauseRecording();
+        expect(liveOrchestrator.isLiveMode).toBe(true);
+
+        liveOrchestrator.resumeRecording();
+        expect(liveOrchestrator.isLiveMode).toBe(true);
+      });
+    });
+
+    describe('race condition guard', () => {
+      it('should not add segments after stopLiveMode during transcription', async () => {
+        // Simulate transcription that completes after stopLiveMode
+        let transcribeResolve;
+        mockTranscriptionService.transcribe.mockImplementation(
+          () => new Promise(resolve => { transcribeResolve = resolve; })
+        );
+        mockRecorder.getLatestChunk = vi.fn().mockResolvedValue(createMockAudioBlob());
+
+        await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+
+        // Trigger live cycle — it will start and pause at await transcribe()
+        const cyclePromise = liveOrchestrator._liveCycle();
+
+        // Flush microtasks so getLatestChunk resolves and transcribe() is called
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Stop live mode while transcription is in flight
+        await liveOrchestrator.stopLiveMode();
+
+        // Now resolve the transcription — segments should be discarded
+        transcribeResolve(createMockTranscriptionResult());
+        await cyclePromise;
+
+        // Analytics should NOT have received segments since we stopped
+        expect(mockSessionAnalytics.addSegment).not.toHaveBeenCalled();
+      });
+
+      it('should not reschedule cycle after stopLiveMode', async () => {
+        mockRecorder.getLatestChunk = vi.fn().mockResolvedValue(createMockAudioBlob());
+        mockTranscriptionService.transcribe.mockResolvedValue(
+          createMockTranscriptionResult()
+        );
+
+        await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
+
+        // Stop live mode
+        await liveOrchestrator.stopLiveMode();
+
+        // Manually run a cycle — it should bail out immediately
+        await liveOrchestrator._liveCycle();
+
+        // Timer should not be set
+        expect(liveOrchestrator._liveCycleTimer).toBeNull();
+      });
+    });
   });
 });

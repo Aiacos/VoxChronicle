@@ -274,14 +274,25 @@ class SessionOrchestrator {
   }
 
   pauseRecording() {
-    if (this._state !== SessionState.RECORDING) {
+    const isLive = this._isLiveState(this._state);
+
+    if (this._state !== SessionState.RECORDING && !isLive) {
       throw new Error('Cannot pause - not currently recording.');
     }
+
     if (this._audioRecorder?.pause) {
       this._audioRecorder.pause();
-      this._updateState(SessionState.PAUSED);
-      this._logger.log('Recording paused');
     }
+
+    // In live mode, also stop the cycle timer so no transcription fires while paused
+    if (isLive && this._liveCycleTimer) {
+      clearTimeout(this._liveCycleTimer);
+      this._liveCycleTimer = null;
+      this._logger.log('Live cycle timer paused');
+    }
+
+    this._updateState(SessionState.PAUSED);
+    this._logger.log(`Recording paused (was ${isLive ? 'live mode' : 'chronicle mode'})`);
   }
 
   resumeRecording() {
@@ -290,8 +301,16 @@ class SessionOrchestrator {
     }
     if (this._audioRecorder?.resume) {
       this._audioRecorder.resume();
+    }
+
+    // If live mode is active, resume the live cycle and restore live state
+    if (this._liveMode) {
+      this._updateState(SessionState.LIVE_LISTENING);
+      this._scheduleLiveCycle();
+      this._logger.log('Recording resumed (live mode)');
+    } else {
       this._updateState(SessionState.RECORDING);
-      this._logger.log('Recording resumed');
+      this._logger.log('Recording resumed (chronicle mode)');
     }
   }
 
@@ -600,6 +619,18 @@ class SessionOrchestrator {
     };
   }
 
+  /**
+   * Check if a state is one of the live mode states
+   * @param {string} state
+   * @returns {boolean}
+   * @private
+   */
+  _isLiveState(state) {
+    return state === SessionState.LIVE_LISTENING ||
+           state === SessionState.LIVE_TRANSCRIBING ||
+           state === SessionState.LIVE_ANALYZING;
+  }
+
   _generateSessionId() {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substring(2, 8);
@@ -665,9 +696,10 @@ class SessionOrchestrator {
       throw new Error('Transcription service not configured for live mode.');
     }
 
-    this._logger.log('Starting live mode...');
+    const batchDuration = options.batchDuration || this._liveBatchDuration;
+    this._logger.log(`Starting live mode (batch interval: ${batchDuration}ms)...`);
     this._liveMode = true;
-    this._liveBatchDuration = options.batchDuration || this._liveBatchDuration;
+    this._liveBatchDuration = batchDuration;
     this._liveTranscript = [];
     this._silenceStartTime = null;
     this._lastAISuggestions = null;
@@ -739,7 +771,9 @@ class SessionOrchestrator {
       }
 
       this._updateState(SessionState.IDLE);
-      this._logger.log('Live mode stopped');
+      const segmentCount = this._liveTranscript.length;
+      const duration = this._currentSession ? this._getSessionDuration() : 0;
+      this._logger.log(`Live mode stopped (${segmentCount} segments, ${duration}s duration)`);
       return this._currentSession;
     } catch (error) {
       this._logger.error('Failed to stop live mode:', error);
@@ -764,6 +798,8 @@ class SessionOrchestrator {
   async _liveCycle() {
     if (!this._liveMode) return;
 
+    const cycleStart = Date.now();
+
     try {
       this._updateState(SessionState.LIVE_TRANSCRIBING);
 
@@ -771,15 +807,32 @@ class SessionOrchestrator {
         ? await this._audioRecorder.getLatestChunk()
         : null;
 
+      // Check if live mode was stopped while we were getting the audio chunk
+      if (!this._liveMode) {
+        this._logger.debug('Live mode stopped during audio capture, aborting cycle');
+        return;
+      }
+
       if (audioChunk && audioChunk.size > 0) {
         this._silenceStartTime = null;
+        const chunkSizeMB = (audioChunk.size / (1024 * 1024)).toFixed(2);
+        this._logger.log(`Live cycle: got audio chunk ${chunkSizeMB}MB, transcribing...`);
 
         const result = await this._transcriptionService.transcribe(audioChunk, {
           language: this._currentSession?.language,
           speakerMap: this._currentSession?.speakerMap
         });
 
+        // Check again after async transcription — session may have been stopped
+        if (!this._liveMode) {
+          this._logger.debug('Live mode stopped during transcription, discarding result');
+          return;
+        }
+
         if (result?.segments?.length > 0) {
+          const textPreview = (result.text || '').substring(0, 120);
+          this._logger.log(`Transcription result: ${result.segments.length} segments, text: "${textPreview}${(result.text || '').length > 120 ? '...' : ''}"`);
+
           this._liveTranscript.push(...result.segments);
 
           if (this._sessionAnalytics) {
@@ -794,12 +847,15 @@ class SessionOrchestrator {
 
           this._updateState(SessionState.LIVE_ANALYZING);
           await this._runAIAnalysis(result);
+        } else {
+          this._logger.debug('Transcription returned no segments');
         }
       } else {
+        this._logger.debug('No audio data in this cycle (silence or empty chunk)');
         this._handleSilence();
       }
     } catch (error) {
-      this._logger.error('Live cycle error:', error);
+      this._logger.error('Live cycle error:', error.message);
       if (this._currentSession) {
         this._currentSession.errors.push({
           stage: 'live_cycle',
@@ -812,8 +868,13 @@ class SessionOrchestrator {
       }
     }
 
-    this._updateState(SessionState.LIVE_LISTENING);
-    this._scheduleLiveCycle();
+    // Only reschedule if still in live mode (could have been stopped during cycle)
+    if (this._liveMode) {
+      const cycleDuration = Date.now() - cycleStart;
+      this._logger.debug(`Live cycle completed in ${cycleDuration}ms`);
+      this._updateState(SessionState.LIVE_LISTENING);
+      this._scheduleLiveCycle();
+    }
   }
 
   /**
@@ -822,26 +883,55 @@ class SessionOrchestrator {
    * @private
    */
   async _runAIAnalysis(transcriptionResult) {
-    if (!this._aiAssistant) return;
+    if (!this._aiAssistant) {
+      this._logger.debug('AI analysis skipped: no AIAssistant configured');
+      return;
+    }
+
+    // Check if live mode was stopped before starting AI analysis
+    if (!this._liveMode) {
+      this._logger.debug('AI analysis skipped: live mode no longer active');
+      return;
+    }
 
     try {
       const fullText = this._liveTranscript.map(s => s.text).join(' ');
+      const currentChapter = this._chapterTracker?.getCurrentChapter?.() || null;
+
+      this._logger.log(`Running AI analysis (transcript: ${fullText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
 
       const suggestions = await this._aiAssistant.generateSuggestions(fullText, {
-        currentChapter: this._chapterTracker?.getCurrentChapter?.() || null
+        currentChapter
       });
 
       if (suggestions) {
         this._lastAISuggestions = suggestions;
+        // Log suggestions detail for debugging
+        if (Array.isArray(suggestions)) {
+          this._logger.log(`AI suggestions received: ${suggestions.length} suggestion(s)`);
+          for (const s of suggestions) {
+            const preview = (s.content || '').substring(0, 100);
+            this._logger.debug(`  [${s.type || 'unknown'}] ${preview}${(s.content || '').length > 100 ? '...' : ''}`);
+          }
+        } else {
+          this._logger.log(`AI suggestions received: ${JSON.stringify(suggestions).substring(0, 200)}`);
+        }
+      } else {
+        this._logger.debug('AI analysis returned no suggestions');
       }
 
       const offTrack = await this._aiAssistant.detectOffTrack?.(fullText);
 
       if (offTrack !== undefined) {
         this._lastOffTrackStatus = offTrack;
+        if (offTrack.isOffTrack) {
+          this._logger.log(`Off-track detected: severity=${offTrack.severity}, reason="${offTrack.reason || 'N/A'}"`);
+        } else {
+          this._logger.debug('Players on track');
+        }
       }
     } catch (error) {
-      this._logger.error('AI analysis error:', error.message);
+      this._logger.error(`AI analysis error: ${error.message}`);
       if (this._callbacks.onError) {
         this._callbacks.onError(error, 'ai_analysis');
       }
