@@ -1213,7 +1213,9 @@ describe('SessionOrchestrator', () => {
         detectSceneTransition: vi.fn()
       };
       mockSessionAnalytics = {
-        addSegment: vi.fn()
+        addSegment: vi.fn(),
+        startSession: vi.fn(),
+        endSession: vi.fn()
       };
 
       liveOrchestrator = new SessionOrchestrator({
@@ -1515,6 +1517,32 @@ describe('SessionOrchestrator', () => {
 
         // Timer should not be set
         expect(liveOrchestrator._liveCycleTimer).toBeNull();
+      });
+    });
+
+    describe('SessionAnalytics lifecycle in live mode', () => {
+      it('should call startSession when starting live mode', async () => {
+        await liveOrchestrator.startLiveMode();
+        expect(mockSessionAnalytics.startSession).toHaveBeenCalledOnce();
+        expect(mockSessionAnalytics.startSession).toHaveBeenCalledWith(
+          expect.any(String)
+        );
+      });
+
+      it('should call endSession when stopping live mode', async () => {
+        await liveOrchestrator.startLiveMode();
+        await liveOrchestrator.stopLiveMode();
+        expect(mockSessionAnalytics.endSession).toHaveBeenCalledOnce();
+      });
+
+      it('should not fail if sessionAnalytics is not provided', async () => {
+        const orchestratorNoAnalytics = new SessionOrchestrator({
+          audioRecorder: mockRecorder,
+          transcriptionService: mockTranscriptionService
+        });
+        await orchestratorNoAnalytics.startLiveMode();
+        await orchestratorNoAnalytics.stopLiveMode();
+        // Should not throw
       });
     });
   });

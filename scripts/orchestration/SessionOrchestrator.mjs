@@ -35,7 +35,7 @@ const DEFAULT_SESSION_OPTIONS = {
   autoPublishToKanka: false,
   confirmEntityCreation: true,
   maxImagesPerSession: 5,
-  imageQuality: 'standard',
+  imageQuality: 'medium',
   includeTranscriptInChronicle: true,
   chronicleFormat: 'full'
 };
@@ -727,6 +727,12 @@ class SessionOrchestrator {
     }
 
     try {
+      // Start analytics session so addSegment() works during live cycle
+      if (this._sessionAnalytics) {
+        this._sessionAnalytics.startSession(this._currentSession.id);
+        this._logger.debug('Analytics session started');
+      }
+
       await this._audioRecorder.startRecording(options.recordingOptions || {});
       this._updateState(SessionState.LIVE_LISTENING);
       this._scheduleLiveCycle();
@@ -757,6 +763,12 @@ class SessionOrchestrator {
     }
 
     try {
+      // End analytics session before stopping recording
+      if (this._sessionAnalytics) {
+        this._sessionAnalytics.endSession();
+        this._logger.debug('Analytics session ended');
+      }
+
       const audioBlob = await this._audioRecorder.stopRecording();
       if (this._currentSession) {
         this._currentSession.endTime = Date.now();

@@ -208,7 +208,7 @@ class Settings {
     // Image Generation Settings
     // ==========================================
 
-    // DALL-E image quality setting
+    // gpt-image-1 quality setting (low, medium, high, auto)
     game.settings.register(MODULE_ID, 'imageQuality', {
       name: 'VOXCHRONICLE.Settings.ImageQuality',
       hint: 'VOXCHRONICLE.Settings.ImageQualityHint',
@@ -216,10 +216,12 @@ class Settings {
       config: true,
       type: String,
       choices: {
-        standard: 'VOXCHRONICLE.Settings.ImageQualityStandard',
-        hd: 'VOXCHRONICLE.Settings.ImageQualityHD'
+        low: 'VOXCHRONICLE.Settings.ImageQualityLow',
+        medium: 'VOXCHRONICLE.Settings.ImageQualityMedium',
+        high: 'VOXCHRONICLE.Settings.ImageQualityHigh',
+        auto: 'VOXCHRONICLE.Settings.ImageQualityAuto'
       },
-      default: 'standard'
+      default: 'medium'
     });
 
     // Maximum images per session
