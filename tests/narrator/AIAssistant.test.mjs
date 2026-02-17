@@ -972,6 +972,417 @@ describe('AIAssistant', () => {
   });
 
   // =========================================================================
+  // Silence Detection Integration
+  // =========================================================================
+
+  describe('silence detection integration', () => {
+    /**
+     * Creates a mock SilenceDetector
+     */
+    function createMockSilenceDetector(options = {}) {
+      return {
+        start: vi.fn(),
+        stop: vi.fn(),
+        recordActivity: vi.fn().mockReturnValue(true),
+        setOnSilenceCallback: vi.fn(),
+        getThreshold: vi.fn().mockReturnValue(options.threshold ?? 30000),
+        isEnabled: vi.fn().mockReturnValue(options.isEnabled ?? false),
+        getStats: vi.fn().mockReturnValue({
+          isEnabled: options.isEnabled ?? false,
+          thresholdMs: options.threshold ?? 30000,
+          silenceCount: options.silenceCount ?? 0
+        })
+      };
+    }
+
+    describe('setSilenceDetector', () => {
+      it('should set the silence detector', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        expect(assistant.getSilenceDetector()).toBe(mockDetector);
+      });
+
+      it('should stop existing monitoring when detector changes', () => {
+        const mockDetector1 = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector1);
+        assistant.startSilenceMonitoring();
+
+        expect(assistant.isSilenceMonitoringActive()).toBe(true);
+
+        const mockDetector2 = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector2);
+
+        expect(mockDetector1.stop).toHaveBeenCalled();
+        expect(assistant.isSilenceMonitoringActive()).toBe(false);
+      });
+    });
+
+    describe('startSilenceMonitoring', () => {
+      it('should return false when no silence detector configured', () => {
+        const result = assistant.startSilenceMonitoring();
+        expect(result).toBe(false);
+      });
+
+      it('should return false when OpenAI client not configured', () => {
+        const a = new AIAssistant({ silenceDetector: createMockSilenceDetector() });
+        const result = a.startSilenceMonitoring();
+        expect(result).toBe(false);
+      });
+
+      it('should start monitoring and return true when properly configured', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+
+        const result = assistant.startSilenceMonitoring();
+
+        expect(result).toBe(true);
+        expect(mockDetector.setOnSilenceCallback).toHaveBeenCalled();
+        expect(mockDetector.start).toHaveBeenCalled();
+        expect(assistant.isSilenceMonitoringActive()).toBe(true);
+      });
+
+      it('should return true if already monitoring', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.startSilenceMonitoring();
+
+        const result = assistant.startSilenceMonitoring();
+
+        expect(result).toBe(true);
+        // Only called once
+        expect(mockDetector.start).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('stopSilenceMonitoring', () => {
+      it('should do nothing if not monitoring', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+
+        assistant.stopSilenceMonitoring();
+
+        expect(mockDetector.stop).not.toHaveBeenCalled();
+      });
+
+      it('should stop monitoring when active', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.startSilenceMonitoring();
+
+        assistant.stopSilenceMonitoring();
+
+        expect(mockDetector.stop).toHaveBeenCalled();
+        expect(assistant.isSilenceMonitoringActive()).toBe(false);
+      });
+    });
+
+    describe('recordActivityForSilenceDetection', () => {
+      it('should return false when monitoring not active', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+
+        const result = assistant.recordActivityForSilenceDetection();
+
+        expect(result).toBe(false);
+        expect(mockDetector.recordActivity).not.toHaveBeenCalled();
+      });
+
+      it('should record activity when monitoring is active', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.startSilenceMonitoring();
+
+        const result = assistant.recordActivityForSilenceDetection();
+
+        expect(result).toBe(true);
+        expect(mockDetector.recordActivity).toHaveBeenCalled();
+      });
+    });
+
+    describe('setOnAutonomousSuggestionCallback', () => {
+      it('should set the callback function', () => {
+        const callback = vi.fn();
+        assistant.setOnAutonomousSuggestionCallback(callback);
+        expect(assistant.getOnAutonomousSuggestionCallback()).toBe(callback);
+      });
+
+      it('should accept null to clear callback', () => {
+        assistant.setOnAutonomousSuggestionCallback(vi.fn());
+        assistant.setOnAutonomousSuggestionCallback(null);
+        expect(assistant.getOnAutonomousSuggestionCallback()).toBeNull();
+      });
+
+      it('should ignore non-function values', () => {
+        const callback = vi.fn();
+        assistant.setOnAutonomousSuggestionCallback(callback);
+        assistant.setOnAutonomousSuggestionCallback('not a function');
+        expect(assistant.getOnAutonomousSuggestionCallback()).toBe(callback);
+      });
+    });
+
+    describe('silence event handling', () => {
+      it('should generate suggestion and invoke callback on silence', async () => {
+        const suggestionResponse = createApiResponse({
+          suggestions: [
+            { type: 'narration', content: 'The tavern falls silent...', confidence: 0.85 }
+          ]
+        });
+        mockClient.post.mockResolvedValue(suggestionResponse);
+
+        const mockDetector = createMockSilenceDetector();
+        const suggestionCallback = vi.fn();
+
+        assistant.setSilenceDetector(mockDetector);
+        assistant.setOnAutonomousSuggestionCallback(suggestionCallback);
+        assistant.startSilenceMonitoring();
+
+        // Capture the callback set on silence detector
+        const silenceHandler = mockDetector.setOnSilenceCallback.mock.calls[0][0];
+
+        // Trigger the silence event
+        await silenceHandler({
+          silenceDurationMs: 35000,
+          lastActivityTime: Date.now() - 35000,
+          silenceCount: 1
+        });
+
+        // Verify suggestion was generated
+        expect(mockClient.post).toHaveBeenCalled();
+
+        // Verify callback was invoked with suggestion
+        expect(suggestionCallback).toHaveBeenCalledWith(
+          expect.objectContaining({
+            suggestion: expect.objectContaining({
+              type: 'narration',
+              content: 'The tavern falls silent...'
+            }),
+            silenceEvent: expect.objectContaining({
+              silenceDurationMs: 35000,
+              silenceCount: 1
+            })
+          })
+        );
+      });
+
+      it('should track silence suggestion count', async () => {
+        const suggestionResponse = createApiResponse({
+          suggestions: [{ type: 'action', content: 'Roll for initiative', confidence: 0.9 }]
+        });
+        mockClient.post.mockResolvedValue(suggestionResponse);
+
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.startSilenceMonitoring();
+
+        const silenceHandler = mockDetector.setOnSilenceCallback.mock.calls[0][0];
+
+        expect(assistant.getStats().silenceSuggestionCount).toBe(0);
+
+        await silenceHandler({ silenceDurationMs: 30000, lastActivityTime: Date.now(), silenceCount: 1 });
+
+        expect(assistant.getStats().silenceSuggestionCount).toBe(1);
+
+        await silenceHandler({ silenceDurationMs: 30000, lastActivityTime: Date.now(), silenceCount: 2 });
+
+        expect(assistant.getStats().silenceSuggestionCount).toBe(2);
+      });
+
+      it('should use chapter context in autonomous suggestions', async () => {
+        const suggestionResponse = createApiResponse({
+          suggestions: [{ type: 'dialogue', content: 'The innkeeper speaks', confidence: 0.8 }]
+        });
+        mockClient.post.mockResolvedValue(suggestionResponse);
+
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.setChapterContext({
+          chapterName: 'The Haunted Inn',
+          summary: 'Players investigate ghostly occurrences'
+        });
+        assistant.startSilenceMonitoring();
+
+        const silenceHandler = mockDetector.setOnSilenceCallback.mock.calls[0][0];
+        await silenceHandler({ silenceDurationMs: 30000, lastActivityTime: Date.now(), silenceCount: 1 });
+
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const userMessage = callArgs.messages.find(m => m.role === 'user');
+        expect(userMessage.content).toContain('The Haunted Inn');
+      });
+
+      it('should use RAG context for autonomous suggestions when available', async () => {
+        const mockRetriever = {
+          isConfigured: vi.fn().mockReturnValue(true),
+          hasKeywordFallback: vi.fn().mockReturnValue(true),
+          hasIndex: vi.fn().mockReturnValue(true),
+          retrieveForAI: vi.fn().mockResolvedValue({
+            context: '[Adventure > Chapter 5]\nThe ghost appears at midnight.',
+            sources: ['[Adventure > Chapter 5]']
+          })
+        };
+
+        const suggestionResponse = createApiResponse({
+          suggestions: [{ type: 'narration', content: 'The clock strikes twelve...', confidence: 0.9 }]
+        });
+        mockClient.post.mockResolvedValue(suggestionResponse);
+
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.setRAGRetriever(mockRetriever);
+        assistant.startSilenceMonitoring();
+
+        const silenceHandler = mockDetector.setOnSilenceCallback.mock.calls[0][0];
+        await silenceHandler({ silenceDurationMs: 30000, lastActivityTime: Date.now(), silenceCount: 1 });
+
+        expect(mockRetriever.retrieveForAI).toHaveBeenCalled();
+
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const contextMsg = callArgs.messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+        expect(contextMsg.content).toContain('RELEVANT SOURCES');
+        expect(contextMsg.content).toContain('ghost appears at midnight');
+      });
+
+      it('should handle callback errors gracefully', async () => {
+        const suggestionResponse = createApiResponse({
+          suggestions: [{ type: 'action', content: 'Test', confidence: 0.9 }]
+        });
+        mockClient.post.mockResolvedValue(suggestionResponse);
+
+        const mockDetector = createMockSilenceDetector();
+        const errorCallback = vi.fn().mockImplementation(() => {
+          throw new Error('Callback error');
+        });
+
+        assistant.setSilenceDetector(mockDetector);
+        assistant.setOnAutonomousSuggestionCallback(errorCallback);
+        assistant.startSilenceMonitoring();
+
+        const silenceHandler = mockDetector.setOnSilenceCallback.mock.calls[0][0];
+
+        // Should not throw
+        await expect(
+          silenceHandler({ silenceDurationMs: 30000, lastActivityTime: Date.now(), silenceCount: 1 })
+        ).resolves.not.toThrow();
+
+        // Callback should have been called despite error
+        expect(errorCallback).toHaveBeenCalled();
+
+        // Suggestion count should still be tracked
+        expect(assistant.getStats().silenceSuggestionCount).toBe(1);
+      });
+
+      it('should not generate suggestion when not configured', async () => {
+        const a = new AIAssistant(); // No OpenAI client
+        const mockDetector = createMockSilenceDetector();
+
+        a.setSilenceDetector(mockDetector);
+        // Can't start monitoring without OpenAI client
+        a.startSilenceMonitoring();
+
+        // Manually test _handleSilenceEvent
+        await a._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: Date.now(), silenceCount: 1 });
+
+        // No stats increment since no suggestion was generated
+        expect(a.getStats().silenceSuggestionCount).toBe(0);
+      });
+    });
+
+    describe('silence stats in getStats', () => {
+      it('should include silence-related stats', () => {
+        const stats = assistant.getStats();
+
+        expect(stats).toHaveProperty('silenceDetectorConfigured');
+        expect(stats).toHaveProperty('silenceMonitoringActive');
+        expect(stats).toHaveProperty('silenceSuggestionCount');
+        expect(stats).toHaveProperty('hasAutonomousSuggestionCallback');
+      });
+
+      it('should reflect current silence monitoring state', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+
+        let stats = assistant.getStats();
+        expect(stats.silenceDetectorConfigured).toBe(true);
+        expect(stats.silenceMonitoringActive).toBe(false);
+
+        assistant.startSilenceMonitoring();
+
+        stats = assistant.getStats();
+        expect(stats.silenceMonitoringActive).toBe(true);
+
+        assistant.stopSilenceMonitoring();
+
+        stats = assistant.getStats();
+        expect(stats.silenceMonitoringActive).toBe(false);
+      });
+
+      it('should track autonomous suggestion callback state', () => {
+        expect(assistant.getStats().hasAutonomousSuggestionCallback).toBe(false);
+
+        assistant.setOnAutonomousSuggestionCallback(vi.fn());
+
+        expect(assistant.getStats().hasAutonomousSuggestionCallback).toBe(true);
+      });
+    });
+
+    describe('silence state on session reset', () => {
+      it('should stop monitoring on session reset', () => {
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.startSilenceMonitoring();
+
+        expect(assistant.isSilenceMonitoringActive()).toBe(true);
+
+        assistant.resetSession();
+
+        expect(mockDetector.stop).toHaveBeenCalled();
+        expect(assistant.isSilenceMonitoringActive()).toBe(false);
+      });
+
+      it('should reset silence suggestion count on session reset', async () => {
+        const suggestionResponse = createApiResponse({
+          suggestions: [{ type: 'action', content: 'Test', confidence: 0.9 }]
+        });
+        mockClient.post.mockResolvedValue(suggestionResponse);
+
+        const mockDetector = createMockSilenceDetector();
+        assistant.setSilenceDetector(mockDetector);
+        assistant.startSilenceMonitoring();
+
+        const silenceHandler = mockDetector.setOnSilenceCallback.mock.calls[0][0];
+        await silenceHandler({ silenceDurationMs: 30000, lastActivityTime: Date.now(), silenceCount: 1 });
+
+        expect(assistant.getStats().silenceSuggestionCount).toBe(1);
+
+        assistant.resetSession();
+
+        expect(assistant.getStats().silenceSuggestionCount).toBe(0);
+      });
+    });
+
+    describe('constructor options for silence', () => {
+      it('should accept silence detector in constructor', () => {
+        const mockDetector = createMockSilenceDetector();
+        const a = new AIAssistant({
+          openaiClient: mockClient,
+          silenceDetector: mockDetector
+        });
+
+        expect(a.getSilenceDetector()).toBe(mockDetector);
+      });
+
+      it('should accept autonomous suggestion callback in constructor', () => {
+        const callback = vi.fn();
+        const a = new AIAssistant({
+          openaiClient: mockClient,
+          onAutonomousSuggestion: callback
+        });
+
+        expect(a.getOnAutonomousSuggestionCallback()).toBe(callback);
+      });
+    });
+  });
+
+  // =========================================================================
   // RAG Integration
   // =========================================================================
 

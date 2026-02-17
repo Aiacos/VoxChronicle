@@ -157,7 +157,8 @@ class AIAssistant {
     this._sessionState = {
       currentScene: null,
       lastOffTrackCheck: null,
-      suggestionsCount: 0
+      suggestionsCount: 0,
+      silenceSuggestionCount: 0
     };
 
     /**
@@ -215,6 +216,34 @@ class AIAssistant {
      * @private
      */
     this._cachedRAGContext = null;
+
+    /**
+     * SilenceDetector instance for autonomous suggestion triggers
+     * @type {import('./SilenceDetector.mjs').SilenceDetector|null}
+     * @private
+     */
+    this._silenceDetector = options.silenceDetector || null;
+
+    /**
+     * Callback function invoked when autonomous suggestion is generated
+     * @type {function|null}
+     * @private
+     */
+    this._onAutonomousSuggestionCallback = options.onAutonomousSuggestion || null;
+
+    /**
+     * Whether silence monitoring is currently active
+     * @type {boolean}
+     * @private
+     */
+    this._silenceMonitoringActive = false;
+
+    /**
+     * Bound handler for silence events (to allow removal)
+     * @type {function|null}
+     * @private
+     */
+    this._boundSilenceHandler = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -289,6 +318,134 @@ class AIAssistant {
    */
   getUseRAG() {
     return this._useRAG;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Silence detection integration
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Sets the SilenceDetector instance for autonomous suggestion triggers
+   *
+   * @param {import('./SilenceDetector.mjs').SilenceDetector} silenceDetector - SilenceDetector instance
+   */
+  setSilenceDetector(silenceDetector) {
+    // Stop any existing monitoring
+    if (this._silenceMonitoringActive) {
+      this.stopSilenceMonitoring();
+    }
+
+    this._silenceDetector = silenceDetector;
+    this._logger.debug('SilenceDetector updated');
+  }
+
+  /**
+   * Gets the SilenceDetector instance
+   *
+   * @returns {import('./SilenceDetector.mjs').SilenceDetector|null} The SilenceDetector instance or null
+   */
+  getSilenceDetector() {
+    return this._silenceDetector;
+  }
+
+  /**
+   * Sets the callback function for autonomous suggestions triggered by silence
+   *
+   * @param {function} callback - Callback function receiving { suggestion: Suggestion, silenceEvent: SilenceEvent }
+   */
+  setOnAutonomousSuggestionCallback(callback) {
+    if (callback === null || typeof callback === 'function') {
+      this._onAutonomousSuggestionCallback = callback;
+    } else {
+      this._logger.warn('Invalid autonomous suggestion callback provided, ignoring');
+    }
+  }
+
+  /**
+   * Gets the autonomous suggestion callback
+   *
+   * @returns {function|null} The callback function or null
+   */
+  getOnAutonomousSuggestionCallback() {
+    return this._onAutonomousSuggestionCallback;
+  }
+
+  /**
+   * Starts silence monitoring for autonomous suggestion triggers
+   *
+   * Requires both a SilenceDetector and OpenAI client to be configured.
+   * When silence is detected, generates a contextual suggestion using current
+   * chapter context and RAG retrieval.
+   *
+   * @returns {boolean} True if monitoring started successfully, false otherwise
+   */
+  startSilenceMonitoring() {
+    if (!this._silenceDetector) {
+      this._logger.warn('Cannot start silence monitoring: no SilenceDetector configured');
+      return false;
+    }
+
+    if (!this.isConfigured()) {
+      this._logger.warn('Cannot start silence monitoring: OpenAI client not configured');
+      return false;
+    }
+
+    if (this._silenceMonitoringActive) {
+      this._logger.debug('Silence monitoring already active');
+      return true;
+    }
+
+    // Create bound handler so we can remove it later
+    this._boundSilenceHandler = this._handleSilenceEvent.bind(this);
+    this._silenceDetector.setOnSilenceCallback(this._boundSilenceHandler);
+    this._silenceDetector.start();
+    this._silenceMonitoringActive = true;
+
+    this._logger.info('Silence monitoring started');
+    return true;
+  }
+
+  /**
+   * Stops silence monitoring
+   */
+  stopSilenceMonitoring() {
+    if (!this._silenceMonitoringActive) {
+      this._logger.debug('Silence monitoring not active');
+      return;
+    }
+
+    if (this._silenceDetector) {
+      this._silenceDetector.stop();
+    }
+
+    this._silenceMonitoringActive = false;
+    this._boundSilenceHandler = null;
+
+    this._logger.info('Silence monitoring stopped');
+  }
+
+  /**
+   * Records activity to reset the silence timer
+   *
+   * Call this when transcription is received to prevent silence-triggered suggestions.
+   *
+   * @returns {boolean} True if activity was recorded, false if monitoring not active
+   */
+  recordActivityForSilenceDetection() {
+    if (!this._silenceMonitoringActive || !this._silenceDetector) {
+      return false;
+    }
+
+    return this._silenceDetector.recordActivity();
+  }
+
+  /**
+   * Checks if silence monitoring is currently active
+   *
+   * @returns {boolean} True if monitoring is active
+   */
+  isSilenceMonitoringActive() {
+    return this._silenceMonitoringActive;
   }
 
   /**
@@ -824,11 +981,17 @@ class AIAssistant {
    * Resets the session state
    */
   resetSession() {
+    // Stop silence monitoring if active
+    if (this._silenceMonitoringActive) {
+      this.stopSilenceMonitoring();
+    }
+
     this._conversationHistory = [];
     this._sessionState = {
       currentScene: null,
       lastOffTrackCheck: null,
-      suggestionsCount: 0
+      suggestionsCount: 0,
+      silenceSuggestionCount: 0
     };
     this._previousTranscription = '';
     this._cachedRAGContext = null;
@@ -856,7 +1019,12 @@ class AIAssistant {
       ragMaxResults: this._ragMaxResults,
       ragMaxChars: this._ragMaxChars,
       ragHasCachedContext: Boolean(this._cachedRAGContext && this._cachedRAGContext.context),
-      ragCachedSourceCount: this._cachedRAGContext?.sources?.length || 0
+      ragCachedSourceCount: this._cachedRAGContext?.sources?.length || 0,
+      // Silence detection stats
+      silenceDetectorConfigured: Boolean(this._silenceDetector),
+      silenceMonitoringActive: this._silenceMonitoringActive,
+      silenceSuggestionCount: this._sessionState.silenceSuggestionCount,
+      hasAutonomousSuggestionCallback: Boolean(this._onAutonomousSuggestionCallback)
     };
   }
 
@@ -1588,6 +1756,170 @@ Respond in JSON format:
    */
   getCachedRAGContext() {
     return this._cachedRAGContext;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private: Silence event handling
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Handles silence events from the SilenceDetector
+   *
+   * Generates an autonomous suggestion based on current chapter context and RAG retrieval.
+   * Invokes the onAutonomousSuggestion callback if registered.
+   *
+   * @param {Object} silenceEvent - The silence event from SilenceDetector
+   * @param {number} silenceEvent.silenceDurationMs - Duration of silence in milliseconds
+   * @param {number} silenceEvent.lastActivityTime - Timestamp of the last recorded activity
+   * @param {number} silenceEvent.silenceCount - Number of silence events since start
+   * @private
+   */
+  async _handleSilenceEvent(silenceEvent) {
+    this._logger.info(`Processing silence event #${silenceEvent.silenceCount} (${silenceEvent.silenceDurationMs}ms)`);
+
+    // Verify we can generate suggestions
+    if (!this.isConfigured()) {
+      this._logger.warn('Cannot generate autonomous suggestion: OpenAI client not configured');
+      return;
+    }
+
+    try {
+      // Generate the suggestion
+      const suggestion = await this._generateAutonomousSuggestion();
+
+      if (!suggestion) {
+        this._logger.debug('No autonomous suggestion generated');
+        return;
+      }
+
+      // Track the suggestion
+      this._sessionState.silenceSuggestionCount++;
+
+      this._logger.info(`Generated autonomous suggestion: type=${suggestion.type}, confidence=${suggestion.confidence}`);
+
+      // Invoke callback if registered
+      if (this._onAutonomousSuggestionCallback) {
+        try {
+          this._onAutonomousSuggestionCallback({
+            suggestion,
+            silenceEvent: {
+              silenceDurationMs: silenceEvent.silenceDurationMs,
+              lastActivityTime: silenceEvent.lastActivityTime,
+              silenceCount: silenceEvent.silenceCount
+            }
+          });
+        } catch (callbackError) {
+          this._logger.error('Error in autonomous suggestion callback:', callbackError.message);
+        }
+      }
+    } catch (error) {
+      this._logger.error('Failed to generate autonomous suggestion:', error.message);
+    }
+  }
+
+  /**
+   * Generates an autonomous suggestion based on current context
+   *
+   * Uses chapter context, RAG retrieval, and previous transcription to generate
+   * a contextual suggestion for when the session is silent.
+   *
+   * @returns {Promise<Suggestion|null>} The generated suggestion or null
+   * @private
+   */
+  async _generateAutonomousSuggestion() {
+    // Build context query from chapter context and previous transcription
+    let contextQuery = '';
+
+    if (this._chapterContext) {
+      contextQuery += this._chapterContext.chapterName || '';
+      if (this._chapterContext.summary) {
+        contextQuery += ' ' + this._chapterContext.summary;
+      }
+    }
+
+    if (this._previousTranscription) {
+      // Use last portion of previous transcription
+      const lastPortion = this._previousTranscription.slice(-500);
+      contextQuery += ' ' + lastPortion;
+    }
+
+    // If no context at all, use a generic prompt
+    if (!contextQuery.trim()) {
+      contextQuery = 'The game session is currently paused';
+    }
+
+    // Retrieve RAG context if available
+    let ragContext = null;
+    if (this.isRAGConfigured()) {
+      const ragResult = await this._getRAGContext(contextQuery.trim());
+      if (ragResult.context) {
+        ragContext = this._formatRAGContext(ragResult);
+        this._logger.debug(`Using RAG context for autonomous suggestion with ${ragResult.sources.length} sources`);
+      }
+    }
+
+    // Build the messages for suggestion generation
+    const messages = this._buildAutonomousSuggestionMessages(contextQuery.trim(), ragContext);
+
+    // Make the API request
+    const response = await this._makeChatRequest(messages);
+
+    // Parse the response
+    const suggestions = this._parseSuggestionsResponse(response, 1);
+
+    if (suggestions.length > 0) {
+      return suggestions[0];
+    }
+
+    return null;
+  }
+
+  /**
+   * Builds messages for autonomous suggestion generation during silence
+   *
+   * @param {string} contextQuery - The context query built from chapter and transcription
+   * @param {string} [ragContext] - Optional RAG-retrieved context
+   * @returns {Array<{role: string, content: string}>} The messages array
+   * @private
+   */
+  _buildAutonomousSuggestionMessages(contextQuery, ragContext) {
+    const messages = [
+      { role: 'system', content: this._buildSystemPrompt() }
+    ];
+
+    // Use RAG context if provided, otherwise fall back to adventure context
+    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
+
+    if (context) {
+      messages.push({
+        role: 'system',
+        content: `ADVENTURE CONTEXT:\n${context}`
+      });
+    }
+
+    const chapterInfo = this._formatChapterContext();
+    const silencePrompt = `The game session has been silent for a while. Based on the current chapter and context, suggest what the DM should do next to re-engage the players.
+
+${chapterInfo ? `Current Chapter Information:\n${chapterInfo}\n\n` : ''}${this._previousTranscription ? `Recent conversation context:\n"${this._previousTranscription.slice(-300)}"\n\n` : ''}Generate a single, helpful suggestion for the DM to move the story forward. Focus on:
+1. What happens next in the adventure according to the source material
+2. An NPC who could speak or act to prompt player engagement
+3. An environmental detail or event to describe
+
+Respond in JSON format:
+{
+  "suggestions": [
+    {
+      "type": "narration|dialogue|action|reference",
+      "content": "the suggestion",
+      "pageReference": "source page if applicable",
+      "confidence": 0.0-1.0
+    }
+  ]
+}`;
+
+    messages.push({ role: 'user', content: silencePrompt });
+
+    return messages;
   }
 
   // ---------------------------------------------------------------------------
