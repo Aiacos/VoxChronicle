@@ -484,35 +484,96 @@ class AudioRecorder {
 
   /**
    * Get the latest audio chunk(s) accumulated since the last call.
-   * Flushes the internal buffer and returns a single Blob.
-   * Used by live mode to get periodic audio batches for transcription.
+   * Rotates the MediaRecorder (stop + restart on same stream) so that each
+   * returned Blob is a complete, valid audio file with proper container headers.
    *
-   * @returns {Promise<Blob|null>} Audio blob from accumulated chunks, or null if no data
+   * WebM/Matroska containers require EBML + Tracks headers at the start of the
+   * file. A running MediaRecorder only emits these headers in its very first
+   * ondataavailable event. Subsequent chunks are headerless cluster data that
+   * cannot be decoded on their own. By stopping and restarting the recorder we
+   * guarantee every Blob begins with valid headers.
+   *
+   * @returns {Promise<Blob|null>} A self-contained audio Blob, or null if no data
    */
   async getLatestChunk() {
     if (this._state !== RecordingState.RECORDING || !this._mediaRecorder) {
       return null;
     }
 
-    // Request any buffered data from the MediaRecorder
-    this._mediaRecorder.requestData();
+    // Rotate: stop current recorder → collect valid blob → start fresh recorder
+    const blob = await this._rotateRecorder();
+    return blob;
+  }
 
-    // Small delay to let ondataavailable fire
-    await new Promise(resolve => setTimeout(resolve, 50));
+  /**
+   * Stop the current MediaRecorder, collect its output as a valid audio file,
+   * then immediately start a new recorder on the same stream.
+   *
+   * @returns {Promise<Blob|null>} Complete audio blob or null if empty
+   * @private
+   */
+  _rotateRecorder() {
+    return new Promise((resolve) => {
+      const oldRecorder = this._mediaRecorder;
+      const mimeType = oldRecorder.mimeType;
 
-    // Drain live buffer (full session chunks in _audioChunks are preserved)
-    if (this._liveChunks.length === 0) {
-      return null;
-    }
+      oldRecorder.onstop = () => {
+        // At this point all ondataavailable events have fired (including the
+        // final flush triggered by stop()), so _liveChunks is complete.
+        if (this._liveChunks.length === 0) {
+          this._startFreshRecorder(mimeType);
+          resolve(null);
+          return;
+        }
 
-    const mimeType = this._mediaRecorder.mimeType;
-    const chunk = AudioUtils.createAudioBlob(this._liveChunks, mimeType);
+        const chunk = new Blob(this._liveChunks, { type: mimeType });
+        this._liveChunks = [];
 
-    // Clear live buffer for the next cycle
-    this._liveChunks = [];
+        this._logger.debug(`Rotated recorder, flushed ${(chunk.size / 1024).toFixed(1)}KB`);
 
-    this._logger.debug(`Flushed ${chunk.size} bytes for live cycle`);
-    return chunk;
+        // Start a fresh recorder on the same stream
+        this._startFreshRecorder(mimeType);
+        resolve(chunk);
+      };
+
+      // stop() triggers: final ondataavailable → onstop
+      oldRecorder.stop();
+    });
+  }
+
+  /**
+   * Create and start a new MediaRecorder on the existing stream.
+   * Used after rotating the recorder for live mode.
+   *
+   * @param {string} _mimeType - (unused) kept for future use
+   * @private
+   */
+  _startFreshRecorder(_mimeType) {
+    if (!this._stream) return;
+
+    const recorderOptions = AudioUtils.getRecorderOptions();
+    this._mediaRecorder = new MediaRecorder(this._stream, recorderOptions);
+
+    this._mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        this._audioChunks.push(event.data);
+        this._liveChunks.push(event.data);
+        this._logger.debug(`Audio chunk received: ${(event.data.size / 1024).toFixed(2)}KB`);
+        if (this._callbacks.onDataAvailable) {
+          this._callbacks.onDataAvailable(event.data, this._audioChunks.length);
+        }
+      }
+    };
+
+    this._mediaRecorder.onerror = (event) => {
+      this._logger.error('MediaRecorder error:', event.error);
+      if (this._callbacks.onError) {
+        this._callbacks.onError(event.error);
+      }
+    };
+
+    this._mediaRecorder.start(DEFAULT_TIMESLICE);
+    this._logger.debug('Fresh MediaRecorder started for next live cycle');
   }
 
   /**

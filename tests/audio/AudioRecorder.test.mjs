@@ -63,6 +63,10 @@ class MockMediaRecorder {
 
   stop() {
     this.state = 'inactive';
+    // Real MediaRecorder fires a final ondataavailable flush, then onstop
+    if (this.ondataavailable) {
+      this.ondataavailable({ data: createMockBlob(256) });
+    }
     if (this.onstop) setTimeout(() => this.onstop(), 0);
   }
 
@@ -135,16 +139,14 @@ describe('AudioRecorder', () => {
       expect(chunk).toBeNull();
     });
 
-    it('should return audio blob after data is available during recording', async () => {
+    it('should return audio blob by rotating the recorder', async () => {
       const recorder = new AudioRecorder();
       await recorder.startRecording();
 
-      // Simulate the MediaRecorder providing data
+      // getLatestChunk stops the recorder (triggering final flush) and restarts
       const chunk = await recorder.getLatestChunk();
 
-      // requestData triggers ondataavailable which pushes to _liveChunks
-      // The method should return a blob or null depending on timing
-      // (requestData mock fires synchronously, so chunk should be available)
+      // The stop() fires ondataavailable with final data, producing a valid blob
       if (chunk) {
         expect(chunk.size).toBeGreaterThan(0);
         expect(chunk.type).toContain('audio');
@@ -153,19 +155,35 @@ describe('AudioRecorder', () => {
       await recorder.stopRecording();
     });
 
-    it('should drain live buffer after flush', async () => {
+    it('should start a fresh recorder after rotation', async () => {
       const recorder = new AudioRecorder();
       await recorder.startRecording();
 
-      // First flush
+      // First rotation
       await recorder.getLatestChunk();
 
-      // Second flush without new data should return null
-      // (need to wait for requestData but no new data arrives)
+      // Recorder should still be in recording state (restarted)
+      expect(recorder._mediaRecorder).toBeTruthy();
+      expect(recorder._mediaRecorder.state).toBe('recording');
+
+      // Second rotation should also work
       const secondChunk = await recorder.getLatestChunk();
-      // May be null or may have data from requestData - depends on mock
-      // The key is it doesn't crash
       expect(secondChunk === null || secondChunk instanceof Blob).toBe(true);
+
+      await recorder.stopRecording();
+    });
+
+    it('should preserve full session chunks across rotations', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const initialChunks = recorder._audioChunks.length;
+
+      // Rotate - this adds final flush data to _audioChunks
+      await recorder.getLatestChunk();
+
+      // _audioChunks should have grown (session-level chunks are never cleared)
+      expect(recorder._audioChunks.length).toBeGreaterThanOrEqual(initialChunks);
 
       await recorder.stopRecording();
     });
