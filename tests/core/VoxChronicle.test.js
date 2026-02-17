@@ -205,6 +205,8 @@ vi.mock('../../scripts/narrator/AIAssistant.mjs', () => {
       this.apiKey = apiKey;
       this.options = options;
       this.generateSuggestion = vi.fn();
+      this.setRAGRetriever = vi.fn();
+      this.setSilenceDetector = vi.fn();
     }
   }
   return { AIAssistant: MockAIAssistant };
@@ -228,6 +230,84 @@ vi.mock('../../scripts/narrator/SessionAnalytics.mjs', () => {
   }
   return { SessionAnalytics: MockSessionAnalytics };
 });
+
+// Mock RAG services
+vi.mock('../../scripts/ai/OpenAIClient.mjs', () => {
+  class MockOpenAIClient {
+    constructor(apiKey) {
+      this.apiKey = apiKey;
+      this.isConfigured = !!apiKey;
+      this.post = vi.fn().mockResolvedValue({ data: [{ embedding: [0.1, 0.2, 0.3] }] });
+    }
+  }
+  return { OpenAIClient: MockOpenAIClient };
+});
+
+vi.mock('../../scripts/ai/EmbeddingService.mjs', () => {
+  class MockEmbeddingService {
+    constructor(options) {
+      this.options = options;
+      this.embed = vi.fn().mockResolvedValue([0.1, 0.2, 0.3]);
+      this.isConfigured = vi.fn().mockReturnValue(true);
+    }
+  }
+  return { EmbeddingService: MockEmbeddingService };
+});
+
+vi.mock('../../scripts/ai/RAGVectorStore.mjs', () => {
+  class MockRAGVectorStore {
+    constructor(options) {
+      this.options = options;
+      this.initialize = vi.fn().mockResolvedValue(undefined);
+      this.isConfigured = vi.fn().mockReturnValue(true);
+      this.search = vi.fn().mockResolvedValue([]);
+      this.add = vi.fn().mockResolvedValue('test-id');
+    }
+  }
+  return { RAGVectorStore: MockRAGVectorStore };
+});
+
+vi.mock('../../scripts/narrator/RAGRetriever.mjs', () => {
+  class MockRAGRetriever {
+    constructor(options) {
+      this.options = options;
+      this.retrieve = vi.fn().mockResolvedValue([]);
+      this.buildIndex = vi.fn().mockResolvedValue({ journalChunks: 0, compendiumChunks: 0 });
+      this.isConfigured = vi.fn().mockReturnValue(true);
+    }
+  }
+  return { RAGRetriever: MockRAGRetriever };
+});
+
+vi.mock('../../scripts/narrator/SilenceDetector.mjs', () => {
+  class MockSilenceDetector {
+    constructor(options) {
+      this.options = options;
+      this.start = vi.fn();
+      this.stop = vi.fn();
+      this.recordActivity = vi.fn();
+      this.setThreshold = vi.fn();
+    }
+  }
+  return { SilenceDetector: MockSilenceDetector };
+});
+
+vi.mock('../../scripts/core/Settings.mjs', () => ({
+  Settings: {
+    getRAGSettings: vi.fn().mockReturnValue({
+      enabled: true,
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 512,
+      chunkSize: 500,
+      chunkOverlap: 100,
+      similarityThreshold: 0.7,
+      maxResults: 5,
+      storageLimitMB: 100,
+      silenceThresholdMs: 30000,
+      autoIndex: true
+    })
+  }
+}));
 
 // Import after mocks are set up
 import { VoxChronicle } from '../../scripts/core/VoxChronicle.mjs';
@@ -841,11 +921,17 @@ describe('VoxChronicle', () => {
           sceneDetector: false,
           aiAssistant: false,
           rulesReference: false,
-          sessionAnalytics: false
+          sessionAnalytics: false,
+          // RAG services
+          embeddingService: false,
+          ragVectorStore: false,
+          ragRetriever: false,
+          silenceDetector: false
         },
         settings: {
           openaiConfigured: true,
-          kankaConfigured: true
+          kankaConfigured: true,
+          ragEnabled: false
         }
       });
     });
@@ -892,7 +978,8 @@ describe('VoxChronicle', () => {
 
       expect(status.settings).toEqual({
         openaiConfigured: false,
-        kankaConfigured: false
+        kankaConfigured: false,
+        ragEnabled: false
       });
     });
 
@@ -910,7 +997,8 @@ describe('VoxChronicle', () => {
 
       expect(status.settings).toEqual({
         openaiConfigured: true,
-        kankaConfigured: false
+        kankaConfigured: false,
+        ragEnabled: false
       });
     });
   });
@@ -937,6 +1025,179 @@ describe('VoxChronicle', () => {
       const instance2 = VoxChronicle.getInstance();
       expect(instance2).toBe(instance1);
       expect(instance2.isInitialized).toBe(true);
+    });
+  });
+
+  describe('RAG Services Initialization', () => {
+    it('should initialize RAG services when enabled and OpenAI configured', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+
+      // Configure RAG as enabled
+      Settings.getRAGSettings.mockReturnValue({
+        enabled: true,
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 512,
+        chunkSize: 500,
+        chunkOverlap: 100,
+        similarityThreshold: 0.7,
+        maxResults: 5,
+        storageLimitMB: 100,
+        silenceThresholdMs: 30000,
+        autoIndex: true
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Verify RAG services are initialized
+      expect(instance.ragOpenAIClient).not.toBeNull();
+      expect(instance.embeddingService).not.toBeNull();
+      expect(instance.ragVectorStore).not.toBeNull();
+      expect(instance.ragRetriever).not.toBeNull();
+      expect(instance.silenceDetector).not.toBeNull();
+    });
+
+    it('should not initialize RAG services when disabled in settings', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+
+      // Configure RAG as disabled
+      Settings.getRAGSettings.mockReturnValue({
+        enabled: false,
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 512,
+        chunkSize: 500,
+        chunkOverlap: 100,
+        similarityThreshold: 0.7,
+        maxResults: 5,
+        storageLimitMB: 100,
+        silenceThresholdMs: 30000,
+        autoIndex: true
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Verify RAG services are NOT initialized
+      expect(instance.ragOpenAIClient).toBeNull();
+      expect(instance.embeddingService).toBeNull();
+      expect(instance.ragVectorStore).toBeNull();
+      expect(instance.ragRetriever).toBeNull();
+      expect(instance.silenceDetector).toBeNull();
+    });
+
+    it('should not initialize RAG services when OpenAI API key missing', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+
+      // Configure RAG as enabled
+      Settings.getRAGSettings.mockReturnValue({
+        enabled: true,
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 512,
+        chunkSize: 500,
+        chunkOverlap: 100,
+        similarityThreshold: 0.7,
+        maxResults: 5,
+        storageLimitMB: 100,
+        silenceThresholdMs: 30000,
+        autoIndex: true
+      });
+
+      // Remove OpenAI API key
+      setupFoundryMocks({
+        'vox-chronicle.openaiApiKey': ''
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Verify RAG services are NOT initialized (no API key)
+      expect(instance.ragOpenAIClient).toBeNull();
+      expect(instance.embeddingService).toBeNull();
+      expect(instance.ragVectorStore).toBeNull();
+      expect(instance.ragRetriever).toBeNull();
+      expect(instance.silenceDetector).toBeNull();
+    });
+
+    it('should connect RAG services to AIAssistant', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+
+      // Configure RAG as enabled
+      Settings.getRAGSettings.mockReturnValue({
+        enabled: true,
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 512,
+        chunkSize: 500,
+        chunkOverlap: 100,
+        similarityThreshold: 0.7,
+        maxResults: 5,
+        storageLimitMB: 100,
+        silenceThresholdMs: 30000,
+        autoIndex: true
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Verify AIAssistant has RAG services connected
+      expect(instance.aiAssistant.setRAGRetriever).toHaveBeenCalled();
+      expect(instance.aiAssistant.setSilenceDetector).toHaveBeenCalled();
+    });
+
+    it('should include RAG services in getServicesStatus when initialized', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+
+      // Configure RAG as enabled
+      Settings.getRAGSettings.mockReturnValue({
+        enabled: true,
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 512,
+        chunkSize: 500,
+        chunkOverlap: 100,
+        similarityThreshold: 0.7,
+        maxResults: 5,
+        storageLimitMB: 100,
+        silenceThresholdMs: 30000,
+        autoIndex: true
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      const status = instance.getServicesStatus();
+
+      // Verify RAG services are in status
+      expect(status.services.embeddingService).toBe(true);
+      expect(status.services.ragVectorStore).toBe(true);
+      expect(status.services.ragRetriever).toBe(true);
+      expect(status.services.silenceDetector).toBe(true);
+    });
+
+    it('should use RAG settings for service configuration', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+
+      // Configure RAG with specific settings
+      const ragSettings = {
+        enabled: true,
+        embeddingModel: 'text-embedding-3-large',
+        embeddingDimensions: 1536,
+        chunkSize: 1000,
+        chunkOverlap: 200,
+        similarityThreshold: 0.8,
+        maxResults: 10,
+        storageLimitMB: 200,
+        silenceThresholdMs: 60000,
+        autoIndex: true
+      };
+      Settings.getRAGSettings.mockReturnValue(ragSettings);
+
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Services should be initialized with the settings
+      expect(instance.embeddingService).not.toBeNull();
+      expect(instance.ragVectorStore).not.toBeNull();
+      expect(instance.ragRetriever).not.toBeNull();
+      expect(instance.silenceDetector).not.toBeNull();
     });
   });
 });

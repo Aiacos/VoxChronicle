@@ -27,6 +27,13 @@ import { AIAssistant } from '../narrator/AIAssistant.mjs';
 import { RulesReference } from '../narrator/RulesReference.mjs';
 import { SessionAnalytics } from '../narrator/SessionAnalytics.mjs';
 import { Logger } from '../utils/Logger.mjs';
+// RAG (Retrieval-Augmented Generation) services
+import { OpenAIClient } from '../ai/OpenAIClient.mjs';
+import { EmbeddingService } from '../ai/EmbeddingService.mjs';
+import { RAGVectorStore } from '../ai/RAGVectorStore.mjs';
+import { RAGRetriever } from '../narrator/RAGRetriever.mjs';
+import { SilenceDetector } from '../narrator/SilenceDetector.mjs';
+import { Settings } from './Settings.mjs';
 
 // Create logger instance for VoxChronicle
 const logger = Logger.createChild('VoxChronicle');
@@ -87,6 +94,22 @@ class VoxChronicle {
 
     /** @type {object | null} Session analytics tracker */
     this.sessionAnalytics = null;
+
+    // RAG (Retrieval-Augmented Generation) services
+    /** @type {object | null} OpenAI client for RAG embedding requests */
+    this.ragOpenAIClient = null;
+
+    /** @type {object | null} Embedding service for generating vector embeddings */
+    this.embeddingService = null;
+
+    /** @type {object | null} Vector store for RAG embeddings */
+    this.ragVectorStore = null;
+
+    /** @type {object | null} RAG retriever for hybrid search */
+    this.ragRetriever = null;
+
+    /** @type {object | null} Silence detector for autonomous suggestions */
+    this.silenceDetector = null;
 
     // State tracking
     /** @type {boolean} Whether the module is fully initialized */
@@ -219,6 +242,9 @@ class VoxChronicle {
         this.rulesReference = new RulesReference(this.compendiumParser);
       }
 
+      // Initialize RAG services (if enabled and OpenAI configured)
+      await this._initializeRAGServices(openaiApiKey);
+
       // Connect debug mode
       const debugMode = this._getSetting('debugMode');
       if (debugMode) {
@@ -310,6 +336,92 @@ class VoxChronicle {
   }
 
   /**
+   * Initialize RAG (Retrieval-Augmented Generation) services
+   * Creates embedding service, vector store, retriever, and silence detector
+   *
+   * @param {string} openaiApiKey - OpenAI API key for embedding generation
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _initializeRAGServices(openaiApiKey) {
+    try {
+      // Get RAG settings
+      const ragSettings = Settings.getRAGSettings();
+
+      // Check if RAG is enabled
+      if (!ragSettings.enabled) {
+        logger.info('RAG services disabled in settings');
+        return;
+      }
+
+      // Check if OpenAI is configured (required for embeddings)
+      if (!openaiApiKey) {
+        logger.warn('RAG services require OpenAI API key - skipping initialization');
+        return;
+      }
+
+      logger.info('Initializing RAG services...');
+
+      // Create dedicated OpenAI client for RAG operations
+      this.ragOpenAIClient = new OpenAIClient(openaiApiKey);
+
+      // Initialize Embedding Service
+      this.embeddingService = new EmbeddingService({
+        openaiClient: this.ragOpenAIClient,
+        model: ragSettings.embeddingModel,
+        dimensions: ragSettings.embeddingDimensions,
+        chunkSize: ragSettings.chunkSize,
+        chunkOverlap: ragSettings.chunkOverlap
+      });
+
+      // Initialize RAG Vector Store
+      this.ragVectorStore = new RAGVectorStore({
+        embeddingService: this.embeddingService,
+        maxSizeInMB: ragSettings.storageLimitMB,
+        dimensions: ragSettings.embeddingDimensions,
+        model: ragSettings.embeddingModel,
+        persistToIndexedDB: true
+      });
+
+      // Initialize the vector store (opens IndexedDB connection)
+      await this.ragVectorStore.initialize();
+
+      // Initialize RAG Retriever (hybrid semantic + keyword search)
+      this.ragRetriever = new RAGRetriever({
+        embeddingService: this.embeddingService,
+        vectorStore: this.ragVectorStore,
+        journalParser: this.journalParser,
+        compendiumParser: this.compendiumParser,
+        similarityThreshold: ragSettings.similarityThreshold,
+        maxResults: ragSettings.maxResults
+      });
+
+      // Initialize Silence Detector for autonomous suggestions
+      this.silenceDetector = new SilenceDetector({
+        thresholdMs: ragSettings.silenceThresholdMs,
+        autoRestart: true
+      });
+
+      // Connect RAG services to AIAssistant if available
+      if (this.aiAssistant) {
+        this.aiAssistant.setRAGRetriever(this.ragRetriever);
+        this.aiAssistant.setSilenceDetector(this.silenceDetector);
+        logger.debug('RAG services connected to AIAssistant');
+      }
+
+      logger.info('RAG services initialized successfully', {
+        embeddingModel: ragSettings.embeddingModel,
+        dimensions: ragSettings.embeddingDimensions,
+        storageLimitMB: ragSettings.storageLimitMB,
+        silenceThresholdMs: ragSettings.silenceThresholdMs
+      });
+    } catch (error) {
+      logger.error('Failed to initialize RAG services:', error);
+      // Don't throw - RAG is optional functionality
+    }
+  }
+
+  /**
    * Check if all required services are configured and ready
    *
    * @returns {object} Status of each service
@@ -331,13 +443,19 @@ class VoxChronicle {
         sceneDetector: !!this.sceneDetector,
         aiAssistant: !!this.aiAssistant,
         rulesReference: !!this.rulesReference,
-        sessionAnalytics: !!this.sessionAnalytics
+        sessionAnalytics: !!this.sessionAnalytics,
+        // RAG services
+        embeddingService: !!this.embeddingService,
+        ragVectorStore: !!this.ragVectorStore,
+        ragRetriever: !!this.ragRetriever,
+        silenceDetector: !!this.silenceDetector
       },
       settings: {
         openaiConfigured: !!this._getSetting('openaiApiKey'),
         kankaConfigured: !!(
           this._getSetting('kankaApiToken') && this._getSetting('kankaCampaignId')
-        )
+        ),
+        ragEnabled: !!this._getSetting('ragEnabled')
       }
     };
   }
