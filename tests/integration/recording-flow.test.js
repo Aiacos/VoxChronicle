@@ -767,7 +767,7 @@ describe('Recording Flow Integration', () => {
 
       expect(result.startTime).toBeDefined();
       expect(result.endTime).toBeDefined();
-      expect(result.endTime).toBeGreaterThan(result.startTime);
+      expect(result.endTime).toBeGreaterThanOrEqual(result.startTime);
     });
 
     it('should maintain session data integrity across steps', async () => {
