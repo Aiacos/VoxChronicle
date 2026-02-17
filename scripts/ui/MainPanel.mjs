@@ -13,6 +13,7 @@
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { debounce } from '../utils/DomUtils.mjs';
+import { VoxChronicle } from '../core/VoxChronicle.mjs';
 
 /**
  * Valid tab identifiers for the MainPanel
@@ -139,8 +140,8 @@ class MainPanel extends Application {
    * @private
    */
   _getRAGData() {
-    // Get RAG retriever from orchestrator's VoxChronicle instance
-    const voxChronicle = this._orchestrator?.voxChronicle;
+    // Get RAG services from VoxChronicle singleton
+    const voxChronicle = VoxChronicle.getInstance();
     const ragRetriever = voxChronicle?.ragRetriever;
     const ragVectorStore = voxChronicle?.ragVectorStore;
 
@@ -299,7 +300,7 @@ class MainPanel extends Application {
    * @private
    */
   async _handleRAGBuildIndex() {
-    const voxChronicle = this._orchestrator?.voxChronicle;
+    const voxChronicle = VoxChronicle.getInstance();
     const ragRetriever = voxChronicle?.ragRetriever;
 
     if (!ragRetriever) {
@@ -341,7 +342,7 @@ class MainPanel extends Application {
    * @private
    */
   async _handleRAGClearIndex() {
-    const voxChronicle = this._orchestrator?.voxChronicle;
+    const voxChronicle = VoxChronicle.getInstance();
     const ragVectorStore = voxChronicle?.ragVectorStore;
 
     if (!ragVectorStore) {

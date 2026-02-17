@@ -465,10 +465,10 @@ class Settings {
       config: true,
       type: Number,
       choices: {
-        256: '256 (Fastest)',
-        512: '512 (Balanced)',
-        1024: '1024 (High Quality)',
-        1536: '1536 (Maximum)'
+        '256': '256 (Fastest)',
+        '512': '512 (Balanced)',
+        '1024': '1024 (High Quality)',
+        '1536': '1536 (Maximum)'
       },
       default: 512
     });
