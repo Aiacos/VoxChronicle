@@ -29,7 +29,6 @@ import { SessionAnalytics } from '../narrator/SessionAnalytics.mjs';
 import { OpenAIClient } from '../ai/OpenAIClient.mjs';
 import { Logger } from '../utils/Logger.mjs';
 // RAG (Retrieval-Augmented Generation) services
-import { OpenAIClient } from '../ai/OpenAIClient.mjs';
 import { EmbeddingService } from '../ai/EmbeddingService.mjs';
 import { RAGVectorStore } from '../ai/RAGVectorStore.mjs';
 import { RAGRetriever } from '../narrator/RAGRetriever.mjs';
