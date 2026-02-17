@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-02-17
+
+### Fixed
+- **Live mode transcription now works** — implemented `AudioRecorder.getLatestChunk()` method that flushes accumulated audio chunks for live cycle processing; previously the method didn't exist so live mode never received any audio data
+- **Audio level meter now shows real input** — `MainPanel.getData()` reads actual audio level from `AudioRecorder.getAudioLevel()` instead of returning hardcoded 0
+
+### Added
+- `AudioRecorder.getLatestChunk()` — returns accumulated audio since last call as a Blob, uses separate `_liveChunks` buffer so the full session recording in `_audioChunks` is preserved
+
 ## [2.2.1] - 2026-02-17
 
 ### Fixed

@@ -89,11 +89,18 @@ class AudioRecorder {
   _mediaRecorder = null;
 
   /**
-   * Audio chunks collected during recording
+   * Audio chunks collected during recording (full session)
    * @type {Array<Blob>}
    * @private
    */
   _audioChunks = [];
+
+  /**
+   * Live mode chunk buffer (drained by getLatestChunk)
+   * @type {Array<Blob>}
+   * @private
+   */
+  _liveChunks = [];
 
   /**
    * Active media stream
@@ -476,6 +483,39 @@ class AudioRecorder {
   }
 
   /**
+   * Get the latest audio chunk(s) accumulated since the last call.
+   * Flushes the internal buffer and returns a single Blob.
+   * Used by live mode to get periodic audio batches for transcription.
+   *
+   * @returns {Promise<Blob|null>} Audio blob from accumulated chunks, or null if no data
+   */
+  async getLatestChunk() {
+    if (this._state !== RecordingState.RECORDING || !this._mediaRecorder) {
+      return null;
+    }
+
+    // Request any buffered data from the MediaRecorder
+    this._mediaRecorder.requestData();
+
+    // Small delay to let ondataavailable fire
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Drain live buffer (full session chunks in _audioChunks are preserved)
+    if (this._liveChunks.length === 0) {
+      return null;
+    }
+
+    const mimeType = this._mediaRecorder.mimeType;
+    const chunk = AudioUtils.createAudioBlob(this._liveChunks, mimeType);
+
+    // Clear live buffer for the next cycle
+    this._liveChunks = [];
+
+    this._logger.debug(`Flushed ${chunk.size} bytes for live cycle`);
+    return chunk;
+  }
+
+  /**
    * Get the current audio level (0.0-1.0)
    * Uses RMS calculation over frequency data from the AnalyserNode.
    *
@@ -713,6 +753,7 @@ class AudioRecorder {
     this._mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
         this._audioChunks.push(event.data);
+        this._liveChunks.push(event.data);
         this._logger.debug(`Audio chunk received: ${(event.data.size / 1024).toFixed(2)}KB`);
 
         // Call user callback if set
@@ -949,6 +990,7 @@ class AudioRecorder {
     // Reset state
     this._mediaRecorder = null;
     this._audioChunks = [];
+    this._liveChunks = [];
     this._captureSource = null;
     this._startTime = null;
     this._updateState(RecordingState.INACTIVE);

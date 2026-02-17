@@ -111,7 +111,7 @@ class MainPanel extends Application {
       isPaused: this._orchestrator?.state === 'paused',
       isProcessing: this._orchestrator?.state === 'processing',
       duration: this._formatDuration(),
-      audioLevel: 0,
+      audioLevel: this._getAudioLevel(),
       transcriptionMode: 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
       activeTab: this._activeTab,
@@ -435,6 +435,19 @@ class MainPanel extends Application {
       this._logger.error('Review entities failed:', error);
       ui?.notifications?.error(error.message);
     }
+  }
+
+  /**
+   * Get the current audio input level from the AudioRecorder
+   * @returns {number} Audio level as percentage (0-100)
+   * @private
+   */
+  _getAudioLevel() {
+    const voxChronicle = VoxChronicle.getInstance();
+    const recorder = voxChronicle?.audioRecorder;
+    if (!recorder || !recorder.isRecording) return 0;
+    // getAudioLevel() returns 0.0-1.0, convert to percentage
+    return Math.round((recorder.getAudioLevel?.() || 0) * 100);
   }
 
   /**
