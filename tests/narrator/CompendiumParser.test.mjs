@@ -956,4 +956,301 @@ describe('CompendiumParser', () => {
       expect(parsed.entries[0].text).toContain('Tipo: npc');
     });
   });
+
+  // =========================================================================
+  // Text chunking for embeddings
+  // =========================================================================
+  describe('getChunksForEmbedding', () => {
+    beforeEach(async () => {
+      const journal = createMockJournalEntry('j1', 'Adventure Journal', [
+        { name: 'Chapter 1', content: '<p>The heroes arrive at the ancient castle. They explore the dark corridors, finding traces of old magic. The torches flicker as they move deeper into the ruins.</p>' }
+      ]);
+      const pack = createMockPack('test.adventure', 'Adventure Pack', 'JournalEntry', [journal]);
+      installGameMock([pack]);
+      await parser.parseJournalCompendiums();
+    });
+
+    it('should throw error for uncached compendium', async () => {
+      await expect(parser.getChunksForEmbedding('nonexistent.pack'))
+        .rejects.toThrow(); // Will throw with localized message or fallback
+    });
+
+    it('should return chunks with correct metadata structure', async () => {
+      const chunks = await parser.getChunksForEmbedding('test.adventure');
+
+      expect(chunks.length).toBeGreaterThan(0);
+
+      const chunk = chunks[0];
+      expect(chunk.text).toBeDefined();
+      expect(chunk.metadata).toBeDefined();
+      expect(chunk.metadata.source).toBe('compendium');
+      expect(chunk.metadata.packId).toBe('test.adventure');
+      expect(chunk.metadata.packName).toBe('Adventure Pack');
+      expect(chunk.metadata.entryId).toBe('j1');
+      expect(chunk.metadata.entryName).toBe('Adventure Journal');
+      expect(chunk.metadata.entryType).toBe('JournalEntry');
+      expect(typeof chunk.metadata.startPos).toBe('number');
+      expect(typeof chunk.metadata.endPos).toBe('number');
+      expect(typeof chunk.metadata.chunkIndex).toBe('number');
+      expect(typeof chunk.metadata.totalChunks).toBe('number');
+    });
+
+    it('should return single chunk for short content', async () => {
+      const chunks = await parser.getChunksForEmbedding('test.adventure', { chunkSize: 1000 });
+
+      expect(chunks.length).toBe(1);
+      expect(chunks[0].metadata.chunkIndex).toBe(0);
+      expect(chunks[0].metadata.totalChunks).toBe(1);
+    });
+
+    it('should split content into multiple overlapping chunks for long text', async () => {
+      // Create entry with longer content
+      const longContent = 'A'.repeat(200) + '. ' + 'B'.repeat(200) + '. ' + 'C'.repeat(200) + '.';
+      const journal = createMockJournalEntry('j2', 'Long Entry', [
+        { name: 'Content', content: `<p>${longContent}</p>` }
+      ]);
+      const pack = createMockPack('test.long', 'Long Pack', 'JournalEntry', [journal]);
+      installGameMock([pack]);
+      await parser._parseCompendiumPack(pack);
+
+      const chunks = await parser.getChunksForEmbedding('test.long', { chunkSize: 250, overlap: 50 });
+
+      expect(chunks.length).toBeGreaterThan(1);
+      // Verify chunks overlap (chunk N+1 starts before chunk N ends)
+      if (chunks.length >= 2) {
+        expect(chunks[1].metadata.startPos).toBeLessThan(chunks[0].metadata.endPos);
+      }
+    });
+
+    it('should respect custom chunkSize option', async () => {
+      const content = 'Word '.repeat(100); // ~500 chars
+      const journal = createMockJournalEntry('j3', 'Sized Entry', [
+        { name: 'Content', content: `<p>${content}</p>` }
+      ]);
+      const pack = createMockPack('test.sized', 'Sized Pack', 'JournalEntry', [journal]);
+      installGameMock([pack]);
+      await parser._parseCompendiumPack(pack);
+
+      // Small chunk size should create more chunks
+      const smallChunks = await parser.getChunksForEmbedding('test.sized', { chunkSize: 100, overlap: 10 });
+      const largeChunks = await parser.getChunksForEmbedding('test.sized', { chunkSize: 1000, overlap: 10 });
+
+      expect(smallChunks.length).toBeGreaterThan(largeChunks.length);
+    });
+
+    it('should skip entries with empty text when chunking', async () => {
+      // Create valid entries but clear out the text content manually to test chunking behavior
+      const journal = createMockJournalEntry('j-empty', 'Journal With Content', [
+        { name: 'Page', content: '<p>Some content here.</p>' }
+      ]);
+      const pack = createMockPack('test.chunking', 'Chunking Pack', 'JournalEntry', [journal]);
+      installGameMock([pack]);
+      await parser._parseCompendiumPack(pack);
+
+      // Manually set one entry to have empty text to test the chunking skip logic
+      const cached = parser._cachedContent.get('test.chunking');
+      expect(cached).not.toBeNull();
+
+      // Temporarily modify entry text to be empty
+      const originalText = cached.entries[0].text;
+      cached.entries[0].text = '   ';
+
+      const chunks = await parser.getChunksForEmbedding('test.chunking');
+      // Should skip empty text entries
+      expect(chunks.length).toBe(0);
+
+      // Restore
+      cached.entries[0].text = originalText;
+    });
+
+    it('should use default chunkSize and overlap when not specified', async () => {
+      const chunks = await parser.getChunksForEmbedding('test.adventure');
+
+      // Should return some chunks without throwing
+      expect(Array.isArray(chunks)).toBe(true);
+    });
+  });
+
+  describe('getChunksForEmbeddingAll', () => {
+    beforeEach(async () => {
+      const journal1 = createMockJournalEntry('j1', 'First Journal', [
+        { name: 'Page', content: '<p>Content from the first journal entry.</p>' }
+      ]);
+      const journal2 = createMockJournalEntry('j2', 'Second Journal', [
+        { name: 'Page', content: '<p>Content from the second journal entry.</p>' }
+      ]);
+      const pack1 = createMockPack('test.pack1', 'Pack One', 'JournalEntry', [journal1]);
+      const pack2 = createMockPack('test.pack2', 'Pack Two', 'JournalEntry', [journal2]);
+      installGameMock([pack1, pack2]);
+      await parser.parseJournalCompendiums();
+    });
+
+    it('should return chunks from all cached compendiums', async () => {
+      const allChunks = await parser.getChunksForEmbeddingAll();
+
+      // Should have chunks from both compendiums
+      const packIds = new Set(allChunks.map(c => c.metadata.packId));
+      expect(packIds.has('test.pack1')).toBe(true);
+      expect(packIds.has('test.pack2')).toBe(true);
+    });
+
+    it('should respect chunk options across all compendiums', async () => {
+      const allChunks = await parser.getChunksForEmbeddingAll({ chunkSize: 1000, overlap: 100 });
+
+      // All chunks should have the compendium source type
+      expect(allChunks.every(c => c.metadata.source === 'compendium')).toBe(true);
+    });
+
+    it('should continue processing even if one compendium fails', async () => {
+      // Clear and manually add a broken entry to the cache
+      parser.clearAllCache();
+
+      // Add a valid compendium
+      const journal = createMockJournalEntry('j1', 'Valid Journal', [
+        { name: 'Page', content: '<p>Valid content.</p>' }
+      ]);
+      const pack = createMockPack('test.valid', 'Valid Pack', 'JournalEntry', [journal]);
+      installGameMock([pack]);
+      await parser._parseCompendiumPack(pack);
+
+      // Manually corrupt the cache to simulate an error scenario
+      parser._cachedContent.set('test.broken', null);
+
+      const allChunks = await parser.getChunksForEmbeddingAll();
+
+      // Should still get chunks from the valid compendium
+      expect(allChunks.length).toBeGreaterThan(0);
+      expect(childLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to chunk'),
+        expect.anything()
+      );
+    });
+
+    it('should return empty array when no compendiums are cached', async () => {
+      parser.clearAllCache();
+
+      const allChunks = await parser.getChunksForEmbeddingAll();
+
+      expect(allChunks).toEqual([]);
+    });
+  });
+
+  describe('_chunkText', () => {
+    it('should return empty array for null/undefined input', () => {
+      expect(parser._chunkText(null)).toEqual([]);
+      expect(parser._chunkText(undefined)).toEqual([]);
+      expect(parser._chunkText('')).toEqual([]);
+    });
+
+    it('should return empty array for whitespace-only input', () => {
+      expect(parser._chunkText('   ')).toEqual([]);
+      expect(parser._chunkText('\n\t  \n')).toEqual([]);
+    });
+
+    it('should return single chunk for text shorter than chunkSize', () => {
+      const result = parser._chunkText('Short text.', 500, 100);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe('Short text.');
+      expect(result[0].startPos).toBe(0);
+      expect(result[0].endPos).toBe(11);
+    });
+
+    it('should split long text into multiple chunks', () => {
+      const text = 'Sentence one. Sentence two. Sentence three. Sentence four.';
+      const result = parser._chunkText(text, 20, 5);
+
+      expect(result.length).toBeGreaterThan(1);
+    });
+
+    it('should normalize whitespace in chunks', () => {
+      const text = 'Multiple   spaces   here.';
+      const result = parser._chunkText(text, 500, 100);
+
+      expect(result[0].text).toBe('Multiple spaces here.');
+    });
+
+    it('should prefer sentence boundaries when chunking', () => {
+      // Use text with clear sentence boundaries and appropriate chunk size
+      const text = 'First sentence here. Second sentence here. Third sentence here.';
+      // With chunk size 30, first chunk should capture "First sentence here."
+      const result = parser._chunkText(text, 30, 5);
+
+      // Verify at least one chunk ends at a sentence boundary
+      const hasChunkEndingAtSentence = result.some(chunk =>
+        chunk.text.endsWith('.') || chunk.text.endsWith('!') || chunk.text.endsWith('?')
+      );
+      expect(hasChunkEndingAtSentence).toBe(true);
+    });
+
+    it('should include overlap between consecutive chunks', () => {
+      const text = 'Word '.repeat(50); // 250 characters
+      const result = parser._chunkText(text, 100, 20);
+
+      if (result.length >= 2) {
+        // Second chunk should start before first chunk ends
+        expect(result[1].startPos).toBeLessThan(result[0].endPos);
+      }
+    });
+
+    it('should never create infinite loops with edge cases', () => {
+      // Very small chunk size
+      const text = 'AAAAAAAAAA BBBBBBBBBB CCCCCCCCCC';
+      const result = parser._chunkText(text, 5, 2);
+
+      // Should complete without hanging
+      expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('_findSentenceBoundary', () => {
+    it('should return text length when targetEnd exceeds text length', () => {
+      const text = 'Short text.';
+      const result = parser._findSentenceBoundary(text, 0, 100, 50);
+
+      expect(result).toBe(text.length);
+    });
+
+    it('should find sentence boundary ending with period', () => {
+      const text = 'First sentence. Second sentence continues.';
+      const result = parser._findSentenceBoundary(text, 0, 20, 20);
+
+      // Should stop at the period position (index 15 is just after the period)
+      expect(result).toBeLessThanOrEqual(16);
+      expect(text[result - 1]).toBe('.');
+    });
+
+    it('should find sentence boundary ending with exclamation mark', () => {
+      const text = 'Hello world! More text here.';
+      const result = parser._findSentenceBoundary(text, 0, 15, 15);
+
+      expect(result).toBeLessThanOrEqual(12);
+      expect(text[result - 1]).toBe('!');
+    });
+
+    it('should find sentence boundary ending with question mark', () => {
+      const text = 'Is this a test? Yes it is.';
+      const result = parser._findSentenceBoundary(text, 0, 18, 18);
+
+      expect(result).toBeLessThanOrEqual(15);
+      expect(text[result - 1]).toBe('?');
+    });
+
+    it('should fallback to word boundary when no sentence boundary found', () => {
+      const text = 'This is a very long sentence without any punctuation within range';
+      const result = parser._findSentenceBoundary(text, 0, 25, 25);
+
+      // Should break at a space rather than mid-word
+      expect(text[result] === ' ' || text[result - 1] === ' ' || result === 25).toBe(true);
+    });
+
+    it('should respect minimum boundary position', () => {
+      const text = 'Short. This is a longer continuation of the text.';
+      // Start at 7 (after "Short. "), min boundary should be past "Short."
+      const result = parser._findSentenceBoundary(text, 7, 30, 20);
+
+      // Should not break before minimum position (7 + 10 = 17)
+      expect(result).toBeGreaterThanOrEqual(17);
+    });
+  });
 });

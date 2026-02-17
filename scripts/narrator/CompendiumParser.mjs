@@ -41,6 +41,30 @@ import { Logger } from '../utils/Logger.mjs';
  */
 
 /**
+ * Represents a text chunk suitable for embedding
+ * @typedef {Object} CompendiumTextChunk
+ * @property {string} text - The chunk text content
+ * @property {Object} metadata - Metadata about the chunk source
+ * @property {string} metadata.source - Source type ('compendium')
+ * @property {string} metadata.packId - The compendium pack ID
+ * @property {string} metadata.packName - The compendium pack name
+ * @property {string} metadata.entryId - The entry ID
+ * @property {string} metadata.entryName - The entry name
+ * @property {string} metadata.entryType - The entry document type
+ * @property {number} metadata.startPos - Start position in the entry text
+ * @property {number} metadata.endPos - End position in the entry text
+ * @property {number} metadata.chunkIndex - Index of this chunk within the entry
+ * @property {number} metadata.totalChunks - Total chunks for this entry
+ */
+
+/**
+ * Options for chunk extraction
+ * @typedef {Object} ChunkOptions
+ * @property {number} [chunkSize=500] - Target characters per chunk
+ * @property {number} [overlap=100] - Overlap characters between chunks
+ */
+
+/**
  * CompendiumParser handles reading and indexing adventure content from
  * Foundry VTT compendiums. It provides content extraction, HTML stripping,
  * keyword-indexed search, and caching functionality for AI grounding.
@@ -499,6 +523,105 @@ export class CompendiumParser {
   }
 
   // ---------------------------------------------------------------------------
+  // Text chunking for embeddings
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Gets text chunks from a compendium pack suitable for embedding.
+   * Chunks are created with overlap for better semantic coherence and break at sentence
+   * boundaries when possible.
+   *
+   * @param {string} packId - The compendium pack ID to extract chunks from
+   * @param {ChunkOptions} [options={}] - Chunking options
+   * @returns {Promise<CompendiumTextChunk[]>} Array of text chunks with metadata
+   * @throws {Error} If the pack is not cached
+   */
+  async getChunksForEmbedding(packId, options = {}) {
+    const cached = this._cachedContent.get(packId);
+    if (!cached) {
+      throw new Error(
+        game.i18n?.format('VOXCHRONICLE.Errors.CompendiumNotCached', { id: packId })
+          ?? `Compendium not cached: ${packId}`
+      );
+    }
+
+    const chunkSize = options.chunkSize || 500;
+    const overlap = options.overlap || 100;
+
+    /** @type {CompendiumTextChunk[]} */
+    const allChunks = [];
+
+    for (const entry of cached.entries) {
+      // Skip entries with no meaningful content
+      if (!entry.text || entry.text.trim().length === 0) {
+        continue;
+      }
+
+      // Chunk the entry text
+      const entryChunks = this._chunkText(entry.text, chunkSize, overlap);
+
+      // Add metadata to each chunk
+      for (let i = 0; i < entryChunks.length; i++) {
+        const chunk = entryChunks[i];
+
+        // Skip empty chunks
+        if (!chunk.text || chunk.text.trim().length === 0) {
+          continue;
+        }
+
+        allChunks.push({
+          text: chunk.text,
+          metadata: {
+            source: 'compendium',
+            packId: cached.id,
+            packName: cached.name,
+            entryId: entry.id,
+            entryName: entry.name,
+            entryType: entry.type,
+            startPos: chunk.startPos,
+            endPos: chunk.endPos,
+            chunkIndex: i,
+            totalChunks: entryChunks.length
+          }
+        });
+      }
+    }
+
+    this._log.debug(
+      `Extracted ${allChunks.length} chunks from compendium "${cached.name}" ` +
+      `(${cached.entries.length} entries, chunkSize=${chunkSize}, overlap=${overlap})`
+    );
+
+    return allChunks;
+  }
+
+  /**
+   * Gets text chunks from all cached compendiums suitable for embedding.
+   * Yields to the event loop between compendiums to prevent UI freeze.
+   *
+   * @param {ChunkOptions} [options={}] - Chunking options
+   * @returns {Promise<CompendiumTextChunk[]>} Array of text chunks with metadata from all compendiums
+   */
+  async getChunksForEmbeddingAll(options = {}) {
+    const allChunks = [];
+
+    for (const [packId] of this._cachedContent) {
+      try {
+        const chunks = await this.getChunksForEmbedding(packId, options);
+        allChunks.push(...chunks);
+        // Yield to the event loop between compendiums
+        await new Promise(resolve => setTimeout(resolve, 0));
+      } catch (error) {
+        this._log.warn(`Failed to chunk compendium "${packId}":`, error);
+      }
+    }
+
+    this._log.debug(`Extracted ${allChunks.length} chunks from ${this._cachedContent.size} compendiums`);
+
+    return allChunks;
+  }
+
+  // ---------------------------------------------------------------------------
   // HTML stripping (public utility)
   // ---------------------------------------------------------------------------
 
@@ -946,5 +1069,127 @@ export class CompendiumParser {
     }
 
     return content;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private: text chunking helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Splits text into overlapping chunks suitable for embedding.
+   * Attempts to break at sentence boundaries when possible for better semantic coherence.
+   *
+   * @param {string} text - The text to chunk
+   * @param {number} [chunkSize=500] - Target characters per chunk
+   * @param {number} [overlap=100] - Overlap characters between chunks
+   * @returns {Array<{text: string, startPos: number, endPos: number}>} Array of chunks with positions
+   * @private
+   */
+  _chunkText(text, chunkSize = 500, overlap = 100) {
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return [];
+    }
+
+    // Normalize whitespace
+    const normalizedText = text.replace(/\s+/g, ' ').trim();
+
+    // If text is shorter than chunk size, return as single chunk
+    if (normalizedText.length <= chunkSize) {
+      return [{
+        text: normalizedText,
+        startPos: 0,
+        endPos: normalizedText.length
+      }];
+    }
+
+    const chunks = [];
+    let startPos = 0;
+
+    while (startPos < normalizedText.length) {
+      // Calculate the target end position
+      const targetEnd = Math.min(startPos + chunkSize, normalizedText.length);
+
+      // Try to find a sentence boundary near the target end
+      let actualEnd = this._findSentenceBoundary(normalizedText, startPos, targetEnd, chunkSize);
+
+      // Extract the chunk text
+      const chunkText = normalizedText.substring(startPos, actualEnd).trim();
+
+      // Only add non-empty chunks
+      if (chunkText.length > 0) {
+        chunks.push({
+          text: chunkText,
+          startPos,
+          endPos: actualEnd
+        });
+      }
+
+      // Move to next position with overlap
+      // Make sure we always make progress to avoid infinite loop
+      const nextStart = actualEnd - overlap;
+      if (nextStart <= startPos) {
+        startPos = actualEnd;
+      } else {
+        startPos = nextStart;
+      }
+
+      // If we've reached the end, break
+      if (actualEnd >= normalizedText.length) {
+        break;
+      }
+    }
+
+    return chunks;
+  }
+
+  /**
+   * Finds the best sentence boundary near the target end position.
+   * Looks for sentence-ending punctuation (.!?) and prefers breaking there.
+   *
+   * @param {string} text - The text to search in
+   * @param {number} startPos - Start position of the current chunk
+   * @param {number} targetEnd - Target end position
+   * @param {number} chunkSize - The chunk size for calculating minimum boundary position
+   * @returns {number} The actual end position (at sentence boundary if found)
+   * @private
+   */
+  _findSentenceBoundary(text, startPos, targetEnd, chunkSize) {
+    // If we're at the end of text, return the text length
+    if (targetEnd >= text.length) {
+      return text.length;
+    }
+
+    // Define minimum position for sentence boundary (at least 50% of chunk size from start)
+    const minBoundaryPos = startPos + Math.floor(chunkSize * 0.5);
+
+    // Look for sentence-ending punctuation followed by space or end
+    // Search backwards from targetEnd to find the last sentence boundary
+    let bestBoundary = -1;
+
+    // Check for sentence endings: . ! ? followed by space or end
+    for (let i = targetEnd; i >= minBoundaryPos; i--) {
+      const char = text[i - 1]; // Check the character before position i
+      const nextChar = text[i] || ' '; // Character at position i (or space if at end)
+
+      // Check for sentence ending punctuation followed by space/end
+      if ((char === '.' || char === '!' || char === '?') && /\s/.test(nextChar)) {
+        bestBoundary = i;
+        break;
+      }
+    }
+
+    // If we found a good sentence boundary, use it
+    if (bestBoundary > 0) {
+      return bestBoundary;
+    }
+
+    // Fallback: try to break at word boundary (space)
+    const lastSpace = text.lastIndexOf(' ', targetEnd);
+    if (lastSpace > minBoundaryPos) {
+      return lastSpace;
+    }
+
+    // Last resort: use the target end position
+    return targetEnd;
   }
 }
