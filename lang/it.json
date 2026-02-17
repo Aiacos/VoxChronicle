@@ -120,7 +120,19 @@
       "ApiRetryMaxDelay": "Ritardo Massimo Retry (ms)",
       "ApiRetryMaxDelayHintVC": "Ritardo massimo tra i tentativi di ripetizione",
       "ApiQueueMaxSize": "Dimensione Coda API",
-      "ApiQueueMaxSizeHintVC": "Numero massimo di richieste API in coda"
+      "ApiQueueMaxSizeHintVC": "Numero massimo di richieste API in coda",
+      "RAGEnabled": "Abilita Ricerca RAG",
+      "RAGEnabledHint": "Usa la Generazione Aumentata da Recupero per migliorare le risposte AI con contesto da journal e compendi",
+      "RAGIndexOnLoad": "Indicizzazione Automatica al Caricamento",
+      "RAGIndexOnLoadHint": "Costruisci automaticamente l'indice RAG quando VoxChronicle si inizializza",
+      "RAGTopResults": "Risultati RAG Principali",
+      "RAGTopResultsHint": "Numero di chunk piu rilevanti da recuperare per il contesto AI (1-20)",
+      "RAGSimilarityThreshold": "Soglia Similarita RAG",
+      "RAGSimilarityThresholdHint": "Punteggio minimo di similarita (0-1) affinche i chunk recuperati vengano inclusi",
+      "RAGChunkSize": "Dimensione Chunk RAG",
+      "RAGChunkSizeHint": "Dimensione dei chunk di testo per l'indicizzazione (200-1000 caratteri)",
+      "RAGChunkOverlap": "Sovrapposizione Chunk RAG",
+      "RAGChunkOverlapHint": "Sovrapposizione tra chunk consecutivi (50-200 caratteri)"
     },
 
     "Panel": {
@@ -174,6 +186,7 @@
       "TabTranscript": "Trascrizione",
       "TabEntities": "Entita",
       "TabAnalytics": "Analitiche",
+      "TabRAG": "Conoscenze",
       "NarrativeBridge": "Ponte Narrativo",
       "Suggestions": "Suggerimenti",
       "NoSuggestionsVC": "Inizia a registrare per ottenere suggerimenti AI",
@@ -594,7 +607,17 @@
       "RulesSearchFailed": "Ricerca regole fallita: {message}",
       "NoCompendiumsAvailable": "Nessun compendio disponibile per la ricerca delle regole",
       "CompendiumAccessDenied": "Accesso al compendio negato",
-      "RateLimitedRetrying": "Limite di velocita raggiunto. Riprovando automaticamente..."
+      "RateLimitedRetrying": "Limite di velocita raggiunto. Riprovando automaticamente...",
+      "RAGIndexingFailed": "Indicizzazione RAG fallita: {error}",
+      "RAGSearchFailed": "Ricerca RAG fallita: {error}",
+      "RAGNoResults": "Nessun contenuto rilevante trovato nell'indice RAG",
+      "RAGEmbeddingFailed": "Generazione embeddings fallita: {error}",
+      "RAGVectorStoreFailed": "Operazione vector store fallita: {error}",
+      "RAGIndexEmpty": "L'indice RAG e vuoto. Costruisci prima l'indice.",
+      "RAGNotInitialized": "Sistema RAG non inizializzato",
+      "RAGChunkingFailed": "Chunking documento fallito: {error}",
+      "RAGInvalidQuery": "Query di ricerca non valida",
+      "RAGStorageFull": "Memoria RAG piena. Cancella alcuni dati o aumenta i limiti."
     },
 
     "Warnings": {
@@ -628,7 +651,12 @@
       "RetryingRequest": "Tentativo {attempt}/{max} per {operation}... attendi {delay}s",
       "RetrySuccess": "{operation} completata dopo {attempts} tentativo/i",
       "RetryFailed": "{operation} fallita dopo {attempts} tentativo/i",
-      "QueueFull": "Coda richieste piena ({size}). Riprova piu tardi."
+      "QueueFull": "Coda richieste piena ({size}). Riprova piu tardi.",
+      "RAGIndexBuilt": "Indice RAG costruito ({chunks} chunk da {documents} documenti)",
+      "RAGIndexUpdated": "Indice RAG aggiornato",
+      "RAGIndexCleared": "Indice RAG cancellato",
+      "RAGSearchComplete": "Trovati {count} chunk di contesto rilevanti",
+      "RAGContextRetrieved": "Contesto recuperato per risposta AI"
     },
 
     "Buttons": {
@@ -657,7 +685,9 @@
       "SpeakerLabels": "Etichette Parlanti",
       "Vocabulary": "Dizionario Vocabolario",
       "RelationshipGraph": "Grafico Relazioni",
-      "Settings": "Impostazioni Modulo"
+      "Settings": "Impostazioni Modulo",
+      "RAGIndex": "Indice Conoscenze RAG",
+      "RAGSearch": "Ricerca RAG"
     },
 
     "UI": {
@@ -689,7 +719,12 @@
       "ExpandRuleAnswer": "Espandi per vedere la risposta completa",
       "CollapseRuleAnswer": "Nascondi risposta completa",
       "DismissRuleAnswer": "Chiudi questa risposta sulle regole",
-      "CopyRuleAnswer": "Copia risposta negli appunti"
+      "CopyRuleAnswer": "Copia risposta negli appunti",
+      "RAGRebuildIndex": "Ricostruisci l'indice RAG da tutti i journal e compendi",
+      "RAGClearIndex": "Cancella l'indice RAG per liberare memoria",
+      "RAGRefreshIndex": "Aggiorna l'indice RAG con i contenuti piu recenti",
+      "RAGSearchContext": "Cerca nella tua base di conoscenze per contesto rilevante",
+      "RAGViewStats": "Visualizza statistiche indice RAG"
     },
 
     "Help": {
@@ -887,6 +922,70 @@
       "Social": "Sociale",
       "Exploration": "Esplorazione",
       "Rest": "Riposo"
+    },
+
+    "RAG": {
+      "Title": "Base di Conoscenze RAG",
+      "Description": "La Generazione Aumentata da Recupero migliora le risposte AI recuperando contesto rilevante dai tuoi journal e compendi.",
+      "IndexStatus": "Stato Indice",
+      "IndexReady": "Indice pronto",
+      "IndexEmpty": "Indice vuoto",
+      "IndexBuilding": "Costruzione indice...",
+      "IndexingJournals": "Indicizzazione journal...",
+      "IndexingCompendiums": "Indicizzazione compendi...",
+      "IndexingDocument": "Indicizzazione: {name}",
+      "IndexComplete": "Indice RAG costruito con successo",
+      "IndexFailed": "Costruzione indice RAG fallita",
+      "IndexCleared": "Indice RAG cancellato",
+      "Searching": "Ricerca nella base di conoscenze...",
+      "SearchComplete": "Ricerca completata",
+      "SearchFailed": "Ricerca fallita",
+      "NoResultsFound": "Nessun contenuto rilevante trovato",
+      "ResultsFound": "{count} chunk rilevanti trovati",
+      "ResultCount": "{count} risultati",
+      "RelevanceScore": "Rilevanza: {score}%",
+      "SourceJournal": "Journal: {name}",
+      "SourceCompendium": "Compendio: {name}",
+      "SourceEntry": "Voce: {name}",
+      "ChunkPreview": "Anteprima",
+      "RebuildIndex": "Ricostruisci Indice",
+      "ClearIndex": "Cancella Indice",
+      "RefreshIndex": "Aggiorna Indice",
+      "IndexingProgress": "Progresso indicizzazione: {current}/{total}",
+      "DocumentsIndexed": "{count} documenti indicizzati",
+      "ChunksIndexed": "{count} chunk indicizzati",
+      "VectorsStored": "{count} vettori memorizzati",
+      "SemanticSearch": "Ricerca Semantica",
+      "KeywordSearch": "Ricerca per Parole Chiave",
+      "HybridSearch": "Ricerca Ibrida",
+      "RetrievalMode": "Modalita Recupero",
+      "SemanticWeight": "Peso semantico: {weight}%",
+      "KeywordWeight": "Peso parole chiave: {weight}%",
+      "RecencyWeight": "Peso recenza: {weight}%",
+      "TopK": "Primi {k} risultati",
+      "SimilarityThreshold": "Similarita minima: {threshold}",
+      "ContextRetrieved": "Contesto recuperato per AI",
+      "NoContextAvailable": "Nessun contesto disponibile per il recupero",
+      "EmbeddingGenerated": "Embedding generato",
+      "EmbeddingFailed": "Generazione embedding fallita",
+      "BatchEmbedding": "Elaborazione batch {current}/{total}",
+      "IndexStats": "Statistiche Indice",
+      "TotalDocuments": "Documenti Totali",
+      "TotalChunks": "Chunk Totali",
+      "TotalVectors": "Vettori Totali",
+      "LastUpdated": "Ultimo Aggiornamento",
+      "MemoryUsage": "Utilizzo Memoria",
+      "CacheHits": "Cache Hit",
+      "CacheMisses": "Cache Miss",
+      "SearchQueries": "Query di Ricerca",
+      "AverageRetrievalTime": "Tempo Medio Recupero",
+      "IncludeJournals": "Includi Journal",
+      "IncludeCompendiums": "Includi Compendi",
+      "FilterByType": "Filtra per Tipo",
+      "ConfirmClearIndex": "Sei sicuro di voler cancellare l'indice RAG? Dovrai ricostruirlo per usare le funzionalita RAG.",
+      "ConfirmRebuildIndex": "Sei sicuro di voler ricostruire l'indice RAG? Potrebbe richiedere alcuni minuti.",
+      "IndexingStarted": "Indicizzazione RAG avviata",
+      "IndexingCancelled": "Indicizzazione RAG annullata"
     }
   }
 }
