@@ -42,17 +42,51 @@ async function getMainPanel() {
 }
 
 /**
- * Toggle the MainPanel open/close.
- * Used as the single scene control tool handler.
+ * Tool handler functions for scene controls.
+ * Each handler opens the corresponding UI panel.
+ * @type {Object<string, Function>}
  */
-async function toggleMainPanel() {
-  const panel = await getMainPanel();
-  if (panel.isRendered) {
-    panel.close();
-  } else {
-    panel.render(true);
+const toolHandlers = {
+  panel: async (active) => {
+    // Only open on activation, not deactivation
+    if (active === false) return;
+    const panel = await getMainPanel();
+    if (panel.isRendered) {
+      panel.close();
+    } else {
+      panel.render(true);
+    }
+  },
+  speakerLabels: async (active) => {
+    if (active === false) return;
+    const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
+    const speakerLabeling = new SpeakerLabeling();
+    speakerLabeling.render(true, { focus: true });
+  },
+  vocabulary: async (active) => {
+    if (active === false) return;
+    const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
+    const vocabularyManager = new VocabularyManager();
+    vocabularyManager.render(true, { focus: true });
+  },
+  relationshipGraph: async (active) => {
+    if (active === false) return;
+    const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
+    const graph = new RelationshipGraph();
+    graph.render(true, { focus: true });
+  },
+  settings: (active) => {
+    if (active === false) return;
+    // Use namespaced class for v13 compatibility, fallback for v12
+    const SettingsApp = foundry?.applications?.settings?.SettingsConfig ?? SettingsConfig;
+    const app = new SettingsApp();
+    app.render(true, { focus: true });
+    setTimeout(() => {
+      const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
+      if (section) section.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   }
-}
+};
 
 /**
  * Initialize module - called when Foundry VTT initializes
@@ -170,7 +204,39 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Panel',
         order: 0,
         button: true,
-        onChange: toggleMainPanel
+        onChange: toolHandlers.panel
+      },
+      speakerLabels: {
+        name: 'speakerLabels',
+        icon: 'fa-solid fa-users',
+        title: 'VOXCHRONICLE.Controls.SpeakerLabels',
+        order: 1,
+        button: true,
+        onChange: toolHandlers.speakerLabels
+      },
+      vocabulary: {
+        name: 'vocabulary',
+        icon: 'fa-solid fa-book',
+        title: 'VOXCHRONICLE.Controls.Vocabulary',
+        order: 2,
+        button: true,
+        onChange: toolHandlers.vocabulary
+      },
+      relationshipGraph: {
+        name: 'relationshipGraph',
+        icon: 'fa-solid fa-project-diagram',
+        title: 'VOXCHRONICLE.Controls.RelationshipGraph',
+        order: 3,
+        button: true,
+        onChange: toolHandlers.relationshipGraph
+      },
+      settings: {
+        name: 'settings',
+        icon: 'fa-solid fa-cog',
+        title: 'VOXCHRONICLE.Controls.Settings',
+        order: 4,
+        button: true,
+        onChange: toolHandlers.settings
       }
     }
   };

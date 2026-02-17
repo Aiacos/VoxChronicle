@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-02-17
+
+### Fixed
+- **RAG Index always showing "Empty"** — `_getRAGData()` checked `indexStatus.documentCount` but `RAGRetriever.getIndexStatus()` returns `vectorCount`; status now correctly shows "Ready" after indexing
+- **RAG Memory Usage always "0 KB"** — `_getRAGData()` read `stats.storageSizeBytes` but `RAGVectorStore.getStats()` returns `estimatedSizeBytes`
+- **RAG Build Index did nothing** — `_handleRAGBuildIndex()` passed `{ onProgress }` as first arg to `buildIndex(journalIds, packIds, options)`, so no journals or compendiums were ever indexed; now collects all journal and compendium IDs from Foundry
+- **Panel reopening when clicking other controls** — `onChange` handler now checks the `active` parameter to prevent firing on deactivation
+- **Sub-menu icons restored** — re-added Speaker Labels, Vocabulary, Relationship Graph, and Settings tools to scene controls
+- **Deprecated SettingsConfig global** — settings handler now uses `foundry.applications.settings.SettingsConfig` with v12 fallback
+
 ## [2.2.0] - 2026-02-17
 
 ### Fixed

@@ -164,7 +164,7 @@ class MainPanel extends Application {
     if (ragRetriever) {
       // Get status from RAGRetriever
       const indexStatus = ragRetriever.getIndexStatus?.() || {};
-      status = indexStatus.isIndexing ? 'indexing' : (indexStatus.documentCount > 0 ? 'indexed' : 'idle');
+      status = indexStatus.isIndexing ? 'indexing' : (indexStatus.vectorCount > 0 ? 'indexed' : 'idle');
       progress = indexStatus.progress || 0;
       progressText = indexStatus.progressText || '';
     }
@@ -173,7 +173,7 @@ class MainPanel extends Application {
       // Get stats from RAGVectorStore
       const stats = ragVectorStore.getStats?.() || {};
       vectorCount = stats.vectorCount || 0;
-      storageUsage = this._formatStorageSize(stats.storageSizeBytes || 0);
+      storageUsage = this._formatStorageSize(stats.estimatedSizeBytes || 0);
     }
 
     // Get last indexed time from settings metadata
@@ -466,10 +466,16 @@ class MainPanel extends Application {
     try {
       this._logger.info('Starting RAG index build');
 
-      // Build index with progress callback
-      await ragRetriever.buildIndex({
-        onProgress: (progress, text) => {
-          this._logger.debug(`Index progress: ${progress}% - ${text}`);
+      // Collect all available journal IDs and compendium pack IDs
+      const journalIds = (game?.journal?.map(j => j.id)) || [];
+      const packIds = (game?.packs?.map(p => p.collection)) || [];
+
+      this._logger.info(`Building index from ${journalIds.length} journals, ${packIds.length} compendiums`);
+
+      // Build index with collected IDs and progress callback
+      await ragRetriever.buildIndex(journalIds, packIds, {
+        onProgress: (progress, total, text) => {
+          this._logger.debug(`Index progress: ${progress}/${total} - ${text}`);
           this.requestRender();
         }
       });
