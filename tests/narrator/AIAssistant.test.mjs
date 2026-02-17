@@ -970,4 +970,357 @@ describe('AIAssistant', () => {
       expect(MAX_CONTEXT_TOKENS).toBe(8000);
     });
   });
+
+  // =========================================================================
+  // RAG Integration
+  // =========================================================================
+
+  describe('RAG integration', () => {
+    /**
+     * Creates a mock RAGRetriever with configurable behavior
+     */
+    function createMockRAGRetriever(options = {}) {
+      return {
+        isConfigured: vi.fn().mockReturnValue(options.isConfigured ?? true),
+        hasKeywordFallback: vi.fn().mockReturnValue(options.hasKeywordFallback ?? true),
+        hasIndex: vi.fn().mockReturnValue(options.hasIndex ?? true),
+        retrieveForAI: vi.fn().mockResolvedValue(options.retrieveResult ?? {
+          context: '[Test Journal > Test Page]\nRelevant content about the dungeon entrance.\n\n',
+          sources: ['[Test Journal > Test Page]']
+        })
+      };
+    }
+
+    describe('setRAGRetriever', () => {
+      it('should set the RAG retriever', () => {
+        const mockRetriever = createMockRAGRetriever();
+        assistant.setRAGRetriever(mockRetriever);
+        expect(assistant.getRAGRetriever()).toBe(mockRetriever);
+      });
+
+      it('should clear cached RAG context when retriever changes', () => {
+        assistant._cachedRAGContext = { context: 'old', sources: [] };
+        assistant.setRAGRetriever(createMockRAGRetriever());
+        expect(assistant.getCachedRAGContext()).toBeNull();
+      });
+    });
+
+    describe('isRAGConfigured', () => {
+      it('should return false when no RAG retriever is set', () => {
+        expect(assistant.isRAGConfigured()).toBe(false);
+      });
+
+      it('should return false when RAG is disabled via setUseRAG', () => {
+        assistant.setRAGRetriever(createMockRAGRetriever());
+        assistant.setUseRAG(false);
+        expect(assistant.isRAGConfigured()).toBe(false);
+      });
+
+      it('should return false when retriever has no index', () => {
+        assistant.setRAGRetriever(createMockRAGRetriever({ hasIndex: false }));
+        expect(assistant.isRAGConfigured()).toBe(false);
+      });
+
+      it('should return true when retriever is configured with index', () => {
+        assistant.setRAGRetriever(createMockRAGRetriever({
+          isConfigured: true,
+          hasIndex: true
+        }));
+        expect(assistant.isRAGConfigured()).toBe(true);
+      });
+
+      it('should return true when retriever has keyword fallback and index', () => {
+        assistant.setRAGRetriever(createMockRAGRetriever({
+          isConfigured: false,
+          hasKeywordFallback: true,
+          hasIndex: true
+        }));
+        expect(assistant.isRAGConfigured()).toBe(true);
+      });
+    });
+
+    describe('RAG context retrieval in analyzeContext', () => {
+      it('should use RAG context when configured', async () => {
+        const mockRetriever = createMockRAGRetriever({
+          retrieveResult: {
+            context: '[Adventure Journal > Chapter 1]\nThe heroes enter the ancient dungeon.',
+            sources: ['[Adventure Journal > Chapter 1]']
+          }
+        });
+        assistant.setRAGRetriever(mockRetriever);
+
+        await assistant.analyzeContext('We enter the dungeon');
+
+        expect(mockRetriever.retrieveForAI).toHaveBeenCalledWith(
+          'We enter the dungeon',
+          expect.objectContaining({ maxResults: 5, maxChars: 5000 })
+        );
+
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const contextMsg = callArgs.messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+        expect(contextMsg).toBeDefined();
+        expect(contextMsg.content).toContain('RELEVANT SOURCES');
+        expect(contextMsg.content).toContain('Adventure Journal > Chapter 1');
+      });
+
+      it('should fall back to adventure context when RAG retrieval returns empty', async () => {
+        const mockRetriever = createMockRAGRetriever({
+          retrieveResult: { context: '', sources: [] }
+        });
+        assistant.setRAGRetriever(mockRetriever);
+        assistant.setAdventureContext('The ancient dungeon awaits...');
+
+        await assistant.analyzeContext('Test');
+
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const contextMsg = callArgs.messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+        expect(contextMsg.content).toContain('ancient dungeon awaits');
+        expect(contextMsg.content).not.toContain('RELEVANT SOURCES');
+      });
+
+      it('should fall back to adventure context when RAG retrieval fails', async () => {
+        const mockRetriever = createMockRAGRetriever();
+        mockRetriever.retrieveForAI.mockRejectedValue(new Error('Embedding API error'));
+        assistant.setRAGRetriever(mockRetriever);
+        assistant.setAdventureContext('Fallback adventure context');
+
+        await assistant.analyzeContext('Test');
+
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const contextMsg = callArgs.messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+        expect(contextMsg.content).toContain('Fallback adventure context');
+      });
+
+      it('should use adventure context when RAG is not configured', async () => {
+        assistant.setAdventureContext('Non-RAG adventure context');
+
+        await assistant.analyzeContext('Test');
+
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const contextMsg = callArgs.messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+        expect(contextMsg.content).toContain('Non-RAG adventure context');
+      });
+
+      it('should cache RAG context after retrieval', async () => {
+        const mockRetriever = createMockRAGRetriever({
+          retrieveResult: {
+            context: 'Cached content',
+            sources: ['[Source 1]', '[Source 2]']
+          }
+        });
+        assistant.setRAGRetriever(mockRetriever);
+
+        await assistant.analyzeContext('Test');
+
+        const cached = assistant.getCachedRAGContext();
+        expect(cached).toEqual({
+          context: 'Cached content',
+          sources: ['[Source 1]', '[Source 2]']
+        });
+      });
+    });
+
+    describe('RAG context in detectOffTrack', () => {
+      it('should use RAG context for off-track detection', async () => {
+        const mockRetriever = createMockRAGRetriever({
+          retrieveResult: {
+            context: '[Adventure > Plot]\nThe heroes should investigate the temple.',
+            sources: ['[Adventure > Plot]']
+          }
+        });
+        assistant.setRAGRetriever(mockRetriever);
+
+        const offTrackResponse = createApiResponse({
+          isOffTrack: true,
+          severity: 0.7,
+          reason: 'Players are discussing unrelated topics'
+        });
+        mockClient.post.mockResolvedValue(offTrackResponse);
+
+        await assistant.detectOffTrack('What should we have for dinner?');
+
+        expect(mockRetriever.retrieveForAI).toHaveBeenCalled();
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const contextMsg = callArgs.messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+        expect(contextMsg.content).toContain('RELEVANT SOURCES');
+      });
+
+      it('should allow off-track detection with only RAG (no adventure context)', async () => {
+        const mockRetriever = createMockRAGRetriever();
+        assistant.setRAGRetriever(mockRetriever);
+        // Don't set adventure context
+
+        const offTrackResponse = createApiResponse({
+          isOffTrack: false,
+          severity: 0,
+          reason: 'On track'
+        });
+        mockClient.post.mockResolvedValue(offTrackResponse);
+
+        const result = await assistant.detectOffTrack('Test');
+
+        expect(mockClient.post).toHaveBeenCalled();
+        expect(result.reason).toBe('On track');
+      });
+    });
+
+    describe('RAG context in generateSuggestions', () => {
+      it('should use RAG context for suggestions', async () => {
+        const mockRetriever = createMockRAGRetriever({
+          retrieveResult: {
+            context: '[NPC Guide > Tavern Keeper]\nGreta is a friendly innkeeper.',
+            sources: ['[NPC Guide > Tavern Keeper]']
+          }
+        });
+        assistant.setRAGRetriever(mockRetriever);
+
+        const response = createApiResponse({
+          suggestions: [
+            { type: 'dialogue', content: 'Welcome travelers!', confidence: 0.9 }
+          ]
+        });
+        mockClient.post.mockResolvedValue(response);
+
+        await assistant.generateSuggestions('We speak to the innkeeper');
+
+        expect(mockRetriever.retrieveForAI).toHaveBeenCalled();
+        const callArgs = mockClient.post.mock.calls[0][1];
+        const contextMsg = callArgs.messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+        expect(contextMsg.content).toContain('Greta');
+      });
+    });
+
+    describe('RAG context in generateNarrativeBridge', () => {
+      it('should use RAG context for narrative bridge', async () => {
+        const mockRetriever = createMockRAGRetriever({
+          retrieveResult: {
+            context: '[Locations > Temple]\nThe ancient temple holds many secrets.',
+            sources: ['[Locations > Temple]']
+          }
+        });
+        assistant.setRAGRetriever(mockRetriever);
+
+        const response = {
+          choices: [{
+            message: {
+              content: 'A mysterious light emanates from the temple entrance...'
+            }
+          }]
+        };
+        mockClient.post.mockResolvedValue(response);
+
+        await assistant.generateNarrativeBridge('Players are shopping', 'The ancient temple');
+
+        expect(mockRetriever.retrieveForAI).toHaveBeenCalledWith(
+          'Players are shopping The ancient temple',
+          expect.any(Object)
+        );
+      });
+    });
+
+    describe('_formatRAGContext', () => {
+      it('should format RAG context with sources header', () => {
+        const ragResult = {
+          context: 'Retrieved content from journals.',
+          sources: ['[Journal A > Page 1]', '[Journal B > Page 2]']
+        };
+
+        const formatted = assistant._formatRAGContext(ragResult);
+
+        expect(formatted).toContain('RELEVANT SOURCES: [Journal A > Page 1], [Journal B > Page 2]');
+        expect(formatted).toContain('---');
+        expect(formatted).toContain('Retrieved content from journals.');
+      });
+
+      it('should return context without header when no sources', () => {
+        const ragResult = {
+          context: 'Just some content.',
+          sources: []
+        };
+
+        const formatted = assistant._formatRAGContext(ragResult);
+
+        expect(formatted).toBe('Just some content.');
+        expect(formatted).not.toContain('RELEVANT SOURCES');
+      });
+
+      it('should return empty string for null ragResult', () => {
+        expect(assistant._formatRAGContext(null)).toBe('');
+        expect(assistant._formatRAGContext({})).toBe('');
+        expect(assistant._formatRAGContext({ context: '' })).toBe('');
+      });
+    });
+
+    describe('RAG configuration options', () => {
+      it('should accept RAG options in constructor', () => {
+        const a = new AIAssistant({
+          openaiClient: mockClient,
+          ragRetriever: createMockRAGRetriever(),
+          useRAG: true,
+          ragMaxResults: 10,
+          ragMaxChars: 8000
+        });
+
+        const stats = a.getStats();
+        expect(stats.ragEnabled).toBe(true);
+        expect(stats.ragMaxResults).toBe(10);
+        expect(stats.ragMaxChars).toBe(8000);
+      });
+
+      it('should toggle RAG usage via setUseRAG', () => {
+        assistant.setRAGRetriever(createMockRAGRetriever());
+        expect(assistant.getUseRAG()).toBe(true);
+
+        assistant.setUseRAG(false);
+        expect(assistant.getUseRAG()).toBe(false);
+        expect(assistant.isRAGConfigured()).toBe(false);
+
+        assistant.setUseRAG(true);
+        expect(assistant.getUseRAG()).toBe(true);
+      });
+    });
+
+    describe('RAG stats', () => {
+      it('should include RAG stats in getStats', () => {
+        const stats = assistant.getStats();
+
+        expect(stats).toHaveProperty('ragConfigured');
+        expect(stats).toHaveProperty('ragEnabled');
+        expect(stats).toHaveProperty('ragMaxResults');
+        expect(stats).toHaveProperty('ragMaxChars');
+        expect(stats).toHaveProperty('ragHasCachedContext');
+        expect(stats).toHaveProperty('ragCachedSourceCount');
+      });
+
+      it('should report cached RAG context stats', async () => {
+        const mockRetriever = createMockRAGRetriever({
+          retrieveResult: {
+            context: 'Some content',
+            sources: ['[S1]', '[S2]', '[S3]']
+          }
+        });
+        assistant.setRAGRetriever(mockRetriever);
+
+        await assistant.analyzeContext('Test');
+
+        const stats = assistant.getStats();
+        expect(stats.ragHasCachedContext).toBe(true);
+        expect(stats.ragCachedSourceCount).toBe(3);
+      });
+    });
+
+    describe('RAG with session reset', () => {
+      it('should clear RAG cache on session reset', async () => {
+        const mockRetriever = createMockRAGRetriever();
+        assistant.setRAGRetriever(mockRetriever);
+
+        await assistant.analyzeContext('Test');
+        expect(assistant.getCachedRAGContext()).not.toBeNull();
+
+        assistant.resetSession();
+
+        expect(assistant.getCachedRAGContext()).toBeNull();
+      });
+    });
+  });
 });
