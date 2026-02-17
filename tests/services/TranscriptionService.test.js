@@ -265,7 +265,7 @@ describe('TranscriptionService', () => {
       expect(formData.get('language')).toBe('it');
     });
 
-    it('should include prompt when specified', async () => {
+    it('should NOT include prompt when using diarization model (default)', async () => {
       const audioBlob = createMockAudioBlob(1024);
       const mockResponse = createMockTranscriptionResponse();
 
@@ -277,7 +277,60 @@ describe('TranscriptionService', () => {
       await service.transcribe(audioBlob, { prompt: 'RPG session context' });
 
       const formData = mockFetch.mock.calls[0][1].body;
+      // Diarization model does NOT support the prompt parameter (400 error from OpenAI)
+      expect(formData.get('prompt')).toBeNull();
+    });
+
+    it('should include prompt when using non-diarization model (whisper-1)', async () => {
+      const audioBlob = createMockAudioBlob(1024);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ text: 'Whisper transcription' })
+      });
+
+      await service.transcribe(audioBlob, {
+        model: TranscriptionModel.WHISPER,
+        responseFormat: TranscriptionResponseFormat.JSON,
+        prompt: 'RPG session context'
+      });
+
+      const formData = mockFetch.mock.calls[0][1].body;
       expect(formData.get('prompt')).toBe('RPG session context');
+    });
+
+    it('should include prompt when using gpt-4o-transcribe (non-diarize)', async () => {
+      const audioBlob = createMockAudioBlob(1024);
+      const mockResponse = createMockTranscriptionResponse();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      await service.transcribe(audioBlob, {
+        model: TranscriptionModel.GPT4O,
+        prompt: 'RPG session context'
+      });
+
+      const formData = mockFetch.mock.calls[0][1].body;
+      expect(formData.get('prompt')).toBe('RPG session context');
+    });
+
+    it('should not generate vocabulary prompt for diarization model', async () => {
+      const audioBlob = createMockAudioBlob(1024);
+      const mockResponse = createMockTranscriptionResponse();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      // Default model is diarization - vocabulary prompt should be skipped
+      await service.transcribe(audioBlob);
+
+      const formData = mockFetch.mock.calls[0][1].body;
+      expect(formData.get('prompt')).toBeNull();
     });
 
     it('should return parsed transcription result', async () => {

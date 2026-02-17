@@ -194,8 +194,13 @@ class TranscriptionService extends OpenAIClient {
       this._logger.warn('Audio blob may not be valid, attempting transcription anyway');
     }
 
-    // If no custom prompt provided, generate one from vocabulary dictionary
-    if (!options.prompt) {
+    // If no custom prompt provided, generate one from vocabulary dictionary.
+    // NOTE: The diarization model (gpt-4o-transcribe-diarize) does NOT support
+    // the prompt parameter — OpenAI returns HTTP 400 if it's included.
+    const effectiveModel = options.model || TranscriptionModel.GPT4O_DIARIZE;
+    const isDiarizeModel = effectiveModel === TranscriptionModel.GPT4O_DIARIZE;
+
+    if (!options.prompt && !isDiarizeModel) {
       try {
         const vocabularyDict = new VocabularyDictionary();
         const vocabularyPrompt = vocabularyDict.generatePrompt();
@@ -211,6 +216,9 @@ class TranscriptionService extends OpenAIClient {
           error.message
         );
       }
+    } else if (isDiarizeModel && options.prompt) {
+      this._logger.debug('Prompt parameter stripped — not supported by diarization model');
+      delete options.prompt;
     }
 
     try {
@@ -287,8 +295,8 @@ class TranscriptionService extends OpenAIClient {
       this._logger.debug('Multi-language mode: language parameter omitted for auto-detection');
     }
 
-    // Optional: context prompt
-    if (options.prompt) {
+    // Optional: context prompt (NOT supported by diarization models)
+    if (options.prompt && model !== TranscriptionModel.GPT4O_DIARIZE) {
       formData.append('prompt', options.prompt);
     }
 

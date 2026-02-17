@@ -650,7 +650,7 @@ describe('Transcription Flow Integration', () => {
       expect(formData.get('model')).toBe('gpt-4o-transcribe-diarize');
     });
 
-    it('should support prompt hints for better accuracy', async () => {
+    it('should support prompt hints for better accuracy (non-diarize models)', async () => {
       const mockResponse = createMockTranscriptionResponse();
 
       mockFetch.mockResolvedValueOnce({
@@ -663,12 +663,34 @@ describe('Transcription Flow Integration', () => {
 
       const prompt = 'This is a fantasy RPG session with magic spells and dragons.';
 
+      // Prompt is only supported by non-diarization models
       await transcriptionService.transcribe(audioBlob, {
+        model: 'gpt-4o-transcribe',
         prompt: prompt
       });
 
       const formData = mockFetch.mock.calls[0][1].body;
       expect(formData.get('prompt')).toBe(prompt);
+    });
+
+    it('should strip prompt when using diarization model', async () => {
+      const mockResponse = createMockTranscriptionResponse();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      });
+
+      await audioRecorder.startRecording();
+      const audioBlob = await audioRecorder.stopRecording();
+
+      await transcriptionService.transcribe(audioBlob, {
+        prompt: 'This should be stripped'
+      });
+
+      const formData = mockFetch.mock.calls[0][1].body;
+      expect(formData.get('model')).toBe('gpt-4o-transcribe-diarize');
+      expect(formData.get('prompt')).toBeNull();
     });
   });
 
