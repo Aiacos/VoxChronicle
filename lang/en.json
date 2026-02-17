@@ -120,7 +120,19 @@
       "ApiRetryMaxDelay": "Retry Max Delay (ms)",
       "ApiRetryMaxDelayHintVC": "Maximum delay between retry attempts",
       "ApiQueueMaxSize": "API Queue Size",
-      "ApiQueueMaxSizeHintVC": "Maximum number of API requests that can be queued"
+      "ApiQueueMaxSizeHintVC": "Maximum number of API requests that can be queued",
+      "RAGEnabled": "Enable RAG Search",
+      "RAGEnabledHint": "Use Retrieval-Augmented Generation to enhance AI responses with context from journals and compendiums",
+      "RAGIndexOnLoad": "Auto-Index on Load",
+      "RAGIndexOnLoadHint": "Automatically build the RAG index when VoxChronicle initializes",
+      "RAGTopResults": "RAG Top Results",
+      "RAGTopResultsHint": "Number of most relevant chunks to retrieve for AI context (1-20)",
+      "RAGSimilarityThreshold": "RAG Similarity Threshold",
+      "RAGSimilarityThresholdHint": "Minimum similarity score (0-1) for retrieved chunks to be included",
+      "RAGChunkSize": "RAG Chunk Size",
+      "RAGChunkSizeHint": "Size of text chunks for indexing (200-1000 characters)",
+      "RAGChunkOverlap": "RAG Chunk Overlap",
+      "RAGChunkOverlapHint": "Overlap between consecutive chunks (50-200 characters)"
     },
 
     "Panel": {
@@ -174,6 +186,7 @@
       "TabTranscript": "Transcript",
       "TabEntities": "Entities",
       "TabAnalytics": "Analytics",
+      "TabRAG": "Knowledge",
       "NarrativeBridge": "Narrative Bridge",
       "Suggestions": "Suggestions",
       "NoSuggestionsVC": "Start recording to get AI suggestions",
@@ -594,7 +607,17 @@
       "RulesSearchFailed": "Rules search failed: {message}",
       "NoCompendiumsAvailable": "No compendia available for rules search",
       "CompendiumAccessDenied": "Compendium access denied",
-      "RateLimitedRetrying": "Rate limit reached. Retrying automatically..."
+      "RateLimitedRetrying": "Rate limit reached. Retrying automatically...",
+      "RAGIndexingFailed": "RAG indexing failed: {error}",
+      "RAGSearchFailed": "RAG search failed: {error}",
+      "RAGNoResults": "No relevant content found in RAG index",
+      "RAGEmbeddingFailed": "Failed to generate embeddings: {error}",
+      "RAGVectorStoreFailed": "Vector store operation failed: {error}",
+      "RAGIndexEmpty": "RAG index is empty. Please build the index first.",
+      "RAGNotInitialized": "RAG system not initialized",
+      "RAGChunkingFailed": "Failed to chunk document: {error}",
+      "RAGInvalidQuery": "Invalid search query",
+      "RAGStorageFull": "RAG storage is full. Clear some data or increase limits."
     },
 
     "Warnings": {
@@ -628,7 +651,12 @@
       "RetryingRequest": "Attempt {attempt}/{max} for {operation}... waiting {delay}s",
       "RetrySuccess": "{operation} completed after {attempts} attempt(s)",
       "RetryFailed": "{operation} failed after {attempts} attempt(s)",
-      "QueueFull": "Request queue full ({size}). Try again later."
+      "QueueFull": "Request queue full ({size}). Try again later.",
+      "RAGIndexBuilt": "RAG index built ({chunks} chunks from {documents} documents)",
+      "RAGIndexUpdated": "RAG index updated",
+      "RAGIndexCleared": "RAG index cleared",
+      "RAGSearchComplete": "Found {count} relevant context chunks",
+      "RAGContextRetrieved": "Retrieved context for AI response"
     },
 
     "Buttons": {
@@ -657,7 +685,9 @@
       "SpeakerLabels": "Speaker Labels",
       "Vocabulary": "Vocabulary Dictionary",
       "RelationshipGraph": "Relationship Graph",
-      "Settings": "Module Settings"
+      "Settings": "Module Settings",
+      "RAGIndex": "RAG Knowledge Index",
+      "RAGSearch": "RAG Search"
     },
 
     "UI": {
@@ -689,7 +719,12 @@
       "ExpandRuleAnswer": "Expand to see full answer",
       "CollapseRuleAnswer": "Hide full answer",
       "DismissRuleAnswer": "Dismiss this rules answer",
-      "CopyRuleAnswer": "Copy answer to clipboard"
+      "CopyRuleAnswer": "Copy answer to clipboard",
+      "RAGRebuildIndex": "Rebuild the RAG index from all journals and compendiums",
+      "RAGClearIndex": "Clear the RAG index to free up memory",
+      "RAGRefreshIndex": "Refresh the RAG index with latest content",
+      "RAGSearchContext": "Search your knowledge base for relevant context",
+      "RAGViewStats": "View RAG index statistics"
     },
 
     "Help": {
@@ -887,6 +922,70 @@
       "Social": "Social",
       "Exploration": "Exploration",
       "Rest": "Rest"
+    },
+
+    "RAG": {
+      "Title": "RAG Knowledge Base",
+      "Description": "Retrieval-Augmented Generation enhances AI responses by retrieving relevant context from your journals and compendiums.",
+      "IndexStatus": "Index Status",
+      "IndexReady": "Index ready",
+      "IndexEmpty": "Index empty",
+      "IndexBuilding": "Building index...",
+      "IndexingJournals": "Indexing journals...",
+      "IndexingCompendiums": "Indexing compendiums...",
+      "IndexingDocument": "Indexing: {name}",
+      "IndexComplete": "RAG index built successfully",
+      "IndexFailed": "Failed to build RAG index",
+      "IndexCleared": "RAG index cleared",
+      "Searching": "Searching knowledge base...",
+      "SearchComplete": "Search complete",
+      "SearchFailed": "Search failed",
+      "NoResultsFound": "No relevant content found",
+      "ResultsFound": "{count} relevant chunks found",
+      "ResultCount": "{count} results",
+      "RelevanceScore": "Relevance: {score}%",
+      "SourceJournal": "Journal: {name}",
+      "SourceCompendium": "Compendium: {name}",
+      "SourceEntry": "Entry: {name}",
+      "ChunkPreview": "Preview",
+      "RebuildIndex": "Rebuild Index",
+      "ClearIndex": "Clear Index",
+      "RefreshIndex": "Refresh Index",
+      "IndexingProgress": "Indexing progress: {current}/{total}",
+      "DocumentsIndexed": "{count} documents indexed",
+      "ChunksIndexed": "{count} chunks indexed",
+      "VectorsStored": "{count} vectors stored",
+      "SemanticSearch": "Semantic Search",
+      "KeywordSearch": "Keyword Search",
+      "HybridSearch": "Hybrid Search",
+      "RetrievalMode": "Retrieval Mode",
+      "SemanticWeight": "Semantic weight: {weight}%",
+      "KeywordWeight": "Keyword weight: {weight}%",
+      "RecencyWeight": "Recency weight: {weight}%",
+      "TopK": "Top {k} results",
+      "SimilarityThreshold": "Minimum similarity: {threshold}",
+      "ContextRetrieved": "Context retrieved for AI",
+      "NoContextAvailable": "No context available for retrieval",
+      "EmbeddingGenerated": "Embedding generated",
+      "EmbeddingFailed": "Failed to generate embedding",
+      "BatchEmbedding": "Processing batch {current}/{total}",
+      "IndexStats": "Index Statistics",
+      "TotalDocuments": "Total Documents",
+      "TotalChunks": "Total Chunks",
+      "TotalVectors": "Total Vectors",
+      "LastUpdated": "Last Updated",
+      "MemoryUsage": "Memory Usage",
+      "CacheHits": "Cache Hits",
+      "CacheMisses": "Cache Misses",
+      "SearchQueries": "Search Queries",
+      "AverageRetrievalTime": "Avg. Retrieval Time",
+      "IncludeJournals": "Include Journals",
+      "IncludeCompendiums": "Include Compendiums",
+      "FilterByType": "Filter by Type",
+      "ConfirmClearIndex": "Are you sure you want to clear the RAG index? You will need to rebuild it to use RAG features.",
+      "ConfirmRebuildIndex": "Are you sure you want to rebuild the RAG index? This may take a few minutes.",
+      "IndexingStarted": "RAG indexing started",
+      "IndexingCancelled": "RAG indexing cancelled"
     }
   }
 }
