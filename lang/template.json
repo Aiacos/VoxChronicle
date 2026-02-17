@@ -131,7 +131,21 @@
       "RAGChunkSize": "",
       "RAGChunkSizeHint": "",
       "RAGChunkOverlap": "",
-      "RAGChunkOverlapHint": ""
+      "RAGChunkOverlapHint": "",
+      "RAGAutoIndex": "",
+      "RAGAutoIndexHint": "",
+      "RAGEmbeddingModel": "",
+      "RAGEmbeddingModelHint": "",
+      "RAGEmbeddingModelSmall": "",
+      "RAGEmbeddingModelLarge": "",
+      "RAGEmbeddingDimensions": "",
+      "RAGEmbeddingDimensionsHint": "",
+      "RAGMaxResults": "",
+      "RAGMaxResultsHint": "",
+      "RAGStorageLimit": "",
+      "RAGStorageLimitHint": "",
+      "RAGSilenceThreshold": "",
+      "RAGSilenceThresholdHint": ""
     },
     "Panel": {
       "Title": "",
@@ -947,7 +961,9 @@
       "ConfirmClearIndex": "",
       "ConfirmRebuildIndex": "",
       "IndexingStarted": "",
-      "IndexingCancelled": ""
+      "IndexingCancelled": "",
+      "Disabled": "",
+      "EnableHint": ""
     }
   }
 }

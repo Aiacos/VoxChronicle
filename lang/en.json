@@ -132,7 +132,21 @@
       "RAGChunkSize": "RAG Chunk Size",
       "RAGChunkSizeHint": "Size of text chunks for indexing (200-1000 characters)",
       "RAGChunkOverlap": "RAG Chunk Overlap",
-      "RAGChunkOverlapHint": "Overlap between consecutive chunks (50-200 characters)"
+      "RAGChunkOverlapHint": "Overlap between consecutive chunks (50-200 characters)",
+      "RAGAutoIndex": "Auto-Index on Change",
+      "RAGAutoIndexHint": "Automatically rebuild RAG index when journal content changes",
+      "RAGEmbeddingModel": "Embedding Model",
+      "RAGEmbeddingModelHint": "OpenAI model used for generating embeddings",
+      "RAGEmbeddingModelSmall": "text-embedding-3-small (faster, cheaper)",
+      "RAGEmbeddingModelLarge": "text-embedding-3-large (higher quality)",
+      "RAGEmbeddingDimensions": "Embedding Dimensions",
+      "RAGEmbeddingDimensionsHint": "Vector dimensions (512/1024/1536). Lower is faster, higher is more accurate",
+      "RAGMaxResults": "Maximum Results",
+      "RAGMaxResultsHint": "Maximum number of context chunks to retrieve per query (1-20)",
+      "RAGStorageLimit": "Storage Limit (MB)",
+      "RAGStorageLimitHint": "Maximum IndexedDB storage for vector embeddings (10-500 MB)",
+      "RAGSilenceThreshold": "Silence Detection Threshold",
+      "RAGSilenceThresholdHint": "Time in milliseconds before triggering autonomous suggestion (10-120 seconds)"
     },
 
     "Panel": {
@@ -985,7 +999,9 @@
       "ConfirmClearIndex": "Are you sure you want to clear the RAG index? You will need to rebuild it to use RAG features.",
       "ConfirmRebuildIndex": "Are you sure you want to rebuild the RAG index? This may take a few minutes.",
       "IndexingStarted": "RAG indexing started",
-      "IndexingCancelled": "RAG indexing cancelled"
+      "IndexingCancelled": "RAG indexing cancelled",
+      "Disabled": "Disabled",
+      "EnableHint": "Enable RAG in module settings to use these features"
     }
   }
 }

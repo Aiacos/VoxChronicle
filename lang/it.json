@@ -132,7 +132,21 @@
       "RAGChunkSize": "Dimensione Chunk RAG",
       "RAGChunkSizeHint": "Dimensione dei chunk di testo per l'indicizzazione (200-1000 caratteri)",
       "RAGChunkOverlap": "Sovrapposizione Chunk RAG",
-      "RAGChunkOverlapHint": "Sovrapposizione tra chunk consecutivi (50-200 caratteri)"
+      "RAGChunkOverlapHint": "Sovrapposizione tra chunk consecutivi (50-200 caratteri)",
+      "RAGAutoIndex": "Indicizzazione automatica alle modifiche",
+      "RAGAutoIndexHint": "Ricostruisci automaticamente l'indice RAG quando il contenuto del journal cambia",
+      "RAGEmbeddingModel": "Modello Embedding",
+      "RAGEmbeddingModelHint": "Modello OpenAI usato per generare gli embeddings",
+      "RAGEmbeddingModelSmall": "text-embedding-3-small (più veloce, economico)",
+      "RAGEmbeddingModelLarge": "text-embedding-3-large (qualità superiore)",
+      "RAGEmbeddingDimensions": "Dimensioni Embedding",
+      "RAGEmbeddingDimensionsHint": "Dimensioni del vettore (512/1024/1536). Più basso è più veloce, più alto è più accurato",
+      "RAGMaxResults": "Risultati Massimi",
+      "RAGMaxResultsHint": "Numero massimo di chunk di contesto da recuperare per query (1-20)",
+      "RAGStorageLimit": "Limite Storage (MB)",
+      "RAGStorageLimitHint": "Storage massimo IndexedDB per embeddings vettoriali (10-500 MB)",
+      "RAGSilenceThreshold": "Soglia Rilevamento Silenzio",
+      "RAGSilenceThresholdHint": "Tempo in millisecondi prima di attivare suggerimenti autonomi (10-120 secondi)"
     },
 
     "Panel": {
@@ -985,7 +999,9 @@
       "ConfirmClearIndex": "Sei sicuro di voler cancellare l'indice RAG? Dovrai ricostruirlo per usare le funzionalita RAG.",
       "ConfirmRebuildIndex": "Sei sicuro di voler ricostruire l'indice RAG? Potrebbe richiedere alcuni minuti.",
       "IndexingStarted": "Indicizzazione RAG avviata",
-      "IndexingCancelled": "Indicizzazione RAG annullata"
+      "IndexingCancelled": "Indicizzazione RAG annullata",
+      "Disabled": "Disabilitato",
+      "EnableHint": "Abilita RAG nelle impostazioni del modulo per usare queste funzionalità"
     }
   }
 }

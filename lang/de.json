@@ -131,7 +131,21 @@
       "RAGChunkSize": "[EN] RAG Chunk Size",
       "RAGChunkSizeHint": "[EN] Size of text chunks for indexing (200-1000 characters)",
       "RAGChunkOverlap": "[EN] RAG Chunk Overlap",
-      "RAGChunkOverlapHint": "[EN] Overlap between consecutive chunks (50-200 characters)"
+      "RAGChunkOverlapHint": "[EN] Overlap between consecutive chunks (50-200 characters)",
+      "RAGAutoIndex": "[EN] Auto-Index on Change",
+      "RAGAutoIndexHint": "[EN] Automatically rebuild RAG index when journal content changes",
+      "RAGEmbeddingModel": "[EN] Embedding Model",
+      "RAGEmbeddingModelHint": "[EN] OpenAI model used for generating embeddings",
+      "RAGEmbeddingModelSmall": "[EN] text-embedding-3-small (faster, cheaper)",
+      "RAGEmbeddingModelLarge": "[EN] text-embedding-3-large (higher quality)",
+      "RAGEmbeddingDimensions": "[EN] Embedding Dimensions",
+      "RAGEmbeddingDimensionsHint": "[EN] Vector dimensions (512/1024/1536). Lower is faster, higher is more accurate",
+      "RAGMaxResults": "[EN] Maximum Results",
+      "RAGMaxResultsHint": "[EN] Maximum number of context chunks to retrieve per query (1-20)",
+      "RAGStorageLimit": "[EN] Storage Limit (MB)",
+      "RAGStorageLimitHint": "[EN] Maximum IndexedDB storage for vector embeddings (10-500 MB)",
+      "RAGSilenceThreshold": "[EN] Silence Detection Threshold",
+      "RAGSilenceThresholdHint": "[EN] Time in milliseconds before triggering autonomous suggestion (10-120 seconds)"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -947,7 +961,9 @@
       "ConfirmClearIndex": "[EN] Are you sure you want to clear the RAG index? You will need to rebuild it to use RAG features.",
       "ConfirmRebuildIndex": "[EN] Are you sure you want to rebuild the RAG index? This may take a few minutes.",
       "IndexingStarted": "[EN] RAG indexing started",
-      "IndexingCancelled": "[EN] RAG indexing cancelled"
+      "IndexingCancelled": "[EN] RAG indexing cancelled",
+      "Disabled": "[EN] Disabled",
+      "EnableHint": "[EN] Enable RAG in module settings to use these features"
     }
   }
 }
