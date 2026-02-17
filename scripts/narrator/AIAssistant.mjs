@@ -157,7 +157,8 @@ class AIAssistant {
     this._sessionState = {
       currentScene: null,
       lastOffTrackCheck: null,
-      suggestionsCount: 0
+      suggestionsCount: 0,
+      silenceSuggestionCount: 0
     };
 
     /**
@@ -180,6 +181,69 @@ class AIAssistant {
      * @private
      */
     this._chapterContext = null;
+
+    /**
+     * RAGRetriever instance for context-aware retrieval
+     * @type {import('./RAGRetriever.mjs').RAGRetriever|null}
+     * @private
+     */
+    this._ragRetriever = options.ragRetriever || null;
+
+    /**
+     * Whether to use RAG for context retrieval (vs. truncated full-text)
+     * @type {boolean}
+     * @private
+     */
+    this._useRAG = options.useRAG !== false;
+
+    /**
+     * Maximum results to retrieve from RAG
+     * @type {number}
+     * @private
+     */
+    this._ragMaxResults = options.ragMaxResults || 5;
+
+    /**
+     * Maximum characters for RAG context
+     * @type {number}
+     * @private
+     */
+    this._ragMaxChars = options.ragMaxChars || 5000;
+
+    /**
+     * Cached RAG context from last retrieval
+     * @type {{context: string, sources: string[]}|null}
+     * @private
+     */
+    this._cachedRAGContext = null;
+
+    /**
+     * SilenceDetector instance for autonomous suggestion triggers
+     * @type {import('./SilenceDetector.mjs').SilenceDetector|null}
+     * @private
+     */
+    this._silenceDetector = options.silenceDetector || null;
+
+    /**
+     * Callback function invoked when autonomous suggestion is generated
+     * @type {function|null}
+     * @private
+     */
+    this._onAutonomousSuggestionCallback = options.onAutonomousSuggestion || null;
+
+    /**
+     * Whether silence monitoring is currently active
+     * @type {boolean}
+     * @private
+     */
+    this._silenceMonitoringActive = false;
+
+    /**
+     * Bound handler for silence events (to allow removal)
+     * @type {function|null}
+     * @private
+     */
+    this._boundSilenceHandler = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -202,6 +266,186 @@ class AIAssistant {
    */
   setOpenAIClient(client) {
     this._openaiClient = client;
+  }
+
+  /**
+   * Sets the RAGRetriever instance for context-aware retrieval
+   *
+   * @param {import('./RAGRetriever.mjs').RAGRetriever} ragRetriever - RAGRetriever instance
+   */
+  setRAGRetriever(ragRetriever) {
+    this._ragRetriever = ragRetriever;
+    this._cachedRAGContext = null; // Clear cache when retriever changes
+    this._logger.debug('RAGRetriever updated');
+  }
+
+  /**
+   * Gets the RAGRetriever instance
+   *
+   * @returns {import('./RAGRetriever.mjs').RAGRetriever|null} The RAGRetriever instance or null
+   */
+  getRAGRetriever() {
+    return this._ragRetriever;
+  }
+
+  /**
+   * Check if RAG retrieval is available and configured
+   *
+   * @returns {boolean} True if RAG can be used for context retrieval
+   */
+  isRAGConfigured() {
+    return Boolean(
+      this._useRAG &&
+      this._ragRetriever &&
+      (this._ragRetriever.isConfigured() || this._ragRetriever.hasKeywordFallback()) &&
+      this._ragRetriever.hasIndex()
+    );
+  }
+
+  /**
+   * Enables or disables RAG usage
+   *
+   * @param {boolean} enabled - Whether to use RAG for context retrieval
+   */
+  setUseRAG(enabled) {
+    this._useRAG = Boolean(enabled);
+  }
+
+  /**
+   * Gets whether RAG usage is enabled
+   *
+   * @returns {boolean} True if RAG usage is enabled
+   */
+  getUseRAG() {
+    return this._useRAG;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Silence detection integration
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Sets the SilenceDetector instance for autonomous suggestion triggers
+   *
+   * @param {import('./SilenceDetector.mjs').SilenceDetector} silenceDetector - SilenceDetector instance
+   */
+  setSilenceDetector(silenceDetector) {
+    // Stop any existing monitoring
+    if (this._silenceMonitoringActive) {
+      this.stopSilenceMonitoring();
+    }
+
+    this._silenceDetector = silenceDetector;
+    this._logger.debug('SilenceDetector updated');
+  }
+
+  /**
+   * Gets the SilenceDetector instance
+   *
+   * @returns {import('./SilenceDetector.mjs').SilenceDetector|null} The SilenceDetector instance or null
+   */
+  getSilenceDetector() {
+    return this._silenceDetector;
+  }
+
+  /**
+   * Sets the callback function for autonomous suggestions triggered by silence
+   *
+   * @param {function} callback - Callback function receiving { suggestion: Suggestion, silenceEvent: SilenceEvent }
+   */
+  setOnAutonomousSuggestionCallback(callback) {
+    if (callback === null || typeof callback === 'function') {
+      this._onAutonomousSuggestionCallback = callback;
+    } else {
+      this._logger.warn('Invalid autonomous suggestion callback provided, ignoring');
+    }
+  }
+
+  /**
+   * Gets the autonomous suggestion callback
+   *
+   * @returns {function|null} The callback function or null
+   */
+  getOnAutonomousSuggestionCallback() {
+    return this._onAutonomousSuggestionCallback;
+  }
+
+  /**
+   * Starts silence monitoring for autonomous suggestion triggers
+   *
+   * Requires both a SilenceDetector and OpenAI client to be configured.
+   * When silence is detected, generates a contextual suggestion using current
+   * chapter context and RAG retrieval.
+   *
+   * @returns {boolean} True if monitoring started successfully, false otherwise
+   */
+  startSilenceMonitoring() {
+    if (!this._silenceDetector) {
+      this._logger.warn('Cannot start silence monitoring: no SilenceDetector configured');
+      return false;
+    }
+
+    if (!this.isConfigured()) {
+      this._logger.warn('Cannot start silence monitoring: OpenAI client not configured');
+      return false;
+    }
+
+    if (this._silenceMonitoringActive) {
+      this._logger.debug('Silence monitoring already active');
+      return true;
+    }
+
+    // Create bound handler so we can remove it later
+    this._boundSilenceHandler = this._handleSilenceEvent.bind(this);
+    this._silenceDetector.setOnSilenceCallback(this._boundSilenceHandler);
+    this._silenceDetector.start();
+    this._silenceMonitoringActive = true;
+
+    this._logger.info('Silence monitoring started');
+    return true;
+  }
+
+  /**
+   * Stops silence monitoring
+   */
+  stopSilenceMonitoring() {
+    if (!this._silenceMonitoringActive) {
+      this._logger.debug('Silence monitoring not active');
+      return;
+    }
+
+    if (this._silenceDetector) {
+      this._silenceDetector.stop();
+    }
+
+    this._silenceMonitoringActive = false;
+    this._boundSilenceHandler = null;
+
+    this._logger.info('Silence monitoring stopped');
+  }
+
+  /**
+   * Records activity to reset the silence timer
+   *
+   * Call this when transcription is received to prevent silence-triggered suggestions.
+   *
+   * @returns {boolean} True if activity was recorded, false if monitoring not active
+   */
+  recordActivityForSilenceDetection() {
+    if (!this._silenceMonitoringActive || !this._silenceDetector) {
+      return false;
+    }
+
+    return this._silenceDetector.recordActivity();
+  }
+
+  /**
+   * Checks if silence monitoring is currently active
+   *
+   * @returns {boolean} True if monitoring is active
+   */
+  isSilenceMonitoringActive() {
+    return this._silenceMonitoringActive;
   }
 
   /**
@@ -486,7 +730,17 @@ class AIAssistant {
     }
 
     try {
-      const messages = this._buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack);
+      // Retrieve RAG context if available
+      let ragContext = null;
+      if (this.isRAGConfigured()) {
+        const ragResult = await this._getRAGContext(transcription);
+        if (ragResult.context) {
+          ragContext = this._formatRAGContext(ragResult);
+          this._logger.debug(`Using RAG context with ${ragResult.sources.length} sources`);
+        }
+      }
+
+      const messages = this._buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext);
       const response = await this._makeChatRequest(messages);
       const analysis = this._parseAnalysisResponse(response);
 
@@ -528,8 +782,9 @@ class AIAssistant {
       throw new Error('AIAssistant: OpenAI client not configured');
     }
 
-    if (!this._adventureContext) {
-      this._logger.warn('No adventure context set, skipping off-track detection');
+    // Check if we have context (either adventure context or RAG)
+    if (!this._adventureContext && !this.isRAGConfigured()) {
+      this._logger.warn('No adventure context set and RAG not available, skipping off-track detection');
       return {
         isOffTrack: false,
         severity: 0,
@@ -540,7 +795,17 @@ class AIAssistant {
     this._logger.debug('Checking off-track status');
 
     try {
-      const messages = this._buildOffTrackMessages(transcription);
+      // Retrieve RAG context if available
+      let ragContext = null;
+      if (this.isRAGConfigured()) {
+        const ragResult = await this._getRAGContext(transcription);
+        if (ragResult.context) {
+          ragContext = this._formatRAGContext(ragResult);
+          this._logger.debug(`Using RAG context for off-track detection with ${ragResult.sources.length} sources`);
+        }
+      }
+
+      const messages = this._buildOffTrackMessages(transcription, ragContext);
       const response = await this._makeChatRequest(messages);
       const result = this._parseOffTrackResponse(response);
 
@@ -572,7 +837,17 @@ class AIAssistant {
     this._logger.debug('Generating suggestions');
 
     try {
-      const messages = this._buildSuggestionMessages(transcription, maxSuggestions);
+      // Retrieve RAG context if available
+      let ragContext = null;
+      if (this.isRAGConfigured()) {
+        const ragResult = await this._getRAGContext(transcription);
+        if (ragResult.context) {
+          ragContext = this._formatRAGContext(ragResult);
+          this._logger.debug(`Using RAG context for suggestions with ${ragResult.sources.length} sources`);
+        }
+      }
+
+      const messages = this._buildSuggestionMessages(transcription, maxSuggestions, ragContext);
       const response = await this._makeChatRequest(messages);
       const suggestions = this._parseSuggestionsResponse(response, maxSuggestions);
 
@@ -599,7 +874,17 @@ class AIAssistant {
     this._logger.debug('Generating narrative bridge');
 
     try {
-      const messages = this._buildNarrativeBridgeMessages(currentSituation, targetScene);
+      // Retrieve RAG context if available, using both situation and target as query
+      let ragContext = null;
+      if (this.isRAGConfigured()) {
+        const ragResult = await this._getRAGContext(`${currentSituation} ${targetScene}`);
+        if (ragResult.context) {
+          ragContext = this._formatRAGContext(ragResult);
+          this._logger.debug(`Using RAG context for narrative bridge with ${ragResult.sources.length} sources`);
+        }
+      }
+
+      const messages = this._buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
       const response = await this._makeChatRequest(messages);
       const content = response.choices?.[0]?.message?.content || '';
       return content.trim();
@@ -696,13 +981,20 @@ class AIAssistant {
    * Resets the session state
    */
   resetSession() {
+    // Stop silence monitoring if active
+    if (this._silenceMonitoringActive) {
+      this.stopSilenceMonitoring();
+    }
+
     this._conversationHistory = [];
     this._sessionState = {
       currentScene: null,
       lastOffTrackCheck: null,
-      suggestionsCount: 0
+      suggestionsCount: 0,
+      silenceSuggestionCount: 0
     };
     this._previousTranscription = '';
+    this._cachedRAGContext = null;
   }
 
   /**
@@ -720,7 +1012,19 @@ class AIAssistant {
       conversationHistorySize: this._conversationHistory.length,
       suggestionsGenerated: this._sessionState.suggestionsCount,
       lastOffTrackCheck: this._sessionState.lastOffTrackCheck,
-      isConfigured: this.isConfigured()
+      isConfigured: this.isConfigured(),
+      // RAG-related stats
+      ragConfigured: this.isRAGConfigured(),
+      ragEnabled: this._useRAG,
+      ragMaxResults: this._ragMaxResults,
+      ragMaxChars: this._ragMaxChars,
+      ragHasCachedContext: Boolean(this._cachedRAGContext && this._cachedRAGContext.context),
+      ragCachedSourceCount: this._cachedRAGContext?.sources?.length || 0,
+      // Silence detection stats
+      silenceDetectorConfigured: Boolean(this._silenceDetector),
+      silenceMonitoringActive: this._silenceMonitoringActive,
+      silenceSuggestionCount: this._sessionState.silenceSuggestionCount,
+      hasAutonomousSuggestionCallback: Boolean(this._onAutonomousSuggestionCallback)
     };
   }
 
@@ -828,18 +1132,22 @@ ${sensitivityGuide[this._sensitivity]}
    * @param {string} transcription - The transcription to analyze
    * @param {boolean} includeSuggestions - Whether to include suggestions
    * @param {boolean} checkOffTrack - Whether to check off-track status
+   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
    * @returns {Array<{role: string, content: string}>} The messages array
    * @private
    */
-  _buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack) {
+  _buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext) {
     const messages = [
       { role: 'system', content: this._buildSystemPrompt() }
     ];
 
-    if (this._adventureContext) {
+    // Use RAG context if provided, otherwise fall back to truncated adventure context
+    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
+
+    if (context) {
       messages.push({
         role: 'system',
-        content: `ADVENTURE CONTEXT:\n${this._truncateContext(this._adventureContext)}`
+        content: `ADVENTURE CONTEXT:\n${context}`
       });
     }
 
@@ -881,18 +1189,22 @@ ${sensitivityGuide[this._sensitivity]}
    * Builds messages for off-track detection
    *
    * @param {string} transcription - The transcription to analyze
+   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
    * @returns {Array<{role: string, content: string}>} The messages array
    * @private
    */
-  _buildOffTrackMessages(transcription) {
+  _buildOffTrackMessages(transcription, ragContext) {
     const messages = [
       { role: 'system', content: this._buildSystemPrompt() }
     ];
 
-    if (this._adventureContext) {
+    // Use RAG context if provided, otherwise fall back to truncated adventure context
+    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
+
+    if (context) {
       messages.push({
         role: 'system',
-        content: `ADVENTURE CONTEXT:\n${this._truncateContext(this._adventureContext)}`
+        content: `ADVENTURE CONTEXT:\n${context}`
       });
     }
 
@@ -918,18 +1230,22 @@ Respond in JSON format:
    *
    * @param {string} transcription - The transcription to analyze
    * @param {number} maxSuggestions - Maximum suggestions to generate
+   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
    * @returns {Array<{role: string, content: string}>} The messages array
    * @private
    */
-  _buildSuggestionMessages(transcription, maxSuggestions) {
+  _buildSuggestionMessages(transcription, maxSuggestions, ragContext) {
     const messages = [
       { role: 'system', content: this._buildSystemPrompt() }
     ];
 
-    if (this._adventureContext) {
+    // Use RAG context if provided, otherwise fall back to truncated adventure context
+    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
+
+    if (context) {
       messages.push({
         role: 'system',
-        content: `ADVENTURE CONTEXT:\n${this._truncateContext(this._adventureContext)}`
+        content: `ADVENTURE CONTEXT:\n${context}`
       });
     }
 
@@ -959,18 +1275,22 @@ Respond in JSON format:
    *
    * @param {string} currentSituation - Current off-track situation
    * @param {string} targetScene - Target scene to return to
+   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
    * @returns {Array<{role: string, content: string}>} The messages array
    * @private
    */
-  _buildNarrativeBridgeMessages(currentSituation, targetScene) {
+  _buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext) {
     const messages = [
       { role: 'system', content: this._buildSystemPrompt() }
     ];
 
-    if (this._adventureContext) {
+    // Use RAG context if provided, otherwise fall back to truncated adventure context
+    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
+
+    if (context) {
       messages.push({
         role: 'system',
-        content: `ADVENTURE CONTEXT:\n${this._truncateContext(this._adventureContext)}`
+        content: `ADVENTURE CONTEXT:\n${context}`
       });
     }
 
@@ -1338,6 +1658,268 @@ Respond in JSON format:
 
     const words = text.split(/\s+/);
     return words.some(word => questionWords.includes(word));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private: RAG context retrieval
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Retrieves relevant context using RAG
+   *
+   * @param {string} query - The query to retrieve context for (usually the transcription)
+   * @param {Object} [options={}] - Retrieval options
+   * @param {number} [options.maxResults] - Maximum results to retrieve
+   * @param {number} [options.maxChars] - Maximum characters for context
+   * @returns {Promise<{context: string, sources: string[]}>} Retrieved context and sources
+   * @private
+   */
+  async _getRAGContext(query, options = {}) {
+    if (!this.isRAGConfigured()) {
+      return { context: '', sources: [] };
+    }
+
+    const maxResults = options.maxResults || this._ragMaxResults;
+    const maxChars = options.maxChars || this._ragMaxChars;
+
+    try {
+      const result = await this._ragRetriever.retrieveForAI(query, {
+        maxResults,
+        maxChars
+      });
+
+      this._cachedRAGContext = result;
+      this._logger.debug(`Retrieved RAG context: ${result.sources.length} sources, ${result.context.length} chars`);
+
+      return result;
+    } catch (error) {
+      this._logger.warn('RAG context retrieval failed, falling back to truncated context:', error.message);
+      return { context: '', sources: [] };
+    }
+  }
+
+  /**
+   * Gets context for AI prompts, using RAG if available or falling back to truncated adventure context
+   *
+   * @param {string} query - The query/transcription to use for RAG retrieval
+   * @returns {Promise<string>} The formatted context string for inclusion in prompts
+   * @private
+   */
+  async _getContextForPrompt(query) {
+    // Try RAG first if configured
+    if (this.isRAGConfigured()) {
+      const ragResult = await this._getRAGContext(query);
+
+      if (ragResult.context) {
+        return this._formatRAGContext(ragResult);
+      }
+    }
+
+    // Fall back to truncated adventure context
+    if (this._adventureContext) {
+      return this._truncateContext(this._adventureContext);
+    }
+
+    return '';
+  }
+
+  /**
+   * Formats RAG retrieval results for inclusion in AI prompts
+   *
+   * @param {{context: string, sources: string[]}} ragResult - The RAG retrieval result
+   * @returns {string} Formatted context with source citations header
+   * @private
+   */
+  _formatRAGContext(ragResult) {
+    if (!ragResult || !ragResult.context) {
+      return '';
+    }
+
+    const parts = [];
+
+    // Add header indicating this is RAG-retrieved content
+    if (ragResult.sources && ragResult.sources.length > 0) {
+      parts.push(`RELEVANT SOURCES: ${ragResult.sources.join(', ')}`);
+      parts.push('---');
+    }
+
+    // Add the retrieved content
+    parts.push(ragResult.context);
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Gets the last cached RAG context
+   *
+   * @returns {{context: string, sources: string[]}|null} Cached RAG context or null
+   */
+  getCachedRAGContext() {
+    return this._cachedRAGContext;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private: Silence event handling
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Handles silence events from the SilenceDetector
+   *
+   * Generates an autonomous suggestion based on current chapter context and RAG retrieval.
+   * Invokes the onAutonomousSuggestion callback if registered.
+   *
+   * @param {Object} silenceEvent - The silence event from SilenceDetector
+   * @param {number} silenceEvent.silenceDurationMs - Duration of silence in milliseconds
+   * @param {number} silenceEvent.lastActivityTime - Timestamp of the last recorded activity
+   * @param {number} silenceEvent.silenceCount - Number of silence events since start
+   * @private
+   */
+  async _handleSilenceEvent(silenceEvent) {
+    this._logger.info(`Processing silence event #${silenceEvent.silenceCount} (${silenceEvent.silenceDurationMs}ms)`);
+
+    // Verify we can generate suggestions
+    if (!this.isConfigured()) {
+      this._logger.warn('Cannot generate autonomous suggestion: OpenAI client not configured');
+      return;
+    }
+
+    try {
+      // Generate the suggestion
+      const suggestion = await this._generateAutonomousSuggestion();
+
+      if (!suggestion) {
+        this._logger.debug('No autonomous suggestion generated');
+        return;
+      }
+
+      // Track the suggestion
+      this._sessionState.silenceSuggestionCount++;
+
+      this._logger.info(`Generated autonomous suggestion: type=${suggestion.type}, confidence=${suggestion.confidence}`);
+
+      // Invoke callback if registered
+      if (this._onAutonomousSuggestionCallback) {
+        try {
+          this._onAutonomousSuggestionCallback({
+            suggestion,
+            silenceEvent: {
+              silenceDurationMs: silenceEvent.silenceDurationMs,
+              lastActivityTime: silenceEvent.lastActivityTime,
+              silenceCount: silenceEvent.silenceCount
+            }
+          });
+        } catch (callbackError) {
+          this._logger.error('Error in autonomous suggestion callback:', callbackError.message);
+        }
+      }
+    } catch (error) {
+      this._logger.error('Failed to generate autonomous suggestion:', error.message);
+    }
+  }
+
+  /**
+   * Generates an autonomous suggestion based on current context
+   *
+   * Uses chapter context, RAG retrieval, and previous transcription to generate
+   * a contextual suggestion for when the session is silent.
+   *
+   * @returns {Promise<Suggestion|null>} The generated suggestion or null
+   * @private
+   */
+  async _generateAutonomousSuggestion() {
+    // Build context query from chapter context and previous transcription
+    let contextQuery = '';
+
+    if (this._chapterContext) {
+      contextQuery += this._chapterContext.chapterName || '';
+      if (this._chapterContext.summary) {
+        contextQuery += ' ' + this._chapterContext.summary;
+      }
+    }
+
+    if (this._previousTranscription) {
+      // Use last portion of previous transcription
+      const lastPortion = this._previousTranscription.slice(-500);
+      contextQuery += ' ' + lastPortion;
+    }
+
+    // If no context at all, use a generic prompt
+    if (!contextQuery.trim()) {
+      contextQuery = 'The game session is currently paused';
+    }
+
+    // Retrieve RAG context if available
+    let ragContext = null;
+    if (this.isRAGConfigured()) {
+      const ragResult = await this._getRAGContext(contextQuery.trim());
+      if (ragResult.context) {
+        ragContext = this._formatRAGContext(ragResult);
+        this._logger.debug(`Using RAG context for autonomous suggestion with ${ragResult.sources.length} sources`);
+      }
+    }
+
+    // Build the messages for suggestion generation
+    const messages = this._buildAutonomousSuggestionMessages(contextQuery.trim(), ragContext);
+
+    // Make the API request
+    const response = await this._makeChatRequest(messages);
+
+    // Parse the response
+    const suggestions = this._parseSuggestionsResponse(response, 1);
+
+    if (suggestions.length > 0) {
+      return suggestions[0];
+    }
+
+    return null;
+  }
+
+  /**
+   * Builds messages for autonomous suggestion generation during silence
+   *
+   * @param {string} contextQuery - The context query built from chapter and transcription
+   * @param {string} [ragContext] - Optional RAG-retrieved context
+   * @returns {Array<{role: string, content: string}>} The messages array
+   * @private
+   */
+  _buildAutonomousSuggestionMessages(contextQuery, ragContext) {
+    const messages = [
+      { role: 'system', content: this._buildSystemPrompt() }
+    ];
+
+    // Use RAG context if provided, otherwise fall back to adventure context
+    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
+
+    if (context) {
+      messages.push({
+        role: 'system',
+        content: `ADVENTURE CONTEXT:\n${context}`
+      });
+    }
+
+    const chapterInfo = this._formatChapterContext();
+    const silencePrompt = `The game session has been silent for a while. Based on the current chapter and context, suggest what the DM should do next to re-engage the players.
+
+${chapterInfo ? `Current Chapter Information:\n${chapterInfo}\n\n` : ''}${this._previousTranscription ? `Recent conversation context:\n"${this._previousTranscription.slice(-300)}"\n\n` : ''}Generate a single, helpful suggestion for the DM to move the story forward. Focus on:
+1. What happens next in the adventure according to the source material
+2. An NPC who could speak or act to prompt player engagement
+3. An environmental detail or event to describe
+
+Respond in JSON format:
+{
+  "suggestions": [
+    {
+      "type": "narration|dialogue|action|reference",
+      "content": "the suggestion",
+      "pageReference": "source page if applicable",
+      "confidence": 0.0-1.0
+    }
+  ]
+}`;
+
+    messages.push({ role: 'user', content: silencePrompt });
+
+    return messages;
   }
 
   // ---------------------------------------------------------------------------

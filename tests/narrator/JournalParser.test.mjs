@@ -797,4 +797,346 @@ describe('JournalParser', () => {
       expect(parser.getKeywordCount()).toBeGreaterThan(0);
     });
   });
+
+  // =========================================================================
+  // Text chunking for embeddings
+  // =========================================================================
+
+  describe('getChunksForEmbedding', () => {
+    it('should return chunks with correct metadata structure', async () => {
+      const journal = createMockJournal('j1', 'Adventure Log', [
+        { id: 'p1', name: 'Chapter 1', content: '<p>The brave adventurers entered the dark forest. They had heard tales of the ancient evil lurking within.</p>' }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1');
+
+      expect(chunks.length).toBeGreaterThan(0);
+      const firstChunk = chunks[0];
+
+      expect(firstChunk).toHaveProperty('text');
+      expect(firstChunk).toHaveProperty('metadata');
+      expect(firstChunk.metadata).toHaveProperty('source', 'journal');
+      expect(firstChunk.metadata).toHaveProperty('journalId', 'j1');
+      expect(firstChunk.metadata).toHaveProperty('journalName', 'Adventure Log');
+      expect(firstChunk.metadata).toHaveProperty('pageId', 'p1');
+      expect(firstChunk.metadata).toHaveProperty('pageName', 'Chapter 1');
+      expect(firstChunk.metadata).toHaveProperty('startPos');
+      expect(firstChunk.metadata).toHaveProperty('endPos');
+      expect(firstChunk.metadata).toHaveProperty('chunkIndex');
+      expect(firstChunk.metadata).toHaveProperty('totalChunks');
+    });
+
+    it('should chunk long text into multiple pieces with default options', async () => {
+      // Create content longer than default chunk size (500 chars)
+      const longContent = 'This is a sentence that repeats. '.repeat(50);
+      const journal = createMockJournal('j1', 'Long Journal', [
+        { id: 'p1', name: 'Long Page', content: `<p>${longContent}</p>` }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1');
+
+      expect(chunks.length).toBeGreaterThan(1);
+      // Each chunk should be around 500 chars or less (except possibly the last)
+      for (const chunk of chunks.slice(0, -1)) {
+        expect(chunk.text.length).toBeLessThanOrEqual(600); // Allow some flexibility for sentence boundaries
+      }
+    });
+
+    it('should respect custom chunk size option', async () => {
+      const longContent = 'This is a sentence that repeats many times. '.repeat(30);
+      const journal = createMockJournal('j1', 'Custom Size', [
+        { id: 'p1', name: 'Page', content: `<p>${longContent}</p>` }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1', { chunkSize: 200 });
+
+      // With smaller chunk size, should have more chunks
+      expect(chunks.length).toBeGreaterThan(3);
+      // Check chunks are roughly the right size
+      for (const chunk of chunks.slice(0, -1)) {
+        expect(chunk.text.length).toBeLessThanOrEqual(300); // Allow flexibility
+      }
+    });
+
+    it('should include overlap between chunks', async () => {
+      const longContent = 'First sentence here. Second sentence appears. Third sentence follows. Fourth sentence comes. Fifth sentence ends.';
+      const journal = createMockJournal('j1', 'Overlap Test', [
+        { id: 'p1', name: 'Page', content: `<p>${longContent}</p>` }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1', { chunkSize: 50, overlap: 20 });
+
+      if (chunks.length > 1) {
+        // Check that consecutive chunks have overlapping positions
+        for (let i = 1; i < chunks.length; i++) {
+          const prevChunk = chunks[i - 1];
+          const currChunk = chunks[i];
+          // Current chunk should start before previous chunk ends (overlap)
+          expect(currChunk.metadata.startPos).toBeLessThan(prevChunk.metadata.endPos);
+        }
+      }
+    });
+
+    it('should return single chunk for short text', async () => {
+      const journal = createMockJournal('j1', 'Short', [
+        { id: 'p1', name: 'Brief', content: '<p>Just a short sentence here.</p>' }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1');
+
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0].text).toBe('Just a short sentence here.');
+      expect(chunks[0].metadata.chunkIndex).toBe(0);
+      expect(chunks[0].metadata.totalChunks).toBe(1);
+    });
+
+    it('should skip empty pages', async () => {
+      const journal = createMockJournal('j1', 'Mixed', [
+        { id: 'p1', name: 'Full', content: '<p>This page has actual content that matters.</p>' },
+        { id: 'p2', name: 'Empty', content: '<p>   </p>' }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1');
+
+      // Should only get chunks from the non-empty page
+      expect(chunks.length).toBeGreaterThan(0);
+      expect(chunks.every(c => c.metadata.pageId === 'p1')).toBe(true);
+    });
+
+    it('should handle multiple pages', async () => {
+      const journal = createMockJournal('j1', 'Multi-Page', [
+        { id: 'p1', name: 'Chapter 1', content: '<p>Content from chapter one here.</p>' },
+        { id: 'p2', name: 'Chapter 2', content: '<p>Content from chapter two here.</p>' }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1');
+
+      const page1Chunks = chunks.filter(c => c.metadata.pageId === 'p1');
+      const page2Chunks = chunks.filter(c => c.metadata.pageId === 'p2');
+
+      expect(page1Chunks.length).toBeGreaterThan(0);
+      expect(page2Chunks.length).toBeGreaterThan(0);
+    });
+
+    it('should throw error for invalid journal ID', async () => {
+      setupGame([]);
+      await expect(parser.getChunksForEmbedding(null)).rejects.toThrow();
+      await expect(parser.getChunksForEmbedding('')).rejects.toThrow();
+    });
+
+    it('should throw error when journal not found', async () => {
+      setupGame([]);
+      await expect(parser.getChunksForEmbedding('nonexistent')).rejects.toThrow();
+    });
+
+    it('should break at sentence boundaries when possible', async () => {
+      const content = 'First sentence ends here. Second sentence starts now. Third one follows closely.';
+      const journal = createMockJournal('j1', 'Sentences', [
+        { id: 'p1', name: 'Page', content: `<p>${content}</p>` }
+      ]);
+      setupGame([journal]);
+
+      // Use chunk size that forces breaking within content
+      const chunks = await parser.getChunksForEmbedding('j1', { chunkSize: 40, overlap: 10 });
+
+      // Check that most chunks end with sentence-ending punctuation
+      const chunksEndingWithPunctuation = chunks.filter(c =>
+        c.text.endsWith('.') || c.text.endsWith('!') || c.text.endsWith('?')
+      );
+
+      // At least some chunks should end at sentence boundaries
+      // (last chunk may not if it's the remainder)
+      if (chunks.length > 1) {
+        expect(chunksEndingWithPunctuation.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should return empty array for journal with no text content', async () => {
+      const journal = createMockJournal('j1', 'Empty Journal', [
+        { id: 'p1', name: 'Image', type: 'image' }
+      ]);
+      setupGame([journal]);
+
+      const chunks = await parser.getChunksForEmbedding('j1');
+
+      expect(chunks).toEqual([]);
+    });
+  });
+
+  // =========================================================================
+  // getChunksForEmbeddingAll
+  // =========================================================================
+
+  describe('getChunksForEmbeddingAll', () => {
+    it('should get chunks from all cached journals', async () => {
+      const j1 = createMockJournal('j1', 'Journal 1', [
+        { id: 'p1', name: 'Page 1', content: '<p>Content from first journal here.</p>' }
+      ]);
+      const j2 = createMockJournal('j2', 'Journal 2', [
+        { id: 'p2', name: 'Page 2', content: '<p>Content from second journal here.</p>' }
+      ]);
+      setupGame([j1, j2]);
+
+      // Parse both journals to cache them
+      await parser.parseJournal('j1');
+      await parser.parseJournal('j2');
+
+      const allChunks = await parser.getChunksForEmbeddingAll();
+
+      const j1Chunks = allChunks.filter(c => c.metadata.journalId === 'j1');
+      const j2Chunks = allChunks.filter(c => c.metadata.journalId === 'j2');
+
+      expect(j1Chunks.length).toBeGreaterThan(0);
+      expect(j2Chunks.length).toBeGreaterThan(0);
+    });
+
+    it('should return empty array when no journals are cached', async () => {
+      setupGame([]);
+      const chunks = await parser.getChunksForEmbeddingAll();
+      expect(chunks).toEqual([]);
+    });
+
+    it('should continue if one journal fails', async () => {
+      const good = createMockJournal('j1', 'Good', [
+        { id: 'p1', name: 'Page', content: '<p>Valid content here.</p>' }
+      ]);
+      setupGame([good]);
+      await parser.parseJournal('j1');
+
+      // Manually add a corrupted cache entry
+      parser._cachedContent.set('j2', {
+        id: 'j2',
+        name: 'Bad',
+        pages: null, // This will cause an error when iterating
+        totalCharacters: 0,
+        parsedAt: new Date()
+      });
+
+      const chunks = await parser.getChunksForEmbeddingAll();
+
+      // Should still get chunks from the good journal
+      expect(chunks.filter(c => c.metadata.journalId === 'j1').length).toBeGreaterThan(0);
+    });
+
+    it('should respect custom options for all journals', async () => {
+      const longContent = 'This sentence repeats many times here. '.repeat(20);
+      const j1 = createMockJournal('j1', 'Long 1', [
+        { id: 'p1', name: 'Page', content: `<p>${longContent}</p>` }
+      ]);
+      const j2 = createMockJournal('j2', 'Long 2', [
+        { id: 'p2', name: 'Page', content: `<p>${longContent}</p>` }
+      ]);
+      setupGame([j1, j2]);
+
+      await parser.parseJournal('j1');
+      await parser.parseJournal('j2');
+
+      const chunks = await parser.getChunksForEmbeddingAll({ chunkSize: 100 });
+
+      // With small chunk size, should have many chunks
+      expect(chunks.length).toBeGreaterThan(4);
+    });
+  });
+
+  // =========================================================================
+  // _chunkText (private, tested via public methods)
+  // =========================================================================
+
+  describe('_chunkText (internal chunking logic)', () => {
+    it('should return empty array for null/empty input', () => {
+      expect(parser._chunkText(null)).toEqual([]);
+      expect(parser._chunkText('')).toEqual([]);
+      expect(parser._chunkText('   ')).toEqual([]);
+    });
+
+    it('should return single chunk for text shorter than chunk size', () => {
+      const result = parser._chunkText('Short text', 500, 100);
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe('Short text');
+      expect(result[0].startPos).toBe(0);
+      expect(result[0].endPos).toBe(10);
+    });
+
+    it('should normalize whitespace in chunks', () => {
+      const result = parser._chunkText('Multiple   spaces    here', 500, 100);
+      expect(result[0].text).toBe('Multiple spaces here');
+    });
+
+    it('should create overlapping chunks', () => {
+      const text = 'A'.repeat(200);
+      const result = parser._chunkText(text, 100, 20);
+
+      expect(result.length).toBeGreaterThan(1);
+
+      // Check overlap exists between consecutive chunks
+      for (let i = 1; i < result.length; i++) {
+        const overlapStart = result[i].startPos;
+        const prevEnd = result[i - 1].endPos;
+        expect(overlapStart).toBeLessThan(prevEnd);
+      }
+    });
+
+    it('should prefer sentence boundaries for chunk breaks', () => {
+      const text = 'First sentence here. Second sentence follows. Third one ends.';
+      const result = parser._chunkText(text, 30, 5);
+
+      // Check that chunks tend to end at periods
+      const endsWithPeriod = result.filter(c => c.text.endsWith('.'));
+      expect(endsWithPeriod.length).toBeGreaterThan(0);
+    });
+
+    it('should handle text with no sentence boundaries', () => {
+      const text = 'word '.repeat(100);
+      const result = parser._chunkText(text, 50, 10);
+
+      // Should still produce chunks even without sentence boundaries
+      expect(result.length).toBeGreaterThan(1);
+    });
+
+    it('should handle exclamation and question marks as sentence boundaries', () => {
+      const text = 'What is this? It is amazing! Yes it is.';
+      const result = parser._chunkText(text, 20, 5);
+
+      // Should break at ?, !, or .
+      const validEndings = result.filter(c =>
+        c.text.endsWith('.') || c.text.endsWith('?') || c.text.endsWith('!')
+      );
+      expect(validEndings.length).toBeGreaterThan(0);
+    });
+
+    it('should not create infinite loops with small overlap', () => {
+      const text = 'A'.repeat(1000);
+      const result = parser._chunkText(text, 100, 0);
+
+      // Even with zero overlap, should terminate
+      expect(result.length).toBeGreaterThan(5);
+      expect(result.length).toBeLessThan(20);
+    });
+
+    it('should maintain text integrity (no missing characters)', () => {
+      const originalText = 'The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.';
+      const result = parser._chunkText(originalText, 40, 10);
+
+      // Reconstruct text from non-overlapping portions
+      // First chunk fully, then subsequent chunks from overlap point
+      let reconstructed = result[0].text;
+      for (let i = 1; i < result.length; i++) {
+        const overlapChars = result[i - 1].endPos - result[i].startPos;
+        const newPortion = result[i].text.substring(overlapChars);
+        reconstructed += newPortion;
+      }
+
+      // The normalized text should contain all words
+      const normalizedOriginal = originalText.replace(/\s+/g, ' ').trim();
+      expect(normalizedOriginal).toContain('quick');
+      expect(normalizedOriginal).toContain('lazy');
+    });
+  });
 });

@@ -102,6 +102,7 @@ class MainPanel extends Application {
    */
   getData() {
     const session = this._orchestrator?.currentSession;
+    const ragData = this._getRAGData();
 
     return {
       isConfigured: true,
@@ -120,8 +121,113 @@ class MainPanel extends Application {
       hasTranscript: !!session?.transcript,
       entities: session?.entities || null,
       entityCount: this._countEntities(session?.entities),
-      hasEntities: !!session?.entities
+      hasEntities: !!session?.entities,
+      // RAG indexing status data
+      ragEnabled: ragData.enabled,
+      ragStatus: ragData.status,
+      ragProgress: ragData.progress,
+      ragProgressText: ragData.progressText,
+      ragVectorCount: ragData.vectorCount,
+      ragStorageUsage: ragData.storageUsage,
+      ragLastIndexed: ragData.lastIndexed
     };
+  }
+
+  /**
+   * Get RAG indexing status data
+   * @returns {object} RAG status data for template
+   * @private
+   */
+  _getRAGData() {
+    // Get RAG retriever from orchestrator's VoxChronicle instance
+    const voxChronicle = this._orchestrator?.voxChronicle;
+    const ragRetriever = voxChronicle?.ragRetriever;
+    const ragVectorStore = voxChronicle?.ragVectorStore;
+
+    // Check if RAG is enabled via settings
+    let ragEnabled = false;
+    try {
+      ragEnabled = game?.settings?.get(MODULE_ID, 'ragEnabled') ?? false;
+    } catch {
+      // Settings not available
+    }
+
+    // Get indexing status and stats
+    let status = 'idle';
+    let progress = 0;
+    let progressText = '';
+    let vectorCount = 0;
+    let storageUsage = '0 KB';
+    let lastIndexed = null;
+
+    if (ragRetriever) {
+      // Get status from RAGRetriever
+      const indexStatus = ragRetriever.getIndexStatus?.() || {};
+      status = indexStatus.isIndexing ? 'indexing' : (indexStatus.documentCount > 0 ? 'indexed' : 'idle');
+      progress = indexStatus.progress || 0;
+      progressText = indexStatus.progressText || '';
+    }
+
+    if (ragVectorStore) {
+      // Get stats from RAGVectorStore
+      const stats = ragVectorStore.getStats?.() || {};
+      vectorCount = stats.vectorCount || 0;
+      storageUsage = this._formatStorageSize(stats.storageSizeBytes || 0);
+    }
+
+    // Get last indexed time from settings metadata
+    try {
+      const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
+      if (metadata.lastIndexed) {
+        lastIndexed = this._formatTimestamp(metadata.lastIndexed);
+      }
+    } catch {
+      // Settings not available
+    }
+
+    return {
+      enabled: ragEnabled,
+      status,
+      progress,
+      progressText,
+      vectorCount,
+      storageUsage,
+      lastIndexed
+    };
+  }
+
+  /**
+   * Format bytes to human-readable storage size
+   * @param {number} bytes - Size in bytes
+   * @returns {string} Formatted size string
+   * @private
+   */
+  _formatStorageSize(bytes) {
+    if (bytes === 0) return '0 KB';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const size = (bytes / Math.pow(1024, i)).toFixed(1);
+    return `${size} ${units[i]}`;
+  }
+
+  /**
+   * Format timestamp to localized date/time string
+   * @param {string|number|Date} timestamp - Timestamp to format
+   * @returns {string} Formatted timestamp
+   * @private
+   */
+  _formatTimestamp(timestamp) {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return '';
+    }
   }
 
   /**
@@ -172,9 +278,109 @@ class MainPanel extends Application {
    * @param {Event} event - The click event
    * @private
    */
-  _handleAction(action, event) {
+  async _handleAction(action, event) {
     this._logger.debug(`Action: ${action}`);
-    // Actions will be wired to orchestrator methods as features are connected
+
+    switch (action) {
+      case 'rag-build-index':
+        await this._handleRAGBuildIndex();
+        break;
+      case 'rag-clear-index':
+        await this._handleRAGClearIndex();
+        break;
+      default:
+        // Other actions will be wired to orchestrator methods as features are connected
+        break;
+    }
+  }
+
+  /**
+   * Handle RAG build index action
+   * @private
+   */
+  async _handleRAGBuildIndex() {
+    const voxChronicle = this._orchestrator?.voxChronicle;
+    const ragRetriever = voxChronicle?.ragRetriever;
+
+    if (!ragRetriever) {
+      this._logger.warn('RAG retriever not available');
+      ui?.notifications?.warn(game.i18n?.localize('VOXCHRONICLE.RAG.NotConfigured') || 'RAG not configured');
+      return;
+    }
+
+    try {
+      this._logger.info('Starting RAG index build');
+
+      // Build index with progress callback
+      await ragRetriever.buildIndex({
+        onProgress: (progress, text) => {
+          this._logger.debug(`Index progress: ${progress}% - ${text}`);
+          this.requestRender();
+        }
+      });
+
+      // Update last indexed timestamp in settings
+      try {
+        const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
+        metadata.lastIndexed = new Date().toISOString();
+        await game?.settings?.set(MODULE_ID, 'ragIndexMetadata', metadata);
+      } catch {
+        // Settings update failed, not critical
+      }
+
+      ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexComplete') || 'RAG index built successfully');
+      this.render(false);
+    } catch (error) {
+      this._logger.error('RAG index build failed:', error);
+      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.IndexFailed', { error: error.message }) || `RAG index failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle RAG clear index action
+   * @private
+   */
+  async _handleRAGClearIndex() {
+    const voxChronicle = this._orchestrator?.voxChronicle;
+    const ragVectorStore = voxChronicle?.ragVectorStore;
+
+    if (!ragVectorStore) {
+      this._logger.warn('RAG vector store not available');
+      return;
+    }
+
+    // Confirm before clearing
+    const confirmed = await Dialog?.confirm({
+      title: game.i18n?.localize('VOXCHRONICLE.RAG.ClearConfirmTitle') || 'Clear RAG Index',
+      content: game.i18n?.localize('VOXCHRONICLE.RAG.ClearConfirmContent') || 'Are you sure you want to clear the RAG index? This will remove all indexed vectors.',
+      yes: () => true,
+      no: () => false,
+      defaultYes: false
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      this._logger.info('Clearing RAG index');
+      await ragVectorStore.clear();
+
+      // Clear last indexed timestamp
+      try {
+        const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
+        delete metadata.lastIndexed;
+        await game?.settings?.set(MODULE_ID, 'ragIndexMetadata', metadata);
+      } catch {
+        // Settings update failed, not critical
+      }
+
+      ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexCleared') || 'RAG index cleared');
+      this.render(false);
+    } catch (error) {
+      this._logger.error('RAG index clear failed:', error);
+      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.ClearFailed', { error: error.message }) || `Failed to clear RAG index: ${error.message}`);
+    }
   }
 
   /**

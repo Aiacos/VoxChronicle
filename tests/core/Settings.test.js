@@ -869,4 +869,319 @@ describe('Settings', () => {
       expect(maxDelay[2].default).toBe(60000);
     });
   });
+
+  describe('RAG Configuration settings registration', () => {
+    it('should register all RAG settings', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+
+      // Verify all RAG settings are registered
+      expect(registerCalls.some((call) => call[1] === 'ragEnabled')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragEmbeddingModel')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragEmbeddingDimensions')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragChunkSize')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragChunkOverlap')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragSimilarityThreshold')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragMaxResults')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragStorageLimitMB')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragSilenceThresholdMs')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragAutoIndex')).toBe(true);
+      expect(registerCalls.some((call) => call[1] === 'ragIndexMetadata')).toBe(true);
+    });
+
+    it('should register ragEnabled as boolean with default true', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragEnabled');
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(Boolean);
+      expect(call[2].default).toBe(true);
+      expect(call[2].scope).toBe('world');
+      expect(call[2].config).toBe(true);
+    });
+
+    it('should register ragEmbeddingModel with choices', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragEmbeddingModel');
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(String);
+      expect(call[2].choices).toBeDefined();
+      expect(call[2].choices).toHaveProperty('text-embedding-3-small');
+      expect(call[2].choices).toHaveProperty('text-embedding-3-large');
+      expect(call[2].default).toBe('text-embedding-3-small');
+    });
+
+    it('should register ragEmbeddingDimensions with choices', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragEmbeddingDimensions');
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(Number);
+      expect(call[2].choices).toBeDefined();
+      expect(call[2].choices).toHaveProperty(256);
+      expect(call[2].choices).toHaveProperty(512);
+      expect(call[2].choices).toHaveProperty(1024);
+      expect(call[2].choices).toHaveProperty(1536);
+      expect(call[2].default).toBe(512);
+    });
+
+    it('should register ragChunkSize with range', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragChunkSize');
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(Number);
+      expect(call[2].range).toBeDefined();
+      expect(call[2].range.min).toBe(200);
+      expect(call[2].range.max).toBe(2000);
+      expect(call[2].range.step).toBe(100);
+      expect(call[2].default).toBe(500);
+    });
+
+    it('should register ragChunkOverlap with range', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragChunkOverlap');
+      expect(call).toBeDefined();
+      expect(call[2].range.min).toBe(50);
+      expect(call[2].range.max).toBe(200);
+      expect(call[2].range.step).toBe(10);
+      expect(call[2].default).toBe(100);
+    });
+
+    it('should register ragSimilarityThreshold with range 0-100', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragSimilarityThreshold');
+      expect(call).toBeDefined();
+      expect(call[2].range.min).toBe(0);
+      expect(call[2].range.max).toBe(100);
+      expect(call[2].range.step).toBe(5);
+      expect(call[2].default).toBe(70);
+    });
+
+    it('should register ragMaxResults with range 1-20', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragMaxResults');
+      expect(call).toBeDefined();
+      expect(call[2].range.min).toBe(1);
+      expect(call[2].range.max).toBe(20);
+      expect(call[2].default).toBe(5);
+    });
+
+    it('should register ragStorageLimitMB with range 10-500', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragStorageLimitMB');
+      expect(call).toBeDefined();
+      expect(call[2].range.min).toBe(10);
+      expect(call[2].range.max).toBe(500);
+      expect(call[2].range.step).toBe(10);
+      expect(call[2].default).toBe(100);
+    });
+
+    it('should register ragSilenceThresholdMs with range 10000-120000', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragSilenceThresholdMs');
+      expect(call).toBeDefined();
+      expect(call[2].range.min).toBe(10000);
+      expect(call[2].range.max).toBe(120000);
+      expect(call[2].range.step).toBe(5000);
+      expect(call[2].default).toBe(30000);
+    });
+
+    it('should register ragAutoIndex as boolean with default true', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragAutoIndex');
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(Boolean);
+      expect(call[2].default).toBe(true);
+    });
+
+    it('should register ragIndexMetadata as hidden internal setting', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      Settings.registerSettings();
+      const registerCalls = mockSettings.register.mock.calls;
+      const call = registerCalls.find((c) => c[1] === 'ragIndexMetadata');
+      expect(call).toBeDefined();
+      expect(call[2].config).toBe(false);
+      expect(call[2].type).toBe(Object);
+      expect(call[2].default).toEqual({});
+    });
+  });
+
+  describe('getRAGSettings', () => {
+    it('should return RAG configuration object', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        const values = {
+          ragEnabled: true,
+          ragEmbeddingModel: 'text-embedding-3-small',
+          ragEmbeddingDimensions: 512,
+          ragChunkSize: 500,
+          ragChunkOverlap: 100,
+          ragSimilarityThreshold: 70, // stored as percentage
+          ragMaxResults: 5,
+          ragStorageLimitMB: 100,
+          ragSilenceThresholdMs: 30000,
+          ragAutoIndex: true
+        };
+        return values[key] ?? '';
+      });
+      const result = Settings.getRAGSettings();
+      expect(result).toEqual({
+        enabled: true,
+        embeddingModel: 'text-embedding-3-small',
+        embeddingDimensions: 512,
+        chunkSize: 500,
+        chunkOverlap: 100,
+        similarityThreshold: 0.7, // converted to 0-1
+        maxResults: 5,
+        storageLimitMB: 100,
+        silenceThresholdMs: 30000,
+        autoIndex: true
+      });
+    });
+
+    it('should convert similarity threshold from percentage to 0-1 range', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'ragSimilarityThreshold') return 85;
+        return '';
+      });
+      const result = Settings.getRAGSettings();
+      expect(result.similarityThreshold).toBe(0.85);
+    });
+
+    it('should handle zero similarity threshold', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'ragSimilarityThreshold') return 0;
+        return '';
+      });
+      const result = Settings.getRAGSettings();
+      expect(result.similarityThreshold).toBe(0);
+    });
+
+    it('should handle 100% similarity threshold', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'ragSimilarityThreshold') return 100;
+        return '';
+      });
+      const result = Settings.getRAGSettings();
+      expect(result.similarityThreshold).toBe(1);
+    });
+  });
+
+  describe('getRAGIndexMetadata', () => {
+    it('should return RAG index metadata object', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      const metadata = {
+        lastIndexed: '2024-01-15T10:00:00Z',
+        vectorCount: 150,
+        indexedJournals: ['journal-1', 'journal-2']
+      };
+      mockSettings.get.mockReturnValue(metadata);
+
+      const result = Settings.getRAGIndexMetadata();
+
+      expect(result).toEqual(metadata);
+    });
+
+    it('should return empty object when metadata is null', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockReturnValue(null);
+
+      const result = Settings.getRAGIndexMetadata();
+
+      expect(result).toEqual({});
+    });
+
+    it('should return empty object on error', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation(() => {
+        throw new Error('Settings error');
+      });
+
+      const result = Settings.getRAGIndexMetadata();
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('setRAGIndexMetadata', () => {
+    it('should update RAG index metadata', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      const metadata = {
+        lastIndexed: '2024-01-15T10:00:00Z',
+        vectorCount: 150
+      };
+
+      await Settings.setRAGIndexMetadata(metadata);
+
+      expect(mockSettings.set).toHaveBeenCalledWith(MODULE_ID, 'ragIndexMetadata', metadata);
+    });
+  });
+
+  describe('isRAGConfigured', () => {
+    it('should return true when OpenAI is configured and RAG is enabled', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test-key';
+        if (key === 'ragEnabled') return true;
+        return '';
+      });
+
+      expect(Settings.isRAGConfigured()).toBe(true);
+    });
+
+    it('should return false when OpenAI is not configured', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'openaiApiKey') return '';
+        if (key === 'ragEnabled') return true;
+        return '';
+      });
+
+      expect(Settings.isRAGConfigured()).toBeFalsy();
+    });
+
+    it('should return false when RAG is disabled', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test-key';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+
+      expect(Settings.isRAGConfigured()).toBeFalsy();
+    });
+
+    it('should return false when both conditions fail', async () => {
+      const { Settings } = await import('../../scripts/core/Settings.mjs');
+      mockSettings.get.mockImplementation((module, key) => {
+        if (key === 'openaiApiKey') return '';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+
+      expect(Settings.isRAGConfigured()).toBeFalsy();
+    });
+  });
 });

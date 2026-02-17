@@ -56,6 +56,29 @@ import { Logger } from '../utils/Logger.mjs';
  */
 
 /**
+ * Represents a text chunk suitable for embedding
+ * @typedef {Object} TextChunk
+ * @property {string} text - The chunk text content
+ * @property {Object} metadata - Metadata about the chunk source
+ * @property {string} metadata.source - Source type ('journal')
+ * @property {string} metadata.journalId - The journal ID
+ * @property {string} metadata.journalName - The journal name
+ * @property {string} metadata.pageId - The page ID
+ * @property {string} metadata.pageName - The page name
+ * @property {number} metadata.startPos - Start position in the page text
+ * @property {number} metadata.endPos - End position in the page text
+ * @property {number} metadata.chunkIndex - Index of this chunk within the page
+ * @property {number} metadata.totalChunks - Total chunks for this page
+ */
+
+/**
+ * Options for chunk extraction
+ * @typedef {Object} ChunkOptions
+ * @property {number} [chunkSize=500] - Target characters per chunk
+ * @property {number} [overlap=100] - Overlap characters between chunks
+ */
+
+/**
  * JournalParser - Handles reading and indexing adventure content from Foundry VTT journals.
  * Provides content extraction, HTML stripping, keyword indexing, chapter structure
  * extraction, and NPC profile extraction.
@@ -662,6 +685,99 @@ export class JournalParser {
   }
 
   // ---------------------------------------------------------------------------
+  // Public API — Text chunking for embeddings
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Gets text chunks from a journal suitable for embedding.
+   * Chunks are created with overlap for better semantic coherence and break at sentence
+   * boundaries when possible.
+   *
+   * @param {string} journalId - The journal ID to extract chunks from
+   * @param {ChunkOptions} [options={}] - Chunking options
+   * @returns {Promise<TextChunk[]>} Array of text chunks with metadata
+   * @throws {Error} If the journal ID is invalid or the journal is not found
+   */
+  async getChunksForEmbedding(journalId, options = {}) {
+    // Ensure journal is parsed and cached
+    const parsedJournal = await this.parseJournal(journalId);
+
+    const chunkSize = options.chunkSize || 500;
+    const overlap = options.overlap || 100;
+
+    /** @type {TextChunk[]} */
+    const allChunks = [];
+
+    for (const page of parsedJournal.pages) {
+      // Skip pages with no meaningful content
+      if (!page.text || page.text.trim().length === 0) {
+        continue;
+      }
+
+      // Chunk the page text
+      const pageChunks = this._chunkText(page.text, chunkSize, overlap);
+
+      // Add metadata to each chunk
+      for (let i = 0; i < pageChunks.length; i++) {
+        const chunk = pageChunks[i];
+
+        // Skip empty chunks
+        if (!chunk.text || chunk.text.trim().length === 0) {
+          continue;
+        }
+
+        allChunks.push({
+          text: chunk.text,
+          metadata: {
+            source: 'journal',
+            journalId: parsedJournal.id,
+            journalName: parsedJournal.name,
+            pageId: page.id,
+            pageName: page.name,
+            startPos: chunk.startPos,
+            endPos: chunk.endPos,
+            chunkIndex: i,
+            totalChunks: pageChunks.length
+          }
+        });
+      }
+    }
+
+    this._logger.debug(
+      `Extracted ${allChunks.length} chunks from journal "${parsedJournal.name}" ` +
+      `(${parsedJournal.pages.length} pages, chunkSize=${chunkSize}, overlap=${overlap})`
+    );
+
+    return allChunks;
+  }
+
+  /**
+   * Gets text chunks from all cached journals suitable for embedding.
+   * Yields to the event loop between journals to prevent UI freeze.
+   *
+   * @param {ChunkOptions} [options={}] - Chunking options
+   * @returns {Promise<TextChunk[]>} Array of text chunks with metadata from all journals
+   */
+  async getChunksForEmbeddingAll(options = {}) {
+    const allChunks = [];
+
+    for (const [journalId] of this._cachedContent) {
+      try {
+        const chunks = await this.getChunksForEmbedding(journalId, options);
+        allChunks.push(...chunks);
+        // Yield to the event loop between journals
+        await new Promise(resolve => setTimeout(resolve, 0));
+      } catch (error) {
+        this._logger.warn(`Failed to chunk journal "${journalId}":`, error);
+      }
+    }
+
+    this._logger.debug(`Extracted ${allChunks.length} chunks from ${this._cachedContent.size} journals`);
+
+    return allChunks;
+  }
+
+  // ---------------------------------------------------------------------------
   // Private — Page parsing
   // ---------------------------------------------------------------------------
 
@@ -1246,5 +1362,127 @@ export class JournalParser {
     }
 
     return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private — Text chunking helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Splits text into overlapping chunks suitable for embedding.
+   * Attempts to break at sentence boundaries when possible for better semantic coherence.
+   *
+   * @param {string} text - The text to chunk
+   * @param {number} [chunkSize=500] - Target characters per chunk
+   * @param {number} [overlap=100] - Overlap characters between chunks
+   * @returns {Array<{text: string, startPos: number, endPos: number}>} Array of chunks with positions
+   * @private
+   */
+  _chunkText(text, chunkSize = 500, overlap = 100) {
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return [];
+    }
+
+    // Normalize whitespace
+    const normalizedText = text.replace(/\s+/g, ' ').trim();
+
+    // If text is shorter than chunk size, return as single chunk
+    if (normalizedText.length <= chunkSize) {
+      return [{
+        text: normalizedText,
+        startPos: 0,
+        endPos: normalizedText.length
+      }];
+    }
+
+    const chunks = [];
+    let startPos = 0;
+
+    while (startPos < normalizedText.length) {
+      // Calculate the target end position
+      const targetEnd = Math.min(startPos + chunkSize, normalizedText.length);
+
+      // Try to find a sentence boundary near the target end
+      let actualEnd = this._findSentenceBoundary(normalizedText, startPos, targetEnd, chunkSize);
+
+      // Extract the chunk text
+      const chunkText = normalizedText.substring(startPos, actualEnd).trim();
+
+      // Only add non-empty chunks
+      if (chunkText.length > 0) {
+        chunks.push({
+          text: chunkText,
+          startPos,
+          endPos: actualEnd
+        });
+      }
+
+      // Move to next position with overlap
+      // Make sure we always make progress to avoid infinite loop
+      const nextStart = actualEnd - overlap;
+      if (nextStart <= startPos) {
+        startPos = actualEnd;
+      } else {
+        startPos = nextStart;
+      }
+
+      // If we've reached the end, break
+      if (actualEnd >= normalizedText.length) {
+        break;
+      }
+    }
+
+    return chunks;
+  }
+
+  /**
+   * Finds the best sentence boundary near the target end position.
+   * Looks for sentence-ending punctuation (.!?) and prefers breaking there.
+   *
+   * @param {string} text - The text to search in
+   * @param {number} startPos - Start position of the current chunk
+   * @param {number} targetEnd - Target end position
+   * @param {number} chunkSize - The chunk size for calculating minimum boundary position
+   * @returns {number} The actual end position (at sentence boundary if found)
+   * @private
+   */
+  _findSentenceBoundary(text, startPos, targetEnd, chunkSize) {
+    // If we're at the end of text, return the text length
+    if (targetEnd >= text.length) {
+      return text.length;
+    }
+
+    // Define minimum position for sentence boundary (at least 50% of chunk size from start)
+    const minBoundaryPos = startPos + Math.floor(chunkSize * 0.5);
+
+    // Look for sentence-ending punctuation followed by space or end
+    // Search backwards from targetEnd to find the last sentence boundary
+    let bestBoundary = -1;
+
+    // Check for sentence endings: . ! ? followed by space or end
+    for (let i = targetEnd; i >= minBoundaryPos; i--) {
+      const char = text[i - 1]; // Check the character before position i
+      const nextChar = text[i] || ' '; // Character at position i (or space if at end)
+
+      // Check for sentence ending punctuation followed by space/end
+      if ((char === '.' || char === '!' || char === '?') && /\s/.test(nextChar)) {
+        bestBoundary = i;
+        break;
+      }
+    }
+
+    // If we found a good sentence boundary, use it
+    if (bestBoundary > 0) {
+      return bestBoundary;
+    }
+
+    // Fallback: try to break at word boundary (space)
+    const lastSpace = text.lastIndexOf(' ', targetEnd);
+    if (lastSpace > minBoundaryPos) {
+      return lastSpace;
+    }
+
+    // Last resort: use the target end position
+    return targetEnd;
   }
 }

@@ -2797,3 +2797,211 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-spinner {
   animation: vox-chronicle-spin 1s linear infinite;
 }
+
+/* ==========================================================================
+   RAG Status Component
+   ========================================================================== */
+
+/* RAG Status Container */
+.vox-chronicle-rag-status {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 16px;
+}
+
+/* RAG Status Header */
+.vox-chronicle-rag-status__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vox-chronicle-rag-status__header h4 {
+  margin: 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--vox-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vox-chronicle-rag-status__header h4 i {
+  color: var(--vox-primary-light);
+  font-size: 0.95em;
+}
+
+/* RAG Status Badge */
+.vox-chronicle-rag-status__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vox-chronicle-rag-status__badge--disabled {
+  background: rgba(239, 35, 60, 0.15);
+  color: var(--vox-error);
+  border: 1px solid rgba(239, 35, 60, 0.3);
+}
+
+.vox-chronicle-rag-status__badge--ready {
+  background: rgba(108, 117, 125, 0.15);
+  color: var(--vox-text-dim);
+  border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.vox-chronicle-rag-status__badge--indexing {
+  background: rgba(76, 201, 240, 0.15);
+  color: var(--vox-processing);
+  border: 1px solid rgba(76, 201, 240, 0.3);
+}
+
+.vox-chronicle-rag-status__badge--indexed {
+  background: rgba(6, 214, 160, 0.15);
+  color: var(--vox-success);
+  border: 1px solid rgba(6, 214, 160, 0.3);
+}
+
+/* RAG Progress Bar */
+.vox-chronicle-rag-status__progress {
+  margin: 12px 0;
+  position: relative;
+}
+
+.vox-chronicle-rag-status__progress-bar {
+  height: 6px;
+  background: linear-gradient(90deg, var(--vox-primary), var(--vox-primary-light));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(123, 44, 191, 0.3);
+}
+
+.vox-chronicle-rag-status__progress::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.vox-chronicle-rag-status__progress-text {
+  display: block;
+  text-align: center;
+  font-size: 0.75em;
+  color: var(--vox-text-dim);
+  margin-top: 6px;
+}
+
+/* RAG Statistics */
+.vox-chronicle-rag-status__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.vox-chronicle-rag-status__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.vox-chronicle-rag-status__stat i {
+  color: var(--vox-primary-light);
+  font-size: 1em;
+  margin-bottom: 2px;
+}
+
+.vox-chronicle-rag-status__stat-label {
+  font-size: 0.7em;
+  color: var(--vox-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.vox-chronicle-rag-status__stat-value {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--vox-accent);
+}
+
+/* RAG Control Buttons */
+.vox-chronicle-rag-status__controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vox-chronicle-rag-status__controls .vox-chronicle-btn {
+  flex: 1;
+  max-width: 150px;
+  justify-content: center;
+}
+
+/* RAG Disabled Hint */
+.vox-chronicle-rag-status__disabled-hint {
+  color: var(--vox-text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+  text-align: center;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
+/* Danger Button Variant */
+.vox-chronicle-btn--danger {
+  border-color: rgba(239, 35, 60, 0.4);
+  color: var(--vox-error);
+}
+
+.vox-chronicle-btn--danger:hover:not(:disabled) {
+  background: rgba(239, 35, 60, 0.15);
+  border-color: rgba(239, 35, 60, 0.6);
+}
+
+.vox-chronicle-btn--danger:disabled {
+  opacity: 0.4;
+}
+
+/* Responsive adjustments for RAG Status */
+@media (max-width: 400px) {
+  .vox-chronicle-rag-status__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .vox-chronicle-rag-status__stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .vox-chronicle-rag-status__controls {
+    flex-direction: column;
+  }
+
+  .vox-chronicle-rag-status__controls .vox-chronicle-btn {
+    max-width: none;
+  }
+}

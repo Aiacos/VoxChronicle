@@ -430,6 +430,134 @@ class Settings {
     });
 
     // ==========================================
+    // RAG Configuration Settings
+    // ==========================================
+
+    // Enable RAG (Retrieval-Augmented Generation) for context-aware suggestions
+    game.settings.register(MODULE_ID, 'ragEnabled', {
+      name: 'VOXCHRONICLE.Settings.RAGEnabled',
+      hint: 'VOXCHRONICLE.Settings.RAGEnabledHint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true
+    });
+
+    // Embedding model selection
+    game.settings.register(MODULE_ID, 'ragEmbeddingModel', {
+      name: 'VOXCHRONICLE.Settings.RAGEmbeddingModel',
+      hint: 'VOXCHRONICLE.Settings.RAGEmbeddingModelHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        'text-embedding-3-small': 'VOXCHRONICLE.Settings.RAGEmbeddingModelSmall',
+        'text-embedding-3-large': 'VOXCHRONICLE.Settings.RAGEmbeddingModelLarge'
+      },
+      default: 'text-embedding-3-small'
+    });
+
+    // Embedding dimensions (affects storage size and search accuracy)
+    game.settings.register(MODULE_ID, 'ragEmbeddingDimensions', {
+      name: 'VOXCHRONICLE.Settings.RAGEmbeddingDimensions',
+      hint: 'VOXCHRONICLE.Settings.RAGEmbeddingDimensionsHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      choices: {
+        256: '256 (Fastest)',
+        512: '512 (Balanced)',
+        1024: '1024 (High Quality)',
+        1536: '1536 (Maximum)'
+      },
+      default: 512
+    });
+
+    // Text chunk size for embedding (characters per chunk)
+    game.settings.register(MODULE_ID, 'ragChunkSize', {
+      name: 'VOXCHRONICLE.Settings.RAGChunkSize',
+      hint: 'VOXCHRONICLE.Settings.RAGChunkSizeHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 200, max: 2000, step: 100 },
+      default: 500
+    });
+
+    // Overlap between chunks (characters)
+    game.settings.register(MODULE_ID, 'ragChunkOverlap', {
+      name: 'VOXCHRONICLE.Settings.RAGChunkOverlap',
+      hint: 'VOXCHRONICLE.Settings.RAGChunkOverlapHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 50, max: 200, step: 10 },
+      default: 100
+    });
+
+    // Similarity threshold for retrieval (0-100, displayed as percentage)
+    game.settings.register(MODULE_ID, 'ragSimilarityThreshold', {
+      name: 'VOXCHRONICLE.Settings.RAGSimilarityThreshold',
+      hint: 'VOXCHRONICLE.Settings.RAGSimilarityThresholdHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 0, max: 100, step: 5 },
+      default: 70
+    });
+
+    // Maximum number of chunks to retrieve per query
+    game.settings.register(MODULE_ID, 'ragMaxResults', {
+      name: 'VOXCHRONICLE.Settings.RAGMaxResults',
+      hint: 'VOXCHRONICLE.Settings.RAGMaxResultsHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 1, max: 20, step: 1 },
+      default: 5
+    });
+
+    // Maximum IndexedDB storage size for vectors (MB)
+    game.settings.register(MODULE_ID, 'ragStorageLimitMB', {
+      name: 'VOXCHRONICLE.Settings.RAGStorageLimit',
+      hint: 'VOXCHRONICLE.Settings.RAGStorageLimitHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 10, max: 500, step: 10 },
+      default: 100
+    });
+
+    // Silence detection threshold (milliseconds)
+    game.settings.register(MODULE_ID, 'ragSilenceThresholdMs', {
+      name: 'VOXCHRONICLE.Settings.RAGSilenceThreshold',
+      hint: 'VOXCHRONICLE.Settings.RAGSilenceThresholdHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 10000, max: 120000, step: 5000 },
+      default: 30000
+    });
+
+    // Automatically rebuild index when content changes
+    game.settings.register(MODULE_ID, 'ragAutoIndex', {
+      name: 'VOXCHRONICLE.Settings.RAGAutoIndex',
+      hint: 'VOXCHRONICLE.Settings.RAGAutoIndexHint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true
+    });
+
+    // RAG index metadata (internal storage, not shown in config)
+    game.settings.register(MODULE_ID, 'ragIndexMetadata', {
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {}
+    });
+
+    // ==========================================
     // API Retry Settings
     // ==========================================
 
@@ -857,6 +985,62 @@ class Settings {
    */
   static isNarratorConfigured() {
     return Settings.isOpenAIConfigured();
+  }
+
+  /**
+   * Get RAG (Retrieval-Augmented Generation) configuration settings
+   *
+   * @returns {object} RAG configuration
+   * @static
+   */
+  static getRAGSettings() {
+    return {
+      enabled: Settings.get('ragEnabled'),
+      embeddingModel: Settings.get('ragEmbeddingModel'),
+      embeddingDimensions: Settings.get('ragEmbeddingDimensions'),
+      chunkSize: Settings.get('ragChunkSize'),
+      chunkOverlap: Settings.get('ragChunkOverlap'),
+      similarityThreshold: Settings.get('ragSimilarityThreshold') / 100, // Convert from percentage to 0-1
+      maxResults: Settings.get('ragMaxResults'),
+      storageLimitMB: Settings.get('ragStorageLimitMB'),
+      silenceThresholdMs: Settings.get('ragSilenceThresholdMs'),
+      autoIndex: Settings.get('ragAutoIndex')
+    };
+  }
+
+  /**
+   * Get RAG index metadata (internal)
+   *
+   * @returns {object} RAG index metadata
+   * @static
+   */
+  static getRAGIndexMetadata() {
+    try {
+      return Settings.get('ragIndexMetadata') || {};
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Update RAG index metadata (internal)
+   *
+   * @param {object} metadata - New metadata to store
+   * @returns {Promise<void>}
+   * @static
+   */
+  static async setRAGIndexMetadata(metadata) {
+    await Settings.set('ragIndexMetadata', metadata);
+  }
+
+  /**
+   * Check if RAG is properly configured and can be used
+   *
+   * @returns {boolean} True if RAG can be used
+   * @static
+   */
+  static isRAGConfigured() {
+    return Settings.isOpenAIConfigured() && Settings.get('ragEnabled');
   }
 }
 
