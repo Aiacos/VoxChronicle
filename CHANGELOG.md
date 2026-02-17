@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-02-17
+
+### Added
+- **RAG (Retrieval Augmented Generation)**: Context-aware AI suggestions using journal and compendium content
+  - EmbeddingService: Generate vector embeddings via OpenAI text-embedding-3 API
+  - RAGVectorStore: In-memory vector storage with IndexedDB persistence and LRU eviction
+  - RAGRetriever: Hybrid semantic + keyword retrieval with configurable weights
+  - SilenceDetector: Timer-based silence detection for automatic AI suggestions
+  - Text chunking in JournalParser and CompendiumParser for embedding generation
+- **RAG Settings**: Configurable embedding dimensions, chunk size, similarity threshold, storage limits
+- **RAG UI**: Index status indicators, build/clear controls in MainPanel
+- **113 new i18n keys** across all 8 language files (888 total)
+- **473 new tests** across 10 test files (3567 total)
+
+### Fixed
+- MainPanel RAG data access via VoxChronicle singleton instead of missing orchestrator property
+- Settings dropdown rendering for embedding dimensions (string keys for Foundry compatibility)
+
 ## [2.0.0] - 2026-02-15
 
 ### Major: Narrator Master Integration
