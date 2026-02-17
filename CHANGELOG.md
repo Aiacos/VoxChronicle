@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-02-17
+
+### Added
+- **Static analysis tests** (114 tests): Prevent module-breaking import errors
+  - Duplicate named import detection across all source files
+  - Import target existence validation
+  - Circular import chain detection from entry point
+  - module.json integrity checks (entry points, styles, language files, version consistency)
+  - i18n key consistency across all 8 language files
+
+### Fixed
+- Fixed duplicate `OpenAIClient` import in VoxChronicle.mjs that crashed module loading (no toolbar button, no settings)
+
 ## [2.1.0] - 2026-02-17
 
 ### Added
