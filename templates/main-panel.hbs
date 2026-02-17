@@ -63,6 +63,71 @@
       {{else}}
       <p class="vox-chronicle-panel__empty">{{localize "VOXCHRONICLE.Panel.NoSuggestions"}}</p>
       {{/if}}
+
+      {{!-- RAG Indexing Status & Controls --}}
+      <div class="vox-chronicle-rag-status">
+        <div class="vox-chronicle-rag-status__header">
+          <h4><i class="fas fa-database"></i> {{localize "VOXCHRONICLE.RAG.Status"}}</h4>
+          <span class="vox-chronicle-rag-status__badge vox-chronicle-rag-status__badge--{{ragStatus}}">
+            {{#if ragEnabled}}
+              {{#if (eq ragStatus 'indexing')}}
+                <i class="fas fa-sync fa-spin"></i> {{localize "VOXCHRONICLE.RAG.Indexing"}}
+              {{else if (eq ragStatus 'indexed')}}
+                <i class="fas fa-check"></i> {{localize "VOXCHRONICLE.RAG.Indexed"}}
+              {{else}}
+                <i class="fas fa-circle"></i> {{localize "VOXCHRONICLE.RAG.Ready"}}
+              {{/if}}
+            {{else}}
+              <i class="fas fa-times-circle"></i> {{localize "VOXCHRONICLE.RAG.Disabled"}}
+            {{/if}}
+          </span>
+        </div>
+
+        {{#if ragEnabled}}
+          {{!-- Indexing Progress Bar --}}
+          {{#if (eq ragStatus 'indexing')}}
+          <div class="vox-chronicle-rag-status__progress">
+            <div class="vox-chronicle-rag-status__progress-bar" style="width: {{ragProgress}}%"></div>
+            <span class="vox-chronicle-rag-status__progress-text">{{ragProgressText}}</span>
+          </div>
+          {{/if}}
+
+          {{!-- RAG Statistics --}}
+          <div class="vox-chronicle-rag-status__stats">
+            <div class="vox-chronicle-rag-status__stat">
+              <i class="fas fa-cubes"></i>
+              <span class="vox-chronicle-rag-status__stat-label">{{localize "VOXCHRONICLE.RAG.VectorCount"}}</span>
+              <span class="vox-chronicle-rag-status__stat-value">{{ragVectorCount}}</span>
+            </div>
+            <div class="vox-chronicle-rag-status__stat">
+              <i class="fas fa-hdd"></i>
+              <span class="vox-chronicle-rag-status__stat-label">{{localize "VOXCHRONICLE.RAG.StorageUsage"}}</span>
+              <span class="vox-chronicle-rag-status__stat-value">{{ragStorageUsage}}</span>
+            </div>
+            {{#if ragLastIndexed}}
+            <div class="vox-chronicle-rag-status__stat">
+              <i class="fas fa-clock"></i>
+              <span class="vox-chronicle-rag-status__stat-label">{{localize "VOXCHRONICLE.RAG.LastIndexed"}}</span>
+              <span class="vox-chronicle-rag-status__stat-value">{{ragLastIndexed}}</span>
+            </div>
+            {{/if}}
+          </div>
+
+          {{!-- RAG Control Buttons --}}
+          <div class="vox-chronicle-rag-status__controls">
+            <button class="vox-chronicle-btn vox-chronicle-btn--small" data-action="rag-build-index" {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
+              <i class="fas fa-hammer"></i> {{localize "VOXCHRONICLE.RAG.BuildIndex"}}
+            </button>
+            <button class="vox-chronicle-btn vox-chronicle-btn--small vox-chronicle-btn--danger" data-action="rag-clear-index" {{#unless ragVectorCount}}disabled{{/unless}} {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
+              <i class="fas fa-trash-alt"></i> {{localize "VOXCHRONICLE.RAG.ClearIndex"}}
+            </button>
+          </div>
+        {{else}}
+          <p class="vox-chronicle-rag-status__disabled-hint">
+            {{localize "VOXCHRONICLE.RAG.EnableHint"}}
+          </p>
+        {{/if}}
+      </div>
     </div>
 
     <div class="vox-chronicle-tab-pane {{#unless (eq activeTab 'chronicle')}}hidden{{/unless}}" data-tab-pane="chronicle">
