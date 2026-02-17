@@ -417,7 +417,22 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       loadCampaigns();
     });
 
-    // Auto-load campaigns if token exists
+    // Auto-fetch campaigns when user types/pastes Kanka API token
+    let tokenDebounceTimer = null;
+    const kankaTokenInput = container.querySelector(`input[name="${MODULE_ID}.kankaApiToken"]`);
+    if (kankaTokenInput) {
+      kankaTokenInput.addEventListener('input', () => {
+        clearTimeout(tokenDebounceTimer);
+        tokenDebounceTimer = setTimeout(() => {
+          const val = kankaTokenInput.value?.trim();
+          if (val && val.length > 10) {
+            loadCampaigns();
+          }
+        }, 800);
+      });
+    }
+
+    // Auto-load campaigns if token exists in saved settings
     const kankaToken = Settings.get('kankaApiToken');
     if (kankaToken && kankaToken.trim().length > 0) {
       loadCampaigns();

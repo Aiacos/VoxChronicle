@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-02-17
+
+### Improved
+- Kanka campaign dropdown now auto-fetches campaigns when pasting/typing the API token (debounced 800ms)
+
 ## [2.1.2] - 2026-02-17
 
 ### Fixed
