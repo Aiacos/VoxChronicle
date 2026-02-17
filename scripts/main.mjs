@@ -243,43 +243,60 @@ Hooks.on('getSceneControlButtons', (controls) => {
 const VALIDATION_RESET_DELAY_MS = 2000;
 
 /**
+ * Resolve a settings config HTML parameter to a native HTMLElement.
+ * Foundry v13 passes a native HTMLElement; v12 passes a jQuery object.
+ *
+ * @param {HTMLElement|jQuery} html - The rendered HTML from the hook
+ * @returns {HTMLElement} The native DOM element
+ */
+function resolveHtmlElement(html) {
+  if (html instanceof HTMLElement) return html;
+  if (html?.[0] instanceof HTMLElement) return html[0];
+  return html;
+}
+
+/**
  * Create and inject a "Test Connection" validation button next to an API key input field.
  * Handles loading states, success/error icons, and auto-reset.
+ * Uses native DOM APIs for Foundry v13 compatibility.
  *
- * @param {jQuery} inputElement - The input field to attach the button to
+ * @param {HTMLElement} container - The settings config container element
+ * @param {string} inputName - The input field name attribute to find
  * @param {string} targetName - Identifier for the validation target (e.g. 'openai', 'kanka')
  * @param {Function} validateFn - Async function that returns boolean validation result
  */
-function injectValidationButton(inputElement, targetName, validateFn) {
-  if (inputElement.length === 0) return;
+function injectValidationButton(container, inputName, targetName, validateFn) {
+  const inputElement = container.querySelector(`input[name="${inputName}"]`);
+  if (!inputElement) return;
 
-  const validateButton = $(`
-    <button type="button" class="vox-chronicle-validate-button" data-validation-target="${targetName}">
-      <i class="fa-solid fa-plug"></i> Test Connection
-    </button>
-  `);
+  const validateButton = document.createElement('button');
+  validateButton.type = 'button';
+  validateButton.className = 'vox-chronicle-validate-button';
+  validateButton.dataset.validationTarget = targetName;
 
-  inputElement.parent().append(validateButton);
+  const icon = document.createElement('i');
+  icon.className = 'fa-solid fa-plug';
+  validateButton.appendChild(icon);
+  validateButton.append(' Test Connection');
 
-  validateButton.on('click', async (event) => {
+  inputElement.parentElement.appendChild(validateButton);
+
+  validateButton.addEventListener('click', async (event) => {
     event.preventDefault();
-    const button = $(event.currentTarget);
-    const icon = button.find('i');
-
-    button.prop('disabled', true);
-    icon.removeClass('fa-plug').addClass('fa-spinner fa-spin');
+    validateButton.disabled = true;
+    icon.className = 'fa-solid fa-spinner fa-spin';
 
     try {
       const isValid = await validateFn();
-      icon.removeClass('fa-spinner fa-spin').addClass(isValid ? 'fa-check' : 'fa-times');
+      icon.className = isValid ? 'fa-solid fa-check' : 'fa-solid fa-times';
     } catch (error) {
-      icon.removeClass('fa-spinner fa-spin').addClass('fa-times');
+      icon.className = 'fa-solid fa-times';
       logger.error(`${targetName} validation error:`, error);
     }
 
     setTimeout(() => {
-      icon.removeClass('fa-check fa-times').addClass('fa-plug');
-      button.prop('disabled', false);
+      icon.className = 'fa-solid fa-plug';
+      validateButton.disabled = false;
     }, VALIDATION_RESET_DELAY_MS);
   });
 
@@ -289,36 +306,47 @@ function injectValidationButton(inputElement, targetName, validateFn) {
 /**
  * Inject validation buttons into the settings configuration UI.
  * Adds "Test Connection" buttons next to API key fields for immediate validation feedback.
+ * Uses native DOM APIs for Foundry v12/v13 compatibility.
  *
  * @param {SettingsConfig} app - The settings configuration application
- * @param {jQuery} html - The rendered HTML element
+ * @param {HTMLElement|jQuery} html - The rendered HTML element (HTMLElement in v13, jQuery in v12)
  */
 Hooks.on('renderSettingsConfig', (app, html) => {
-  injectValidationButton(html.find(`input[name="${MODULE_ID}.openaiApiKey"]`), 'openai', () =>
+  const container = resolveHtmlElement(html);
+  if (!container?.querySelector) return;
+
+  injectValidationButton(container, `${MODULE_ID}.openaiApiKey`, 'openai', () =>
     Settings.validateOpenAIKey()
   );
 
-  injectValidationButton(html.find(`input[name="${MODULE_ID}.kankaApiToken"]`), 'kanka', () =>
+  injectValidationButton(container, `${MODULE_ID}.kankaApiToken`, 'kanka', () =>
     Settings.validateKankaToken()
   );
 
   // Inject dynamic campaign dropdown to replace text input for kankaCampaignId
-  const campaignInput = html.find(`input[name="${MODULE_ID}.kankaCampaignId"]`);
-  if (campaignInput.length > 0) {
-    const currentValue = campaignInput.val() || '';
+  const campaignInput = container.querySelector(`input[name="${MODULE_ID}.kankaCampaignId"]`);
+  if (campaignInput) {
+    const currentValue = campaignInput.value || '';
 
     // Create select element to replace the text input
-    const campaignSelect = $(`
-      <select name="${MODULE_ID}.kankaCampaignId" class="vox-chronicle-campaign-select">
-        <option value="${currentValue}" selected>${currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder')}</option>
-      </select>
-    `);
+    const campaignSelect = document.createElement('select');
+    campaignSelect.name = `${MODULE_ID}.kankaCampaignId`;
+    campaignSelect.className = 'vox-chronicle-campaign-select';
 
-    const refreshButton = $(`
-      <button type="button" class="vox-chronicle-validate-button" data-action="refresh-campaigns">
-        <i class="fa-solid fa-sync-alt"></i>
-      </button>
-    `);
+    const defaultOption = document.createElement('option');
+    defaultOption.value = currentValue;
+    defaultOption.selected = true;
+    defaultOption.textContent = currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder');
+    campaignSelect.appendChild(defaultOption);
+
+    const refreshButton = document.createElement('button');
+    refreshButton.type = 'button';
+    refreshButton.className = 'vox-chronicle-validate-button';
+    refreshButton.dataset.action = 'refresh-campaigns';
+
+    const refreshIcon = document.createElement('i');
+    refreshIcon.className = 'fa-solid fa-sync-alt';
+    refreshButton.appendChild(refreshIcon);
 
     // Replace input with select + refresh button
     campaignInput.replaceWith(campaignSelect);
@@ -328,56 +356,63 @@ Hooks.on('renderSettingsConfig', (app, html) => {
      * Load Kanka campaigns into the dropdown
      */
     async function loadCampaigns() {
-      const token =
-        html.find(`input[name="${MODULE_ID}.kankaApiToken"]`).val() ||
-        Settings.get('kankaApiToken');
+      const tokenInput = container.querySelector(`input[name="${MODULE_ID}.kankaApiToken"]`);
+      const token = tokenInput?.value || Settings.get('kankaApiToken');
 
       if (!token || token.trim().length === 0) {
-        campaignSelect.html(
-          `<option value="">${game.i18n.localize('VOXCHRONICLE.Settings.CampaignNeedsToken')}</option>`
-        );
+        campaignSelect.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = game.i18n.localize('VOXCHRONICLE.Settings.CampaignNeedsToken');
+        campaignSelect.appendChild(opt);
         return;
       }
 
-      const refreshIcon = refreshButton.find('i');
-      refreshIcon.addClass('fa-spin');
-      campaignSelect.prop('disabled', true);
+      refreshIcon.classList.add('fa-spin');
+      campaignSelect.disabled = true;
 
       try {
         const { KankaClient } = await import('./kanka/KankaClient.mjs');
         const client = new KankaClient(token);
         const campaigns = await client.getCampaigns();
 
-        campaignSelect.empty();
-        campaignSelect.append(
-          `<option value="">${game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder')}</option>`
-        );
+        campaignSelect.innerHTML = '';
+
+        const placeholderOpt = document.createElement('option');
+        placeholderOpt.value = '';
+        placeholderOpt.textContent = game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder');
+        campaignSelect.appendChild(placeholderOpt);
 
         for (const campaign of campaigns) {
-          const selected = campaign.id.toString() === currentValue ? 'selected' : '';
-          campaignSelect.append(
-            `<option value="${campaign.id}" ${selected}>${campaign.name}</option>`
-          );
+          const opt = document.createElement('option');
+          opt.value = campaign.id;
+          opt.textContent = campaign.name;
+          if (campaign.id.toString() === currentValue) opt.selected = true;
+          campaignSelect.appendChild(opt);
         }
 
         if (campaigns.length === 0) {
-          campaignSelect.html(
-            `<option value="">${game.i18n.localize('VOXCHRONICLE.Settings.CampaignNone')}</option>`
-          );
+          campaignSelect.innerHTML = '';
+          const noneOpt = document.createElement('option');
+          noneOpt.value = '';
+          noneOpt.textContent = game.i18n.localize('VOXCHRONICLE.Settings.CampaignNone');
+          campaignSelect.appendChild(noneOpt);
         }
       } catch (error) {
         logger.error('Failed to load campaigns:', error);
-        campaignSelect.html(
-          `<option value="${currentValue}">${currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignError')}</option>`
-        );
+        campaignSelect.innerHTML = '';
+        const errOpt = document.createElement('option');
+        errOpt.value = currentValue;
+        errOpt.textContent = currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignError');
+        campaignSelect.appendChild(errOpt);
       } finally {
-        refreshIcon.removeClass('fa-spin');
-        campaignSelect.prop('disabled', false);
+        refreshIcon.classList.remove('fa-spin');
+        campaignSelect.disabled = false;
       }
     }
 
     // Wire up refresh button
-    refreshButton.on('click', (event) => {
+    refreshButton.addEventListener('click', (event) => {
       event.preventDefault();
       loadCampaigns();
     });

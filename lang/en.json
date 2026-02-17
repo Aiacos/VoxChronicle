@@ -3,7 +3,6 @@
     "Title": "VoxChronicle",
     "Description": "Auto-transcribe RPG sessions and publish chronicles to Kanka with AI-generated content and portraits.",
     "PanelTitle": "VoxChronicle - DM Assistant",
-
     "Settings": {
       "OpenAIKey": "OpenAI API Key",
       "OpenAIKeyHint": "Your OpenAI API key for transcription and image generation. Get one at platform.openai.com",
@@ -148,7 +147,6 @@
       "RAGSilenceThreshold": "Silence Detection Threshold",
       "RAGSilenceThresholdHint": "Time in milliseconds before triggering autonomous suggestion (10-120 seconds)"
     },
-
     "Panel": {
       "Title": "VoxChronicle",
       "TogglePanel": "Open/Close DM Panel",
@@ -214,9 +212,11 @@
       "Export": "Export",
       "NoTranscriptVC": "No transcript yet",
       "NoEntities": "No entities extracted yet",
-      "ConfigWarning": "Configure your OpenAI API key in module settings to use VoxChronicle"
+      "ConfigWarning": "Configure your OpenAI API key in module settings to use VoxChronicle",
+      "Record": "Record",
+      "Stop": "Stop",
+      "NoAnalytics": "No analytics data available. Start a live session to track analytics."
     },
-
     "Validation": {
       "ValidatingOpenAI": "Validating OpenAI API key...",
       "ValidatingKanka": "Validating Kanka API token...",
@@ -231,7 +231,6 @@
       "KankaValidationError": "Error validating Kanka API token: {error}",
       "KankaValidationFailed": "Kanka validation failed: {error}"
     },
-
     "Recorder": {
       "Title": "Session Recorder",
       "StartRecording": "Start Recording",
@@ -267,7 +266,6 @@
       "LocalBackendChecking": "Checking local backend...",
       "LocalBackendUnavailable": "Local backend unavailable"
     },
-
     "Transcription": {
       "Title": "Transcription",
       "Transcribing": "Transcribing audio...",
@@ -279,7 +277,6 @@
       "EstimatedTime": "Estimated time remaining: {time}",
       "Cost": "Estimated cost: ${cost}"
     },
-
     "SpeakerLabeling": {
       "Title": "Speaker Labeling",
       "Description": "Assign names to the speakers detected in the transcription. These labels will be used in the session chronicle.",
@@ -305,9 +302,9 @@
       "HelpSpeakerIds": "These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).",
       "HelpKnownSpeakers": "Speakers with a {icon} icon were detected in a previous transcription session.",
       "HelpQuickAssign": "Use the dropdown to quickly assign a game user's name to a speaker slot.",
-      "HelpAutoDetect": "Automatically fills empty speaker slots with game user names in order."
+      "HelpAutoDetect": "Automatically fills empty speaker slots with game user names in order.",
+      "Help": "Help"
     },
-
     "Vocabulary": {
       "Title": "Vocabulary Manager",
       "Description": "Manage custom vocabulary terms to improve transcription accuracy for your campaign.",
@@ -361,7 +358,6 @@
       "SuggestAddedCount": "Added {count} term(s)",
       "NoTermsSelected": "No terms selected"
     },
-
     "EntityExtraction": {
       "Title": "Entity Extraction",
       "Extracting": "Extracting entities from transcription...",
@@ -370,10 +366,9 @@
       "NoEntitiesFound": "No new entities found in the transcription",
       "EntitiesFound": "{count} new entities found"
     },
-
     "EntityPreview": {
       "Title": "Review Extracted Entities",
-      "Description": "Review the entities extracted from your session. Select which ones to create in Kanka.",
+      "Description": "Description",
       "Characters": "Characters",
       "Locations": "Locations",
       "Items": "Items",
@@ -391,7 +386,6 @@
       "EditDescription": "Edit Description",
       "Name": "Name",
       "Type": "Type",
-      "Description": "Description",
       "IsNPC": "NPC",
       "IsPC": "PC",
       "NoEntities": "No entities to display",
@@ -406,7 +400,6 @@
       "ViewGraph": "View Relationship Graph",
       "FailedCount": "{count} failed"
     },
-
     "ImageGeneration": {
       "Title": "Image Generation",
       "Generating": "Generating image...",
@@ -422,7 +415,6 @@
       "Accept": "Accept",
       "Cost": "Cost: ${cost}"
     },
-
     "Kanka": {
       "Title": "Kanka Integration",
       "Publishing": "Publishing to Kanka...",
@@ -446,7 +438,6 @@
       "TokenExpiringUrgent": "Your Kanka API token expires in {days} days. Consider generating a new token soon.",
       "TokenExpiring": "Your Kanka API token will expire in {days} days."
     },
-
     "Chronicle": {
       "Title": "Session Chronicle",
       "SessionNumber": "Session {number}",
@@ -467,7 +458,6 @@
       "Published": "Chronicle published successfully",
       "DefaultTitle": "Session Chronicle - {date}"
     },
-
     "RelationshipGraph": {
       "Title": "Entity Relationships",
       "Description": "Visualize how entities are connected across your sessions",
@@ -543,9 +533,12 @@
       "SearchPlaceholder": "Search by name...",
       "HighlightConnections": "Highlight Connections",
       "SelectedNode": "Selected: {name}",
-      "NoSelection": "No entity selected"
+      "NoSelection": "No entity selected",
+      "AllEntities": "All Entities",
+      "AllRelations": "All Relations",
+      "ErrorInitializing": "Error initializing relationship graph",
+      "ErrorRefreshing": "Error refreshing relationship graph"
     },
-
     "RelationshipType": {
       "ally": "Ally",
       "enemy": "Enemy",
@@ -558,7 +551,6 @@
       "neutral": "Neutral",
       "unknown": "Unknown"
     },
-
     "Errors": {
       "Generic": "An error occurred. Please try again.",
       "NetworkError": "Network error. Please check your connection.",
@@ -631,14 +623,14 @@
       "RAGNotInitialized": "RAG system not initialized",
       "RAGChunkingFailed": "Failed to chunk document: {error}",
       "RAGInvalidQuery": "Invalid search query",
-      "RAGStorageFull": "RAG storage is full. Clear some data or increase limits."
+      "RAGStorageFull": "RAG storage is full. Clear some data or increase limits.",
+      "ApiError": "API error during {operation}: {error}",
+      "CompendiumNotCached": "Compendium not cached: {id}"
     },
-
     "Warnings": {
       "ConfigIncomplete": "Configuration incomplete",
       "TranscriptionCircuitBreaker": "Transcription paused due to repeated errors. Try stopping and restarting recording."
     },
-
     "Notifications": {
       "ModuleReady": "VoxChronicle is ready",
       "ConfigurationIncomplete": "VoxChronicle: Please configure your API keys in module settings",
@@ -672,7 +664,6 @@
       "RAGSearchComplete": "Found {count} relevant context chunks",
       "RAGContextRetrieved": "Retrieved context for AI response"
     },
-
     "Buttons": {
       "Record": "Record Session",
       "Stop": "Stop",
@@ -691,7 +682,6 @@
       "Settings": "Settings",
       "Help": "Help"
     },
-
     "Controls": {
       "Title": "VoxChronicle",
       "Panel": "VoxChronicle Panel",
@@ -703,7 +693,6 @@
       "RAGIndex": "RAG Knowledge Index",
       "RAGSearch": "RAG Search"
     },
-
     "UI": {
       "ControlTitle": "VoxChronicle",
       "ControlHint": "Open VoxChronicle session recorder",
@@ -717,7 +706,6 @@
       "Error": "Error",
       "Info": "Information"
     },
-
     "Tooltips": {
       "StartRecording": "Start recording the session audio",
       "StopRecording": "Stop the current recording",
@@ -740,7 +728,6 @@
       "RAGSearchContext": "Search your knowledge base for relevant context",
       "RAGViewStats": "View RAG index statistics"
     },
-
     "Help": {
       "Title": "VoxChronicle Help",
       "GettingStarted": "Getting Started",
@@ -752,7 +739,6 @@
       "Support": "Support",
       "SupportText": "For issues and feature requests, please visit our GitHub repository."
     },
-
     "OffTrack": {
       "NoContext": "No adventure context set for off-track detection.",
       "ParseError": "Unable to parse off-track detection response.",
@@ -761,7 +747,6 @@
       "Minor": "Slight deviation from the main plot.",
       "Severity": "Severity: {{severity}}"
     },
-
     "Suggestions": {
       "TypeNarration": "Narration",
       "TypeDialogue": "Dialogue",
@@ -771,7 +756,6 @@
       "MediumConfidence": "Medium confidence",
       "LowConfidence": "Low confidence"
     },
-
     "Recording": {
       "StateInactive": "Inactive",
       "StateRecording": "Recording",
@@ -781,7 +765,6 @@
       "AudioLevelNormal": "Normal audio level",
       "AudioLevelHigh": "High audio level"
     },
-
     "Journal": {
       "NoJournalFound": "Journal not found",
       "ParsingJournal": "Parsing Journal...",
@@ -792,18 +775,15 @@
       "ChapterStructure": "Chapter Structure",
       "NoChaptersFound": "No chapters found"
     },
-
     "Chapter": {
       "CurrentChapter": "Current Chapter",
       "NoChapterDetected": "No chapter detected",
       "SelectChapter": "Select Chapter"
     },
-
     "Grounding": {
       "SourceNotFound": "Source not found in journal",
       "CitationRequired": "Citation required"
     },
-
     "Images": {
       "Generating": "Generating...",
       "CacheExpired": "Image URL expired, using local cache",
@@ -812,7 +792,6 @@
       "Delete": "Delete",
       "Download": "Download"
     },
-
     "KeyboardShortcuts": {
       "Title": "Keyboard Shortcuts",
       "StartRecording": "Start Recording: Ctrl+Shift+R",
@@ -821,7 +800,6 @@
       "Help": "Available shortcuts: Ctrl+Shift+R (start), Ctrl+Shift+S (stop), Ctrl+Shift+P (pause/resume)",
       "Enabled": "Keyboard shortcuts enabled for recording controls"
     },
-
     "Accessibility": {
       "RecordButton": "Record button",
       "AudioLevel": "Audio level indicator",
@@ -829,7 +807,6 @@
       "ImageGallery": "Image gallery",
       "SuggestionsList": "Suggestions list"
     },
-
     "SpeakerLabels": {
       "Speaker": "Speaker",
       "SpeakerNumber": "Speaker {number}",
@@ -855,7 +832,6 @@
       "SpeakerColor": "Speaker Color {number}",
       "TranscriptionWithSpeakers": "Transcription with Speakers"
     },
-
     "Scenes": {
       "SceneBreak": "Scene Break",
       "SceneTypeExploration": "Exploration",
@@ -872,7 +848,6 @@
       "SceneMarked": "Scene break marked",
       "NoActiveScene": "No active scene"
     },
-
     "Rules": {
       "NoRulesDetected": "No rules questions detected",
       "QuestionDetected": "Rules question detected",
@@ -907,7 +882,6 @@
       "Searching": "Searching rules...",
       "NoAnswer": "No relevant rules found"
     },
-
     "Recovery": {
       "SubsectionOf": "Subsection of {chapter}",
       "Subsection": "Subsection",
@@ -915,7 +889,6 @@
       "Page": "Page",
       "ChapterSummary": "Chapter Summary"
     },
-
     "Silence": {
       "Detected": "No speech detected for {{seconds}} seconds",
       "RecoveryTitle": "Where to resume?",
@@ -930,14 +903,12 @@
       "ContinueListening": "Continue listening",
       "Recovery": "Navigate to a chapter to continue"
     },
-
     "Scene": {
       "Combat": "Combat",
       "Social": "Social",
       "Exploration": "Exploration",
       "Rest": "Rest"
     },
-
     "RAG": {
       "Title": "RAG Knowledge Base",
       "Description": "Retrieval-Augmented Generation enhances AI responses by retrieving relevant context from your journals and compendiums.",
@@ -1001,7 +972,21 @@
       "IndexingStarted": "RAG indexing started",
       "IndexingCancelled": "RAG indexing cancelled",
       "Disabled": "Disabled",
-      "EnableHint": "Enable RAG in module settings to use these features"
+      "EnableHint": "Enable RAG in module settings to use these features",
+      "NotConfigured": "RAG is not configured. Enable RAG and set your OpenAI API key in module settings.",
+      "ClearConfirmTitle": "Clear RAG Index",
+      "ClearConfirmContent": "Are you sure you want to clear the RAG index? This will remove all indexed vectors.",
+      "ClearFailed": "Failed to clear RAG index: {error}"
+    },
+    "Button": {
+      "Cancel": "Cancel",
+      "Close": "Close"
+    },
+    "Error": {
+      "Message": "Error: {error}"
+    },
+    "Compendium": {
+      "UnnamedEntry": "Unnamed Entry"
     }
   }
 }

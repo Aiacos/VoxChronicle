@@ -3,7 +3,6 @@
     "Title": "VoxChronicle",
     "Description": "Trascrivi automaticamente le sessioni GDR e pubblica cronache su Kanka con contenuti e ritratti generati dall'IA.",
     "PanelTitle": "VoxChronicle - Assistente DM",
-
     "Settings": {
       "OpenAIKey": "Chiave API OpenAI",
       "OpenAIKeyHint": "La tua chiave API OpenAI per trascrizione e generazione immagini. Ottienila su platform.openai.com",
@@ -148,7 +147,6 @@
       "RAGSilenceThreshold": "Soglia Rilevamento Silenzio",
       "RAGSilenceThresholdHint": "Tempo in millisecondi prima di attivare suggerimenti autonomi (10-120 secondi)"
     },
-
     "Panel": {
       "Title": "VoxChronicle",
       "TogglePanel": "Apri/Chiudi Pannello DM",
@@ -214,9 +212,11 @@
       "Export": "Esporta",
       "NoTranscriptVC": "Nessuna trascrizione ancora",
       "NoEntities": "Nessuna entita estratta ancora",
-      "ConfigWarning": "Configura la tua chiave API OpenAI nelle impostazioni del modulo per usare VoxChronicle"
+      "ConfigWarning": "Configura la tua chiave API OpenAI nelle impostazioni del modulo per usare VoxChronicle",
+      "Record": "Registra",
+      "Stop": "Ferma",
+      "NoAnalytics": "Nessun dato analitico disponibile. Avvia una sessione live per monitorare le statistiche."
     },
-
     "Validation": {
       "ValidatingOpenAI": "Validazione chiave API OpenAI...",
       "ValidatingKanka": "Validazione token API Kanka...",
@@ -231,7 +231,6 @@
       "KankaValidationError": "Errore nella validazione del token API Kanka: {error}",
       "KankaValidationFailed": "Validazione Kanka fallita: {error}"
     },
-
     "Recorder": {
       "Title": "Registratore Sessione",
       "StartRecording": "Avvia Registrazione",
@@ -267,7 +266,6 @@
       "LocalBackendChecking": "Controllo backend locale...",
       "LocalBackendUnavailable": "Backend locale non disponibile"
     },
-
     "Transcription": {
       "Title": "Trascrizione",
       "Transcribing": "Trascrizione audio in corso...",
@@ -279,7 +277,6 @@
       "EstimatedTime": "Tempo rimanente stimato: {time}",
       "Cost": "Costo stimato: ${cost}"
     },
-
     "SpeakerLabeling": {
       "Title": "Etichettatura Parlanti",
       "Description": "Assegna nomi ai parlanti rilevati nella trascrizione. Queste etichette saranno usate nella cronaca della sessione.",
@@ -305,9 +302,9 @@
       "HelpSpeakerIds": "Questi sono assegnati automaticamente dal servizio di trascrizione (SPEAKER_00, SPEAKER_01, ecc.).",
       "HelpKnownSpeakers": "I parlanti con l'icona {icon} sono stati rilevati in una sessione di trascrizione precedente.",
       "HelpQuickAssign": "Usa il menu a tendina per assegnare rapidamente il nome di un utente di gioco a uno slot parlante.",
-      "HelpAutoDetect": "Riempie automaticamente gli slot parlanti vuoti con i nomi degli utenti di gioco in ordine."
+      "HelpAutoDetect": "Riempie automaticamente gli slot parlanti vuoti con i nomi degli utenti di gioco in ordine.",
+      "Help": "Aiuto"
     },
-
     "Vocabulary": {
       "Title": "Gestione Vocabolario",
       "Description": "Gestisci termini personalizzati per migliorare la precisione della trascrizione per la tua campagna.",
@@ -361,7 +358,6 @@
       "SuggestAddedCount": "Aggiunti {count} termine/i",
       "NoTermsSelected": "Nessun termine selezionato"
     },
-
     "EntityExtraction": {
       "Title": "Estrazione Entita",
       "Extracting": "Estrazione entita dalla trascrizione...",
@@ -370,10 +366,9 @@
       "NoEntitiesFound": "Nessuna nuova entita trovata nella trascrizione",
       "EntitiesFound": "{count} nuove entita trovate"
     },
-
     "EntityPreview": {
       "Title": "Revisione Entita Estratte",
-      "Description": "Rivedi le entita estratte dalla tua sessione. Seleziona quali creare su Kanka.",
+      "Description": "Descrizione",
       "Characters": "Personaggi",
       "Locations": "Luoghi",
       "Items": "Oggetti",
@@ -391,7 +386,6 @@
       "EditDescription": "Modifica Descrizione",
       "Name": "Nome",
       "Type": "Tipo",
-      "Description": "Descrizione",
       "IsNPC": "PNG",
       "IsPC": "PG",
       "NoEntities": "Nessuna entita da visualizzare",
@@ -406,7 +400,6 @@
       "ViewGraph": "Visualizza Grafo Relazioni",
       "FailedCount": "{count} fallite"
     },
-
     "ImageGeneration": {
       "Title": "Generazione Immagini",
       "Generating": "Generazione immagine...",
@@ -422,7 +415,6 @@
       "Accept": "Accetta",
       "Cost": "Costo: ${cost}"
     },
-
     "Kanka": {
       "Title": "Integrazione Kanka",
       "Publishing": "Pubblicazione su Kanka...",
@@ -446,7 +438,6 @@
       "TokenExpiringUrgent": "Il tuo token API Kanka scade tra {days} giorni. Considera di generare un nuovo token presto.",
       "TokenExpiring": "Il tuo token API Kanka scadra tra {days} giorni."
     },
-
     "Chronicle": {
       "Title": "Cronaca Sessione",
       "SessionNumber": "Sessione {number}",
@@ -467,7 +458,6 @@
       "Published": "Cronaca pubblicata con successo",
       "DefaultTitle": "Cronaca Sessione - {date}"
     },
-
     "RelationshipGraph": {
       "Title": "Relazioni tra Entita",
       "Description": "Visualizza come le entita sono connesse tra le tue sessioni",
@@ -543,9 +533,12 @@
       "SearchPlaceholder": "Cerca per nome...",
       "HighlightConnections": "Evidenzia Connessioni",
       "SelectedNode": "Selezionato: {name}",
-      "NoSelection": "Nessuna entita selezionata"
+      "NoSelection": "Nessuna entita selezionata",
+      "AllEntities": "Tutte le Entità",
+      "AllRelations": "Tutte le Relazioni",
+      "ErrorInitializing": "Errore durante inizializzazione del grafico relazioni",
+      "ErrorRefreshing": "Errore durante aggiornamento del grafico relazioni"
     },
-
     "RelationshipType": {
       "ally": "Alleato",
       "enemy": "Nemico",
@@ -558,7 +551,6 @@
       "neutral": "Neutrale",
       "unknown": "Sconosciuto"
     },
-
     "Errors": {
       "Generic": "Si e verificato un errore. Riprova.",
       "NetworkError": "Errore di rete. Controlla la connessione.",
@@ -631,14 +623,14 @@
       "RAGNotInitialized": "Sistema RAG non inizializzato",
       "RAGChunkingFailed": "Chunking documento fallito: {error}",
       "RAGInvalidQuery": "Query di ricerca non valida",
-      "RAGStorageFull": "Memoria RAG piena. Cancella alcuni dati o aumenta i limiti."
+      "RAGStorageFull": "Memoria RAG piena. Cancella alcuni dati o aumenta i limiti.",
+      "ApiError": "Errore API durante {operation}: {error}",
+      "CompendiumNotCached": "Compendio non in cache: {id}"
     },
-
     "Warnings": {
       "ConfigIncomplete": "Configurazione incompleta",
       "TranscriptionCircuitBreaker": "Trascrizione in pausa per errori ripetuti. Riprova fermando e riavviando la registrazione."
     },
-
     "Notifications": {
       "ModuleReady": "VoxChronicle e pronto",
       "ConfigurationIncomplete": "VoxChronicle: Configura le chiavi API nelle impostazioni del modulo",
@@ -672,7 +664,6 @@
       "RAGSearchComplete": "Trovati {count} chunk di contesto rilevanti",
       "RAGContextRetrieved": "Contesto recuperato per risposta AI"
     },
-
     "Buttons": {
       "Record": "Registra Sessione",
       "Stop": "Ferma",
@@ -691,7 +682,6 @@
       "Settings": "Impostazioni",
       "Help": "Aiuto"
     },
-
     "Controls": {
       "Title": "VoxChronicle",
       "Panel": "Pannello VoxChronicle",
@@ -703,7 +693,6 @@
       "RAGIndex": "Indice Conoscenze RAG",
       "RAGSearch": "Ricerca RAG"
     },
-
     "UI": {
       "ControlTitle": "VoxChronicle",
       "ControlHint": "Apri il registratore sessione VoxChronicle",
@@ -717,7 +706,6 @@
       "Error": "Errore",
       "Info": "Informazione"
     },
-
     "Tooltips": {
       "StartRecording": "Avvia la registrazione audio della sessione",
       "StopRecording": "Ferma la registrazione corrente",
@@ -740,7 +728,6 @@
       "RAGSearchContext": "Cerca nella tua base di conoscenze per contesto rilevante",
       "RAGViewStats": "Visualizza statistiche indice RAG"
     },
-
     "Help": {
       "Title": "Aiuto VoxChronicle",
       "GettingStarted": "Per Iniziare",
@@ -752,7 +739,6 @@
       "Support": "Supporto",
       "SupportText": "Per problemi e richieste di funzionalita, visita il nostro repository GitHub."
     },
-
     "OffTrack": {
       "NoContext": "Nessun contesto avventura impostato per il rilevamento fuori tema.",
       "ParseError": "Impossibile analizzare la risposta del rilevamento fuori tema.",
@@ -761,7 +747,6 @@
       "Minor": "Lieve deviazione dalla trama principale.",
       "Severity": "Gravita: {{severity}}"
     },
-
     "Suggestions": {
       "TypeNarration": "Narrazione",
       "TypeDialogue": "Dialogo",
@@ -771,7 +756,6 @@
       "MediumConfidence": "Media confidenza",
       "LowConfidence": "Bassa confidenza"
     },
-
     "Recording": {
       "StateInactive": "Inattivo",
       "StateRecording": "In registrazione",
@@ -781,7 +765,6 @@
       "AudioLevelNormal": "Livello audio normale",
       "AudioLevelHigh": "Livello audio alto"
     },
-
     "Journal": {
       "NoJournalFound": "Journal non trovato",
       "ParsingJournal": "Analisi Journal in corso...",
@@ -792,18 +775,15 @@
       "ChapterStructure": "Struttura Capitoli",
       "NoChaptersFound": "Nessun capitolo trovato"
     },
-
     "Chapter": {
       "CurrentChapter": "Capitolo Corrente",
       "NoChapterDetected": "Nessun capitolo rilevato",
       "SelectChapter": "Seleziona Capitolo"
     },
-
     "Grounding": {
       "SourceNotFound": "Fonte non trovata nel journal",
       "CitationRequired": "Citazione richiesta"
     },
-
     "Images": {
       "Generating": "Generazione in corso...",
       "CacheExpired": "URL immagine scaduto, usando cache locale",
@@ -812,7 +792,6 @@
       "Delete": "Elimina",
       "Download": "Scarica"
     },
-
     "KeyboardShortcuts": {
       "Title": "Scorciatoie Tastiera",
       "StartRecording": "Avvia Registrazione: Ctrl+Shift+R",
@@ -821,7 +800,6 @@
       "Help": "Scorciatoie disponibili: Ctrl+Shift+R (avvia), Ctrl+Shift+S (ferma), Ctrl+Shift+P (pausa/riprendi)",
       "Enabled": "Scorciatoie tastiera abilitate per i controlli di registrazione"
     },
-
     "Accessibility": {
       "RecordButton": "Pulsante registrazione",
       "AudioLevel": "Indicatore livello audio",
@@ -829,7 +807,6 @@
       "ImageGallery": "Galleria immagini",
       "SuggestionsList": "Lista suggerimenti"
     },
-
     "SpeakerLabels": {
       "Speaker": "Parlante",
       "SpeakerNumber": "Parlante {number}",
@@ -855,7 +832,6 @@
       "SpeakerColor": "Colore Parlante {number}",
       "TranscriptionWithSpeakers": "Trascrizione con Parlanti"
     },
-
     "Scenes": {
       "SceneBreak": "Interruzione Scena",
       "SceneTypeExploration": "Esplorazione",
@@ -872,7 +848,6 @@
       "SceneMarked": "Interruzione scena segnata",
       "NoActiveScene": "Nessuna scena attiva"
     },
-
     "Rules": {
       "NoRulesDetected": "Nessuna domanda sulle regole rilevata",
       "QuestionDetected": "Domanda sulle regole rilevata",
@@ -907,7 +882,6 @@
       "Searching": "Ricerca regole...",
       "NoAnswer": "Nessuna regola pertinente trovata"
     },
-
     "Recovery": {
       "SubsectionOf": "Sottosezione di {chapter}",
       "Subsection": "Sottosezione",
@@ -915,7 +889,6 @@
       "Page": "Pagina",
       "ChapterSummary": "Riepilogo Capitolo"
     },
-
     "Silence": {
       "Detected": "Nessun parlato rilevato per {{seconds}} secondi",
       "RecoveryTitle": "Dove riprendere?",
@@ -930,14 +903,12 @@
       "ContinueListening": "Continua ad ascoltare",
       "Recovery": "Naviga a un capitolo per continuare"
     },
-
     "Scene": {
       "Combat": "Combattimento",
       "Social": "Sociale",
       "Exploration": "Esplorazione",
       "Rest": "Riposo"
     },
-
     "RAG": {
       "Title": "Base di Conoscenze RAG",
       "Description": "La Generazione Aumentata da Recupero migliora le risposte AI recuperando contesto rilevante dai tuoi journal e compendi.",
@@ -1001,7 +972,21 @@
       "IndexingStarted": "Indicizzazione RAG avviata",
       "IndexingCancelled": "Indicizzazione RAG annullata",
       "Disabled": "Disabilitato",
-      "EnableHint": "Abilita RAG nelle impostazioni del modulo per usare queste funzionalità"
+      "EnableHint": "Abilita RAG nelle impostazioni del modulo per usare queste funzionalità",
+      "NotConfigured": "RAG non configurato. Abilita RAG e imposta la chiave API OpenAI nelle impostazioni del modulo.",
+      "ClearConfirmTitle": "Cancella Indice RAG",
+      "ClearConfirmContent": "Sei sicuro di voler cancellare l indice RAG? Questo rimuoverà tutti i vettori indicizzati.",
+      "ClearFailed": "Cancellazione indice RAG fallita: {error}"
+    },
+    "Button": {
+      "Cancel": "Annulla",
+      "Close": "Chiudi"
+    },
+    "Error": {
+      "Message": "Errore: {error}"
+    },
+    "Compendium": {
+      "UnnamedEntry": "Voce senza nome"
     }
   }
 }

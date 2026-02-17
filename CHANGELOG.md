@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-02-17
+
+### Fixed
+- Fixed `html.find is not a function` error in Foundry v13 settings panel — converted `renderSettingsConfig` hook from jQuery to native DOM APIs for v12/v13 compatibility
+- Added 18 missing i18n keys across all 8 language files (Panel.Record, Panel.Stop, RAG.NotConfigured, etc.) that were showing as raw key strings in the UI
+
 ## [2.1.1] - 2026-02-17
 
 ### Added

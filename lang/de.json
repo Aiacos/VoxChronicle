@@ -212,7 +212,10 @@
       "Export": "[EN] Export",
       "NoTranscriptVC": "[EN] No transcript yet",
       "NoEntities": "[EN] No entities extracted yet",
-      "ConfigWarning": "[EN] Configure your OpenAI API key in module settings to use VoxChronicle"
+      "ConfigWarning": "[EN] Configure your OpenAI API key in module settings to use VoxChronicle",
+      "Record": "[EN] Record",
+      "Stop": "[EN] Stop",
+      "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics."
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
@@ -299,7 +302,8 @@
       "HelpSpeakerIds": "[EN] These are automatically assigned by the transcription service (SPEAKER_00, SPEAKER_01, etc.).",
       "HelpKnownSpeakers": "[EN] Speakers with a {icon} icon were detected in a previous transcription session.",
       "HelpQuickAssign": "[EN] Use the dropdown to quickly assign a game user's name to a speaker slot.",
-      "HelpAutoDetect": "[EN] Automatically fills empty speaker slots with game user names in order."
+      "HelpAutoDetect": "[EN] Automatically fills empty speaker slots with game user names in order.",
+      "Help": "[EN] Help"
     },
     "Vocabulary": {
       "Title": "[EN] Vocabulary Manager",
@@ -529,7 +533,11 @@
       "SearchPlaceholder": "[EN] Search by name...",
       "HighlightConnections": "[EN] Highlight Connections",
       "SelectedNode": "[EN] Selected: {name}",
-      "NoSelection": "[EN] No entity selected"
+      "NoSelection": "[EN] No entity selected",
+      "AllEntities": "[EN] All Entities",
+      "AllRelations": "[EN] All Relations",
+      "ErrorInitializing": "[EN] Error initializing relationship graph",
+      "ErrorRefreshing": "[EN] Error refreshing relationship graph"
     },
     "RelationshipType": {
       "ally": "[EN] Ally",
@@ -615,7 +623,9 @@
       "RAGNotInitialized": "[EN] RAG system not initialized",
       "RAGChunkingFailed": "[EN] Failed to chunk document: {error}",
       "RAGInvalidQuery": "[EN] Invalid search query",
-      "RAGStorageFull": "[EN] RAG storage is full. Clear some data or increase limits."
+      "RAGStorageFull": "[EN] RAG storage is full. Clear some data or increase limits.",
+      "ApiError": "[EN] API error during {operation}: {error}",
+      "CompendiumNotCached": "[EN] Compendium not cached: {id}"
     },
     "Warnings": {
       "ConfigIncomplete": "Konfiguration unvollständig",
@@ -899,7 +909,6 @@
       "Exploration": "[EN] Exploration",
       "Rest": "[EN] Rest"
     },
-
     "RAG": {
       "Title": "[EN] RAG Knowledge Base",
       "Description": "[EN] Retrieval-Augmented Generation enhances AI responses by retrieving relevant context from your journals and compendiums.",
@@ -963,7 +972,21 @@
       "IndexingStarted": "[EN] RAG indexing started",
       "IndexingCancelled": "[EN] RAG indexing cancelled",
       "Disabled": "[EN] Disabled",
-      "EnableHint": "[EN] Enable RAG in module settings to use these features"
+      "EnableHint": "[EN] Enable RAG in module settings to use these features",
+      "NotConfigured": "[EN] RAG is not configured. Enable RAG and set your OpenAI API key in module settings.",
+      "ClearConfirmTitle": "[EN] Clear RAG Index",
+      "ClearConfirmContent": "[EN] Are you sure you want to clear the RAG index? This will remove all indexed vectors.",
+      "ClearFailed": "[EN] Failed to clear RAG index: {error}"
+    },
+    "Button": {
+      "Cancel": "[EN] Cancel",
+      "Close": "[EN] Close"
+    },
+    "Error": {
+      "Message": "[EN] Error: {error}"
+    },
+    "Compendium": {
+      "UnnamedEntry": "[EN] Unnamed Entry"
     }
   }
 }

@@ -212,7 +212,10 @@
       "Export": "",
       "NoTranscriptVC": "",
       "NoEntities": "",
-      "ConfigWarning": ""
+      "ConfigWarning": "",
+      "Record": "",
+      "Stop": "",
+      "NoAnalytics": ""
     },
     "Validation": {
       "ValidatingOpenAI": "",
@@ -299,7 +302,8 @@
       "HelpSpeakerIds": "",
       "HelpKnownSpeakers": "",
       "HelpQuickAssign": "",
-      "HelpAutoDetect": ""
+      "HelpAutoDetect": "",
+      "Help": ""
     },
     "Vocabulary": {
       "Title": "",
@@ -529,7 +533,11 @@
       "SearchPlaceholder": "",
       "HighlightConnections": "",
       "SelectedNode": "",
-      "NoSelection": ""
+      "NoSelection": "",
+      "AllEntities": "",
+      "AllRelations": "",
+      "ErrorInitializing": "",
+      "ErrorRefreshing": ""
     },
     "RelationshipType": {
       "ally": "",
@@ -615,7 +623,9 @@
       "RAGNotInitialized": "",
       "RAGChunkingFailed": "",
       "RAGInvalidQuery": "",
-      "RAGStorageFull": ""
+      "RAGStorageFull": "",
+      "ApiError": "",
+      "CompendiumNotCached": ""
     },
     "Warnings": {
       "ConfigIncomplete": "",
@@ -899,7 +909,6 @@
       "Exploration": "",
       "Rest": ""
     },
-
     "RAG": {
       "Title": "",
       "Description": "",
@@ -963,7 +972,21 @@
       "IndexingStarted": "",
       "IndexingCancelled": "",
       "Disabled": "",
-      "EnableHint": ""
+      "EnableHint": "",
+      "NotConfigured": "",
+      "ClearConfirmTitle": "",
+      "ClearConfirmContent": "",
+      "ClearFailed": ""
+    },
+    "Button": {
+      "Cancel": "",
+      "Close": ""
+    },
+    "Error": {
+      "Message": ""
+    },
+    "Compendium": {
+      "UnnamedEntry": ""
     }
   }
 }
