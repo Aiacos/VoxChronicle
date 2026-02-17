@@ -201,18 +201,44 @@ describe('MainPanel', () => {
       expect(data.hasTranscript).toBe(true);
     });
 
-    it('should return current chapter', () => {
-      mockOrchestrator.getCurrentChapter.mockReturnValue({ id: 'c1', name: 'Chapter 1', path: 'Ch1' });
+    it('should return current chapter with title property (not name)', () => {
+      mockOrchestrator.getCurrentChapter.mockReturnValue({
+        id: 'c1',
+        title: 'The Tavern',
+        path: 'Act I > The Tavern',
+        pageId: 'p1',
+        pageName: 'Chapter 1'
+      });
       const panel = new MainPanel(mockOrchestrator);
       const data = panel.getData();
-      expect(data.currentChapter).toEqual({ id: 'c1', name: 'Chapter 1', path: 'Ch1' });
+      expect(data.currentChapter.title).toBe('The Tavern');
+      expect(data.currentChapter.path).toBe('Act I > The Tavern');
     });
 
-    it('should return AI suggestions', () => {
-      mockOrchestrator.getAISuggestions.mockReturnValue([{ type: 'plot', text: 'Try this' }]);
+    it('should return null chapter when tracker has none', () => {
+      mockOrchestrator.getCurrentChapter.mockReturnValue(null);
       const panel = new MainPanel(mockOrchestrator);
       const data = panel.getData();
-      expect(data.suggestions).toHaveLength(1);
+      expect(data.currentChapter).toBeNull();
+    });
+
+    it('should return AI suggestions with content property', () => {
+      mockOrchestrator.getAISuggestions.mockReturnValue([
+        { type: 'narration', content: 'The shadows deepen', confidence: 0.8 },
+        { type: 'dialogue', content: 'Welcome, travelers!', confidence: 0.7 }
+      ]);
+      const panel = new MainPanel(mockOrchestrator);
+      const data = panel.getData();
+      expect(data.suggestions).toHaveLength(2);
+      expect(data.suggestions[0].content).toBe('The shadows deepen');
+      expect(data.suggestions[1].content).toBe('Welcome, travelers!');
+    });
+
+    it('should return empty suggestions when none available', () => {
+      mockOrchestrator.getAISuggestions.mockReturnValue([]);
+      const panel = new MainPanel(mockOrchestrator);
+      const data = panel.getData();
+      expect(data.suggestions).toEqual([]);
     });
   });
 

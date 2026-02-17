@@ -783,11 +783,13 @@ class SessionOrchestrator {
           this._liveTranscript.push(...result.segments);
 
           if (this._sessionAnalytics) {
-            this._sessionAnalytics.addSegment(result.segments);
+            for (const segment of result.segments) {
+              this._sessionAnalytics.addSegment(segment);
+            }
           }
 
           if (this._sceneDetector) {
-            this._sceneDetector.analyzeText(result.text || '');
+            this._sceneDetector.detectSceneTransition(result.text || '');
           }
 
           this._updateState(SessionState.LIVE_ANALYZING);
@@ -833,9 +835,7 @@ class SessionOrchestrator {
         this._lastAISuggestions = suggestions;
       }
 
-      const offTrack = await this._aiAssistant.detectOffTrack?.({
-        transcript: fullText
-      });
+      const offTrack = await this._aiAssistant.detectOffTrack?.(fullText);
 
       if (offTrack !== undefined) {
         this._lastOffTrackStatus = offTrack;

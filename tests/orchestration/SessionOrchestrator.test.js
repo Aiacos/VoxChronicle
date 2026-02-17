@@ -1210,7 +1210,7 @@ describe('SessionOrchestrator', () => {
         getCurrentChapter: vi.fn().mockReturnValue({ id: 'ch1', title: 'Chapter 1' })
       };
       mockSceneDetector = {
-        analyzeText: vi.fn()
+        detectSceneTransition: vi.fn()
       };
       mockSessionAnalytics = {
         addSegment: vi.fn()
@@ -1316,7 +1316,7 @@ describe('SessionOrchestrator', () => {
       await liveOrchestrator.startLiveMode({ batchDuration: 5000 });
       await vi.advanceTimersByTimeAsync(5000);
 
-      expect(mockSceneDetector.analyzeText).toHaveBeenCalled();
+      expect(mockSceneDetector.detectSceneTransition).toHaveBeenCalled();
     });
 
     it('should run AI analysis during live cycle', async () => {

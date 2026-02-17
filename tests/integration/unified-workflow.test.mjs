@@ -553,9 +553,6 @@ describe('Unified Live + Chronicle Workflow', () => {
       });
 
       sceneDetector = new SceneDetector();
-      // The orchestrator calls analyzeText which is not part of SceneDetector's public API.
-      // Add a stub so the live cycle does not throw.
-      sceneDetector.analyzeText = vi.fn();
 
       sessionAnalytics = new SessionAnalytics();
 

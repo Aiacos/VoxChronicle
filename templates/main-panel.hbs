@@ -32,7 +32,7 @@
       </span>
       {{#if currentChapter}}
       <span class="vox-chronicle-panel__chapter" title="{{currentChapter.path}}">
-        <i class="fas fa-book"></i> {{currentChapter.name}}
+        <i class="fas fa-book"></i> {{currentChapter.title}}
       </span>
       {{/if}}
     </div>
@@ -56,7 +56,7 @@
         {{#each suggestions}}
         <div class="vox-chronicle-suggestion">
           <span class="vox-chronicle-suggestion__type">{{this.type}}</span>
-          <p>{{this.text}}</p>
+          <p>{{this.content}}</p>
         </div>
         {{/each}}
       </div>

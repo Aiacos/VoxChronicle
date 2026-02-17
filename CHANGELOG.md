@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-02-17
+
+### Fixed
+- **SceneDetector method call** — `SessionOrchestrator._liveCycle()` called non-existent `analyzeText()` method; now correctly calls `detectSceneTransition()`
+- **SessionAnalytics segment ingestion** — `addSegment()` was receiving an array of segments instead of individual segments; now loops through each segment
+- **Suggestion display in template** — template used `{{this.text}}` but `AIAssistant.generateSuggestions()` returns `.content` property; template updated to `{{this.content}}`
+- **Off-track detection argument** — `detectOffTrack()` was called with `{ transcript: text }` object but expects a plain string; now passes string directly
+- **Chapter title in template** — template used `currentChapter.name` but `ChapterTracker.getCurrentChapter()` returns `.title` property; template updated
+
+### Added
+- Comprehensive live cycle integration tests (15 tests) verifying all 5 service integration points
+- AudioRecorder unit tests (7 tests) for `getLatestChunk`, `getAudioLevel`, and dual-buffer behavior
+
 ## [2.2.2] - 2026-02-17
 
 ### Fixed
