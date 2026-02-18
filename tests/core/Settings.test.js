@@ -578,7 +578,7 @@ describe('Settings', () => {
       const { Settings } = await import('../../scripts/core/Settings.mjs');
 
       mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'imageQuality') return 'hd';
+        if (key === 'imageQuality') return 'high';
         if (key === 'maxImagesPerSession') return 5;
         return '';
       });
@@ -586,7 +586,7 @@ describe('Settings', () => {
       const result = Settings.getImageSettings();
 
       expect(result).toEqual({
-        quality: 'hd',
+        quality: 'high',
         maxPerSession: 5
       });
     });

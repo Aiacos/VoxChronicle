@@ -167,6 +167,9 @@ class RecorderControls extends Application {
         this._uiState = RecorderUIState.ERROR;
         this._stopDurationTimer();
         break;
+      default:
+        this._logger.warn(`Unhandled orchestrator state: ${newState}`);
+        break;
     }
 
     this.render(false);

@@ -737,7 +737,7 @@
       "ApiKeys": "Chiavi API",
       "ApiKeysText": "Hai bisogno di una chiave API OpenAI (per trascrizione e immagini) e di un token API Kanka (per la pubblicazione). Entrambi sono necessari per la piena funzionalita.",
       "Costs": "Costi",
-      "CostsText": "La trascrizione OpenAI costa $0.006/minuto. Le immagini DALL-E 3 costano $0.04 (standard) o $0.08 (HD) per immagine.",
+      "CostsText": "La trascrizione OpenAI costa $0.006/minuto. Le immagini gpt-image-1 costano $0.02 (bassa), $0.04 (media) o $0.08 (alta) per immagine.",
       "Support": "Supporto",
       "SupportText": "Per problemi e richieste di funzionalita, visita il nostro repository GitHub."
     },

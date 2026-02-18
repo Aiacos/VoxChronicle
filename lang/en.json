@@ -737,7 +737,7 @@
       "ApiKeys": "API Keys",
       "ApiKeysText": "You need an OpenAI API key (for transcription and images) and a Kanka API token (for publishing). Both are required for full functionality.",
       "Costs": "Costs",
-      "CostsText": "OpenAI transcription costs $0.006/minute. DALL-E 3 images cost $0.04 (standard) or $0.08 (HD) per image.",
+      "CostsText": "OpenAI transcription costs $0.006/minute. gpt-image-1 images cost $0.02 (low), $0.04 (medium), or $0.08 (high) per image.",
       "Support": "Support",
       "SupportText": "For issues and feature requests, please visit our GitHub repository."
     },
