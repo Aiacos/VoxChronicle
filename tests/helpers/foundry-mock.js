@@ -289,16 +289,25 @@ export function createMockGame(options = {}) {
  */
 export function setupFoundryMocks(options = {}) {
   const game = createMockGame(options);
+  const MockApplicationV2 = createMockApplicationV2();
+  const MockHandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
   const foundry = {
-    utils: createMockFoundryUtils()
+    utils: createMockFoundryUtils(),
+    applications: {
+      api: {
+        ApplicationV2: MockApplicationV2,
+        HandlebarsApplicationMixin: MockHandlebarsApplicationMixin
+      }
+    }
   };
 
   // Set globals
   globalThis.game = game;
   globalThis.foundry = foundry;
   globalThis.Application = createMockApplication();
-  globalThis.ApplicationV2 = createMockApplicationV2();
-  globalThis.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
+  // Also set on globalThis for backwards compatibility with tests
+  globalThis.ApplicationV2 = MockApplicationV2;
+  globalThis.HandlebarsApplicationMixin = MockHandlebarsApplicationMixin;
 
   return { game, foundry };
 }

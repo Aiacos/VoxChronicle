@@ -76,9 +76,18 @@ function setupEnvironment() {
   global.window = dom.window;
   global.document = dom.window.document;
 
-  // Set up ApplicationV2 and HandlebarsApplicationMixin
-  global.ApplicationV2 = createMockApplicationV2();
-  global.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
+  // Set up ApplicationV2 and HandlebarsApplicationMixin (must be on foundry.applications.api)
+  const MockAppV2 = createMockApplicationV2();
+  const MockHAM = createMockHandlebarsApplicationMixin();
+  global.ApplicationV2 = MockAppV2;
+  global.HandlebarsApplicationMixin = MockHAM;
+  global.foundry = {
+    utils: {
+      mergeObject: (original, other) => ({ ...original, ...other }),
+      deepClone: (obj) => JSON.parse(JSON.stringify(obj))
+    },
+    applications: { api: { ApplicationV2: MockAppV2, HandlebarsApplicationMixin: MockHAM } }
+  };
 
   // Set up Dialog class
   global.Dialog = class Dialog {
@@ -234,7 +243,10 @@ describe('VocabularyManager', () => {
     // Set up global objects
     global.game = mockGame;
     global.ui = mockUi;
-    global.foundry = { utils: createMockFoundryUtils() };
+    global.foundry = {
+      utils: createMockFoundryUtils(),
+      applications: { api: { ApplicationV2: global.ApplicationV2, HandlebarsApplicationMixin: global.HandlebarsApplicationMixin } }
+    };
 
     // Create instance
     manager = new VocabularyManager();

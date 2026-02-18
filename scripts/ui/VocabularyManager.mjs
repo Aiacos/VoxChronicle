@@ -15,6 +15,8 @@ import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { VocabularyDictionary, VocabularyCategory } from '../core/VocabularyDictionary.mjs';
 
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
  * VocabularyManager Application class
  * Provides UI for managing custom vocabulary terms across categories

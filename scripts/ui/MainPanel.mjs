@@ -15,6 +15,8 @@ import { Logger } from '../utils/Logger.mjs';
 import { debounce } from '../utils/DomUtils.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
  * Valid tab identifiers for the MainPanel
  * @type {string[]}

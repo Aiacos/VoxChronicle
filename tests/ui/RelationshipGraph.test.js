@@ -55,7 +55,13 @@ function setupEnvironment() {
   global.HTMLElement = dom.window.HTMLElement;
   global.Element = dom.window.Element;
 
-  // Mock foundry utils
+  // Mock ApplicationV2 base class (must be on foundry.applications.api)
+  const MockAppV2 = createMockApplicationV2();
+  const MockHAM = createMockHandlebarsApplicationMixin();
+  global.ApplicationV2 = MockAppV2;
+  global.HandlebarsApplicationMixin = MockHAM;
+
+  // Mock foundry utils and ApplicationV2 namespace
   global.foundry = {
     utils: {
       mergeObject: (original, other) => ({ ...original, ...other }),
@@ -63,7 +69,8 @@ function setupEnvironment() {
       duplicate: (obj) => JSON.parse(JSON.stringify(obj)),
       isObjectEmpty: (obj) => Object.keys(obj).length === 0,
       randomID: () => Math.random().toString(36).substring(2, 18)
-    }
+    },
+    applications: { api: { ApplicationV2: MockAppV2, HandlebarsApplicationMixin: MockHAM } }
   };
 
   // Mock game object
@@ -137,9 +144,6 @@ function setupEnvironment() {
     })
   };
 
-  // Mock ApplicationV2 base class
-  global.ApplicationV2 = createMockApplicationV2();
-  global.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
 }
 
 // Import after environment setup

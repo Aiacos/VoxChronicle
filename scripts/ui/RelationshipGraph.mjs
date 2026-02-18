@@ -14,6 +14,8 @@ import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { RelationshipType } from '../ai/EntityExtractor.mjs';
 
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
  * Entity type enum for filtering
  * @enum {string}

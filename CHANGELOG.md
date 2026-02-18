@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-02-18
+
+### Fixed
+- **Critical: ApplicationV2 and HandlebarsApplicationMixin accessed as bare globals** — Foundry v13 exposes these under `foundry.applications.api`, not as global variables. All 5 UI files now properly destructure from `foundry.applications.api`. This caused the module to fail silently when any UI panel was opened.
+
+### Added
+- Static analysis tests for v13 API compatibility:
+  - Verify UI files destructure `ApplicationV2` from `foundry.applications.api`
+  - Verify test files set `foundry.applications.api` when mocking ApplicationV2
+  - Prevent regression to bare global references
+
 ## [2.3.0] - 2026-02-18
 
 ### Changed

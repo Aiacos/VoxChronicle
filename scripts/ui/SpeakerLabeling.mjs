@@ -15,6 +15,8 @@ import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { Settings } from '../core/Settings.mjs';
 
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
  * Default speaker ID patterns used by OpenAI diarization
  * @constant {string[]}

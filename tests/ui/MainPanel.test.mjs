@@ -11,9 +11,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMockApplicationV2, createMockHandlebarsApplicationMixin, createMockFoundryUtils } from '../helpers/foundry-mock.js';
 
 // Set up Foundry globals BEFORE importing MainPanel (which extends ApplicationV2)
-globalThis.ApplicationV2 = createMockApplicationV2();
-globalThis.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
-globalThis.foundry = { utils: createMockFoundryUtils() };
+// Source code destructures from foundry.applications.api at module level
+const _MockAppV2 = createMockApplicationV2();
+const _MockHAM = createMockHandlebarsApplicationMixin();
+globalThis.ApplicationV2 = _MockAppV2;
+globalThis.HandlebarsApplicationMixin = _MockHAM;
+globalThis.foundry = {
+  utils: createMockFoundryUtils(),
+  applications: { api: { ApplicationV2: _MockAppV2, HandlebarsApplicationMixin: _MockHAM } }
+};
 
 // Mock VoxChronicle singleton (used by _getRAGData, _getAudioLevel, _handleRAGBuildIndex)
 let mockVoxChronicleInstance = {};

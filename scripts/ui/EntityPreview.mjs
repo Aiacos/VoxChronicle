@@ -16,6 +16,8 @@ import { Settings } from '../core/Settings.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 import { RelationshipGraph } from './RelationshipGraph.mjs';
 
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
  * Entity selection state enum
  * @enum {string}

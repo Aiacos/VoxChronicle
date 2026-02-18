@@ -220,6 +220,101 @@ describe('Module Import Static Analysis', () => {
     });
   });
 
+  describe('Foundry v13 API compatibility', () => {
+    const uiDir = path.resolve(SCRIPTS_DIR, 'ui');
+    const uiFiles = fs.existsSync(uiDir) ? findMjsFiles(uiDir) : [];
+
+    it('UI files that extend ApplicationV2 must destructure from foundry.applications.api', () => {
+      const violations = [];
+
+      for (const file of uiFiles) {
+        const content = fs.readFileSync(file, 'utf8');
+        const rel = relPath(file);
+
+        // Check if file uses ApplicationV2 in a class declaration
+        const usesAppV2 = /extends\s+.*(?:ApplicationV2|HandlebarsApplicationMixin)/.test(content);
+        if (!usesAppV2) continue;
+
+        // Must have the foundry.applications.api destructuring
+        const hasProperImport = /const\s*\{[^}]*ApplicationV2[^}]*\}\s*=\s*foundry\.applications\.api/.test(content);
+        if (!hasProperImport) {
+          violations.push(`${rel}: extends ApplicationV2 but missing 'const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api'`);
+        }
+      }
+
+      expect(violations, `v13 API violations:\n${violations.join('\n')}`).toHaveLength(0);
+    });
+
+    it('no bare ApplicationV2 or HandlebarsApplicationMixin global references without namespace', () => {
+      const violations = [];
+
+      for (const file of allFiles) {
+        const content = fs.readFileSync(file, 'utf8');
+        const rel = relPath(file);
+        const lines = content.split('\n');
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          // Skip comments and the destructuring line itself
+          if (line.trimStart().startsWith('//') || line.trimStart().startsWith('*')) continue;
+          if (/foundry\.applications\.api/.test(line)) continue;
+
+          // Check for bare global access (not as property of foundry)
+          // Match: global.ApplicationV2, globalThis.ApplicationV2, window.ApplicationV2
+          if (/(?:global(?:This)?|window)\s*\.\s*(?:ApplicationV2|HandlebarsApplicationMixin)\s*=/.test(line)) {
+            // This is OK in test files only
+            if (file.includes('/tests/')) continue;
+            violations.push(`${rel}:${i + 1}: sets ApplicationV2/HandlebarsApplicationMixin as global (use foundry.applications.api)`);
+          }
+        }
+      }
+
+      expect(violations, `Bare global violations:\n${violations.join('\n')}`).toHaveLength(0);
+    });
+
+    it('UI files use foundry.applications.api, not bare ApplicationV2 globals', () => {
+      // Regression test: ensure no UI file relies on ApplicationV2 being a global
+      for (const file of uiFiles) {
+        const content = fs.readFileSync(file, 'utf8');
+        const rel = relPath(file);
+
+        // If file uses ApplicationV2, it must NOT have it imported via a bare import statement
+        // (ApplicationV2 is not an ES module - it comes from the foundry runtime)
+        const hasImportAppV2 = /import\s+.*ApplicationV2/.test(content);
+        expect(hasImportAppV2, `${rel}: must not import ApplicationV2 via ES import (use foundry.applications.api)`).toBe(false);
+      }
+    });
+
+    it('test files set foundry.applications.api when mocking ApplicationV2', () => {
+      const testDir = path.resolve(__dirname, '..');
+      const testFiles = [];
+      for (const entry of fs.readdirSync(path.join(testDir, 'ui'), { withFileTypes: true })) {
+        if (entry.name.endsWith('.test.js') || entry.name.endsWith('.test.mjs')) {
+          testFiles.push(path.join(testDir, 'ui', entry.name));
+        }
+      }
+
+      const violations = [];
+      for (const file of testFiles) {
+        const content = fs.readFileSync(file, 'utf8');
+        const rel = relPath(file);
+
+        // If file sets global.ApplicationV2 or globalThis.ApplicationV2
+        const setsGlobalAppV2 = /(?:global(?:This)?)\s*\.?\s*(?:\[?['"]?)?ApplicationV2/.test(content);
+        if (!setsGlobalAppV2) continue;
+
+        // Must also set foundry.applications.api
+        const setsFoundryApi = /foundry\.applications\.api|applications:\s*\{\s*api:/.test(content) ||
+          /applications\s*:\s*\{[^}]*api\s*:/.test(content);
+        if (!setsFoundryApi) {
+          violations.push(`${rel}: sets global ApplicationV2 but doesn't set foundry.applications.api`);
+        }
+      }
+
+      expect(violations, `Test mock violations:\n${violations.join('\n')}`).toHaveLength(0);
+    });
+  });
+
   describe('i18n key consistency', () => {
     it('all language files have the same keys as en.json', () => {
       const langDir = path.resolve(__dirname, '../../lang');
