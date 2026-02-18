@@ -508,7 +508,12 @@ class EntityPreview extends Application {
       selectedCount,
 
       // Progress and results
-      progress: this._progress,
+      progress: {
+        ...this._progress,
+        percent: this._progress.total > 0
+          ? Math.round((this._progress.current / this._progress.total) * 100)
+          : 0
+      },
       hasProgress: this._mode === PreviewMode.CREATING,
       results: this._results,
       hasResults: this._mode === PreviewMode.COMPLETE || this._mode === PreviewMode.ERROR,
@@ -1337,6 +1342,20 @@ class EntityPreview extends Application {
    */
   getResults() {
     return { ...this._results };
+  }
+
+  /**
+   * Close the preview and clean up pending timeouts
+   * @param {object} [options] - Close options
+   * @returns {Promise<void>}
+   */
+  async close(options = {}) {
+    if (this._renderTimeout !== null) {
+      clearTimeout(this._renderTimeout);
+      this._renderTimeout = null;
+      this._pendingRender = false;
+    }
+    return super.close(options);
   }
 
   /**

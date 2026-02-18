@@ -625,7 +625,7 @@ describe('MainPanel', () => {
 
     it('should stop live mode when in live mode and recording', async () => {
       mockOrchestrator.state = 'live_listening';
-      mockOrchestrator._liveMode = true;
+      mockOrchestrator.isLiveMode = true;
       mockOrchestrator.stopLiveMode = vi.fn().mockResolvedValue({});
       const panel = new MainPanel(mockOrchestrator);
 
@@ -635,7 +635,7 @@ describe('MainPanel', () => {
 
     it('should stop session when recording but not live mode', async () => {
       mockOrchestrator.state = 'recording';
-      mockOrchestrator._liveMode = false;
+      mockOrchestrator.isLiveMode = false;
       mockOrchestrator.stopSession = vi.fn().mockResolvedValue({});
       const panel = new MainPanel(mockOrchestrator);
 
@@ -645,7 +645,7 @@ describe('MainPanel', () => {
 
     it('should start live mode when transcription service exists', async () => {
       mockOrchestrator.state = 'idle';
-      mockOrchestrator._transcriptionService = {};
+      mockOrchestrator.hasTranscriptionService = true;
       mockOrchestrator.startLiveMode = vi.fn().mockResolvedValue(undefined);
       const panel = new MainPanel(mockOrchestrator);
 
@@ -655,7 +655,7 @@ describe('MainPanel', () => {
 
     it('should start regular session when no transcription service', async () => {
       mockOrchestrator.state = 'idle';
-      mockOrchestrator._transcriptionService = null;
+      mockOrchestrator.hasTranscriptionService = false;
       mockOrchestrator.startSession = vi.fn().mockResolvedValue(undefined);
       const panel = new MainPanel(mockOrchestrator);
 
@@ -665,7 +665,7 @@ describe('MainPanel', () => {
 
     it('should show error notification on failure', async () => {
       mockOrchestrator.state = 'idle';
-      mockOrchestrator._transcriptionService = {};
+      mockOrchestrator.hasTranscriptionService = true;
       mockOrchestrator.startLiveMode = vi.fn().mockRejectedValue(new Error('Mic denied'));
       const panel = new MainPanel(mockOrchestrator);
 

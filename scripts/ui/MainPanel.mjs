@@ -326,7 +326,7 @@ class MainPanel extends Application {
     try {
       if (this._isRecordingActive()) {
         // Stop recording - use live mode stop if in live mode, otherwise regular stop
-        if (this._orchestrator._liveMode) {
+        if (this._orchestrator.isLiveMode) {
           await this._orchestrator.stopLiveMode();
         } else {
           await this._orchestrator.stopSession({ processImmediately: false });
@@ -334,7 +334,7 @@ class MainPanel extends Application {
         ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStopped') || 'Recording stopped');
       } else {
         // Start recording - use live mode by default (real-time AI assistance)
-        if (this._orchestrator._transcriptionService) {
+        if (this._orchestrator.hasTranscriptionService) {
           await this._orchestrator.startLiveMode();
         } else {
           await this._orchestrator.startSession();

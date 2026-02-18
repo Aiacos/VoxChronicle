@@ -681,6 +681,14 @@ class SessionOrchestrator {
   }
 
   /**
+   * Check if transcription service is available
+   * @returns {boolean}
+   */
+  get hasTranscriptionService() {
+    return !!this._transcriptionService;
+  }
+
+  /**
    * Start live mode - periodic transcription + AI analysis
    * @param {object} [options={}] - Live mode options
    * @returns {Promise<void>}
