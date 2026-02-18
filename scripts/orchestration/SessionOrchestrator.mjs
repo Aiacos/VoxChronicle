@@ -317,6 +317,14 @@ class SessionOrchestrator {
   cancelSession() {
     if (!this.isSessionActive) return;
     this._logger.log('Cancelling session...');
+
+    // Clear live cycle timer to prevent orphaned cycles
+    if (this._liveCycleTimer) {
+      clearTimeout(this._liveCycleTimer);
+      this._liveCycleTimer = null;
+    }
+    this._liveMode = false;
+
     if (this._audioRecorder?.cancel) {
       this._audioRecorder.cancel();
     }

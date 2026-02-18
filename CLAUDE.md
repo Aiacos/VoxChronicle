@@ -74,7 +74,6 @@ VoxChronicle/
 │   ├── content/
 │   │   └── CompendiumSearcher.mjs # Search Foundry compendiums for duplicates
 │   ├── data/
-│   │   ├── dnd-terms.mjs          # D&D terminology for transcription prompts
 │   │   └── dnd-vocabulary.mjs     # D&D vocabulary dictionary
 │   ├── ui/
 │   │   ├── MainPanel.mjs          # Unified floating panel (6 tabs) - singleton

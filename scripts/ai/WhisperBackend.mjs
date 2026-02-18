@@ -229,12 +229,19 @@ class WhisperBackend {
         }
       })
         .catch(async (error) => {
-          // If /health doesn't exist, try root endpoint
+          // If /health doesn't exist, try root endpoint with fresh timeout
           if (error.name !== 'AbortError') {
-            return fetch(`${this._baseUrl}/`, {
-              method: 'GET',
-              signal: controller.signal
-            });
+            clearTimeout(timeoutId);
+            const fallbackController = new AbortController();
+            const fallbackTimeoutId = setTimeout(() => fallbackController.abort(), timeout);
+            try {
+              return await fetch(`${this._baseUrl}/`, {
+                method: 'GET',
+                signal: fallbackController.signal
+              });
+            } finally {
+              clearTimeout(fallbackTimeoutId);
+            }
           }
           throw error;
         })

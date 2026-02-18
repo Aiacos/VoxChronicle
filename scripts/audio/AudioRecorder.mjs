@@ -536,8 +536,25 @@ class AudioRecorder {
         resolve(chunk);
       };
 
-      // stop() triggers: final ondataavailable → onstop
-      oldRecorder.stop();
+      oldRecorder.onerror = (event) => {
+        this._logger.error('Rotation error:', event.error);
+        // Still try to start fresh recorder so live mode can continue
+        this._startFreshRecorder(mimeType);
+        resolve(null);
+      };
+
+      try {
+        if (oldRecorder.state === 'recording' || oldRecorder.state === 'paused') {
+          // stop() triggers: final ondataavailable → onstop
+          oldRecorder.stop();
+        } else {
+          this._logger.warn(`Rotation skipped: recorder in '${oldRecorder.state}' state`);
+          resolve(null);
+        }
+      } catch (error) {
+        this._logger.error('Failed to stop recorder during rotation:', error);
+        resolve(null);
+      }
     });
   }
 
@@ -1076,7 +1093,9 @@ class AudioRecorder {
 
     if (this._audioContext) {
       try {
-        this._audioContext.close();
+        if (this._audioContext.state !== 'closed') {
+          this._audioContext.close();
+        }
       } catch {
         // Ignore close errors (context may already be closed)
       }

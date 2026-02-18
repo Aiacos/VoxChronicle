@@ -159,26 +159,16 @@ Hooks.on('canvasReady', () => {
  * Invalidate journal parser cache when journal entries are modified
  * Ensures the parser picks up changes to journal content
  */
-Hooks.on('updateJournalEntry', () => {
+function invalidateJournalCache() {
   const vc = VoxChronicle.getInstance();
   if (vc.journalParser) {
     vc.journalParser.clearAllCache?.();
   }
-});
+}
 
-Hooks.on('createJournalEntry', () => {
-  const vc = VoxChronicle.getInstance();
-  if (vc.journalParser) {
-    vc.journalParser.clearAllCache?.();
-  }
-});
-
-Hooks.on('deleteJournalEntry', () => {
-  const vc = VoxChronicle.getInstance();
-  if (vc.journalParser) {
-    vc.journalParser.clearAllCache?.();
-  }
-});
+Hooks.on('updateJournalEntry', invalidateJournalCache);
+Hooks.on('createJournalEntry', invalidateJournalCache);
+Hooks.on('deleteJournalEntry', invalidateJournalCache);
 
 /**
  * Register VoxChronicle controls in the scene controls sidebar
@@ -450,5 +440,3 @@ Hooks.on('renderSettingsConfig', (app, html) => {
   }
 });
 
-// Re-export module ID for backward compatibility
-export { MODULE_ID } from './constants.mjs';

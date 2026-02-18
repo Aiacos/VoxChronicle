@@ -12,19 +12,7 @@
 import { Logger } from '../utils/Logger.mjs';
 import { LocalWhisperService } from '../ai/LocalWhisperService.mjs';
 import { TranscriptionService } from '../ai/TranscriptionService.mjs';
-
-/**
- * Transcription mode options
- * @enum {string}
- */
-const TranscriptionMode = {
-  /** Use local Whisper only */
-  LOCAL: 'local',
-  /** Use OpenAI API only */
-  API: 'api',
-  /** Try local first, fallback to API on error */
-  AUTO: 'auto'
-};
+import { TranscriptionMode } from '../ai/TranscriptionFactory.mjs';
 
 /**
  * TranscriptionProcessor class for managing transcription workflows
