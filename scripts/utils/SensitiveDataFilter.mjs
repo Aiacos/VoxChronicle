@@ -293,5 +293,3 @@ export class SensitiveDataFilter {
     });
   }
 }
-
-export { SensitiveDataFilter };

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-02-18
+
+### Fixed
+- **Critical: Duplicate export in SensitiveDataFilter.mjs caused total module failure** — The file had both `export class SensitiveDataFilter` and a redundant `export { SensitiveDataFilter }`, which is a SyntaxError in ES modules. Since this file is in the static import chain (`main.mjs → Logger.mjs → SensitiveDataFilter.mjs`), the error silently killed the entire module — no settings, no scene controls, no console output.
+
+### Added
+- Static analysis test: "no duplicate export bindings" — scans all `.mjs` files for the pattern of both inline export (`export class/function/const X`) and brace export (`export { X }`) for the same name, which is a SyntaxError in ES modules.
+
 ## [2.3.1] - 2026-02-18
 
 ### Fixed

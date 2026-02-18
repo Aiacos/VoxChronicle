@@ -315,6 +315,50 @@ describe('Module Import Static Analysis', () => {
     });
   });
 
+  describe('no duplicate exports', () => {
+    for (const file of allFiles) {
+      const rel = relPath(file);
+
+      it(`${rel} has no duplicate export bindings`, () => {
+        const content = fs.readFileSync(file, 'utf8');
+        const lines = content.split('\n');
+        const inlineExports = new Map();
+        const braceExports = new Map();
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line.trimStart().startsWith('//') || line.trimStart().startsWith('*')) continue;
+
+          // Inline exports: export class Foo, export function Foo, export const Foo
+          const inlineMatch = line.match(/^export\s+(?:class|function|const|let|var)\s+(\w+)/);
+          if (inlineMatch) {
+            inlineExports.set(inlineMatch[1], i + 1);
+          }
+
+          // Brace exports: export { Foo, Bar }
+          const braceMatch = line.match(/^export\s+\{([^}]+)\}/);
+          if (braceMatch) {
+            const names = braceMatch[1].split(',').map(n => n.trim().split(/\s+as\s+/)[0].trim());
+            for (const name of names) {
+              if (name) braceExports.set(name, i + 1);
+            }
+          }
+        }
+
+        const duplicates = [];
+        for (const [name, inlineLine] of inlineExports) {
+          if (braceExports.has(name)) {
+            duplicates.push(
+              `"${name}" exported inline at line ${inlineLine} and again in export block at line ${braceExports.get(name)} (SyntaxError in ES modules)`
+            );
+          }
+        }
+
+        expect(duplicates, `Duplicate exports in ${rel}:\n${duplicates.join('\n')}`).toHaveLength(0);
+      });
+    }
+  });
+
   describe('i18n key consistency', () => {
     it('all language files have the same keys as en.json', () => {
       const langDir = path.resolve(__dirname, '../../lang');
