@@ -47,64 +47,63 @@ async function getMainPanel() {
  * @type {Object<string, Function>}
  */
 const toolHandlers = {
-  panel: async (_event, active) => {
-    if (active === false) return;
+  panel: async () => {
     try {
-      logger.info('Opening main panel...');
-      const panel = await getMainPanel();
-      if (panel.isRendered) {
-        await panel.close();
+      const existing = foundry.applications.instances.get('vox-chronicle-main-panel');
+      if (existing) {
+        existing.close();
       } else {
-        await panel.render();
+        const panel = await getMainPanel();
+        panel.render(true);
       }
     } catch (error) {
       logger.error('Failed to open main panel:', error);
-      console.error('VoxChronicle panel error:', error);
       ui.notifications?.error('VoxChronicle: Failed to open panel. Check console.');
     }
   },
-  speakerLabels: async (_event, active) => {
-    if (active === false) return;
+  speakerLabels: async () => {
     try {
-      logger.info('Opening speaker labeling...');
-      const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
-      const speakerLabeling = new SpeakerLabeling();
-      await speakerLabeling.render();
+      const existing = foundry.applications.instances.get('vox-chronicle-speaker-labeling');
+      if (existing) {
+        existing.close();
+      } else {
+        const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
+        new SpeakerLabeling().render(true);
+      }
     } catch (error) {
       logger.error('Failed to open speaker labeling:', error);
-      console.error('VoxChronicle speaker labeling error:', error);
       ui.notifications?.error('VoxChronicle: Failed to open speaker labeling. Check console.');
     }
   },
-  vocabulary: async (_event, active) => {
-    if (active === false) return;
+  vocabulary: async () => {
     try {
-      logger.info('Opening vocabulary manager...');
-      const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
-      const vocabularyManager = new VocabularyManager();
-      await vocabularyManager.render();
+      const existing = foundry.applications.instances.get('vox-chronicle-vocabulary-manager');
+      if (existing) {
+        existing.close();
+      } else {
+        const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
+        new VocabularyManager().render(true);
+      }
     } catch (error) {
       logger.error('Failed to open vocabulary manager:', error);
-      console.error('VoxChronicle vocabulary manager error:', error);
       ui.notifications?.error('VoxChronicle: Failed to open vocabulary manager. Check console.');
     }
   },
-  relationshipGraph: async (_event, active) => {
-    if (active === false) return;
+  relationshipGraph: async () => {
     try {
-      logger.info('Opening relationship graph...');
-      const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
-      const graph = new RelationshipGraph();
-      await graph.render();
+      const existing = foundry.applications.instances.get('vox-chronicle-relationship-graph');
+      if (existing) {
+        existing.close();
+      } else {
+        const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
+        new RelationshipGraph().render(true);
+      }
     } catch (error) {
       logger.error('Failed to open relationship graph:', error);
-      console.error('VoxChronicle relationship graph error:', error);
       ui.notifications?.error('VoxChronicle: Failed to open relationship graph. Check console.');
     }
   },
-  settings: (_event, active) => {
-    if (active === false) return;
-    // Use namespaced class for v13 compatibility, fallback for v12
+  settings: () => {
     const SettingsApp = foundry?.applications?.settings?.SettingsConfig ?? SettingsConfig;
     const app = new SettingsApp();
     app.render(true, { focus: true });
@@ -157,14 +156,6 @@ Hooks.once('ready', async () => {
     if (debugMode) {
       Logger.setDebugMode(true);
       logger.info('Debug mode enabled from settings');
-    }
-
-    // Verify ApplicationV2 is available for UI components
-    if (foundry?.applications?.api?.ApplicationV2) {
-      logger.info('ApplicationV2 API available at foundry.applications.api');
-    } else {
-      logger.error('ApplicationV2 NOT found at foundry.applications.api — UI panels will not work');
-      logger.error('foundry.applications keys:', Object.keys(foundry?.applications ?? {}));
     }
 
     logger.info('All services initialized successfully');

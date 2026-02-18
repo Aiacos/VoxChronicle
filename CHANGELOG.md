@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-02-18
+
+### Fixed
+- **Critical: ApplicationV2 panels not opening — render(true) required for initial render** — `ApplicationV2.render()` without arguments is a no-op for apps not yet rendered. All scene control tool handlers now use `render(true)` following the official Foundry v13 pattern.
+- **Scene control button handlers now follow official v13 toggle pattern** — Uses `foundry.applications.instances.get(id)` to check if a panel is already open, closing it if so or rendering with `force: true` if not. This matches the documented Foundry v13 `getSceneControlButtons` example.
+- **Corrected onChange signature for button: true tools** — `button: true` tools pass no arguments to `onChange`. Removed incorrect `(_event, active)` parameters and `if (active === false) return` guard.
+- Removed diagnostic ApplicationV2 logging from ready hook (root cause identified and fixed).
+
 ## [2.3.3] - 2026-02-18
 
 ### Fixed
