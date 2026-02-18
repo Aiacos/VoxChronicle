@@ -6,7 +6,7 @@
  * and confirm which entities to create in Kanka.
  *
  * @class EntityPreview
- * @augments Application
+ * @augments ApplicationV2
  * @module vox-chronicle
  */
 
@@ -65,7 +65,7 @@ const RENDER_BATCH_INTERVAL_MS = 500;
  * EntityPreview Application class
  * Provides UI for reviewing extracted entities before publishing to Kanka
  */
-class EntityPreview extends Application {
+class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
   /**
    * Logger instance for this class
    * @type {object}
@@ -175,24 +175,35 @@ class EntityPreview extends Application {
    */
   _renderTimeout = null;
 
-  /**
-   * Get default options for the Application
-   * @returns {object} Default application options
-   * @static
-   */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'vox-chronicle-entity-preview',
-      title: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Title') || 'Review Extracted Entities',
-      template: `modules/${MODULE_ID}/templates/entity-preview.hbs`,
-      classes: ['vox-chronicle', 'entity-preview'],
-      width: 600,
-      height: 'auto',
-      minimizable: false,
+  /** @override */
+  static DEFAULT_OPTIONS = {
+    id: 'vox-chronicle-entity-preview',
+    classes: ['vox-chronicle', 'entity-preview'],
+    window: {
+      title: 'VOXCHRONICLE.EntityPreview.Title',
       resizable: true,
-      popOut: true
-    });
-  }
+      minimizable: false
+    },
+    position: { width: 600 },
+    actions: {
+      'select-all': EntityPreview._onSelectAllAction,
+      'deselect-all': EntityPreview._onDeselectAllAction,
+      'confirm-create': EntityPreview._onConfirmCreateAction,
+      'skip-all': EntityPreview._onSkipAllAction,
+      'cancel': EntityPreview._onCancelAction,
+      'close': EntityPreview._onCloseAction,
+      'retry': EntityPreview._onRetryAction,
+      'edit-description': EntityPreview._onEditDescriptionAction,
+      'generate-portrait': EntityPreview._onGeneratePortraitAction,
+      'toggle-section': EntityPreview._onToggleSectionAction,
+      'view-graph': EntityPreview._onViewGraphAction
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    main: { template: `modules/${MODULE_ID}/templates/entity-preview.hbs` }
+  };
 
   /**
    * Create a new EntityPreview instance
@@ -222,6 +233,76 @@ class EntityPreview extends Application {
     }
 
     this._logger.debug('EntityPreview initialized');
+  }
+
+  // --- Static Action Handlers (dispatch to instance methods) ---
+
+  /** @private */
+  static _onSelectAllAction(event, target) {
+    this._onSelectAll(event);
+  }
+
+  /** @private */
+  static _onDeselectAllAction(event, target) {
+    this._onDeselectAll(event);
+  }
+
+  /** @private */
+  static async _onConfirmCreateAction(event, target) {
+    return this._onConfirmCreate(event);
+  }
+
+  /** @private */
+  static _onSkipAllAction(event, target) {
+    this._onSkipAll(event);
+  }
+
+  /** @private */
+  static _onCancelAction(event, target) {
+    this._onCancel(event);
+  }
+
+  /** @private */
+  static _onCloseAction(event, target) {
+    this._onClose(event);
+  }
+
+  /** @private */
+  static _onRetryAction(event, target) {
+    this._onRetry(event);
+  }
+
+  /** @private */
+  static async _onEditDescriptionAction(event, target) {
+    return this._onEditDescription(event, target);
+  }
+
+  /** @private */
+  static async _onGeneratePortraitAction(event, target) {
+    return this._onGeneratePortrait(event, target);
+  }
+
+  /** @private */
+  static _onToggleSectionAction(event, target) {
+    this._onToggleSection(event, target);
+  }
+
+  /** @private */
+  static _onViewGraphAction(event, target) {
+    this._onViewGraph(event);
+  }
+
+  // --- Lifecycle ---
+
+  /**
+   * Bind non-click event listeners after render
+   * @param {object} context - Template context
+   * @param {object} options - Render options
+   */
+  _onRender(context, options) {
+    this.element?.querySelectorAll('input[type="checkbox"][data-entity-key]').forEach((el) => {
+      el.addEventListener('change', this._onToggleEntity.bind(this));
+    });
   }
 
   /**
@@ -348,13 +429,6 @@ class EntityPreview extends Application {
    * - RENDER_BATCH_SIZE entities have been processed since last render
    *
    * Otherwise, schedules a deferred render to occur after the remaining time interval.
-   * This prevents both render spam (too frequent) and render starvation (too infrequent).
-   *
-   * Side effects:
-   * - Increments _renderBatchCounter
-   * - May update _lastRenderTime
-   * - May set/clear _renderTimeout and _pendingRender
-   * - May trigger immediate or deferred render()
    *
    * @private
    */
@@ -379,7 +453,7 @@ class EntityPreview extends Application {
       }
 
       // Render immediately
-      this.render(false);
+      this.render();
       this._lastRenderTime = now;
       this._renderBatchCounter = 0;
     } else if (!this._pendingRender) {
@@ -388,7 +462,7 @@ class EntityPreview extends Application {
       this._renderTimeout = setTimeout(() => {
         this._pendingRender = false;
         this._renderTimeout = null;
-        this.render(false);
+        this.render();
         this._lastRenderTime = Date.now();
         this._renderBatchCounter = 0;
       }, RENDER_BATCH_INTERVAL_MS - timeSinceLastRender);
@@ -399,18 +473,7 @@ class EntityPreview extends Application {
    * Flush any pending renders and force an immediate render
    *
    * Cancels any deferred render scheduled by _batchedRender() and forces
-   * an immediate render() call. This ensures the final UI state is always
-   * displayed, even if it falls within the batching interval.
-   *
-   * Should be called when entity creation completes (success or failure)
-   * to guarantee the user sees the final progress and results.
-   *
-   * Side effects:
-   * - Clears _renderTimeout if set
-   * - Resets _pendingRender to false
-   * - Triggers immediate render()
-   * - Updates _lastRenderTime
-   * - Resets _renderBatchCounter to 0
+   * an immediate render() call.
    *
    * @private
    */
@@ -423,17 +486,18 @@ class EntityPreview extends Application {
     }
 
     // Force immediate render
-    this.render(false);
+    this.render();
     this._lastRenderTime = Date.now();
     this._renderBatchCounter = 0;
   }
 
   /**
-   * Get data for the template
+   * Prepare template context data
    * @param {object} _options - Render options
-   * @returns {object} Template data
+   * @returns {Promise<object>} Template data
+   * @override
    */
-  async getData(_options = {}) {
+  async _prepareContext(_options = {}) {
     const configStatus = Settings.getConfigurationStatus();
     const selectionState = this._getSelectionState();
 
@@ -590,51 +654,7 @@ class EntityPreview extends Application {
     };
   }
 
-  /**
-   * Activate event listeners for the rendered HTML
-   * @param {jQuery} html - The rendered HTML element
-   */
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    // Entity selection checkboxes
-    html
-      .find('input[type="checkbox"][data-entity-key]')
-      .on('change', this._onToggleEntity.bind(this));
-
-    // Select all button
-    html.find('[data-action="select-all"]').on('click', this._onSelectAll.bind(this));
-
-    // Deselect all button
-    html.find('[data-action="deselect-all"]').on('click', this._onDeselectAll.bind(this));
-
-    // Create selected entities button
-    html.find('[data-action="confirm-create"]').on('click', this._onConfirmCreate.bind(this));
-
-    // Skip all / cancel button
-    html.find('[data-action="skip-all"]').on('click', this._onSkipAll.bind(this));
-    html.find('[data-action="cancel"]').on('click', this._onCancel.bind(this));
-
-    // Close button (for complete/error states)
-    html.find('[data-action="close"]').on('click', this._onClose.bind(this));
-
-    // Retry button (for error state)
-    html.find('[data-action="retry"]').on('click', this._onRetry.bind(this));
-
-    // Edit description button
-    html.find('[data-action="edit-description"]').on('click', this._onEditDescription.bind(this));
-
-    // Generate portrait button
-    html.find('[data-action="generate-portrait"]').on('click', this._onGeneratePortrait.bind(this));
-
-    // Section toggle (collapse/expand)
-    html.find('[data-action="toggle-section"]').on('click', this._onToggleSection.bind(this));
-
-    // View graph button
-    html.find('[data-action="view-graph"]').on('click', this._onViewGraph.bind(this));
-
-    this._logger.debug('Event listeners activated');
-  }
+  // --- Event Handlers ---
 
   /**
    * Handle entity selection toggle
@@ -650,7 +670,7 @@ class EntityPreview extends Application {
       this._logger.debug(`Entity ${key} selection: ${checkbox.checked}`);
 
       // Update UI elements that depend on selection state
-      this.render(false);
+      this.render();
     }
   }
 
@@ -667,7 +687,7 @@ class EntityPreview extends Application {
     }
 
     this._logger.debug('Selected all entities');
-    this.render(false);
+    this.render();
   }
 
   /**
@@ -683,7 +703,7 @@ class EntityPreview extends Application {
     }
 
     this._logger.debug('Deselected all entities');
-    this.render(false);
+    this.render();
   }
 
   /**
@@ -724,7 +744,7 @@ class EntityPreview extends Application {
       message: game.i18n?.localize('VOXCHRONICLE.EntityPreview.Creating') || 'Creating entities...'
     };
     this._results = { created: [], failed: [] };
-    this.render(false);
+    this.render();
 
     this._logger.log(`Creating ${totalSelected} entities in Kanka`);
 
@@ -738,7 +758,7 @@ class EntityPreview extends Application {
             ? PreviewMode.ERROR
             : PreviewMode.COMPLETE;
 
-      this.render(false);
+      this.render();
 
       // Call the confirm callback with results
       if (this._onConfirmCallback) {
@@ -747,7 +767,7 @@ class EntityPreview extends Application {
     } catch (error) {
       this._logger.error('Failed to create entities:', error);
       this._mode = PreviewMode.ERROR;
-      this.render(false);
+      this.render();
     }
   }
 
@@ -1089,18 +1109,19 @@ class EntityPreview extends Application {
     // Reset to review mode, keeping only failed entities
     this._mode = PreviewMode.REVIEW;
     this._results = { created: [], failed: [] };
-    this.render(false);
+    this.render();
   }
 
   /**
    * Handle edit description button click
    * @param {Event} event - The click event
+   * @param {HTMLElement} [target] - The action target element
    * @private
    */
-  async _onEditDescription(event) {
+  async _onEditDescription(event, target) {
     event.preventDefault();
 
-    const button = event.currentTarget;
+    const button = target || event.currentTarget;
     const entityType = button.dataset.entityType;
     const entityIndex = parseInt(button.dataset.entityIndex, 10);
 
@@ -1115,7 +1136,7 @@ class EntityPreview extends Application {
     if (newDescription !== null && newDescription !== entity.description) {
       this._entities[entityType][entityIndex].description = newDescription;
       this._logger.debug(`Updated description for ${entityType}[${entityIndex}]`);
-      this.render(false);
+      this.render();
     }
   }
 
@@ -1145,7 +1166,8 @@ class EntityPreview extends Application {
             icon: '<i class="fa-solid fa-save"></i>',
             label: game.i18n?.localize('VOXCHRONICLE.Buttons.Save') || 'Save',
             callback: (html) => {
-              const description = html.find('textarea[name="description"]').val();
+              const el = html[0] ?? html;
+              const description = el.querySelector('textarea[name="description"]')?.value ?? '';
               resolve(description);
             }
           },
@@ -1163,12 +1185,13 @@ class EntityPreview extends Application {
   /**
    * Handle generate portrait button click
    * @param {Event} event - The click event
+   * @param {HTMLElement} [target] - The action target element
    * @private
    */
-  async _onGeneratePortrait(event) {
+  async _onGeneratePortrait(event, target) {
     event.preventDefault();
 
-    const button = event.currentTarget;
+    const button = target || event.currentTarget;
     const entityType = button.dataset.entityType;
     const entityIndex = parseInt(button.dataset.entityIndex, 10);
 
@@ -1191,7 +1214,7 @@ class EntityPreview extends Application {
     const entityKey = `${entityType}-${entityIndex}`;
     this._imageLoadingStates.set(entityKey, true);
     this._logger.debug(`Image generation started for ${entityKey}`);
-    this.render(false);
+    this.render();
 
     try {
       const vox = VoxChronicle.getInstance();
@@ -1233,19 +1256,20 @@ class EntityPreview extends Application {
       // Clear loading state
       this._imageLoadingStates.set(entityKey, false);
       this._logger.debug(`Image generation state cleared for ${entityKey}`);
-      this.render(false);
+      this.render();
     }
   }
 
   /**
    * Handle section toggle (collapse/expand)
    * @param {Event} event - The click event
+   * @param {HTMLElement} [target] - The action target element
    * @private
    */
-  _onToggleSection(event) {
+  _onToggleSection(event, target) {
     event.preventDefault();
 
-    const header = event.currentTarget;
+    const header = target || event.currentTarget;
     const section = header.closest('.entity-section');
 
     if (section) {
@@ -1269,7 +1293,7 @@ class EntityPreview extends Application {
       relationships: this._relationships
     });
 
-    graph.render(true);
+    graph.render();
   }
 
   /**
@@ -1369,213 +1393,7 @@ class EntityPreview extends Application {
     this._mode = PreviewMode.REVIEW;
     this._progress = { current: 0, total: 0, message: '' };
     this._results = { created: [], failed: [] };
-    this.render(false);
-  }
-
-  /**
-   * Render fallback content when template is not available
-   * This generates inline HTML for the entity preview
-   * @returns {string} Inline HTML content
-   * @private
-   */
-  _renderFallbackContent() {
-    const data = this.getData();
-
-    // Build entity section HTML
-    const buildEntitySection = (title, entities, type) => {
-      if (entities.length === 0) return '';
-
-      const entityRows = entities
-        .map(
-          (entity) => `
-        <div class="entity-row ${entity.selected ? 'selected' : ''}">
-          <div class="entity-select">
-            <input type="checkbox" data-entity-key="${entity.key}"
-              ${entity.selected ? 'checked' : ''} />
-          </div>
-          <div class="entity-info">
-            <div class="entity-name">${entity.name}</div>
-            <div class="entity-type">${entity.typeLabel}</div>
-            <div class="entity-description">${entity.description || ''}</div>
-          </div>
-          <div class="entity-actions">
-            <button type="button" data-action="edit-description"
-              data-entity-type="${type}" data-entity-index="${entity.index}"
-              title="${data.i18n.editDescription}">
-              <i class="fa-solid fa-edit"></i>
-            </button>
-            <button type="button" data-action="generate-portrait"
-              data-entity-type="${type}" data-entity-index="${entity.index}"
-              title="${data.i18n.generatePortrait}">
-              <i class="fa-solid fa-image"></i>
-            </button>
-          </div>
-          ${
-            entity.imageUrl
-              ? `
-            <div class="entity-preview-image">
-              <img src="${entity.imageUrl}" alt="${entity.name}" />
-            </div>
-          `
-              : ''
-          }
-        </div>
-      `
-        )
-        .join('');
-
-      return `
-        <div class="entity-section">
-          <div class="section-header" data-action="toggle-section">
-            <i class="fa-solid fa-chevron-down"></i>
-            <span class="section-title">${title}</span>
-            <span class="section-count">(${entities.length})</span>
-          </div>
-          <div class="section-content">
-            ${entityRows}
-          </div>
-        </div>
-      `;
-    };
-
-    // Build progress section
-    const progressSection = data.hasProgress
-      ? `
-      <div class="entity-preview-progress">
-        <div class="progress-message">${data.progress.message}</div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${(data.progress.current / data.progress.total) * 100}%"></div>
-        </div>
-        <div class="progress-count">${data.progress.current} / ${data.progress.total}</div>
-      </div>
-    `
-      : '';
-
-    // Build results section
-    const resultsSection = data.hasResults
-      ? `
-      <div class="entity-preview-results ${data.isError ? 'error' : 'success'}">
-        <div class="results-summary">
-          ${data.createdCount > 0 ? `<div class="created-count"><i class="fa-solid fa-check"></i> ${data.i18n.created}</div>` : ''}
-          ${data.failedCount > 0 ? `<div class="failed-count"><i class="fa-solid fa-times"></i> ${data.failedCount} failed</div>` : ''}
-        </div>
-        ${
-          data.failedCount > 0
-            ? `
-          <div class="failed-entities">
-            ${data.results.failed.map((f) => `<div class="failed-entity">${f.type}: ${f.name} - ${f.error}</div>`).join('')}
-          </div>
-        `
-            : ''
-        }
-      </div>
-    `
-      : '';
-
-    // Build action buttons based on mode
-    let actionButtons = '';
-    if (data.isReview) {
-      actionButtons = `
-        <div class="selection-actions">
-          <button type="button" data-action="select-all" ${data.isAllSelected ? 'disabled' : ''}>
-            <i class="fa-solid fa-check-square"></i> ${data.i18n.selectAll}
-          </button>
-          <button type="button" data-action="deselect-all" ${data.isNoneSelected ? 'disabled' : ''}>
-            <i class="fa-solid fa-square"></i> ${data.i18n.deselectAll}
-          </button>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn-skip" data-action="skip-all">
-            <i class="fa-solid fa-forward"></i> ${data.i18n.skip}
-          </button>
-          <button type="button" class="btn-confirm" data-action="confirm-create"
-            ${data.isNoneSelected || !data.isKankaConfigured ? 'disabled' : ''}>
-            <i class="fa-solid fa-cloud-upload-alt"></i> ${data.i18n.create} (${data.selectedCount})
-          </button>
-        </div>
-      `;
-    } else if (data.isComplete || data.isError) {
-      actionButtons = `
-        <div class="form-actions">
-          ${
-            data.isError
-              ? `
-            <button type="button" class="btn-retry" data-action="retry">
-              <i class="fa-solid fa-redo"></i> ${data.i18n.retry}
-            </button>
-          `
-              : ''
-          }
-          <button type="button" class="btn-close" data-action="close">
-            <i class="fa-solid fa-times"></i> ${data.i18n.close}
-          </button>
-        </div>
-      `;
-    }
-
-    return `
-      <div class="vox-chronicle-entity-preview">
-        <div class="preview-description">
-          <p>${data.i18n.description}</p>
-        </div>
-
-        ${
-          !data.isKankaConfigured
-            ? `
-          <div class="preview-warning">
-            <i class="fa-solid fa-exclamation-triangle"></i>
-            <span>${data.i18n.notConfigured}</span>
-          </div>
-        `
-            : ''
-        }
-
-        ${progressSection}
-        ${resultsSection}
-
-        ${
-          data.isReview && data.hasEntities
-            ? `
-          <div class="entity-sections">
-            ${buildEntitySection(data.i18n.characters, data.characters, 'characters')}
-            ${buildEntitySection(data.i18n.locations, data.locations, 'locations')}
-            ${buildEntitySection(data.i18n.items, data.items, 'items')}
-          </div>
-        `
-            : ''
-        }
-
-        ${
-          !data.hasEntities && data.isReview
-            ? `
-          <div class="no-entities">
-            <i class="fa-solid fa-info-circle"></i>
-            <span>${data.i18n.noEntities}</span>
-          </div>
-        `
-            : ''
-        }
-
-        ${actionButtons}
-      </div>
-    `;
-  }
-
-  /**
-   * Override _renderInner to provide fallback content if template is missing
-   * @param {object} data - Template data
-   * @returns {Promise<jQuery>} Rendered inner content
-   * @protected
-   */
-  async _renderInner(data) {
-    try {
-      return await super._renderInner(data);
-    } catch {
-      // Template not found, use inline fallback
-      this._logger.warn('Template not found, using fallback HTML');
-      const html = this._renderFallbackContent();
-      return $(html);
-    }
+    this.render();
   }
 
   /**
@@ -1604,7 +1422,7 @@ class EntityPreview extends Application {
         ...options
       });
 
-      preview.render(true);
+      preview.render();
     });
   }
 }

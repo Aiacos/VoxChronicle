@@ -57,6 +57,7 @@
             {{#if terms.length}}
             <button type="button"
                     class="clear-category-btn"
+                    data-action="clear-category"
                     title="{{../i18n.clearCategory}}">
               <i class="fa-solid fa-trash"></i>
               <span>{{../i18n.clearCategory}}</span>
@@ -72,6 +73,7 @@
               <span class="term-text">{{this}}</span>
               <button type="button"
                       class="remove-term-btn"
+                      data-action="remove-term"
                       data-term="{{this}}"
                       title="{{../../i18n.removeTerm}}"
                       aria-label="{{../../i18n.removeTerm}}">
@@ -97,6 +99,7 @@
                    aria-label="{{../i18n.addTerm}}" />
             <button type="button"
                     class="add-term-btn"
+                    data-action="add-term"
                     title="{{../i18n.addTerm}}">
               <i class="fa-solid fa-plus"></i>
               <span>{{../i18n.addTerm}}</span>
@@ -113,6 +116,7 @@
     <div class="action-group">
       <button type="button"
               class="suggest-foundry-btn"
+              data-action="suggest-foundry"
               title="{{i18n.suggestFoundry}}">
         <i class="fa-solid fa-magic"></i>
         <span>{{i18n.suggestFoundry}}</span>
@@ -120,6 +124,7 @@
 
       <button type="button"
               class="import-btn"
+              data-action="import-dict"
               title="{{i18n.importDict}}">
         <i class="fa-solid fa-file-import"></i>
         <span>{{i18n.importDict}}</span>
@@ -127,6 +132,7 @@
 
       <button type="button"
               class="export-btn"
+              data-action="export-dict"
               title="{{i18n.exportDict}}"
               {{#unless hasTerms}}disabled{{/unless}}>
         <i class="fa-solid fa-file-export"></i>
@@ -137,6 +143,7 @@
     <div class="action-group danger">
       <button type="button"
               class="clear-all-btn"
+              data-action="clear-all"
               title="{{i18n.clearAll}}"
               {{#unless hasTerms}}disabled{{/unless}}>
         <i class="fa-solid fa-exclamation-triangle"></i>

@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
-import { createMockApplication } from '../helpers/foundry-mock.js';
+import { createMockApplicationV2, createMockHandlebarsApplicationMixin } from '../helpers/foundry-mock.js';
 
 // Mock Logger before importing RelationshipGraph
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
@@ -54,40 +54,6 @@ function setupEnvironment() {
   global.navigator = dom.window.navigator;
   global.HTMLElement = dom.window.HTMLElement;
   global.Element = dom.window.Element;
-
-  // Mock jQuery
-  const createJQueryMock = (element) => {
-    const mock = {
-      find: vi.fn(() => mock),
-      on: vi.fn(() => mock),
-      off: vi.fn(() => mock),
-      addClass: vi.fn(() => mock),
-      removeClass: vi.fn(() => mock),
-      toggleClass: vi.fn(() => mock),
-      attr: vi.fn(() => mock),
-      val: vi.fn(),
-      text: vi.fn(),
-      html: vi.fn(),
-      0: element || document.createElement('div')
-    };
-    mock[0].getBoundingClientRect = vi.fn(() => ({
-      width: 800,
-      height: 600,
-      top: 0,
-      left: 0,
-      right: 800,
-      bottom: 600
-    }));
-    return mock;
-  };
-
-  global.$ = vi.fn((selector) => {
-    if (typeof selector === 'string') {
-      const element = document.createElement('div');
-      return createJQueryMock(element);
-    }
-    return createJQueryMock(selector);
-  });
 
   // Mock foundry utils
   global.foundry = {
@@ -171,8 +137,9 @@ function setupEnvironment() {
     })
   };
 
-  // Mock Application base class
-  global.Application = createMockApplication();
+  // Mock ApplicationV2 base class
+  global.ApplicationV2 = createMockApplicationV2();
+  global.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
 }
 
 // Import after environment setup
@@ -281,22 +248,29 @@ describe('RelationshipGraph', () => {
     });
   });
 
-  describe('defaultOptions', () => {
-    it('should return proper default options', () => {
-      const options = RelationshipGraph.defaultOptions;
-      expect(options.id).toBe('vox-chronicle-relationship-graph');
-      expect(options.template).toBe('modules/vox-chronicle/templates/relationship-graph.hbs');
-      expect(options.classes).toContain('vox-chronicle');
-      expect(options.classes).toContain('relationship-graph');
-      expect(options.width).toBe(800);
-      expect(options.height).toBe(600);
-      expect(options.minimizable).toBe(true);
-      expect(options.resizable).toBe(true);
+  describe('DEFAULT_OPTIONS', () => {
+    it('should have correct default options', () => {
+      const opts = RelationshipGraph.DEFAULT_OPTIONS;
+      expect(opts.id).toBe('vox-chronicle-relationship-graph');
+      expect(opts.classes).toContain('vox-chronicle');
+      expect(opts.classes).toContain('relationship-graph');
+      expect(opts.position.width).toBe(800);
+      expect(opts.position.height).toBe(600);
+      expect(opts.window.resizable).toBe(true);
+      expect(opts.window.minimizable).toBe(true);
     });
 
-    it('should localize the title', () => {
-      const _options = RelationshipGraph.defaultOptions;
-      expect(game.i18n.localize).toHaveBeenCalledWith('VOXCHRONICLE.RelationshipGraph.Title');
+    it('should have all action handlers registered', () => {
+      const actions = RelationshipGraph.DEFAULT_OPTIONS.actions;
+      expect(actions.refresh).toBe(RelationshipGraph._onRefreshClick);
+      expect(actions.export).toBe(RelationshipGraph._onExportClick);
+      expect(actions.close).toBe(RelationshipGraph._onCloseClick);
+    });
+  });
+
+  describe('PARTS', () => {
+    it('should define main template part', () => {
+      expect(RelationshipGraph.PARTS.main.template).toContain('relationship-graph.hbs');
     });
   });
 
@@ -384,7 +358,7 @@ describe('RelationshipGraph', () => {
     });
   });
 
-  describe('getData', () => {
+  describe('_prepareContext', () => {
     beforeEach(() => {
       graph = new RelationshipGraph({
         entities: mockEntities,
@@ -392,22 +366,22 @@ describe('RelationshipGraph', () => {
       });
     });
 
-    it('should return template data with correct mode flags', () => {
-      const data = graph.getData();
+    it('should return template data with correct mode flags', async () => {
+      const data = await graph._prepareContext();
       expect(data.mode).toBe(GraphMode.READY);
       expect(data.isReady).toBe(true);
       expect(data.isEmpty).toBe(false);
       expect(data.isError).toBe(false);
     });
 
-    it('should include entity and relationship counts', () => {
-      const data = graph.getData();
+    it('should include entity and relationship counts', async () => {
+      const data = await graph._prepareContext();
       expect(data.totalEntities).toBe(5);
       expect(data.totalRelationships).toBe(3);
     });
 
-    it('should include entity type filter options', () => {
-      const data = graph.getData();
+    it('should include entity type filter options', async () => {
+      const data = await graph._prepareContext();
       expect(data.entityTypeOptions).toHaveLength(4);
       expect(data.entityTypeOptions[0].value).toBe(EntityType.ALL);
       expect(data.entityTypeOptions[1].value).toBe(EntityType.CHARACTER);
@@ -418,8 +392,8 @@ describe('RelationshipGraph', () => {
       expect(data.entityTypeOptions[3].count).toBe(1);
     });
 
-    it('should include relationship type filter options', () => {
-      const data = graph.getData();
+    it('should include relationship type filter options', async () => {
+      const data = await graph._prepareContext();
       expect(data.relationshipTypeOptions).toContainEqual(
         expect.objectContaining({ value: 'all' })
       );
@@ -427,8 +401,8 @@ describe('RelationshipGraph', () => {
       expect(data.relationshipTypeOptions.length).toBeGreaterThan(1);
     });
 
-    it('should include legend items with colors', () => {
-      const data = graph.getData();
+    it('should include legend items with colors', async () => {
+      const data = await graph._prepareContext();
       expect(data.legendItems).toBeDefined();
       expect(Array.isArray(data.legendItems)).toBe(true);
       expect(data.legendItems.length).toBeGreaterThan(0);
@@ -439,18 +413,18 @@ describe('RelationshipGraph', () => {
       });
     });
 
-    it('should include current filter state', () => {
+    it('should include current filter state', async () => {
       graph._filters.entityType = EntityType.CHARACTER;
       graph._filters.relationshipType = 'ally';
-      const data = graph.getData();
+      const data = await graph._prepareContext();
       expect(data.filters.entityType).toBe(EntityType.CHARACTER);
       expect(data.filters.relationshipType).toBe('ally');
     });
 
-    it('should show EMPTY mode when no data', () => {
+    it('should show EMPTY mode when no data', async () => {
       graph.setEntities({ characters: [], locations: [], items: [] });
       graph.setRelationships([]);
-      const data = graph.getData();
+      const data = await graph._prepareContext();
       expect(data.isEmpty).toBe(true);
       expect(data.isReady).toBe(false);
     });
@@ -556,79 +530,76 @@ describe('RelationshipGraph', () => {
     });
   });
 
-  describe('activateListeners', () => {
-    let mockHtml;
-
+  describe('_onRender', () => {
     beforeEach(() => {
       graph = new RelationshipGraph({
         entities: mockEntities,
         relationships: mockRelationships
       });
-
-      mockHtml = {
-        find: vi.fn(() => mockHtml),
-        on: vi.fn(() => mockHtml)
-      };
-    });
-
-    it('should attach entity type filter handler', () => {
-      graph.activateListeners(mockHtml);
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-filter="entity-type"]');
-      expect(mockHtml.on).toHaveBeenCalledWith('change', expect.any(Function));
-    });
-
-    it('should attach relationship type filter handler', () => {
-      graph.activateListeners(mockHtml);
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-filter="relationship-type"]');
-      expect(mockHtml.on).toHaveBeenCalledWith('change', expect.any(Function));
-    });
-
-    it('should attach button handlers', () => {
-      graph.activateListeners(mockHtml);
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-action="refresh"]');
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-action="export"]');
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-action="close"]');
     });
 
     it('should initialize graph when in READY mode', () => {
-      const initSpy = vi.spyOn(graph, '_initializeGraph');
-      graph.activateListeners(mockHtml);
-      expect(initSpy).toHaveBeenCalledWith(mockHtml);
+      // Set up a mock element with querySelectorAll
+      graph._element = document.createElement('div');
+      graph._element.querySelectorAll = vi.fn(() => []);
+      const initSpy = vi.spyOn(graph, '_initializeGraph').mockResolvedValue();
+      graph._onRender({}, {});
+      expect(initSpy).toHaveBeenCalled();
     });
 
     it('should not initialize graph when in EMPTY mode', () => {
       graph._mode = GraphMode.EMPTY;
-      const initSpy = vi.spyOn(graph, '_initializeGraph');
-      graph.activateListeners(mockHtml);
+      graph._element = document.createElement('div');
+      graph._element.querySelectorAll = vi.fn(() => []);
+      const initSpy = vi.spyOn(graph, '_initializeGraph').mockResolvedValue();
+      graph._onRender({}, {});
       expect(initSpy).not.toHaveBeenCalled();
+    });
+
+    it('should bind change listeners for filters', () => {
+      const mockSelect = document.createElement('select');
+      const addEventSpy = vi.spyOn(mockSelect, 'addEventListener');
+      graph._element = document.createElement('div');
+      graph._element.querySelectorAll = vi.fn((selector) => {
+        if (selector.includes('entity-type') || selector.includes('relationship-type')) {
+          return [mockSelect];
+        }
+        return [];
+      });
+      vi.spyOn(graph, '_initializeGraph').mockResolvedValue();
+
+      graph._onRender({}, {});
+      expect(addEventSpy).toHaveBeenCalledWith('change', expect.any(Function));
     });
   });
 
   describe('_initializeGraph', () => {
-    let mockHtml;
     let mockContainer;
 
     beforeEach(() => {
       mockContainer = document.createElement('div');
       mockContainer.id = 'relationship-graph-network';
-
-      mockHtml = {
-        find: vi.fn((selector) => {
-          if (selector === '#relationship-graph-network') {
-            return [mockContainer];
-          }
-          return [];
-        })
-      };
+      mockContainer.getBoundingClientRect = vi.fn(() => ({
+        width: 800, height: 600, top: 0, left: 0, right: 800, bottom: 600
+      }));
 
       graph = new RelationshipGraph({
         entities: mockEntities,
         relationships: mockRelationships
       });
+
+      // Set up element with querySelector
+      graph._element = document.createElement('div');
+      graph._element.querySelector = vi.fn((selector) => {
+        if (selector === '#relationship-graph-network') {
+          return mockContainer;
+        }
+        return null;
+      });
     });
 
     it('should create vis.Network instance', async () => {
-      await graph._initializeGraph(mockHtml);
+      await graph._initializeGraph();
       expect(vis.Network).toHaveBeenCalledWith(
         mockContainer,
         expect.objectContaining({
@@ -644,18 +615,18 @@ describe('RelationshipGraph', () => {
     });
 
     it('should attach node click handler', async () => {
-      await graph._initializeGraph(mockHtml);
+      await graph._initializeGraph();
       expect(graph._network.on).toHaveBeenCalledWith('click', expect.any(Function));
     });
 
     it('should attach node double-click handler', async () => {
-      await graph._initializeGraph(mockHtml);
+      await graph._initializeGraph();
       expect(graph._network.on).toHaveBeenCalledWith('doubleClick', expect.any(Function));
     });
 
     it('should handle missing container gracefully', async () => {
-      mockHtml.find = vi.fn(() => []);
-      await graph._initializeGraph(mockHtml);
+      graph._element.querySelector = vi.fn(() => null);
+      await graph._initializeGraph();
       expect(graph._mode).toBe(GraphMode.ERROR);
     });
 
@@ -668,7 +639,7 @@ describe('RelationshipGraph', () => {
         global.vis = originalVis;
       }, 50);
 
-      await graph._initializeGraph(mockHtml);
+      await graph._initializeGraph();
       expect(graph._network).toBeDefined();
     });
 
@@ -676,7 +647,7 @@ describe('RelationshipGraph', () => {
       const originalVis = global.vis;
       global.vis = undefined;
 
-      await graph._initializeGraph(mockHtml);
+      await graph._initializeGraph();
 
       expect(graph._mode).toBe(GraphMode.ERROR);
       expect(ui.notifications.error).toHaveBeenCalled();
@@ -756,7 +727,7 @@ describe('RelationshipGraph', () => {
     });
   });
 
-  describe('Button Event Handlers', () => {
+  describe('Static Action Handlers', () => {
     let mockEvent;
 
     beforeEach(() => {
@@ -767,16 +738,15 @@ describe('RelationshipGraph', () => {
       });
     });
 
-    it('should handle refresh button click', () => {
+    it('should handle refresh action', () => {
       const renderSpy = vi.spyOn(graph, 'render');
-      graph._onRefreshClick(mockEvent);
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      RelationshipGraph._onRefreshClick.call(graph, mockEvent, null);
       expect(graph._filters.entityType).toBe(EntityType.ALL);
       expect(graph._filters.relationshipType).toBe('all');
-      expect(renderSpy).toHaveBeenCalledWith(true);
+      expect(renderSpy).toHaveBeenCalled();
     });
 
-    it('should handle export button click', async () => {
+    it('should handle export action', async () => {
       global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
       global.URL.revokeObjectURL = vi.fn();
       global.Blob = vi.fn((content, options) => ({ content, options }));
@@ -788,9 +758,8 @@ describe('RelationshipGraph', () => {
       };
       document.createElement = vi.fn(() => mockAnchor);
 
-      await graph._onExportClick(mockEvent);
+      await RelationshipGraph._onExportClick.call(graph, mockEvent, null);
 
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
       expect(mockAnchor.click).toHaveBeenCalled();
       expect(ui.notifications.info).toHaveBeenCalled();
     });
@@ -800,16 +769,15 @@ describe('RelationshipGraph', () => {
         throw new Error('Export failed');
       });
 
-      await graph._onExportClick(mockEvent);
+      await RelationshipGraph._onExportClick.call(graph, mockEvent, null);
 
       expect(graph._logger.error).toHaveBeenCalled();
       expect(ui.notifications.error).toHaveBeenCalled();
     });
 
-    it('should handle close button click', () => {
+    it('should handle close action', () => {
       const closeSpy = vi.spyOn(graph, 'close');
-      graph._onCloseClick(mockEvent);
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      RelationshipGraph._onCloseClick.call(graph, mockEvent, null);
       expect(closeSpy).toHaveBeenCalled();
     });
   });

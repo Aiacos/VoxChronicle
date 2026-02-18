@@ -1,14 +1,14 @@
 /**
  * SpeakerLabeling Unit Tests
  *
- * Tests for the SpeakerLabeling UI component.
+ * Tests for the SpeakerLabeling UI component (ApplicationV2 version).
  * Covers speaker ID mapping, form management, event handling,
  * auto-detection, quick assignment, and static utility methods.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { JSDOM } from 'jsdom';
-import { createMockApplication } from '../helpers/foundry-mock.js';
+import { createMockApplicationV2, createMockHandlebarsApplicationMixin } from '../helpers/foundry-mock.js';
 
 // Mock Logger before importing SpeakerLabeling
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
@@ -44,23 +44,6 @@ vi.mock('../../scripts/constants.mjs', () => ({
   MODULE_ID: 'vox-chronicle'
 }));
 
-// Mock HtmlUtils
-vi.mock('../../scripts/utils/HtmlUtils.mjs', () => ({
-  escapeHtml: (str) => {
-    if (typeof str !== 'string') return str;
-    return str.replace(/[&<>"']/g, (char) => {
-      const escapeMap = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      };
-      return escapeMap[char];
-    });
-  }
-}));
-
 // Create shared mock Settings instance
 const mockSettings = {
   getSpeakerLabels: vi.fn().mockReturnValue({}),
@@ -85,38 +68,9 @@ function setupEnvironment() {
   global.window = dom.window;
   global.document = dom.window.document;
 
-  // Set up jQuery mock
-  global.$ = (html) => {
-    if (typeof html === 'string') {
-      // Return a mock jQuery object for HTML strings
-      return {
-        on: vi.fn(),
-        find: vi.fn(function (_selector) {
-          return {
-            on: vi.fn(),
-            find: vi.fn(() => ({
-              on: vi.fn(),
-              val: vi.fn(),
-              length: 1
-            })),
-            val: vi.fn(),
-            each: vi.fn(),
-            length: 1
-          };
-        })
-      };
-    }
-    return html;
-  };
-
-  // Set up Application and FormApplication classes
-  const MockApplicationBase = createMockApplication();
-  global.Application = MockApplicationBase;
-  global.FormApplication = class FormApplication extends MockApplicationBase {
-    async _updateObject(_event, _formData) {
-      // Override in subclasses
-    }
-  };
+  // Set up ApplicationV2 and HandlebarsApplicationMixin
+  global.ApplicationV2 = createMockApplicationV2();
+  global.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
 
   // Set up Dialog mock
   global.Dialog = {
@@ -185,6 +139,27 @@ function createMockFoundryUtils() {
   return {
     mergeObject: vi.fn((original, other) => ({ ...original, ...other }))
   };
+}
+
+/**
+ * Create a mock DOM element tree for SpeakerLabeling form
+ * @param {Array} speakers - Array of {id, value} objects for speaker inputs
+ * @returns {HTMLElement} Container element with form and inputs
+ */
+function createMockFormElement(speakers = []) {
+  const container = document.createElement('div');
+  const form = document.createElement('form');
+
+  for (const speaker of speakers) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = `speaker-${speaker.id}`;
+    input.value = speaker.value || '';
+    form.appendChild(input);
+  }
+
+  container.appendChild(form);
+  return container;
 }
 
 describe('SpeakerLabeling', () => {
@@ -347,12 +322,12 @@ describe('SpeakerLabeling', () => {
     });
   });
 
-  describe('getData Method', () => {
+  describe('_prepareContext Method', () => {
     it('should return complete template data', async () => {
       speakerLabeling._labels = { SPEAKER_00: 'Alice' };
       speakerLabeling._knownSpeakers = ['SPEAKER_00'];
 
-      const data = await speakerLabeling.getData();
+      const data = await speakerLabeling._prepareContext();
 
       expect(data.moduleId).toBe('vox-chronicle');
       expect(data.speakers).toBeDefined();
@@ -369,7 +344,7 @@ describe('SpeakerLabeling', () => {
         SPEAKER_01: 'Bob'
       };
 
-      const data = await speakerLabeling.getData();
+      const data = await speakerLabeling._prepareContext();
       const speaker00 = data.speakers.find((s) => s.id === 'SPEAKER_00');
 
       expect(speaker00).toBeDefined();
@@ -380,7 +355,7 @@ describe('SpeakerLabeling', () => {
     it('should mark known speakers correctly', async () => {
       speakerLabeling._knownSpeakers = ['SPEAKER_00'];
 
-      const data = await speakerLabeling.getData();
+      const data = await speakerLabeling._prepareContext();
       const speaker00 = data.speakers.find((s) => s.id === 'SPEAKER_00');
       const speaker01 = data.speakers.find((s) => s.id === 'SPEAKER_01');
 
@@ -389,7 +364,7 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should include localization strings', async () => {
-      const data = await speakerLabeling.getData();
+      const data = await speakerLabeling._prepareContext();
 
       expect(data.i18n.title).toBeDefined();
       expect(data.i18n.description).toBeDefined();
@@ -400,7 +375,7 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should include game users when available', async () => {
-      const data = await speakerLabeling.getData();
+      const data = await speakerLabeling._prepareContext();
 
       expect(data.gameUsers).toHaveLength(3);
       expect(data.hasGameUsers).toBe(true);
@@ -409,7 +384,7 @@ describe('SpeakerLabeling', () => {
     it('should handle no game users', async () => {
       global.game.users = null;
 
-      const data = await speakerLabeling.getData();
+      const data = await speakerLabeling._prepareContext();
 
       expect(data.gameUsers).toEqual([]);
       expect(data.hasGameUsers).toBe(false);
@@ -500,7 +475,7 @@ describe('SpeakerLabeling', () => {
       expect(event.preventDefault).toHaveBeenCalled();
       expect(mockSettings.setSpeakerLabels).toHaveBeenCalledWith({});
       expect(speakerLabeling._labels).toEqual({});
-      expect(speakerLabeling.render).toHaveBeenCalledWith(false);
+      expect(speakerLabeling.render).toHaveBeenCalled();
       expect(mockUi.notifications.info).toHaveBeenCalled();
     });
 
@@ -520,42 +495,29 @@ describe('SpeakerLabeling', () => {
 
   describe('_onAutoDetect Method', () => {
     it('should auto-fill empty speaker slots with game users', () => {
-      const mockHtml = {
-        find: vi.fn((selector) => {
-          if (selector === 'form') {
-            return {
-              find: vi.fn(() => ({
-                each: vi.fn((callback) => {
-                  // Simulate 3 empty input fields
-                  const inputs = [
-                    { value: '', name: 'speaker-SPEAKER_00' },
-                    { value: '', name: 'speaker-SPEAKER_01' },
-                    { value: '', name: 'speaker-SPEAKER_02' }
-                  ];
-                  inputs.forEach((input, index) => callback(index, input));
-                  return inputs;
-                })
-              }))
-            };
-          }
-          return { on: vi.fn() };
-        })
-      };
-      speakerLabeling.element = mockHtml;
+      // Create a real DOM element for the component
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: '' },
+        { id: 'SPEAKER_01', value: '' },
+        { id: 'SPEAKER_02', value: '' }
+      ]);
+      speakerLabeling._element = mockElement;
 
       const event = { preventDefault: vi.fn() };
       speakerLabeling._onAutoDetect(event);
 
       expect(event.preventDefault).toHaveBeenCalled();
+
+      // Verify inputs were filled with game users
+      const inputs = mockElement.querySelectorAll('input[name^="speaker-"]');
+      expect(inputs[0].value).toBe('GM (Alice)');
+      expect(inputs[1].value).toBe('Bob');
+      expect(inputs[2].value).toBe('Charlie');
     });
 
     it('should warn if no game users available', () => {
       global.game.users = null;
-      speakerLabeling.element = {
-        find: vi.fn(() => ({
-          find: vi.fn()
-        }))
-      };
+      speakerLabeling._element = createMockFormElement([]);
 
       const event = { preventDefault: vi.fn() };
       speakerLabeling._onAutoDetect(event);
@@ -564,45 +526,34 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should skip fields that already have values', () => {
-      const mockHtml = {
-        find: vi.fn((selector) => {
-          if (selector === 'form') {
-            return {
-              find: vi.fn(() => ({
-                each: vi.fn((callback) => {
-                  const inputs = [
-                    { value: 'Existing', name: 'speaker-SPEAKER_00' },
-                    { value: '', name: 'speaker-SPEAKER_01' },
-                    { value: '', name: 'speaker-SPEAKER_02' }
-                  ];
-                  inputs.forEach((input, index) => callback(index, input));
-                  return inputs;
-                })
-              }))
-            };
-          }
-          return { on: vi.fn() };
-        })
-      };
-      speakerLabeling.element = mockHtml;
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: 'Existing' },
+        { id: 'SPEAKER_01', value: '' },
+        { id: 'SPEAKER_02', value: '' }
+      ]);
+      speakerLabeling._element = mockElement;
 
       const event = { preventDefault: vi.fn() };
       speakerLabeling._onAutoDetect(event);
 
       expect(event.preventDefault).toHaveBeenCalled();
+
+      // First field should keep its existing value
+      const inputs = mockElement.querySelectorAll('input[name^="speaker-"]');
+      expect(inputs[0].value).toBe('Existing');
+      // Second field should get first user
+      expect(inputs[1].value).toBe('GM (Alice)');
+      // Third field should get second user
+      expect(inputs[2].value).toBe('Bob');
     });
   });
 
   describe('_onQuickAssign Method', () => {
     it('should assign selected user to speaker input', () => {
-      const mockInput = {
-        val: vi.fn(),
-        length: 1
-      };
-      const mockHtml = {
-        find: vi.fn(() => mockInput)
-      };
-      speakerLabeling.element = mockHtml;
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: '' }
+      ]);
+      speakerLabeling._element = mockElement;
 
       const event = {
         currentTarget: {
@@ -613,19 +564,16 @@ describe('SpeakerLabeling', () => {
 
       speakerLabeling._onQuickAssign(event);
 
-      expect(mockHtml.find).toHaveBeenCalledWith('input[name="speaker-SPEAKER_00"]');
-      expect(mockInput.val).toHaveBeenCalledWith('Alice');
+      const input = mockElement.querySelector('input[name="speaker-SPEAKER_00"]');
+      expect(input.value).toBe('Alice');
       expect(event.currentTarget.value).toBe('');
     });
 
     it('should reset dropdown after assignment', () => {
-      const mockHtml = {
-        find: vi.fn(() => ({
-          val: vi.fn(),
-          length: 1
-        }))
-      };
-      speakerLabeling.element = mockHtml;
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: '' }
+      ]);
+      speakerLabeling._element = mockElement;
 
       const event = {
         currentTarget: {
@@ -640,10 +588,10 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should do nothing if no value selected', () => {
-      const mockHtml = {
-        find: vi.fn()
-      };
-      speakerLabeling.element = mockHtml;
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: '' }
+      ]);
+      speakerLabeling._element = mockElement;
 
       const event = {
         currentTarget: {
@@ -654,14 +602,16 @@ describe('SpeakerLabeling', () => {
 
       speakerLabeling._onQuickAssign(event);
 
-      expect(mockHtml.find).not.toHaveBeenCalled();
+      // Input should remain empty
+      const input = mockElement.querySelector('input[name="speaker-SPEAKER_00"]');
+      expect(input.value).toBe('');
     });
 
     it('should do nothing if no speaker ID', () => {
-      const mockHtml = {
-        find: vi.fn()
-      };
-      speakerLabeling.element = mockHtml;
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: '' }
+      ]);
+      speakerLabeling._element = mockElement;
 
       const event = {
         currentTarget: {
@@ -672,20 +622,36 @@ describe('SpeakerLabeling', () => {
 
       speakerLabeling._onQuickAssign(event);
 
-      expect(mockHtml.find).not.toHaveBeenCalled();
+      // Input should remain empty
+      const input = mockElement.querySelector('input[name="speaker-SPEAKER_00"]');
+      expect(input.value).toBe('');
     });
   });
 
   describe('_onClearLabel Method', () => {
     it('should clear the specified speaker label', () => {
-      const mockInput = {
-        val: vi.fn(),
-        length: 1
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: 'Alice' }
+      ]);
+      speakerLabeling._element = mockElement;
+
+      const event = { preventDefault: vi.fn() };
+      const target = {
+        dataset: { speakerId: 'SPEAKER_00' }
       };
-      const mockHtml = {
-        find: vi.fn(() => mockInput)
-      };
-      speakerLabeling.element = mockHtml;
+
+      speakerLabeling._onClearLabel(event, target);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      const input = mockElement.querySelector('input[name="speaker-SPEAKER_00"]');
+      expect(input.value).toBe('');
+    });
+
+    it('should fall back to event.currentTarget when no target parameter', () => {
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: 'Bob' }
+      ]);
+      speakerLabeling._element = mockElement;
 
       const event = {
         preventDefault: vi.fn(),
@@ -696,27 +662,24 @@ describe('SpeakerLabeling', () => {
 
       speakerLabeling._onClearLabel(event);
 
-      expect(event.preventDefault).toHaveBeenCalled();
-      expect(mockHtml.find).toHaveBeenCalledWith('input[name="speaker-SPEAKER_00"]');
-      expect(mockInput.val).toHaveBeenCalledWith('');
+      const input = mockElement.querySelector('input[name="speaker-SPEAKER_00"]');
+      expect(input.value).toBe('');
     });
 
     it('should do nothing if no speaker ID', () => {
-      const mockHtml = {
-        find: vi.fn()
-      };
-      speakerLabeling.element = mockHtml;
+      const mockElement = createMockFormElement([
+        { id: 'SPEAKER_00', value: 'Alice' }
+      ]);
+      speakerLabeling._element = mockElement;
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: {}
-        }
-      };
+      const event = { preventDefault: vi.fn() };
+      const target = { dataset: {} };
 
-      speakerLabeling._onClearLabel(event);
+      speakerLabeling._onClearLabel(event, target);
 
-      expect(mockHtml.find).not.toHaveBeenCalled();
+      // Input should keep its value
+      const input = mockElement.querySelector('input[name="speaker-SPEAKER_00"]');
+      expect(input.value).toBe('Alice');
     });
   });
 
@@ -896,39 +859,87 @@ describe('SpeakerLabeling', () => {
     });
   });
 
-  describe('Default Options', () => {
-    it('should have correct default options', () => {
-      const options = SpeakerLabeling.defaultOptions;
+  describe('DEFAULT_OPTIONS', () => {
+    it('should have correct options', () => {
+      const options = SpeakerLabeling.DEFAULT_OPTIONS;
 
       expect(options.id).toBe('vox-chronicle-speaker-labeling');
-      expect(options.template).toContain('speaker-labeling.hbs');
       expect(options.classes).toContain('vox-chronicle');
       expect(options.classes).toContain('speaker-labeling-form');
-      expect(options.width).toBe(450);
-      expect(options.closeOnSubmit).toBe(true);
-      expect(options.resizable).toBe(true);
+      expect(options.position.width).toBe(450);
+      expect(options.window.resizable).toBe(true);
     });
 
-    it('should use localized title', () => {
-      mockGame.i18n.localize.mockImplementation((key) => {
-        if (key === 'VOXCHRONICLE.SpeakerLabeling.Title') return 'Speaker Labeling';
-        return key;
-      });
+    it('should have localized window title key', () => {
+      const options = SpeakerLabeling.DEFAULT_OPTIONS;
 
-      const options = SpeakerLabeling.defaultOptions;
-
-      expect(options.title).toBe('Speaker Labeling');
+      expect(options.window.title).toBe('VOXCHRONICLE.SpeakerLabeling.Title');
     });
 
-    it('should fallback to default title if i18n not available', () => {
-      global.game.i18n = null;
+    it('should define actions for reset-labels, auto-detect, and clear-label', () => {
+      const options = SpeakerLabeling.DEFAULT_OPTIONS;
 
-      const options = SpeakerLabeling.defaultOptions;
+      expect(options.actions['reset-labels']).toBeDefined();
+      expect(options.actions['auto-detect']).toBeDefined();
+      expect(options.actions['clear-label']).toBeDefined();
+    });
+  });
 
-      expect(options.title).toBe('Speaker Labeling');
+  describe('PARTS', () => {
+    it('should define main template part', () => {
+      expect(SpeakerLabeling.PARTS).toBeDefined();
+      expect(SpeakerLabeling.PARTS.main).toBeDefined();
+      expect(SpeakerLabeling.PARTS.main.template).toContain('speaker-labeling.hbs');
+    });
+  });
 
-      // Restore i18n
-      global.game.i18n = mockGame.i18n;
+  describe('Static Action Handlers', () => {
+    it('should dispatch reset-labels action to instance _onResetLabels', async () => {
+      speakerLabeling._onResetLabels = vi.fn();
+      const event = { preventDefault: vi.fn() };
+
+      await SpeakerLabeling._onResetLabelsAction.call(speakerLabeling, event, null);
+
+      expect(speakerLabeling._onResetLabels).toHaveBeenCalledWith(event);
+    });
+
+    it('should dispatch auto-detect action to instance _onAutoDetect', () => {
+      speakerLabeling._onAutoDetect = vi.fn();
+      const event = { preventDefault: vi.fn() };
+
+      SpeakerLabeling._onAutoDetectAction.call(speakerLabeling, event, null);
+
+      expect(speakerLabeling._onAutoDetect).toHaveBeenCalledWith(event);
+    });
+
+    it('should dispatch clear-label action to instance _onClearLabel', () => {
+      speakerLabeling._onClearLabel = vi.fn();
+      const event = { preventDefault: vi.fn() };
+      const target = { dataset: { speakerId: 'SPEAKER_00' } };
+
+      SpeakerLabeling._onClearLabelAction.call(speakerLabeling, event, target);
+
+      expect(speakerLabeling._onClearLabel).toHaveBeenCalledWith(event, target);
+    });
+  });
+
+  describe('_onRender Method', () => {
+    it('should bind form submit and quick-assign change events', () => {
+      const mockElement = document.createElement('div');
+      const form = document.createElement('form');
+      const select = document.createElement('select');
+      select.dataset.action = 'quick-assign';
+      mockElement.appendChild(form);
+      mockElement.appendChild(select);
+      speakerLabeling._element = mockElement;
+
+      const addEventSpy = vi.spyOn(form, 'addEventListener');
+      const selectSpy = vi.spyOn(select, 'addEventListener');
+
+      speakerLabeling._onRender({}, {});
+
+      expect(addEventSpy).toHaveBeenCalledWith('submit', expect.any(Function));
+      expect(selectSpy).toHaveBeenCalledWith('change', expect.any(Function));
     });
   });
 
@@ -943,56 +954,6 @@ describe('SpeakerLabeling', () => {
 
     it('should have 8 default speakers', () => {
       expect(DEFAULT_SPEAKER_IDS.length).toBe(8);
-    });
-  });
-
-  describe('activateListeners Method', () => {
-    it('should attach event listeners to form elements', () => {
-      const mockHtml = {
-        find: vi.fn(() => ({
-          on: vi.fn()
-        }))
-      };
-
-      speakerLabeling.activateListeners(mockHtml);
-
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-action="reset-labels"]');
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-action="auto-detect"]');
-      expect(mockHtml.find).toHaveBeenCalledWith('select[data-action="quick-assign"]');
-      expect(mockHtml.find).toHaveBeenCalledWith('[data-action="clear-label"]');
-    });
-  });
-
-  describe('_renderFallbackContent Method', () => {
-    it('should generate fallback HTML when template is not available', async () => {
-      speakerLabeling._labels = { SPEAKER_00: 'Alice' };
-      speakerLabeling._knownSpeakers = ['SPEAKER_00'];
-
-      const html = await speakerLabeling._renderFallbackContent();
-
-      expect(typeof html).toBe('string');
-      expect(html).toContain('vox-chronicle-speaker-labeling');
-      expect(html).toContain('SPEAKER_00');
-      expect(html).toContain('Alice');
-    });
-
-    it('should include all speakers in fallback HTML', async () => {
-      const html = await speakerLabeling._renderFallbackContent();
-
-      expect(html).toContain('SPEAKER_00');
-      expect(html).toContain('SPEAKER_01');
-      expect(html).toContain('SPEAKER_02');
-    });
-
-    it('should escape HTML in speaker data', async () => {
-      speakerLabeling._labels = {
-        SPEAKER_00: '<script>alert("xss")</script>'
-      };
-
-      const html = await speakerLabeling._renderFallbackContent();
-
-      expect(html).not.toContain('<script>');
-      expect(html).toContain('&lt;script&gt;');
     });
   });
 

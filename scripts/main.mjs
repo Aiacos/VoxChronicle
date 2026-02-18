@@ -54,26 +54,26 @@ const toolHandlers = {
     if (panel.isRendered) {
       panel.close();
     } else {
-      panel.render(true);
+      panel.render();
     }
   },
   speakerLabels: async (active) => {
     if (active === false) return;
     const { SpeakerLabeling } = await import('./ui/SpeakerLabeling.mjs');
     const speakerLabeling = new SpeakerLabeling();
-    speakerLabeling.render(true, { focus: true });
+    speakerLabeling.render();
   },
   vocabulary: async (active) => {
     if (active === false) return;
     const { VocabularyManager } = await import('./ui/VocabularyManager.mjs');
     const vocabularyManager = new VocabularyManager();
-    vocabularyManager.render(true, { focus: true });
+    vocabularyManager.render();
   },
   relationshipGraph: async (active) => {
     if (active === false) return;
     const { RelationshipGraph } = await import('./ui/RelationshipGraph.mjs');
     const graph = new RelationshipGraph();
-    graph.render(true, { focus: true });
+    graph.render();
   },
   settings: (active) => {
     if (active === false) return;

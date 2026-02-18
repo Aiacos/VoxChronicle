@@ -1,13 +1,13 @@
 /**
  * VocabularyManager - UI Component for Managing Custom Vocabulary Dictionary
  *
- * A Foundry VTT FormApplication that allows GMs to manage campaign-specific
+ * A Foundry VTT ApplicationV2 that allows GMs to manage campaign-specific
  * vocabulary terms across multiple categories (characters, locations, items, terms, custom).
  * These terms are used in transcription prompts to improve accuracy for TTRPG-specific
  * terminology like spell names, creature names, and fantasy proper nouns.
  *
  * @class VocabularyManager
- * @augments Application
+ * @augments ApplicationV2
  * @module vox-chronicle
  */
 
@@ -19,7 +19,7 @@ import { VocabularyDictionary, VocabularyCategory } from '../core/VocabularyDict
  * VocabularyManager Application class
  * Provides UI for managing custom vocabulary terms across categories
  */
-export class VocabularyManager extends Application {
+export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2) {
   /**
    * Logger instance for this class
    * @type {object}
@@ -41,30 +41,31 @@ export class VocabularyManager extends Application {
    */
   _activeCategory = VocabularyCategory.CHARACTER_NAMES;
 
-  /**
-   * Get default options for the Application
-   * @returns {object} Default application options
-   * @static
-   */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'vox-chronicle-vocabulary-manager',
-      title: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Title') || 'Vocabulary Manager',
-      template: `modules/${MODULE_ID}/templates/vocabulary-manager.hbs`,
-      classes: ['vox-chronicle', 'vocabulary-manager'],
-      width: 600,
-      height: 600,
-      minimizable: true,
+  /** @override */
+  static DEFAULT_OPTIONS = {
+    id: 'vox-chronicle-vocabulary-manager',
+    classes: ['vox-chronicle', 'vocabulary-manager'],
+    window: {
+      title: 'VOXCHRONICLE.Vocabulary.Title',
       resizable: true,
-      tabs: [
-        {
-          navSelector: '.tabs',
-          contentSelector: '.tab-content',
-          initial: VocabularyCategory.CHARACTER_NAMES
-        }
-      ]
-    });
-  }
+      minimizable: true
+    },
+    position: { width: 600, height: 600 },
+    actions: {
+      'add-term': VocabularyManager._onAddTermAction,
+      'remove-term': VocabularyManager._onRemoveTermAction,
+      'clear-category': VocabularyManager._onClearCategoryAction,
+      'clear-all': VocabularyManager._onClearAllAction,
+      'suggest-foundry': VocabularyManager._onSuggestFromFoundryAction,
+      'import-dict': VocabularyManager._onImportAction,
+      'export-dict': VocabularyManager._onExportAction
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    main: { template: `modules/${MODULE_ID}/templates/vocabulary-manager.hbs` }
+  };
 
   /**
    * Create a new VocabularyManager instance
@@ -76,14 +77,78 @@ export class VocabularyManager extends Application {
     this._logger.debug('VocabularyManager initialized');
   }
 
-  /**
-   * Get data for the template
-   * @param {object} options - Render options
-   * @returns {object} Template data
-   */
-  async getData(options = {}) {
-    const data = await super.getData(options);
+  // --- Static Action Handlers ---
 
+  /** @private */
+  static async _onAddTermAction(event, target) {
+    return this._onAddTerm(event, target);
+  }
+
+  /** @private */
+  static async _onRemoveTermAction(event, target) {
+    return this._onRemoveTerm(event, target);
+  }
+
+  /** @private */
+  static async _onClearCategoryAction(event, target) {
+    return this._onClearCategory(event, target);
+  }
+
+  /** @private */
+  static async _onClearAllAction(event, target) {
+    return this._onClearAll(event);
+  }
+
+  /** @private */
+  static async _onSuggestFromFoundryAction(event, target) {
+    return this._onSuggestFromFoundry(event);
+  }
+
+  /** @private */
+  static async _onImportAction(event, target) {
+    return this._onImport(event);
+  }
+
+  /** @private */
+  static async _onExportAction(event, target) {
+    return this._onExport(event);
+  }
+
+  // --- Lifecycle ---
+
+  /**
+   * Bind non-click event listeners after render
+   * @param {object} context - Template context
+   * @param {object} options - Render options
+   */
+  _onRender(context, options) {
+    // Enter key on term input triggers add-term
+    this.element?.querySelectorAll('.term-input').forEach((input) => {
+      input.addEventListener('keypress', (event) => {
+        if (event.which === 13 || event.key === 'Enter') {
+          event.preventDefault();
+          this._onAddTerm(event);
+        }
+      });
+    });
+
+    // Track active tab from tab clicks
+    this.element?.querySelectorAll('.tabs .item').forEach((tab) => {
+      tab.addEventListener('click', (event) => {
+        this._activeCategory = event.currentTarget.dataset.tab;
+      });
+    });
+
+    this._logger.debug('Event listeners activated');
+  }
+
+  /**
+   * Prepare template context data
+   * @param {object} _options - Render options
+   * @returns {Promise<object>} Template data
+   * @override
+   */
+  async _prepareContext(_options = {}) {
     // Get all categories with their terms
     const allTerms = this._dictionary.getAllTerms();
 
@@ -140,7 +205,7 @@ export class VocabularyManager extends Application {
     // Get total term count
     const totalTerms = this._dictionary.getTotalTermCount();
 
-    return foundry.utils.mergeObject(data, {
+    return {
       moduleId: MODULE_ID,
       categories,
       activeCategory: this._activeCategory,
@@ -190,66 +255,23 @@ export class VocabularyManager extends Application {
         importReplace:
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportReplace') || 'Replace all terms'
       }
-    });
-  }
-
-  /**
-   * Activate event listeners for the application
-   * @param {jQuery} html - The rendered HTML
-   */
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    // Add term button
-    html.find('.add-term-btn').on('click', this._onAddTerm.bind(this));
-
-    // Add term on Enter key
-    html.find('.term-input').on('keypress', (event) => {
-      if (event.which === 13) {
-        event.preventDefault();
-        this._onAddTerm(event);
-      }
-    });
-
-    // Remove term buttons
-    html.find('.remove-term-btn').on('click', this._onRemoveTerm.bind(this));
-
-    // Clear category button
-    html.find('.clear-category-btn').on('click', this._onClearCategory.bind(this));
-
-    // Clear all button
-    html.find('.clear-all-btn').on('click', this._onClearAll.bind(this));
-
-    // Suggest from Foundry button
-    html.find('.suggest-foundry-btn').on('click', this._onSuggestFromFoundry.bind(this));
-
-    // Import button
-    html.find('.import-btn').on('click', this._onImport.bind(this));
-
-    // Export button
-    html.find('.export-btn').on('click', this._onExport.bind(this));
-
-    // Track active tab
-    html.find('.tabs .item').on('click', (event) => {
-      this._activeCategory = event.currentTarget.dataset.tab;
-    });
-
-    this._logger.debug('Event listeners activated');
+    };
   }
 
   /**
    * Handle adding a new term
-   * @param {Event} event - The click event
+   * @param {Event} event - The click or keypress event
+   * @param {HTMLElement} [target] - The action target element
    * @private
    */
-  async _onAddTerm(event) {
+  async _onAddTerm(event, target) {
     event.preventDefault();
 
-    const button = $(event.currentTarget);
+    const button = target || event.currentTarget;
     const container = button.closest('.category-content');
-    const input = container.find('.term-input');
-    const term = input.val().trim();
-    const category = container.data('category');
+    const input = container?.querySelector('.term-input');
+    const term = input?.value?.trim() ?? '';
+    const category = container?.dataset?.category;
 
     if (!term) {
       ui.notifications.warn(
@@ -265,8 +287,8 @@ export class VocabularyManager extends Application {
         ui.notifications.info(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSuccess') || 'Term added successfully'
         );
-        input.val('');
-        this.render(false);
+        if (input) input.value = '';
+        this.render();
       } else {
         ui.notifications.warn(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddDuplicate') || 'Term already exists'
@@ -284,14 +306,15 @@ export class VocabularyManager extends Application {
   /**
    * Handle removing a term
    * @param {Event} event - The click event
+   * @param {HTMLElement} [target] - The action target element
    * @private
    */
-  async _onRemoveTerm(event) {
+  async _onRemoveTerm(event, target) {
     event.preventDefault();
 
-    const button = $(event.currentTarget);
-    const term = button.data('term');
-    const category = button.closest('.category-content').data('category');
+    const button = target || event.currentTarget;
+    const term = button.dataset.term;
+    const category = button.closest('.category-content')?.dataset?.category;
 
     try {
       const removed = await this._dictionary.removeTerm(category, term);
@@ -300,7 +323,7 @@ export class VocabularyManager extends Application {
         ui.notifications.info(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.RemoveSuccess') || 'Term removed'
         );
-        this.render(false);
+        this.render();
       }
     } catch (error) {
       this._logger.error('Failed to remove term:', error);
@@ -314,13 +337,14 @@ export class VocabularyManager extends Application {
   /**
    * Handle clearing all terms in a category
    * @param {Event} event - The click event
+   * @param {HTMLElement} [target] - The action target element
    * @private
    */
-  async _onClearCategory(event) {
+  async _onClearCategory(event, target) {
     event.preventDefault();
 
-    const button = $(event.currentTarget);
-    const category = button.closest('.category-content').data('category');
+    const button = target || event.currentTarget;
+    const category = button.closest('.category-content')?.dataset?.category;
 
     // Confirm with user
     const confirm = await Dialog.confirm({
@@ -343,7 +367,7 @@ export class VocabularyManager extends Application {
         game.i18n?.format('VOXCHRONICLE.Vocabulary.ClearCategorySuccess', { count: removed }) ||
           `Cleared ${removed} terms`
       );
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('Failed to clear category:', error);
       ui.notifications.error(
@@ -381,7 +405,7 @@ export class VocabularyManager extends Application {
         game.i18n?.format('VOXCHRONICLE.Vocabulary.ClearAllSuccess', { count: removed }) ||
           `Cleared ${removed} terms`
       );
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('Failed to clear all terms:', error);
       ui.notifications.error(
@@ -421,8 +445,9 @@ export class VocabularyManager extends Application {
           icon: '<i class="fa-solid fa-file-import"></i>',
           label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.Import') || 'Import',
           callback: async (html) => {
-            const json = html.find('[name="json"]').val().trim();
-            const merge = html.find('[name="merge"]').is(':checked');
+            const el = html[0] ?? html;
+            const json = el.querySelector('[name="json"]')?.value?.trim() ?? '';
+            const merge = el.querySelector('[name="merge"]')?.checked ?? true;
 
             if (!json) {
               ui.notifications.warn(
@@ -439,7 +464,7 @@ export class VocabularyManager extends Application {
                 game.i18n?.format('VOXCHRONICLE.Vocabulary.ImportStats', stats) ||
                   `Imported: ${stats.added} added, ${stats.skipped} skipped`
               );
-              this.render(false);
+              this.render();
             } catch (error) {
               this._logger.error('Failed to import dictionary:', error);
               ui.notifications.error(
@@ -486,8 +511,9 @@ export class VocabularyManager extends Application {
             label:
               game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopyToClipboard') || 'Copy to Clipboard',
             callback: async (html) => {
-              const textarea = html.find('textarea')[0];
-              textarea.select();
+              const el = html[0] ?? html;
+              const textarea = el.querySelector('textarea');
+              textarea?.select();
 
               try {
                 await navigator.clipboard.writeText(json);
@@ -690,23 +716,26 @@ export class VocabularyManager extends Application {
             icon: '<i class="fa-solid fa-plus"></i>',
             label: game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSelected') || 'Add Selected',
             callback: async (html) => {
+              const el = html[0] ?? html;
               let addedCount = 0;
 
               // Add selected character names
-              html.find('input[name="character"]:checked:not(:disabled)').each((i, el) => {
-                const term = $(el).val();
-                if (this._dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, term)) {
-                  addedCount++;
+              el.querySelectorAll('input[name="character"]:checked:not(:disabled)').forEach(
+                (checkbox) => {
+                  if (this._dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, checkbox.value)) {
+                    addedCount++;
+                  }
                 }
-              });
+              );
 
               // Add selected items
-              html.find('input[name="item"]:checked:not(:disabled)').each((i, el) => {
-                const term = $(el).val();
-                if (this._dictionary.addTerm(VocabularyCategory.ITEMS, term)) {
-                  addedCount++;
+              el.querySelectorAll('input[name="item"]:checked:not(:disabled)').forEach(
+                (checkbox) => {
+                  if (this._dictionary.addTerm(VocabularyCategory.ITEMS, checkbox.value)) {
+                    addedCount++;
+                  }
                 }
-              });
+              );
 
               if (addedCount > 0) {
                 ui.notifications.info(
@@ -714,7 +743,7 @@ export class VocabularyManager extends Application {
                     count: addedCount
                   }) || `Added ${addedCount} term${addedCount !== 1 ? 's' : ''}`
                 );
-                this.render(false);
+                this.render();
               } else {
                 ui.notifications.warn(
                   game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoTermsSelected') ||
@@ -730,16 +759,26 @@ export class VocabularyManager extends Application {
         },
         default: 'add',
         render: (html) => {
-          // Handle "select all" checkboxes
-          html.find('input[name="select-all-characters"]').on('change', function () {
-            const checked = $(this).is(':checked');
-            html.find('input[name="character"]:not(:disabled)').prop('checked', checked);
-          });
+          const el = html[0] ?? html;
 
-          html.find('input[name="select-all-items"]').on('change', function () {
-            const checked = $(this).is(':checked');
-            html.find('input[name="item"]:not(:disabled)').prop('checked', checked);
-          });
+          // Handle "select all" checkboxes
+          el.querySelector('input[name="select-all-characters"]')?.addEventListener(
+            'change',
+            function () {
+              el.querySelectorAll('input[name="character"]:not(:disabled)').forEach((cb) => {
+                cb.checked = this.checked;
+              });
+            }
+          );
+
+          el.querySelector('input[name="select-all-items"]')?.addEventListener(
+            'change',
+            function () {
+              el.querySelectorAll('input[name="item"]:not(:disabled)').forEach((cb) => {
+                cb.checked = this.checked;
+              });
+            }
+          );
         }
       }).render(true);
     } catch (error) {

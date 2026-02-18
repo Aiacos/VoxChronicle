@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-02-18
+
+### Changed
+- **BREAKING: Minimum Foundry VTT version raised to v13** — dropped v12 compatibility
+- **All 5 UI components migrated to ApplicationV2 + HandlebarsApplicationMixin**
+  - MainPanel, RelationshipGraph, EntityPreview, SpeakerLabeling, VocabularyManager
+  - `static get defaultOptions()` replaced with `static DEFAULT_OPTIONS` + `static PARTS`
+  - `getData()` replaced with `async _prepareContext(options)`
+  - `activateListeners(html)` replaced with `actions` map (click) + `_onRender()` (non-click events)
+- **Zero jQuery in source code** — all `$(...)`, `html.find()`, `.val()`, `.each()`, `.is()`, `.prop()` replaced with native DOM APIs (`querySelector`, `querySelectorAll`, `.value`, `.dataset`, `.checked`)
+- Dialog v1 callbacks use `(html[0] ?? html).querySelector(...)` pattern for jQuery/native DOM compatibility
+- `vocabulary-manager.hbs` template updated with `data-action` attributes for all buttons
+
+### Removed
+- `_renderFallbackContent` and `_renderInner` overrides from EntityPreview and SpeakerLabeling (~260 lines removed)
+- All jQuery dependency from module source code
+
+### Fixed
+- ApplicationV2 test infrastructure added to `tests/helpers/foundry-mock.js` with `createMockApplicationV2()` and `createMockHandlebarsApplicationMixin()`
+- All 3531 tests pass with updated ApplicationV2 mocks
+
 ## [2.2.3] - 2026-02-17
 
 ### Fixed

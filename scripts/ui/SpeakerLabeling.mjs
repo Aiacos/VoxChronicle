@@ -1,20 +1,19 @@
 /**
  * SpeakerLabeling - UI Component for Mapping Speaker IDs to Player Names
  *
- * A Foundry VTT FormApplication that allows the GM to assign meaningful names
+ * A Foundry VTT Application that allows the GM to assign meaningful names
  * to the speaker IDs detected during transcription diarization (e.g., SPEAKER_00, SPEAKER_01).
  * These labels are used in the session chronicle to attribute dialogue to the correct
  * player or character.
  *
  * @class SpeakerLabeling
- * @augments FormApplication
+ * @augments ApplicationV2
  * @module vox-chronicle
  */
 
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { Settings } from '../core/Settings.mjs';
-import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Default speaker ID patterns used by OpenAI diarization
@@ -32,10 +31,10 @@ const DEFAULT_SPEAKER_IDS = [
 ];
 
 /**
- * SpeakerLabeling FormApplication class
+ * SpeakerLabeling Application class
  * Provides a form UI for mapping speaker IDs to player/character names
  */
-class SpeakerLabeling extends FormApplication {
+class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
   /**
    * Logger instance for this class
    * @type {object}
@@ -57,35 +56,87 @@ class SpeakerLabeling extends FormApplication {
    */
   _knownSpeakers = [];
 
+  /** @override */
+  static DEFAULT_OPTIONS = {
+    id: 'vox-chronicle-speaker-labeling',
+    classes: ['vox-chronicle', 'speaker-labeling-form'],
+    window: {
+      title: 'VOXCHRONICLE.SpeakerLabeling.Title',
+      resizable: true,
+      minimizable: true
+    },
+    position: { width: 450 },
+    actions: {
+      'reset-labels': SpeakerLabeling._onResetLabelsAction,
+      'auto-detect': SpeakerLabeling._onAutoDetectAction,
+      'clear-label': SpeakerLabeling._onClearLabelAction
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    main: { template: `modules/${MODULE_ID}/templates/speaker-labeling.hbs` }
+  };
+
   /**
-   * Get default options for the FormApplication
-   * @returns {object} Default application options
-   * @static
+   * Create a new SpeakerLabeling instance
+   * @param {object} [options] - Application options
    */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'vox-chronicle-speaker-labeling',
-      title: game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.Title') || 'Speaker Labeling',
-      template: `modules/${MODULE_ID}/templates/speaker-labeling.hbs`,
-      classes: ['vox-chronicle', 'speaker-labeling-form'],
-      width: 450,
-      height: 'auto',
-      closeOnSubmit: true,
-      submitOnClose: false,
-      submitOnChange: false,
-      resizable: true
+  constructor(options = {}) {
+    super(options);
+    this._loadCurrentLabels();
+    this._logger.debug('SpeakerLabeling initialized');
+  }
+
+  // --- Static Action Handlers ---
+
+  /** @private */
+  static async _onResetLabelsAction(event, target) {
+    return this._onResetLabels(event);
+  }
+
+  /** @private */
+  static _onAutoDetectAction(event, target) {
+    this._onAutoDetect(event);
+  }
+
+  /** @private */
+  static _onClearLabelAction(event, target) {
+    this._onClearLabel(event, target);
+  }
+
+  // --- Lifecycle ---
+
+  /**
+   * Bind non-click event listeners after render
+   * @param {object} context - Template context
+   * @param {object} options - Render options
+   */
+  _onRender(context, options) {
+    // Form submission
+    const form = this.element?.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', this._onFormSubmit.bind(this));
+    }
+
+    // Quick-assign dropdown change events
+    this.element?.querySelectorAll('select[data-action="quick-assign"]').forEach((el) => {
+      el.addEventListener('change', this._onQuickAssign.bind(this));
     });
   }
 
   /**
-   * Create a new SpeakerLabeling instance
-   * @param {object} [object] - Form data object
-   * @param {object} [options] - Application options
+   * Handle form submission
+   * @param {Event} event - The submit event
+   * @private
    */
-  constructor(object = {}, options = {}) {
-    super(object, options);
-    this._loadCurrentLabels();
-    this._logger.debug('SpeakerLabeling initialized');
+  async _onFormSubmit(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    await this._updateObject(event, data);
+    this.close();
   }
 
   /**
@@ -138,11 +189,12 @@ class SpeakerLabeling extends FormApplication {
   }
 
   /**
-   * Get data for the template
+   * Prepare template context data
    * @param {object} _options - Render options
-   * @returns {object} Template data
+   * @returns {Promise<object>} Template data
+   * @override
    */
-  async getData(_options = {}) {
+  async _prepareContext(_options = {}) {
     const speakerIds = this._getAllSpeakerIds();
 
     // Build speaker entries for the form
@@ -231,33 +283,10 @@ class SpeakerLabeling extends FormApplication {
   }
 
   /**
-   * Activate event listeners for the rendered HTML
-   * @param {jQuery} html - The rendered HTML element
-   */
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    // Reset button
-    html.find('[data-action="reset-labels"]').on('click', this._onResetLabels.bind(this));
-
-    // Auto-detect button
-    html.find('[data-action="auto-detect"]').on('click', this._onAutoDetect.bind(this));
-
-    // Quick-assign user dropdown changes
-    html.find('select[data-action="quick-assign"]').on('change', this._onQuickAssign.bind(this));
-
-    // Clear individual label button
-    html.find('[data-action="clear-label"]').on('click', this._onClearLabel.bind(this));
-
-    this._logger.debug('Event listeners activated');
-  }
-
-  /**
-   * Handle form submission
+   * Handle form data submission (save speaker labels)
    * @param {Event} event - The form submission event
    * @param {object} formData - The form data object
    * @returns {Promise<void>}
-   * @protected
    */
   async _updateObject(event, formData) {
     this._logger.log('Saving speaker labels...');
@@ -312,7 +341,7 @@ class SpeakerLabeling extends FormApplication {
     if (confirmed) {
       this._labels = {};
       await Settings.setSpeakerLabels({});
-      this.render(false);
+      this.render();
 
       ui.notifications?.info(
         game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.LabelsReset') || 'Speaker labels reset'
@@ -339,13 +368,15 @@ class SpeakerLabeling extends FormApplication {
       return;
     }
 
-    // Get the input fields
-    const form = this.element.find('form');
-    const speakerInputs = form.find('input[name^="speaker-"]');
+    // Get the input fields using native DOM
+    const form = this.element?.querySelector('form');
+    if (!form) return;
+
+    const speakerInputs = form.querySelectorAll('input[name^="speaker-"]');
 
     // Assign users to speakers in order
     let userIndex = 0;
-    speakerInputs.each((index, input) => {
+    speakerInputs.forEach((input) => {
       if (!input.value && userIndex < gameUsers.length) {
         const user = gameUsers[userIndex];
         input.value = user.isGM ? `GM (${user.name})` : user.name;
@@ -368,10 +399,10 @@ class SpeakerLabeling extends FormApplication {
 
     if (!selectedValue || !speakerId) return;
 
-    // Find the corresponding input and set its value
-    const input = this.element.find(`input[name="speaker-${speakerId}"]`);
-    if (input.length) {
-      input.val(selectedValue);
+    // Find the corresponding input and set its value using native DOM
+    const input = this.element?.querySelector(`input[name="speaker-${speakerId}"]`);
+    if (input) {
+      input.value = selectedValue;
     }
 
     // Reset the dropdown
@@ -383,20 +414,21 @@ class SpeakerLabeling extends FormApplication {
   /**
    * Handle clear label button click
    * @param {Event} event - The click event
+   * @param {HTMLElement} [target] - The action target element
    * @private
    */
-  _onClearLabel(event) {
+  _onClearLabel(event, target) {
     event.preventDefault();
 
-    const button = event.currentTarget;
+    const button = target || event.currentTarget;
     const speakerId = button.dataset.speakerId;
 
     if (!speakerId) return;
 
-    // Find and clear the corresponding input
-    const input = this.element.find(`input[name="speaker-${speakerId}"]`);
-    if (input.length) {
-      input.val('');
+    // Find and clear the corresponding input using native DOM
+    const input = this.element?.querySelector(`input[name="speaker-${speakerId}"]`);
+    if (input) {
+      input.value = '';
     }
 
     this._logger.debug(`Cleared label for ${speakerId}`);
@@ -474,100 +506,7 @@ class SpeakerLabeling extends FormApplication {
   }
 
   /**
-   * Render fallback content when template is not available
-   * This generates inline HTML for the speaker labeling form
-   * @returns {string} Inline HTML content
-   * @private
-   */
-  async _renderFallbackContent() {
-    const data = await this.getData();
-    const speakerRows = data.speakers
-      .map(
-        (speaker) => `
-      <div class="speaker-row ${speaker.isKnown ? 'known' : ''}">
-        <div class="speaker-id">
-          <span class="speaker-id-text">${escapeHtml(speaker.id)}</span>
-          ${speaker.isKnown ? `<i class="fa-solid fa-check-circle known-indicator" title="${escapeHtml(data.i18n.detectedInSession)}"></i>` : ''}
-        </div>
-        <div class="speaker-label">
-          <input type="text" name="speaker-${escapeHtml(speaker.id)}" value="${escapeHtml(speaker.label)}" placeholder="${escapeHtml(speaker.placeholder)}" />
-          <button type="button" class="btn-clear" data-action="clear-label" data-speaker-id="${escapeHtml(speaker.id)}" title="${escapeHtml(data.i18n.clear)}">
-            <i class="fa-solid fa-times"></i>
-          </button>
-        </div>
-        ${
-          data.hasGameUsers
-            ? `
-          <div class="quick-assign">
-            <select data-action="quick-assign" data-speaker-id="${escapeHtml(speaker.id)}">
-              <option value="">${escapeHtml(data.i18n.quickAssignPlaceholder)}</option>
-              ${data.gameUsers.map((u) => `<option value="${escapeHtml(u.isGM ? `GM (${u.name})` : u.name)}">${u.isGM ? '👑 ' : ''}${escapeHtml(u.name)}</option>`).join('')}
-            </select>
-          </div>
-        `
-            : ''
-        }
-      </div>
-    `
-      )
-      .join('');
-
-    return `
-      <form class="vox-chronicle-speaker-labeling">
-        <div class="form-description">
-          <p>${data.i18n.description}</p>
-        </div>
-
-        <div class="speaker-labels-header">
-          <div class="header-speaker-id">${data.i18n.speakerId}</div>
-          <div class="header-player-name">${data.i18n.playerName}</div>
-          ${data.hasGameUsers ? `<div class="header-quick-assign">${escapeHtml(data.i18n.quickAssign)}</div>` : ''}
-        </div>
-
-        <div class="speaker-labels-list">
-          ${speakerRows}
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn-auto-detect" data-action="auto-detect">
-            <i class="fa-solid fa-magic"></i> ${data.i18n.autoDetect}
-          </button>
-          <button type="button" class="btn-reset" data-action="reset-labels">
-            <i class="fa-solid fa-undo"></i> ${data.i18n.reset}
-          </button>
-          <button type="submit" class="btn-save">
-            <i class="fa-solid fa-save"></i> ${data.i18n.save}
-          </button>
-        </div>
-      </form>
-    `;
-  }
-
-  /**
-   * Override _renderInner to provide fallback content if template is missing
-   * @param {object} data - Template data
-   * @returns {Promise<jQuery>} Rendered inner content
-   * @protected
-   */
-  async _renderInner(data) {
-    try {
-      return await super._renderInner(data);
-    } catch {
-      // Template not found, use inline fallback
-      this._logger.warn('Template not found, using fallback HTML');
-      const html = this._renderFallbackContent();
-      return $(html);
-    }
-  }
-
-  /**
    * Rename a speaker retroactively in stored labels.
-   *
-   * Updates all label entries where the value matches oldName, replacing
-   * with newName. This enables retroactive rename: if speaker "SPEAKER_00"
-   * was labeled "Alice" and you rename "Alice" to "Alicia", the stored label
-   * for SPEAKER_00 becomes "Alicia". Also renames any key that matches oldName
-   * (for custom speaker IDs that are not SPEAKER_XX patterns).
    *
    * @param {string} oldName - The current speaker name to rename
    * @param {string} newName - The new name to assign
@@ -622,14 +561,6 @@ class SpeakerLabeling extends FormApplication {
 
   /**
    * Apply stored speaker labels to an array of transcript segments.
-   *
-   * For each segment that has a `speaker` property matching a stored label key,
-   * the speaker value is replaced with the stored label. Segments without a
-   * matching label keep their original speaker value unchanged.
-   *
-   * This differs from {@link mapSpeakerLabels} in that it does NOT fall back
-   * to "Unknown Speaker" for missing speakers — it preserves the original value.
-   * This makes it suitable for incremental/partial label application.
    *
    * @param {Array<object>} segments - Array of transcript segments with speaker property
    * @returns {Array<object>} New array with labels applied (originals not mutated)

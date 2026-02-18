@@ -1,14 +1,14 @@
 /**
  * VocabularyManager Unit Tests
  *
- * Tests for the VocabularyManager UI component.
+ * Tests for the VocabularyManager UI component (ApplicationV2 version).
  * Covers vocabulary management, category tabs, import/export,
  * Foundry suggestions, and event handling.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { JSDOM } from 'jsdom';
-import { createMockApplication } from '../helpers/foundry-mock.js';
+import { createMockApplicationV2, createMockHandlebarsApplicationMixin } from '../helpers/foundry-mock.js';
 
 // Mock Logger before importing VocabularyManager
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
@@ -76,8 +76,9 @@ function setupEnvironment() {
   global.window = dom.window;
   global.document = dom.window.document;
 
-  // Set up Application class
-  global.Application = createMockApplication();
+  // Set up ApplicationV2 and HandlebarsApplicationMixin
+  global.ApplicationV2 = createMockApplicationV2();
+  global.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
 
   // Set up Dialog class
   global.Dialog = class Dialog {
@@ -170,24 +171,26 @@ function createMockFoundryUtils() {
 }
 
 /**
- * Create mock jQuery element
+ * Create a mock DOM element tree for VocabularyManager category content
+ * @param {object} options - Options for the mock element
+ * @param {string} options.category - The category ID
+ * @param {string} [options.inputValue] - Value of the term input
+ * @param {string} [options.term] - Term value for the button dataset
+ * @returns {HTMLElement} Container element
  */
-function createMockJQuery(selector, options = {}) {
-  const element = {
-    val: vi.fn(() => options.value || ''),
-    data: vi.fn((key) => options.data?.[key] || ''),
-    find: vi.fn(() => element),
-    closest: vi.fn(() => element),
-    on: vi.fn(),
-    is: vi.fn(() => options.checked || false),
-    each: vi.fn((callback) => {
-      // Simulate iterating over collection
-      if (options.collection) {
-        options.collection.forEach((item, index) => callback(index, item));
-      }
-    })
-  };
-  return element;
+function createMockCategoryElement(options = {}) {
+  const container = document.createElement('div');
+  container.className = 'category-content';
+  container.dataset.category = options.category || 'character_names';
+
+  if (options.inputValue !== undefined) {
+    const input = document.createElement('input');
+    input.className = 'term-input';
+    input.value = options.inputValue;
+    container.appendChild(input);
+  }
+
+  return container;
 }
 
 describe('VocabularyManager', () => {
@@ -232,7 +235,6 @@ describe('VocabularyManager', () => {
     global.game = mockGame;
     global.ui = mockUi;
     global.foundry = { utils: createMockFoundryUtils() };
-    global.$ = (selector) => createMockJQuery(selector);
 
     // Create instance
     manager = new VocabularyManager();
@@ -254,34 +256,49 @@ describe('VocabularyManager', () => {
     });
   });
 
-  describe('Default Options', () => {
-    it('should have correct default options', () => {
-      const options = VocabularyManager.defaultOptions;
+  describe('DEFAULT_OPTIONS', () => {
+    it('should have correct options', () => {
+      const options = VocabularyManager.DEFAULT_OPTIONS;
 
       expect(options.id).toBe('vox-chronicle-vocabulary-manager');
-      expect(options.template).toContain('vocabulary-manager.hbs');
       expect(options.classes).toContain('vox-chronicle');
       expect(options.classes).toContain('vocabulary-manager');
-      expect(options.width).toBe(600);
-      expect(options.height).toBe(600);
-      expect(options.minimizable).toBe(true);
-      expect(options.resizable).toBe(true);
+      expect(options.position.width).toBe(600);
+      expect(options.position.height).toBe(600);
+      expect(options.window.minimizable).toBe(true);
+      expect(options.window.resizable).toBe(true);
     });
 
-    it('should configure tabs correctly', () => {
-      const options = VocabularyManager.defaultOptions;
+    it('should have localized window title key', () => {
+      const options = VocabularyManager.DEFAULT_OPTIONS;
 
-      expect(options.tabs).toBeDefined();
-      expect(options.tabs).toHaveLength(1);
-      expect(options.tabs[0].navSelector).toBe('.tabs');
-      expect(options.tabs[0].contentSelector).toBe('.tab-content');
-      expect(options.tabs[0].initial).toBe(VocabularyCategory.CHARACTER_NAMES);
+      expect(options.window.title).toBe('VOXCHRONICLE.Vocabulary.Title');
+    });
+
+    it('should define all action handlers', () => {
+      const options = VocabularyManager.DEFAULT_OPTIONS;
+
+      expect(options.actions['add-term']).toBeDefined();
+      expect(options.actions['remove-term']).toBeDefined();
+      expect(options.actions['clear-category']).toBeDefined();
+      expect(options.actions['clear-all']).toBeDefined();
+      expect(options.actions['suggest-foundry']).toBeDefined();
+      expect(options.actions['import-dict']).toBeDefined();
+      expect(options.actions['export-dict']).toBeDefined();
     });
   });
 
-  describe('getData Template Data', () => {
+  describe('PARTS', () => {
+    it('should define main template part', () => {
+      expect(VocabularyManager.PARTS).toBeDefined();
+      expect(VocabularyManager.PARTS.main).toBeDefined();
+      expect(VocabularyManager.PARTS.main.template).toContain('vocabulary-manager.hbs');
+    });
+  });
+
+  describe('_prepareContext Template Data', () => {
     it('should return complete template data with categories', async () => {
-      const data = await manager.getData();
+      const data = await manager._prepareContext();
 
       expect(data.moduleId).toBe('vox-chronicle');
       expect(data.categories).toBeDefined();
@@ -292,7 +309,7 @@ describe('VocabularyManager', () => {
     });
 
     it('should include all category data with terms', async () => {
-      const data = await manager.getData();
+      const data = await manager._prepareContext();
 
       const characterCategory = data.categories.find(
         (c) => c.id === VocabularyCategory.CHARACTER_NAMES
@@ -314,14 +331,14 @@ describe('VocabularyManager', () => {
       });
       mockDictionary.getTotalTermCount.mockReturnValue(0);
 
-      const data = await manager.getData();
+      const data = await manager._prepareContext();
 
       expect(data.totalTerms).toBe(0);
       expect(data.hasTerms).toBe(false);
     });
 
     it('should include localization strings', async () => {
-      const data = await manager.getData();
+      const data = await manager._prepareContext();
 
       expect(data.i18n).toBeDefined();
       expect(data.i18n.title).toBeDefined();
@@ -335,7 +352,7 @@ describe('VocabularyManager', () => {
     });
 
     it('should include all five vocabulary categories', async () => {
-      const data = await manager.getData();
+      const data = await manager._prepareContext();
 
       const categoryIds = data.categories.map((c) => c.id);
       expect(categoryIds).toContain(VocabularyCategory.CHARACTER_NAMES);
@@ -346,80 +363,92 @@ describe('VocabularyManager', () => {
     });
   });
 
-  describe('Event Listener Activation', () => {
-    it('should activate all event listeners on HTML', () => {
-      const mockHtml = createMockJQuery('html');
+  describe('_onRender Event Binding', () => {
+    it('should bind keypress on term inputs and click on tab items', () => {
+      const mockElement = document.createElement('div');
 
-      manager.activateListeners(mockHtml);
+      // Create a term input
+      const input = document.createElement('input');
+      input.className = 'term-input';
+      mockElement.appendChild(input);
 
-      expect(mockHtml.find).toHaveBeenCalledWith('.add-term-btn');
-      expect(mockHtml.find).toHaveBeenCalledWith('.term-input');
-      expect(mockHtml.find).toHaveBeenCalledWith('.remove-term-btn');
-      expect(mockHtml.find).toHaveBeenCalledWith('.clear-category-btn');
-      expect(mockHtml.find).toHaveBeenCalledWith('.clear-all-btn');
-      expect(mockHtml.find).toHaveBeenCalledWith('.suggest-foundry-btn');
-      expect(mockHtml.find).toHaveBeenCalledWith('.import-btn');
-      expect(mockHtml.find).toHaveBeenCalledWith('.export-btn');
-      expect(mockHtml.find).toHaveBeenCalledWith('.tabs .item');
+      // Create a tab nav with item
+      const nav = document.createElement('nav');
+      nav.className = 'tabs';
+      const tabItem = document.createElement('a');
+      tabItem.className = 'item';
+      tabItem.dataset.tab = 'items';
+      nav.appendChild(tabItem);
+      mockElement.appendChild(nav);
+
+      manager._element = mockElement;
+
+      const inputSpy = vi.spyOn(input, 'addEventListener');
+      const tabSpy = vi.spyOn(tabItem, 'addEventListener');
+
+      manager._onRender({}, {});
+
+      expect(inputSpy).toHaveBeenCalledWith('keypress', expect.any(Function));
+      expect(tabSpy).toHaveBeenCalledWith('click', expect.any(Function));
+    });
+
+    it('should track active category on tab click', () => {
+      const mockElement = document.createElement('div');
+      const nav = document.createElement('nav');
+      nav.className = 'tabs';
+      const tabItem = document.createElement('a');
+      tabItem.className = 'item';
+      tabItem.dataset.tab = 'items';
+      nav.appendChild(tabItem);
+      mockElement.appendChild(nav);
+
+      manager._element = mockElement;
+      manager._onRender({}, {});
+
+      // Simulate tab click
+      tabItem.click();
+
+      expect(manager._activeCategory).toBe('items');
     });
   });
 
   describe('Add Term Handler', () => {
-    it('should add term successfully', async () => {
-      const mockContainer = createMockJQuery('container', {
-        value: 'New Character',
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+    it('should add term successfully via action target', async () => {
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES,
+        inputValue: 'New Character'
       });
 
-      const mockInput = createMockJQuery('input', { value: 'New Character' });
-      mockContainer.find.mockReturnValue(mockInput);
+      // Create button inside container
+      const button = document.createElement('button');
+      button.dataset.action = 'add-term';
+      container.appendChild(button);
 
-      const mockButton = createMockJQuery('button');
-      mockButton.closest.mockReturnValue(mockContainer);
+      const event = { preventDefault: vi.fn() };
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
-
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onAddTerm(event);
+      await manager._onAddTerm(event, button);
 
       expect(mockDictionary.addTerm).toHaveBeenCalledWith(
         VocabularyCategory.CHARACTER_NAMES,
         'New Character'
       );
       expect(mockUi.notifications.info).toHaveBeenCalled();
-      expect(mockInput.val).toHaveBeenCalledWith('');
+      // Input should be cleared
+      expect(container.querySelector('.term-input').value).toBe('');
     });
 
     it('should warn if term is empty', async () => {
-      const mockContainer = createMockJQuery('container', {
-        value: '',
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES,
+        inputValue: ''
       });
 
-      const mockInput = createMockJQuery('input', { value: '' });
-      mockContainer.find.mockReturnValue(mockInput);
+      const button = document.createElement('button');
+      container.appendChild(button);
 
-      const mockButton = createMockJQuery('button');
-      mockButton.closest.mockReturnValue(mockContainer);
+      const event = { preventDefault: vi.fn() };
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
-
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onAddTerm(event);
+      await manager._onAddTerm(event, button);
 
       expect(mockDictionary.addTerm).not.toHaveBeenCalled();
       expect(mockUi.notifications.warn).toHaveBeenCalled();
@@ -428,28 +457,17 @@ describe('VocabularyManager', () => {
     it('should warn if term already exists', async () => {
       mockDictionary.addTerm.mockResolvedValue(false);
 
-      const mockContainer = createMockJQuery('container', {
-        value: 'Existing Term',
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES,
+        inputValue: 'Existing Term'
       });
 
-      const mockInput = createMockJQuery('input', { value: 'Existing Term' });
-      mockContainer.find.mockReturnValue(mockInput);
+      const button = document.createElement('button');
+      container.appendChild(button);
 
-      const mockButton = createMockJQuery('button');
-      mockButton.closest.mockReturnValue(mockContainer);
+      const event = { preventDefault: vi.fn() };
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
-
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onAddTerm(event);
+      await manager._onAddTerm(event, button);
 
       expect(mockUi.notifications.warn).toHaveBeenCalled();
     });
@@ -457,55 +475,56 @@ describe('VocabularyManager', () => {
     it('should handle add term errors', async () => {
       mockDictionary.addTerm.mockRejectedValue(new Error('Add failed'));
 
-      const mockContainer = createMockJQuery('container', {
-        value: 'Test Term',
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES,
+        inputValue: 'Test Term'
       });
 
-      const mockInput = createMockJQuery('input', { value: 'Test Term' });
-      mockContainer.find.mockReturnValue(mockInput);
+      const button = document.createElement('button');
+      container.appendChild(button);
 
-      const mockButton = createMockJQuery('button');
-      mockButton.closest.mockReturnValue(mockContainer);
+      const event = { preventDefault: vi.fn() };
+
+      await manager._onAddTerm(event, button);
+
+      expect(mockUi.notifications.error).toHaveBeenCalled();
+    });
+
+    it('should add term via Enter keypress (event.currentTarget fallback)', async () => {
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES,
+        inputValue: 'Keypress Term'
+      });
+
+      const input = container.querySelector('.term-input');
 
       const event = {
         preventDefault: vi.fn(),
-        currentTarget: {}
+        currentTarget: input
       };
-
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
 
       await manager._onAddTerm(event);
 
-      expect(mockUi.notifications.error).toHaveBeenCalled();
+      expect(mockDictionary.addTerm).toHaveBeenCalledWith(
+        VocabularyCategory.CHARACTER_NAMES,
+        'Keypress Term'
+      );
     });
   });
 
   describe('Remove Term Handler', () => {
     it('should remove term successfully', async () => {
-      const mockContainer = createMockJQuery('container', {
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES
       });
 
-      const mockButton = createMockJQuery('button', {
-        data: { term: 'Gandalf' }
-      });
-      mockButton.closest.mockReturnValue(mockContainer);
+      const button = document.createElement('button');
+      button.dataset.term = 'Gandalf';
+      container.appendChild(button);
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
+      const event = { preventDefault: vi.fn() };
 
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onRemoveTerm(event);
+      await manager._onRemoveTerm(event, button);
 
       expect(mockDictionary.removeTerm).toHaveBeenCalledWith(
         VocabularyCategory.CHARACTER_NAMES,
@@ -517,26 +536,17 @@ describe('VocabularyManager', () => {
     it('should handle remove term errors', async () => {
       mockDictionary.removeTerm.mockRejectedValue(new Error('Remove failed'));
 
-      const mockContainer = createMockJQuery('container', {
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES
       });
 
-      const mockButton = createMockJQuery('button', {
-        data: { term: 'Gandalf' }
-      });
-      mockButton.closest.mockReturnValue(mockContainer);
+      const button = document.createElement('button');
+      button.dataset.term = 'Gandalf';
+      container.appendChild(button);
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
+      const event = { preventDefault: vi.fn() };
 
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onRemoveTerm(event);
+      await manager._onRemoveTerm(event, button);
 
       expect(mockUi.notifications.error).toHaveBeenCalled();
     });
@@ -546,24 +556,16 @@ describe('VocabularyManager', () => {
     it('should clear category after confirmation', async () => {
       global.Dialog.confirm = vi.fn().mockResolvedValue(true);
 
-      const mockContainer = createMockJQuery('container', {
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES
       });
 
-      const mockButton = createMockJQuery('button');
-      mockButton.closest.mockReturnValue(mockContainer);
+      const button = document.createElement('button');
+      container.appendChild(button);
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
+      const event = { preventDefault: vi.fn() };
 
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onClearCategory(event);
+      await manager._onClearCategory(event, button);
 
       expect(global.Dialog.confirm).toHaveBeenCalled();
       expect(mockDictionary.clearCategory).toHaveBeenCalledWith(VocabularyCategory.CHARACTER_NAMES);
@@ -573,24 +575,16 @@ describe('VocabularyManager', () => {
     it('should not clear category if user cancels', async () => {
       global.Dialog.confirm = vi.fn().mockResolvedValue(false);
 
-      const mockContainer = createMockJQuery('container', {
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES
       });
 
-      const mockButton = createMockJQuery('button');
-      mockButton.closest.mockReturnValue(mockContainer);
+      const button = document.createElement('button');
+      container.appendChild(button);
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
+      const event = { preventDefault: vi.fn() };
 
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onClearCategory(event);
+      await manager._onClearCategory(event, button);
 
       expect(mockDictionary.clearCategory).not.toHaveBeenCalled();
     });
@@ -599,24 +593,16 @@ describe('VocabularyManager', () => {
       global.Dialog.confirm = vi.fn().mockResolvedValue(true);
       mockDictionary.clearCategory.mockRejectedValue(new Error('Clear failed'));
 
-      const mockContainer = createMockJQuery('container', {
-        data: { category: VocabularyCategory.CHARACTER_NAMES }
+      const container = createMockCategoryElement({
+        category: VocabularyCategory.CHARACTER_NAMES
       });
 
-      const mockButton = createMockJQuery('button');
-      mockButton.closest.mockReturnValue(mockContainer);
+      const button = document.createElement('button');
+      container.appendChild(button);
 
-      const event = {
-        preventDefault: vi.fn(),
-        currentTarget: {}
-      };
+      const event = { preventDefault: vi.fn() };
 
-      global.$ = vi.fn((selector) => {
-        if (selector === event.currentTarget) return mockButton;
-        return createMockJQuery(selector);
-      });
-
-      await manager._onClearCategory(event);
+      await manager._onClearCategory(event, button);
 
       expect(mockUi.notifications.error).toHaveBeenCalled();
     });
@@ -838,32 +824,90 @@ describe('VocabularyManager', () => {
     });
   });
 
+  describe('Static Action Handlers', () => {
+    it('should dispatch add-term action to instance', async () => {
+      manager._onAddTerm = vi.fn();
+      const event = { preventDefault: vi.fn() };
+      const target = { dataset: { action: 'add-term' } };
+
+      await VocabularyManager._onAddTermAction.call(manager, event, target);
+
+      expect(manager._onAddTerm).toHaveBeenCalledWith(event, target);
+    });
+
+    it('should dispatch remove-term action to instance', async () => {
+      manager._onRemoveTerm = vi.fn();
+      const event = { preventDefault: vi.fn() };
+      const target = { dataset: { action: 'remove-term', term: 'Gandalf' } };
+
+      await VocabularyManager._onRemoveTermAction.call(manager, event, target);
+
+      expect(manager._onRemoveTerm).toHaveBeenCalledWith(event, target);
+    });
+
+    it('should dispatch clear-category action to instance', async () => {
+      manager._onClearCategory = vi.fn();
+      const event = { preventDefault: vi.fn() };
+      const target = { dataset: { action: 'clear-category' } };
+
+      await VocabularyManager._onClearCategoryAction.call(manager, event, target);
+
+      expect(manager._onClearCategory).toHaveBeenCalledWith(event, target);
+    });
+
+    it('should dispatch clear-all action to instance', async () => {
+      manager._onClearAll = vi.fn();
+      const event = { preventDefault: vi.fn() };
+
+      await VocabularyManager._onClearAllAction.call(manager, event, null);
+
+      expect(manager._onClearAll).toHaveBeenCalledWith(event);
+    });
+
+    it('should dispatch suggest-foundry action to instance', async () => {
+      manager._onSuggestFromFoundry = vi.fn();
+      const event = { preventDefault: vi.fn() };
+
+      await VocabularyManager._onSuggestFromFoundryAction.call(manager, event, null);
+
+      expect(manager._onSuggestFromFoundry).toHaveBeenCalledWith(event);
+    });
+
+    it('should dispatch import-dict action to instance', async () => {
+      manager._onImport = vi.fn();
+      const event = { preventDefault: vi.fn() };
+
+      await VocabularyManager._onImportAction.call(manager, event, null);
+
+      expect(manager._onImport).toHaveBeenCalledWith(event);
+    });
+
+    it('should dispatch export-dict action to instance', async () => {
+      manager._onExport = vi.fn();
+      const event = { preventDefault: vi.fn() };
+
+      await VocabularyManager._onExportAction.call(manager, event, null);
+
+      expect(manager._onExport).toHaveBeenCalledWith(event);
+    });
+  });
+
   describe('Active Category Tracking', () => {
-    it('should track active category from tab clicks', () => {
-      const mockHtml = createMockJQuery('html');
-      const tabClickHandler = vi.fn();
+    it('should update active category when tab is clicked', () => {
+      const mockElement = document.createElement('div');
+      const nav = document.createElement('nav');
+      nav.className = 'tabs';
+      const tabItem = document.createElement('a');
+      tabItem.className = 'item';
+      tabItem.dataset.tab = VocabularyCategory.ITEMS;
+      nav.appendChild(tabItem);
+      mockElement.appendChild(nav);
 
-      mockHtml.find.mockImplementation((selector) => {
-        if (selector === '.tabs .item') {
-          const element = createMockJQuery(selector);
-          element.on.mockImplementation((event, handler) => {
-            tabClickHandler.mockImplementation(handler);
-          });
-          return element;
-        }
-        return createMockJQuery(selector);
-      });
-
-      manager.activateListeners(mockHtml);
+      manager._element = mockElement;
+      manager._onRender({}, {});
 
       // Simulate tab click
-      const clickEvent = {
-        currentTarget: {
-          dataset: { tab: VocabularyCategory.ITEMS }
-        }
-      };
-
-      tabClickHandler(clickEvent);
+      tabItem.click();
 
       expect(manager._activeCategory).toBe(VocabularyCategory.ITEMS);
     });

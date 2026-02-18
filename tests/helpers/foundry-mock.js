@@ -297,6 +297,8 @@ export function setupFoundryMocks(options = {}) {
   globalThis.game = game;
   globalThis.foundry = foundry;
   globalThis.Application = createMockApplication();
+  globalThis.ApplicationV2 = createMockApplicationV2();
+  globalThis.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
 
   return { game, foundry };
 }
@@ -314,6 +316,121 @@ export function clearFoundryMocks() {
   delete globalThis.game;
   delete globalThis.foundry;
   delete globalThis.Application;
+  delete globalThis.ApplicationV2;
+  delete globalThis.HandlebarsApplicationMixin;
+}
+
+/**
+ * Creates a mock ApplicationV2 class for Foundry VTT v13
+ *
+ * ApplicationV2 uses static DEFAULT_OPTIONS instead of a defaultOptions getter,
+ * _prepareContext() instead of getData(), and _onRender() instead of activateListeners().
+ * The actions system auto-dispatches click events on elements with data-action attributes.
+ *
+ * @returns {Class} Mock ApplicationV2 class
+ */
+export function createMockApplicationV2() {
+  class MockApplicationV2 {
+    static DEFAULT_OPTIONS = {
+      id: 'mock-app-v2',
+      classes: [],
+      window: { title: '', icon: '', resizable: false },
+      position: { width: 400, height: 'auto' },
+      actions: {}
+    };
+
+    static PARTS = {};
+
+    constructor(options = {}) {
+      const mergedDefaults = _deepMerge({}, this.constructor.DEFAULT_OPTIONS);
+      this.options = _deepMerge(mergedDefaults, options);
+      this.rendered = false;
+      this._element = null;
+    }
+
+    get element() {
+      return this._element;
+    }
+
+    get isRendered() {
+      return this.rendered;
+    }
+
+    get id() {
+      return this.options.id;
+    }
+
+    get title() {
+      return this.options.window?.title || '';
+    }
+
+    async _prepareContext(_options) {
+      return {};
+    }
+
+    _onRender(_context, _options) {
+      // Override in subclasses for non-click event binding
+    }
+
+    async render(options = {}) {
+      this.rendered = true;
+      const context = await this._prepareContext(options);
+      this._onRender(context, options);
+      return this;
+    }
+
+    async close(_options = {}) {
+      this.rendered = false;
+      this._element = null;
+      return this;
+    }
+
+    setPosition(pos = {}) {
+      Object.assign(this.options.position, pos);
+    }
+  }
+
+  return MockApplicationV2;
+}
+
+/**
+ * Creates a mock HandlebarsApplicationMixin for Foundry VTT v13
+ *
+ * The mixin adds Handlebars template rendering via static PARTS.
+ * It wraps a base class (typically ApplicationV2) and adds template support.
+ *
+ * @returns {Function} Mock HandlebarsApplicationMixin function
+ */
+export function createMockHandlebarsApplicationMixin() {
+  return function HandlebarsApplicationMixin(Base) {
+    class Mixed extends Base {
+      static PARTS = {};
+
+      async _prepareContext(options) {
+        const context = await super._prepareContext(options);
+        return context;
+      }
+    }
+    return Mixed;
+  };
+}
+
+/**
+ * Simple deep merge utility for mock options merging
+ * @param {Object} target
+ * @param {Object} source
+ * @returns {Object}
+ */
+function _deepMerge(target, source) {
+  const result = { ...target };
+  for (const [key, value] of Object.entries(source)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = _deepMerge(result[key] || {}, value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
 }
 
 /**

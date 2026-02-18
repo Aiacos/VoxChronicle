@@ -8,10 +8,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createMockApplication, createMockFoundryUtils } from '../helpers/foundry-mock.js';
+import { createMockApplicationV2, createMockHandlebarsApplicationMixin, createMockFoundryUtils } from '../helpers/foundry-mock.js';
 
-// Set up Foundry globals BEFORE importing MainPanel (which extends Application)
-globalThis.Application = createMockApplication();
+// Set up Foundry globals BEFORE importing MainPanel (which extends ApplicationV2)
+globalThis.ApplicationV2 = createMockApplicationV2();
+globalThis.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
 globalThis.foundry = { utils: createMockFoundryUtils() };
 
 // Mock VoxChronicle singleton (used by _getRAGData, _getAudioLevel, _handleRAGBuildIndex)
@@ -138,13 +139,31 @@ describe('MainPanel', () => {
     });
   });
 
-  describe('defaultOptions', () => {
-    it('should return correct default options', () => {
-      const opts = MainPanel.defaultOptions;
+  describe('DEFAULT_OPTIONS', () => {
+    it('should have correct default options', () => {
+      const opts = MainPanel.DEFAULT_OPTIONS;
       expect(opts.id).toBe('vox-chronicle-main-panel');
-      expect(opts.width).toBe(420);
-      expect(opts.height).toBe(600);
-      expect(opts.title).toBe('VoxChronicle');
+      expect(opts.position.width).toBe(420);
+      expect(opts.position.height).toBe(600);
+      expect(opts.window.title).toBe('VoxChronicle');
+    });
+
+    it('should have all action handlers registered', () => {
+      const actions = MainPanel.DEFAULT_OPTIONS.actions;
+      expect(actions['toggle-recording']).toBe(MainPanel._onToggleRecording);
+      expect(actions['toggle-pause']).toBe(MainPanel._onTogglePause);
+      expect(actions['process-session']).toBe(MainPanel._onProcessSession);
+      expect(actions['publish-kanka']).toBe(MainPanel._onPublishKanka);
+      expect(actions['generate-image']).toBe(MainPanel._onGenerateImage);
+      expect(actions['review-entities']).toBe(MainPanel._onReviewEntities);
+      expect(actions['rag-build-index']).toBe(MainPanel._onRAGBuildIndex);
+      expect(actions['rag-clear-index']).toBe(MainPanel._onRAGClearIndex);
+    });
+  });
+
+  describe('PARTS', () => {
+    it('should define main template part', () => {
+      expect(MainPanel.PARTS.main.template).toContain('main-panel.hbs');
     });
   });
 
@@ -172,10 +191,10 @@ describe('MainPanel', () => {
     });
   });
 
-  describe('getData', () => {
-    it('should return default data when no session', () => {
+  describe('_prepareContext', () => {
+    it('should return default data when no session', async () => {
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.activeTab).toBe('live');
       expect(data.isRecording).toBe(false);
       expect(data.isPaused).toBe(false);
@@ -188,28 +207,28 @@ describe('MainPanel', () => {
       expect(data.images).toEqual([]);
     });
 
-    it('should return recording state', () => {
+    it('should return recording state', async () => {
       mockOrchestrator.state = 'recording';
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.isRecording).toBe(true);
     });
 
-    it('should return recording state for live mode', () => {
+    it('should return recording state for live mode', async () => {
       mockOrchestrator.state = 'live_listening';
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.isRecording).toBe(true);
     });
 
-    it('should return paused state', () => {
+    it('should return paused state', async () => {
       mockOrchestrator.state = 'paused';
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.isPaused).toBe(true);
     });
 
-    it('should return entities count', () => {
+    it('should return entities count', async () => {
       mockOrchestrator.currentSession = {
         entities: {
           characters: [{ name: 'A' }, { name: 'B' }],
@@ -218,12 +237,12 @@ describe('MainPanel', () => {
         }
       };
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.entityCount).toBe(3);
       expect(data.hasEntities).toBe(true);
     });
 
-    it('should return transcript segments', () => {
+    it('should return transcript segments', async () => {
       mockOrchestrator.currentSession = {
         transcript: {
           segments: [
@@ -233,12 +252,12 @@ describe('MainPanel', () => {
         }
       };
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.segments).toHaveLength(2);
       expect(data.hasTranscript).toBe(true);
     });
 
-    it('should return current chapter with title property (not name)', () => {
+    it('should return current chapter with title property (not name)', async () => {
       mockOrchestrator.getCurrentChapter.mockReturnValue({
         id: 'c1',
         title: 'The Tavern',
@@ -247,34 +266,34 @@ describe('MainPanel', () => {
         pageName: 'Chapter 1'
       });
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.currentChapter.title).toBe('The Tavern');
       expect(data.currentChapter.path).toBe('Act I > The Tavern');
     });
 
-    it('should return null chapter when tracker has none', () => {
+    it('should return null chapter when tracker has none', async () => {
       mockOrchestrator.getCurrentChapter.mockReturnValue(null);
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.currentChapter).toBeNull();
     });
 
-    it('should return AI suggestions with content property', () => {
+    it('should return AI suggestions with content property', async () => {
       mockOrchestrator.getAISuggestions.mockReturnValue([
         { type: 'narration', content: 'The shadows deepen', confidence: 0.8 },
         { type: 'dialogue', content: 'Welcome, travelers!', confidence: 0.7 }
       ]);
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.suggestions).toHaveLength(2);
       expect(data.suggestions[0].content).toBe('The shadows deepen');
       expect(data.suggestions[1].content).toBe('Welcome, travelers!');
     });
 
-    it('should return empty suggestions when none available', () => {
+    it('should return empty suggestions when none available', async () => {
       mockOrchestrator.getAISuggestions.mockReturnValue([]);
       const panel = new MainPanel(mockOrchestrator);
-      const data = panel.getData();
+      const data = await panel._prepareContext();
       expect(data.suggestions).toEqual([]);
     });
   });
@@ -288,10 +307,10 @@ describe('MainPanel', () => {
   });
 
   describe('close', () => {
-    it('should mark as not rendered', () => {
+    it('should mark as not rendered', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel.render();
-      panel.close();
+      await panel.close();
       expect(panel.isRendered).toBe(false);
     });
   });
@@ -552,63 +571,57 @@ describe('MainPanel', () => {
   });
 
   // =========================================================================
-  // _handleAction dispatch
+  // Static action handler dispatch
   // =========================================================================
 
-  describe('_handleAction', () => {
-    it('should dispatch toggle-recording', async () => {
+  describe('static action handlers', () => {
+    it('should dispatch toggle-recording to instance method', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel._handleToggleRecording = vi.fn();
-      await panel._handleAction('toggle-recording', {});
+      await MainPanel._onToggleRecording.call(panel, {}, null);
       expect(panel._handleToggleRecording).toHaveBeenCalled();
     });
 
-    it('should dispatch toggle-pause', async () => {
+    it('should dispatch toggle-pause to instance method', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel._handleTogglePause = vi.fn();
-      await panel._handleAction('toggle-pause', {});
+      await MainPanel._onTogglePause.call(panel, {}, null);
       expect(panel._handleTogglePause).toHaveBeenCalled();
     });
 
-    it('should dispatch process-session', async () => {
+    it('should dispatch process-session to instance method', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel._handleProcessSession = vi.fn();
-      await panel._handleAction('process-session', {});
+      await MainPanel._onProcessSession.call(panel, {}, null);
       expect(panel._handleProcessSession).toHaveBeenCalled();
     });
 
-    it('should dispatch publish-kanka', async () => {
+    it('should dispatch publish-kanka to instance method', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel._handlePublishKanka = vi.fn();
-      await panel._handleAction('publish-kanka', {});
+      await MainPanel._onPublishKanka.call(panel, {}, null);
       expect(panel._handlePublishKanka).toHaveBeenCalled();
     });
 
-    it('should dispatch generate-image', async () => {
+    it('should dispatch generate-image to instance method', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel._handleGenerateImage = vi.fn();
-      await panel._handleAction('generate-image', {});
+      await MainPanel._onGenerateImage.call(panel, {}, null);
       expect(panel._handleGenerateImage).toHaveBeenCalled();
     });
 
-    it('should dispatch rag-build-index', async () => {
+    it('should dispatch rag-build-index to instance method', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel._handleRAGBuildIndex = vi.fn();
-      await panel._handleAction('rag-build-index', {});
+      await MainPanel._onRAGBuildIndex.call(panel, {}, null);
       expect(panel._handleRAGBuildIndex).toHaveBeenCalled();
     });
 
-    it('should dispatch rag-clear-index', async () => {
+    it('should dispatch rag-clear-index to instance method', async () => {
       const panel = new MainPanel(mockOrchestrator);
       panel._handleRAGClearIndex = vi.fn();
-      await panel._handleAction('rag-clear-index', {});
+      await MainPanel._onRAGClearIndex.call(panel, {}, null);
       expect(panel._handleRAGClearIndex).toHaveBeenCalled();
-    });
-
-    it('should handle unknown action gracefully', async () => {
-      const panel = new MainPanel(mockOrchestrator);
-      // Should not throw
-      await panel._handleAction('nonexistent-action', {});
     });
   });
 

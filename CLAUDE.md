@@ -21,8 +21,8 @@ Core capabilities:
 ## Tech Stack
 
 - **Language**: JavaScript (ES6+ modules with `.mjs` extension)
-- **Framework**: Foundry VTT Module API v12/v13
-- **UI Framework**: Foundry VTT Application classes
+- **Framework**: Foundry VTT Module API v13
+- **UI Framework**: Foundry VTT ApplicationV2 + HandlebarsApplicationMixin
 - **Templates**: Handlebars (.hbs)
 - **Styling**: CSS with `.vox-chronicle` namespace
 - **Testing**: Vitest with jsdom environment (3094+ tests across 55+ files)
@@ -378,27 +378,36 @@ export class OpenAIClient {
 
 ### UI Components
 
-UI classes extend Foundry's Application or FormApplication:
+UI classes use Foundry v13's ApplicationV2 + HandlebarsApplicationMixin:
 
 ```javascript
-export class MyApplication extends Application {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'vox-chronicle-my-app',
-      classes: ['vox-chronicle', 'my-app'],
-      template: 'modules/vox-chronicle/templates/my-app.hbs',
-      width: 400,
-      height: 'auto'
-    });
-  }
+export class MyApplication extends HandlebarsApplicationMixin(ApplicationV2) {
+  static DEFAULT_OPTIONS = {
+    id: 'vox-chronicle-my-app',
+    classes: ['vox-chronicle', 'my-app'],
+    window: { title: 'VOXCHRONICLE.MyApp.Title', resizable: true },
+    position: { width: 400 },
+    actions: {
+      'my-action': MyApplication._onMyAction  // Static handler, called with .call(this)
+    }
+  };
 
-  getData() {
+  static PARTS = {
+    main: { template: `modules/vox-chronicle/templates/my-app.hbs` }
+  };
+
+  async _prepareContext(options) {
     return { /* template data */ };
   }
 
-  activateListeners(html) {
-    super.activateListeners(html);
-    // Event handlers
+  _onRender(context, options) {
+    // Non-click event listeners (change, keypress, submit)
+    this.element?.querySelector('select')?.addEventListener('change', this._handler.bind(this));
+  }
+
+  static _onMyAction(event, target) {
+    // Static action handler - `this` is the instance via .call()
+    this._doSomething(event, target);
   }
 }
 ```

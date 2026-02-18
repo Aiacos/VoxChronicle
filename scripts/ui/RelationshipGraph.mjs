@@ -6,7 +6,7 @@
  * by entity type and relationship type.
  *
  * @class RelationshipGraph
- * @augments Application
+ * @augments HandlebarsApplicationMixin(ApplicationV2)
  * @module vox-chronicle
  */
 
@@ -40,7 +40,7 @@ const GraphMode = {
  * RelationshipGraph Application class
  * Provides UI for visualizing entity relationships as an interactive network graph
  */
-class RelationshipGraph extends Application {
+class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   /**
    * Logger instance for this class
    * @type {object}
@@ -119,24 +119,25 @@ class RelationshipGraph extends Application {
     [RelationshipType.UNKNOWN]: '#7F8C8D'
   };
 
-  /**
-   * Get default options for the Application
-   * @returns {object} Default application options
-   * @static
-   */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'vox-chronicle-relationship-graph',
-      title: game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.Title') || 'Relationship Graph',
-      template: `modules/${MODULE_ID}/templates/relationship-graph.hbs`,
-      classes: ['vox-chronicle', 'relationship-graph'],
-      width: 800,
-      height: 600,
-      minimizable: true,
+  static DEFAULT_OPTIONS = {
+    id: 'vox-chronicle-relationship-graph',
+    classes: ['vox-chronicle', 'relationship-graph'],
+    window: {
+      title: 'VOXCHRONICLE.RelationshipGraph.Title',
       resizable: true,
-      popOut: true
-    });
-  }
+      minimizable: true
+    },
+    position: { width: 800, height: 600 },
+    actions: {
+      refresh: RelationshipGraph._onRefreshClick,
+      export: RelationshipGraph._onExportClick,
+      close: RelationshipGraph._onCloseClick
+    }
+  };
+
+  static PARTS = {
+    main: { template: `modules/${MODULE_ID}/templates/relationship-graph.hbs` }
+  };
 
   /**
    * Create a new RelationshipGraph instance
@@ -224,12 +225,11 @@ class RelationshipGraph extends Application {
   }
 
   /**
-   * Get data for rendering the template
-   * @returns {object} Template data
+   * Prepare context data for the template
+   * @param {object} options - Render options
+   * @returns {Promise<object>} Template data
    */
-  getData() {
-    const data = super.getData();
-
+  async _prepareContext(options) {
     // Calculate totals
     const totalEntities = this._getTotalEntityCount();
     const totalRelationships = this._relationships.length;
@@ -284,7 +284,7 @@ class RelationshipGraph extends Application {
       color: color
     }));
 
-    return foundry.utils.mergeObject(data, {
+    return {
       mode: this._mode,
       isReady: this._mode === GraphMode.READY,
       isEmpty: this._mode === GraphMode.EMPTY,
@@ -295,43 +295,93 @@ class RelationshipGraph extends Application {
       relationshipTypeOptions: relationshipTypeOptions,
       legendItems: legendItems,
       filters: this._filters
-    });
+    };
   }
 
   /**
-   * Activate event listeners after rendering
-   * @param {jQuery} html - The rendered HTML
+   * Bind non-click event listeners and initialize graph after render
+   * @param {object} context - The prepared context
+   * @param {object} options - Render options
    */
-  activateListeners(html) {
-    super.activateListeners(html);
-
+  _onRender(context, options) {
     // Filter change handlers
-    html
-      .find('[data-filter="entity-type"]')
-      .on('change', this._onEntityTypeFilterChange.bind(this));
-    html
-      .find('[data-filter="relationship-type"]')
-      .on('change', this._onRelationshipTypeFilterChange.bind(this));
-
-    // Button handlers
-    html.find('[data-action="refresh"]').on('click', this._onRefreshClick.bind(this));
-    html.find('[data-action="export"]').on('click', this._onExportClick.bind(this));
-    html.find('[data-action="close"]').on('click', this._onCloseClick.bind(this));
+    this.element?.querySelectorAll('[data-filter="entity-type"]').forEach(el => {
+      el.addEventListener('change', this._onEntityTypeFilterChange.bind(this));
+    });
+    this.element?.querySelectorAll('[data-filter="relationship-type"]').forEach(el => {
+      el.addEventListener('change', this._onRelationshipTypeFilterChange.bind(this));
+    });
 
     // Initialize the graph if in ready mode
     if (this._mode === GraphMode.READY) {
-      this._initializeGraph(html);
+      this._initializeGraph();
     }
 
     this._logger.debug('Listeners activated');
   }
 
+  // ─── Static action handlers (called with `this` = app instance) ────
+
+  static _onRefreshClick(event, target) {
+    this._logger.debug('Refresh clicked');
+
+    // Reset filters
+    this._filters = {
+      entityType: EntityType.ALL,
+      relationshipType: 'all'
+    };
+
+    // Re-render the application
+    this.render();
+  }
+
+  static async _onExportClick(event, target) {
+    this._logger.debug('Export clicked');
+
+    try {
+      // Export graph data as JSON
+      const exportData = {
+        entities: this._entities,
+        relationships: this._relationships,
+        exportedAt: new Date().toISOString()
+      };
+
+      const json = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      // Create download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relationship-graph-${Date.now()}.json`;
+      a.click();
+
+      URL.revokeObjectURL(url);
+
+      ui.notifications?.info(
+        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportSuccess') ||
+          'Graph exported successfully'
+      );
+    } catch (error) {
+      this._logger.error('Failed to export graph:', error);
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportError') ||
+          'Failed to export graph'
+      );
+    }
+  }
+
+  static _onCloseClick(event, target) {
+    this.close();
+  }
+
+  // ─── Instance methods ──────────────────────────────────────────────
+
   /**
    * Initialize the vis-network graph
-   * @param {jQuery} html - The rendered HTML
    * @private
    */
-  async _initializeGraph(html) {
+  async _initializeGraph() {
     try {
       // Wait for vis-network library to load (will be loaded via CDN in template)
       if (typeof vis === 'undefined') {
@@ -339,7 +389,7 @@ class RelationshipGraph extends Application {
         await this._waitForVisLibrary();
       }
 
-      const container = html.find('#relationship-graph-network')[0];
+      const container = this.element?.querySelector('#relationship-graph-network');
       if (!container) {
         this._logger.error('Graph container not found');
         this._mode = GraphMode.ERROR;
@@ -356,7 +406,7 @@ class RelationshipGraph extends Application {
       };
 
       // Configure graph options
-      const options = {
+      const graphOptions = {
         nodes: {
           shape: 'dot',
           size: 20,
@@ -401,7 +451,7 @@ class RelationshipGraph extends Application {
       };
 
       // Create the network
-      this._network = new vis.Network(container, data, options);
+      this._network = new vis.Network(container, data, graphOptions);
 
       // Add event listeners
       this._network.on('click', this._onNodeClick.bind(this));
@@ -572,77 +622,6 @@ class RelationshipGraph extends Application {
           'Failed to refresh graph'
       );
     }
-  }
-
-  /**
-   * Handle refresh button click
-   * @param {Event} event - Click event
-   * @private
-   */
-  _onRefreshClick(event) {
-    event.preventDefault();
-    this._logger.debug('Refresh clicked');
-
-    // Reset filters
-    this._filters = {
-      entityType: EntityType.ALL,
-      relationshipType: 'all'
-    };
-
-    // Re-render the application
-    this.render(true);
-  }
-
-  /**
-   * Handle export button click
-   * @param {Event} event - Click event
-   * @private
-   */
-  async _onExportClick(event) {
-    event.preventDefault();
-    this._logger.debug('Export clicked');
-
-    try {
-      // Export graph data as JSON
-      const exportData = {
-        entities: this._entities,
-        relationships: this._relationships,
-        exportedAt: new Date().toISOString()
-      };
-
-      const json = JSON.stringify(exportData, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-
-      // Create download link
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `relationship-graph-${Date.now()}.json`;
-      a.click();
-
-      URL.revokeObjectURL(url);
-
-      ui.notifications?.info(
-        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportSuccess') ||
-          'Graph exported successfully'
-      );
-    } catch (error) {
-      this._logger.error('Failed to export graph:', error);
-      ui.notifications?.error(
-        game.i18n?.localize('VOXCHRONICLE.RelationshipGraph.ExportError') ||
-          'Failed to export graph'
-      );
-    }
-  }
-
-  /**
-   * Handle close button click
-   * @param {Event} event - Click event
-   * @private
-   */
-  _onCloseClick(event) {
-    event.preventDefault();
-    this.close();
   }
 
   /**

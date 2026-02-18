@@ -6,7 +6,7 @@
  * image generation, transcript viewing, entity management, and analytics.
  *
  * @class MainPanel
- * @extends Application
+ * @extends HandlebarsApplicationMixin(ApplicationV2)
  * @module vox-chronicle
  */
 
@@ -25,27 +25,30 @@ const VALID_TABS = ['live', 'chronicle', 'images', 'transcript', 'entities', 'an
  * MainPanel Application class
  * Provides a unified tabbed interface for all VoxChronicle features
  */
-class MainPanel extends Application {
+class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {MainPanel|null} */
   static _instance = null;
 
-  /**
-   * Get default options for the Application
-   * @returns {object} Default application options
-   * @static
-   */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'vox-chronicle-main-panel',
-      classes: ['vox-chronicle', 'vox-chronicle-panel'],
-      template: `modules/${MODULE_ID}/templates/main-panel.hbs`,
-      width: 420,
-      height: 600,
-      minimizable: true,
-      resizable: true,
-      title: 'VoxChronicle'
-    });
-  }
+  static DEFAULT_OPTIONS = {
+    id: 'vox-chronicle-main-panel',
+    classes: ['vox-chronicle', 'vox-chronicle-panel'],
+    window: { title: 'VoxChronicle', resizable: true, minimizable: true },
+    position: { width: 420, height: 600 },
+    actions: {
+      'toggle-recording': MainPanel._onToggleRecording,
+      'toggle-pause': MainPanel._onTogglePause,
+      'process-session': MainPanel._onProcessSession,
+      'publish-kanka': MainPanel._onPublishKanka,
+      'generate-image': MainPanel._onGenerateImage,
+      'review-entities': MainPanel._onReviewEntities,
+      'rag-build-index': MainPanel._onRAGBuildIndex,
+      'rag-clear-index': MainPanel._onRAGClearIndex
+    }
+  };
+
+  static PARTS = {
+    main: { template: `modules/${MODULE_ID}/templates/main-panel.hbs` }
+  };
 
   /**
    * Create a new MainPanel instance
@@ -57,7 +60,7 @@ class MainPanel extends Application {
     this._orchestrator = orchestrator;
     this._activeTab = 'live';
     this._logger = Logger.createChild('MainPanel');
-    this._debouncedRender = debounce(() => this.render(false), 150);
+    this._debouncedRender = debounce(() => this.render(), 150);
   }
 
   /**
@@ -98,10 +101,11 @@ class MainPanel extends Application {
   }
 
   /**
-   * Get data for the template
-   * @returns {object} Template data
+   * Prepare context data for the template
+   * @param {object} options - Render options
+   * @returns {Promise<object>} Template data
    */
-  getData() {
+  async _prepareContext(options) {
     const session = this._orchestrator?.currentSession;
     const ragData = this._getRAGData();
 
@@ -132,6 +136,79 @@ class MainPanel extends Application {
       ragStorageUsage: ragData.storageUsage,
       ragLastIndexed: ragData.lastIndexed
     };
+  }
+
+  /**
+   * Bind non-click event listeners after render
+   * @param {object} context - The prepared context
+   * @param {object} options - Render options
+   */
+  _onRender(context, options) {
+    // Tab switching (uses data-tab attribute, not data-action)
+    this.element?.querySelectorAll('.vox-chronicle-tab').forEach(el => {
+      el.addEventListener('click', (event) => {
+        const tab = event.currentTarget.dataset.tab;
+        if (tab) this.switchTab(tab);
+      });
+    });
+  }
+
+  // ─── Static action handlers (called with `this` = app instance) ────
+
+  static async _onToggleRecording(event, target) {
+    return this._handleToggleRecording();
+  }
+
+  static async _onTogglePause(event, target) {
+    return this._handleTogglePause();
+  }
+
+  static async _onProcessSession(event, target) {
+    return this._handleProcessSession();
+  }
+
+  static async _onPublishKanka(event, target) {
+    return this._handlePublishKanka();
+  }
+
+  static async _onGenerateImage(event, target) {
+    return this._handleGenerateImage();
+  }
+
+  static async _onReviewEntities(event, target) {
+    return this._handleReviewEntities();
+  }
+
+  static async _onRAGBuildIndex(event, target) {
+    return this._handleRAGBuildIndex();
+  }
+
+  static async _onRAGClearIndex(event, target) {
+    return this._handleRAGClearIndex();
+  }
+
+  // ─── Instance methods ──────────────────────────────────────────────
+
+  /**
+   * Switch to a specific tab
+   * @param {string} tabName - The tab identifier to switch to
+   */
+  switchTab(tabName) {
+    if (!VALID_TABS.includes(tabName)) {
+      this._logger.warn(`Invalid tab: ${tabName}`);
+      return;
+    }
+
+    this._activeTab = tabName;
+    this._logger.debug(`Switched to tab: ${tabName}`);
+    this.render();
+  }
+
+  /**
+   * Request a debounced render update
+   */
+  requestRender() {
+    this._debouncedRender();
   }
 
   /**
@@ -232,88 +309,6 @@ class MainPanel extends Application {
   }
 
   /**
-   * Activate event listeners on the rendered HTML
-   * @param {jQuery} html - The rendered HTML element
-   */
-  activateListeners(html) {
-    super.activateListeners(html);
-
-    // Tab switching
-    html.find('.vox-chronicle-tab').on('click', (event) => {
-      const tab = event.currentTarget.dataset.tab;
-      if (tab) this.switchTab(tab);
-    });
-
-    // Data-action buttons
-    html.find('[data-action]').on('click', (event) => {
-      const action = event.currentTarget.dataset.action;
-      this._handleAction(action, event);
-    });
-  }
-
-  /**
-   * Switch to a specific tab
-   * @param {string} tabName - The tab identifier to switch to
-   */
-  switchTab(tabName) {
-    if (!VALID_TABS.includes(tabName)) {
-      this._logger.warn(`Invalid tab: ${tabName}`);
-      return;
-    }
-
-    this._activeTab = tabName;
-    this._logger.debug(`Switched to tab: ${tabName}`);
-    this.render(false);
-  }
-
-  /**
-   * Request a debounced render update
-   */
-  requestRender() {
-    this._debouncedRender();
-  }
-
-  /**
-   * Handle data-action button clicks
-   * @param {string} action - The action identifier
-   * @param {Event} event - The click event
-   * @private
-   */
-  async _handleAction(action, event) {
-    this._logger.debug(`Action: ${action}`);
-
-    switch (action) {
-      case 'toggle-recording':
-        await this._handleToggleRecording();
-        break;
-      case 'toggle-pause':
-        this._handleTogglePause();
-        break;
-      case 'process-session':
-        await this._handleProcessSession();
-        break;
-      case 'publish-kanka':
-        await this._handlePublishKanka();
-        break;
-      case 'generate-image':
-        await this._handleGenerateImage();
-        break;
-      case 'review-entities':
-        await this._handleReviewEntities();
-        break;
-      case 'rag-build-index':
-        await this._handleRAGBuildIndex();
-        break;
-      case 'rag-clear-index':
-        await this._handleRAGClearIndex();
-        break;
-      default:
-        this._logger.warn(`Unknown action: ${action}`);
-        break;
-    }
-  }
-
-  /**
    * Toggle recording on/off based on current state
    * @private
    */
@@ -341,7 +336,7 @@ class MainPanel extends Application {
         }
         ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStarted') || 'Recording started');
       }
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('Toggle recording failed:', error);
       ui?.notifications?.error(error.message);
@@ -361,7 +356,7 @@ class MainPanel extends Application {
       } else {
         this._orchestrator.pauseRecording();
       }
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('Toggle pause failed:', error);
       ui?.notifications?.error(error.message);
@@ -380,7 +375,7 @@ class MainPanel extends Application {
 
     try {
       await this._orchestrator.processTranscription();
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('Process session failed:', error);
       ui?.notifications?.error(error.message);
@@ -399,7 +394,7 @@ class MainPanel extends Application {
 
     try {
       await this._orchestrator.publishToKanka();
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('Publish to Kanka failed:', error);
       ui?.notifications?.error(error.message);
@@ -415,7 +410,7 @@ class MainPanel extends Application {
 
     try {
       await this._orchestrator.generateImage?.();
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('Generate image failed:', error);
       ui?.notifications?.error(error.message);
@@ -503,7 +498,7 @@ class MainPanel extends Application {
       }
 
       ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexComplete') || 'RAG index built successfully');
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('RAG index build failed:', error);
       ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.IndexFailed', { error: error.message }) || `RAG index failed: ${error.message}`);
@@ -550,7 +545,7 @@ class MainPanel extends Application {
       }
 
       ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexCleared') || 'RAG index cleared');
-      this.render(false);
+      this.render();
     } catch (error) {
       this._logger.error('RAG index clear failed:', error);
       ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.ClearFailed', { error: error.message }) || `Failed to clear RAG index: ${error.message}`);

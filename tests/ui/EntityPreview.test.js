@@ -8,7 +8,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
-import { createMockApplication } from '../helpers/foundry-mock.js';
+import {
+  createMockApplicationV2,
+  createMockHandlebarsApplicationMixin
+} from '../helpers/foundry-mock.js';
 
 // Mock Logger before importing EntityPreview
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
@@ -103,37 +106,11 @@ function setupEnvironment() {
   global.window = dom.window;
   global.document = dom.window.document;
 
-  // Mock jQuery
-  global.$ = (html) => {
-    if (typeof html === 'string') {
-      return {
-        on: vi.fn(),
-        find: vi.fn(function () {
-          return {
-            on: vi.fn(),
-            find: vi.fn(() => ({
-              on: vi.fn(),
-              val: vi.fn(),
-              closest: vi.fn(() => ({
-                classList: {
-                  toggle: vi.fn()
-                }
-              })),
-              length: 1
-            })),
-            val: vi.fn(),
-            length: 1
-          };
-        })
-      };
-    }
-    return html;
-  };
+  // Set up ApplicationV2 + HandlebarsApplicationMixin
+  global.ApplicationV2 = createMockApplicationV2();
+  global.HandlebarsApplicationMixin = createMockHandlebarsApplicationMixin();
 
-  // Set up Application class
-  global.Application = createMockApplication();
-
-  // Set up Dialog mock
+  // Set up Dialog mock with native DOM (no jQuery)
   global.Dialog = class MockDialog {
     constructor(config) {
       this.config = config;
@@ -142,11 +119,13 @@ function setupEnvironment() {
       // Simulate clicking the save button
       if (this.config.buttons && this.config.buttons.save) {
         setTimeout(() => {
-          const mockHtml = {
-            find: vi.fn(() => ({
-              val: vi.fn(() => 'Updated description')
-            }))
-          };
+          const mockContainer = document.createElement('div');
+          const mockTextarea = document.createElement('textarea');
+          mockTextarea.name = 'description';
+          mockTextarea.value = 'Updated description';
+          mockContainer.appendChild(mockTextarea);
+          // Wrap in array to simulate jQuery-like [0] access
+          const mockHtml = [mockContainer];
           this.config.buttons.save.callback(mockHtml);
         }, 0);
       }
@@ -308,6 +287,20 @@ describe('EntityPreview', () => {
 
       expect(previewWithCallbacks._onConfirmCallback).toBe(onConfirm);
       expect(previewWithCallbacks._onCancelCallback).toBe(onCancel);
+    });
+
+    it('should have DEFAULT_OPTIONS with actions map', () => {
+      expect(EntityPreview.DEFAULT_OPTIONS).toBeDefined();
+      expect(EntityPreview.DEFAULT_OPTIONS.id).toBe('vox-chronicle-entity-preview');
+      expect(EntityPreview.DEFAULT_OPTIONS.actions).toBeDefined();
+      expect(EntityPreview.DEFAULT_OPTIONS.actions['select-all']).toBeDefined();
+      expect(EntityPreview.DEFAULT_OPTIONS.actions['confirm-create']).toBeDefined();
+      expect(EntityPreview.DEFAULT_OPTIONS.actions['edit-description']).toBeDefined();
+    });
+
+    it('should have PARTS with template path', () => {
+      expect(EntityPreview.PARTS).toBeDefined();
+      expect(EntityPreview.PARTS.main.template).toContain('entity-preview.hbs');
     });
   });
 
@@ -486,7 +479,7 @@ describe('EntityPreview', () => {
 
       preview.setEntities(entities);
 
-      const data = await preview.getData();
+      const data = await preview._prepareContext();
 
       expect(data.mode).toBe(PreviewMode.REVIEW);
       expect(data.isReview).toBe(true);
@@ -511,7 +504,7 @@ describe('EntityPreview', () => {
 
       preview.setEntities(entities);
 
-      const data = await preview.getData();
+      const data = await preview._prepareContext();
 
       expect(data.characters[0].typeLabel).toContain('PC');
       expect(data.characters[1].typeLabel).toContain('NPC');
@@ -524,7 +517,7 @@ describe('EntityPreview', () => {
 
       preview.setRelationships(relationships);
 
-      const data = await preview.getData();
+      const data = await preview._prepareContext();
 
       expect(data.hasRelationships).toBe(true);
       expect(data.relationships).toHaveLength(1);
@@ -535,7 +528,7 @@ describe('EntityPreview', () => {
       preview._mode = PreviewMode.CREATING;
       preview._progress = { current: 2, total: 5, message: 'Creating entities...' };
 
-      const data = await preview.getData();
+      const data = await preview._prepareContext();
 
       expect(data.isCreating).toBe(true);
       expect(data.hasProgress).toBe(true);
@@ -553,7 +546,7 @@ describe('EntityPreview', () => {
         failed: []
       };
 
-      const data = await preview.getData();
+      const data = await preview._prepareContext();
 
       expect(data.isComplete).toBe(true);
       expect(data.hasResults).toBe(true);
@@ -568,7 +561,7 @@ describe('EntityPreview', () => {
         failed: [{ type: 'character', name: 'Hero', error: 'Network error' }]
       };
 
-      const data = await preview.getData();
+      const data = await preview._prepareContext();
 
       expect(data.isError).toBe(true);
       expect(data.hasResults).toBe(true);
@@ -705,7 +698,7 @@ describe('EntityPreview', () => {
       preview._onToggleEntity(mockEvent);
 
       expect(preview._selections.get('characters-0')).toBe(false);
-      expect(preview.render).toHaveBeenCalledWith(false);
+      expect(preview.render).toHaveBeenCalled();
     });
 
     it('should select all entities', () => {
@@ -725,7 +718,7 @@ describe('EntityPreview', () => {
 
       expect(preview._selections.get('characters-0')).toBe(true);
       expect(preview._selections.get('locations-0')).toBe(true);
-      expect(preview.render).toHaveBeenCalledWith(false);
+      expect(preview.render).toHaveBeenCalled();
     });
 
     it('should deselect all entities', () => {
@@ -744,7 +737,7 @@ describe('EntityPreview', () => {
 
       expect(preview._selections.get('characters-0')).toBe(false);
       expect(preview._selections.get('locations-0')).toBe(false);
-      expect(preview.render).toHaveBeenCalledWith(false);
+      expect(preview.render).toHaveBeenCalled();
     });
 
     it('should warn when confirming with no selection', async () => {
@@ -826,7 +819,7 @@ describe('EntityPreview', () => {
 
       expect(preview._mode).toBe(PreviewMode.REVIEW);
       expect(preview._results.failed).toHaveLength(0);
-      expect(preview.render).toHaveBeenCalledWith(false);
+      expect(preview.render).toHaveBeenCalled();
     });
 
     it('should toggle section collapse', () => {
@@ -836,14 +829,16 @@ describe('EntityPreview', () => {
         }
       };
 
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          closest: vi.fn(() => mockSection)
-        }
+      const mockTarget = {
+        closest: vi.fn(() => mockSection)
       };
 
-      preview._onToggleSection(mockEvent);
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        currentTarget: mockTarget
+      };
+
+      preview._onToggleSection(mockEvent, mockTarget);
 
       expect(mockSection.classList.toggle).toHaveBeenCalledWith('collapsed');
     });
@@ -871,7 +866,22 @@ describe('EntityPreview', () => {
         relationships: preview._relationships
       });
 
-      expect(MockRelationshipGraph.mock.results[0].value.render).toHaveBeenCalledWith(true);
+      expect(MockRelationshipGraph.mock.results[0].value.render).toHaveBeenCalled();
+    });
+
+    it('should dispatch static action handlers to instance methods', () => {
+      preview._onSelectAll = vi.fn();
+      preview._onDeselectAll = vi.fn();
+      preview._onClose = vi.fn();
+
+      EntityPreview._onSelectAllAction.call(preview, { preventDefault: vi.fn() }, null);
+      expect(preview._onSelectAll).toHaveBeenCalled();
+
+      EntityPreview._onDeselectAllAction.call(preview, { preventDefault: vi.fn() }, null);
+      expect(preview._onDeselectAll).toHaveBeenCalled();
+
+      EntityPreview._onCloseAction.call(preview, { preventDefault: vi.fn() }, null);
+      expect(preview._onClose).toHaveBeenCalled();
     });
   });
 
@@ -886,17 +896,19 @@ describe('EntityPreview', () => {
       preview.setEntities(entities);
       preview.render = vi.fn();
 
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: {
-            entityType: 'characters',
-            entityIndex: '0'
-          }
+      const mockTarget = {
+        dataset: {
+          entityType: 'characters',
+          entityIndex: '0'
         }
       };
 
-      await preview._onGeneratePortrait(mockEvent);
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        currentTarget: mockTarget
+      };
+
+      await preview._onGeneratePortrait(mockEvent, mockTarget);
 
       expect(mockImageGenerationService.generatePortrait).toHaveBeenCalledWith(
         'character',
@@ -922,17 +934,19 @@ describe('EntityPreview', () => {
 
       preview.setEntities(entities);
 
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: {
-            entityType: 'characters',
-            entityIndex: '0'
-          }
+      const mockTarget = {
+        dataset: {
+          entityType: 'characters',
+          entityIndex: '0'
         }
       };
 
-      await preview._onGeneratePortrait(mockEvent);
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        currentTarget: mockTarget
+      };
+
+      await preview._onGeneratePortrait(mockEvent, mockTarget);
 
       expect(mockUi.warn).toHaveBeenCalled();
       expect(mockImageGenerationService.generatePortrait).not.toHaveBeenCalled();
@@ -950,17 +964,19 @@ describe('EntityPreview', () => {
       preview.setEntities(entities);
       preview.render = vi.fn();
 
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: {
-            entityType: 'characters',
-            entityIndex: '0'
-          }
+      const mockTarget = {
+        dataset: {
+          entityType: 'characters',
+          entityIndex: '0'
         }
       };
 
-      await preview._onGeneratePortrait(mockEvent);
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        currentTarget: mockTarget
+      };
+
+      await preview._onGeneratePortrait(mockEvent, mockTarget);
 
       expect(mockUi.error).toHaveBeenCalled();
       expect(preview._entities.characters[0].imageUrl).toBeUndefined();
@@ -981,17 +997,19 @@ describe('EntityPreview', () => {
         () => new Promise((resolve) => setTimeout(() => resolve('url'), 10))
       );
 
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: {
-            entityType: 'characters',
-            entityIndex: '0'
-          }
+      const mockTarget = {
+        dataset: {
+          entityType: 'characters',
+          entityIndex: '0'
         }
       };
 
-      const promise = preview._onGeneratePortrait(mockEvent);
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        currentTarget: mockTarget
+      };
+
+      const promise = preview._onGeneratePortrait(mockEvent, mockTarget);
 
       // Should have set loading state
       expect(preview._imageLoadingStates.get('characters-0')).toBe(true);
@@ -1013,33 +1031,27 @@ describe('EntityPreview', () => {
       preview.render = vi.fn();
 
       // Test character
-      await preview._onGeneratePortrait({
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: { entityType: 'characters', entityIndex: '0' }
-        }
-      });
+      await preview._onGeneratePortrait(
+        { preventDefault: vi.fn(), currentTarget: { dataset: { entityType: 'characters', entityIndex: '0' } } },
+        { dataset: { entityType: 'characters', entityIndex: '0' } }
+      );
       expect(mockImageGenerationService.generatePortrait).toHaveBeenCalledWith(
         'character',
         'Brave'
       );
 
       // Test location
-      await preview._onGeneratePortrait({
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: { entityType: 'locations', entityIndex: '0' }
-        }
-      });
+      await preview._onGeneratePortrait(
+        { preventDefault: vi.fn(), currentTarget: { dataset: { entityType: 'locations', entityIndex: '0' } } },
+        { dataset: { entityType: 'locations', entityIndex: '0' } }
+      );
       expect(mockImageGenerationService.generatePortrait).toHaveBeenCalledWith('location', 'Grand');
 
       // Test item
-      await preview._onGeneratePortrait({
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: { entityType: 'items', entityIndex: '0' }
-        }
-      });
+      await preview._onGeneratePortrait(
+        { preventDefault: vi.fn(), currentTarget: { dataset: { entityType: 'items', entityIndex: '0' } } },
+        { dataset: { entityType: 'items', entityIndex: '0' } }
+      );
       expect(mockImageGenerationService.generatePortrait).toHaveBeenCalledWith('item', 'Sharp');
     });
   });
@@ -1055,23 +1067,25 @@ describe('EntityPreview', () => {
       preview.setEntities(entities);
       preview.render = vi.fn();
 
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: {
-            entityType: 'characters',
-            entityIndex: '0'
-          }
+      const mockTarget = {
+        dataset: {
+          entityType: 'characters',
+          entityIndex: '0'
         }
       };
 
-      await preview._onEditDescription(mockEvent);
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        currentTarget: mockTarget
+      };
+
+      await preview._onEditDescription(mockEvent, mockTarget);
 
       // Wait for dialog callback
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(preview._entities.characters[0].description).toBe('Updated description');
-      expect(preview.render).toHaveBeenCalledWith(false);
+      expect(preview.render).toHaveBeenCalled();
     });
 
     it('should not update if description unchanged', async () => {
@@ -1098,17 +1112,19 @@ describe('EntityPreview', () => {
         }
       };
 
-      const mockEvent = {
-        preventDefault: vi.fn(),
-        currentTarget: {
-          dataset: {
-            entityType: 'characters',
-            entityIndex: '0'
-          }
+      const mockTarget = {
+        dataset: {
+          entityType: 'characters',
+          entityIndex: '0'
         }
       };
 
-      await preview._onEditDescription(mockEvent);
+      const mockEvent = {
+        preventDefault: vi.fn(),
+        currentTarget: mockTarget
+      };
+
+      await preview._onEditDescription(mockEvent, mockTarget);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(preview._entities.characters[0].description).toBe(originalDescription);
@@ -1137,62 +1153,6 @@ describe('EntityPreview', () => {
     });
   });
 
-  describe('Fallback Content', () => {
-    it('should render fallback content if template missing', async () => {
-      const entities = {
-        characters: [{ name: 'Hero', description: 'Brave', isNPC: false }],
-        locations: [],
-        items: []
-      };
-
-      preview.setEntities(entities);
-
-      // Mock getData to return synchronously for fallback rendering
-      const data = await preview.getData();
-      preview.getData = () => data;
-
-      const html = preview._renderFallbackContent();
-
-      expect(html).toContain('vox-chronicle-entity-preview');
-      expect(html).toContain('Hero');
-      expect(html).toContain('Brave');
-    });
-
-    it('should include all entity sections in fallback', async () => {
-      const entities = {
-        characters: [{ name: 'Hero', description: 'Brave', isNPC: false }],
-        locations: [{ name: 'Castle', description: 'Grand', type: 'fortress' }],
-        items: [{ name: 'Sword', description: 'Sharp', type: 'weapon' }]
-      };
-
-      preview.setEntities(entities);
-
-      // Mock getData to return synchronously for fallback rendering
-      const data = await preview.getData();
-      preview.getData = () => data;
-
-      const html = preview._renderFallbackContent();
-
-      expect(html).toContain('Hero');
-      expect(html).toContain('Castle');
-      expect(html).toContain('Sword');
-    });
-
-    it('should show progress in fallback when in CREATING mode', async () => {
-      preview._mode = PreviewMode.CREATING;
-      preview._progress = { current: 2, total: 5, message: 'Creating entities...' };
-
-      // Mock getData to return synchronously for fallback rendering
-      const data = await preview.getData();
-      preview.getData = () => data;
-
-      const html = preview._renderFallbackContent();
-
-      expect(html).toContain('entity-preview-progress');
-      expect(html).toContain('Creating entities...');
-    });
-  });
-
   describe('Batched Rendering', () => {
     let preview;
     let renderSpy;
@@ -1218,7 +1178,7 @@ describe('EntityPreview', () => {
 
       // Should render immediately
       expect(renderSpy).toHaveBeenCalledTimes(1);
-      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(renderSpy).toHaveBeenCalled();
       expect(preview._renderBatchCounter).toBe(0);
       expect(preview._pendingRender).toBe(false);
     });
@@ -1234,7 +1194,7 @@ describe('EntityPreview', () => {
 
       // Should render immediately
       expect(renderSpy).toHaveBeenCalledTimes(1);
-      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(renderSpy).toHaveBeenCalled();
       expect(preview._renderBatchCounter).toBe(0);
       expect(preview._pendingRender).toBe(false);
     });
@@ -1258,7 +1218,7 @@ describe('EntityPreview', () => {
 
       // Now should have rendered
       expect(renderSpy).toHaveBeenCalledTimes(1);
-      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(renderSpy).toHaveBeenCalled();
       expect(preview._pendingRender).toBe(false);
       expect(preview._renderBatchCounter).toBe(0);
     });
@@ -1318,7 +1278,7 @@ describe('EntityPreview', () => {
       preview._flushRender();
 
       expect(renderSpy).toHaveBeenCalledTimes(1);
-      expect(renderSpy).toHaveBeenCalledWith(false);
+      expect(renderSpy).toHaveBeenCalled();
       expect(preview._pendingRender).toBe(false);
       expect(preview._renderTimeout).toBeNull();
       expect(preview._renderBatchCounter).toBe(0);
