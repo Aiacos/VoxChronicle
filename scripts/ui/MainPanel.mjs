@@ -434,7 +434,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       const { EntityPreview } = await import('./EntityPreview.mjs');
       const preview = new EntityPreview(this._orchestrator?.currentSession?.entities);
-      preview.render(true, { focus: true });
+      preview.render(true);
     } catch (error) {
       this._logger.error('Review entities failed:', error);
       ui?.notifications?.error(error.message);

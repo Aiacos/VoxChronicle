@@ -913,13 +913,6 @@ class SessionOrchestrator {
         return;
       }
 
-      // Schedule next cycle immediately after capturing audio, so recording
-      // overlaps with transcription + AI analysis (pipeline architecture).
-      // This reduces perceived latency by ~batchDuration.
-      if (this._liveMode) {
-        this._scheduleLiveCycle();
-      }
-
       if (audioChunk && audioChunk.size > 0) {
         this._silenceStartTime = null;
         const chunkSizeMB = (audioChunk.size / (1024 * 1024)).toFixed(2);
@@ -973,12 +966,16 @@ class SessionOrchestrator {
       if (this._callbacks.onError) {
         this._callbacks.onError(error, 'live_cycle');
       }
-    }
-
-    if (this._liveMode) {
-      const cycleDuration = Date.now() - cycleStart;
-      this._logger.debug(`Live cycle completed in ${cycleDuration}ms`);
-      this._updateState(SessionState.LIVE_LISTENING);
+    } finally {
+      // Always reschedule and restore state if live mode is still active.
+      // This MUST be in finally so errors (e.g. getLatestChunk throwing)
+      // don't silently kill the live cycle.
+      if (this._liveMode) {
+        const cycleDuration = Date.now() - cycleStart;
+        this._logger.debug(`Live cycle completed in ${cycleDuration}ms`);
+        this._updateState(SessionState.LIVE_LISTENING);
+        this._scheduleLiveCycle();
+      }
     }
   }
 

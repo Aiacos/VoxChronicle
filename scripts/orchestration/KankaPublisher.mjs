@@ -11,6 +11,7 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Result object for Kanka publishing operations
@@ -353,8 +354,8 @@ class KankaPublisher {
     const parts = [];
 
     // Header
-    parts.push(`<h2>${sessionData.title}</h2>`);
-    parts.push(`<p><em>Date: ${sessionData.date}</em></p>`);
+    parts.push(`<h2>${escapeHtml(sessionData.title)}</h2>`);
+    parts.push(`<p><em>Date: ${escapeHtml(sessionData.date)}</em></p>`);
 
     // Summary of entities
     if (sessionData.entities) {
@@ -374,8 +375,8 @@ class KankaPublisher {
       parts.push('<div class="transcript">');
 
       for (const segment of sessionData.transcript.segments.slice(0, 50)) {
-        const speaker = segment.speaker || 'Unknown';
-        const text = segment.text || '';
+        const speaker = escapeHtml(segment.speaker || 'Unknown');
+        const text = escapeHtml(segment.text || '');
         parts.push(`<p><strong>${speaker}:</strong> ${text}</p>`);
       }
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.6] - 2026-02-18
+
+### Fixed
+- **Critical: Live mode cycle dying silently on error** — If `getLatestChunk()` threw an exception, the next cycle was never scheduled and live mode stopped working while appearing active. Moved scheduling to a `finally` block so the cycle always reschedules regardless of errors.
+- **XSS vulnerability in KankaPublisher** — `_formatBasicChronicle()` injected session title, date, speaker names, and transcript text directly into HTML without escaping. Now uses `escapeHtml()` for all user-supplied content.
+- **Wrong ApplicationV2 render signature** — `EntityPreview.render(true, { focus: true })` used the v1 two-argument signature. Fixed to `render(true)` for ApplicationV2.
+- **Dead code removal** — Removed unused `errors` array in `ImageGenerationService.generateBatch()` that was collected but never read.
+
 ## [2.3.5] - 2026-02-18
 
 ### Fixed

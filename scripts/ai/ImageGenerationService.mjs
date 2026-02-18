@@ -315,7 +315,6 @@ class ImageGenerationService extends OpenAIClient {
     }
 
     const results = [];
-    const errors = [];
 
     for (let i = 0; i < requests.length; i++) {
       const request = requests[i];
@@ -344,7 +343,6 @@ class ImageGenerationService extends OpenAIClient {
           entityType: request.entityType,
           description: request.description
         });
-        errors.push(error);
       }
     }
 
