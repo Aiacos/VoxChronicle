@@ -355,6 +355,36 @@ describe('RecorderControls', () => {
       expect(recorder._uiState).toBe(RecorderUIState.ERROR);
       expect(recorder._durationInterval).toBeNull();
     });
+
+    it('should map LIVE_LISTENING to RECORDING UI state and start timer', () => {
+      orchestratorCallbacks.onStateChange(SessionState.LIVE_LISTENING, SessionState.IDLE, {});
+
+      expect(recorder._uiState).toBe(RecorderUIState.RECORDING);
+      expect(recorder._recordingStartTime).not.toBeNull();
+      expect(recorder._durationInterval).not.toBeNull();
+    });
+
+    it('should map LIVE_TRANSCRIBING to RECORDING UI state without resetting timer', () => {
+      // Start timer from LIVE_LISTENING first
+      orchestratorCallbacks.onStateChange(SessionState.LIVE_LISTENING, SessionState.IDLE, {});
+      const originalStartTime = recorder._recordingStartTime;
+      const originalInterval = recorder._durationInterval;
+
+      // Transition to LIVE_TRANSCRIBING should keep the timer running
+      orchestratorCallbacks.onStateChange(SessionState.LIVE_TRANSCRIBING, SessionState.LIVE_LISTENING, {});
+
+      expect(recorder._uiState).toBe(RecorderUIState.RECORDING);
+      expect(recorder._recordingStartTime).toBe(originalStartTime);
+      expect(recorder._durationInterval).toBe(originalInterval);
+    });
+
+    it('should map LIVE_ANALYZING to RECORDING UI state', () => {
+      orchestratorCallbacks.onStateChange(SessionState.LIVE_LISTENING, SessionState.IDLE, {});
+      orchestratorCallbacks.onStateChange(SessionState.LIVE_ANALYZING, SessionState.LIVE_TRANSCRIBING, {});
+
+      expect(recorder._uiState).toBe(RecorderUIState.RECORDING);
+      expect(recorder._durationInterval).not.toBeNull();
+    });
   });
 
   describe('Progress Callbacks', () => {

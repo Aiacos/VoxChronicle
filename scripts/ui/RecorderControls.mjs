@@ -146,8 +146,13 @@ class RecorderControls extends Application {
         this._stopDurationTimer();
         break;
       case SessionState.RECORDING:
+      case SessionState.LIVE_LISTENING:
+      case SessionState.LIVE_TRANSCRIBING:
+      case SessionState.LIVE_ANALYZING:
         this._uiState = RecorderUIState.RECORDING;
-        this._startDurationTimer();
+        if (!this._durationInterval) {
+          this._startDurationTimer();
+        }
         break;
       case SessionState.PAUSED:
         this._uiState = RecorderUIState.PAUSED;
