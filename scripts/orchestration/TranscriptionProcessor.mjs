@@ -229,4 +229,4 @@ class TranscriptionProcessor {
   }
 }
 
-export { TranscriptionProcessor, TranscriptionMode };
+export { TranscriptionProcessor };

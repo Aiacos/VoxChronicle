@@ -7,15 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  SensitiveDataFilter,
-  sanitizeString,
-  sanitizeObject,
-  sanitizeUrl,
-  sanitizeHeaders,
-  sanitizeError,
-  sanitizeArgs
-} from '../../scripts/utils/SensitiveDataFilter.mjs';
+import { SensitiveDataFilter } from '../../scripts/utils/SensitiveDataFilter.mjs';
 
 describe('SensitiveDataFilter', () => {
   // ============================================================================
@@ -496,46 +488,6 @@ describe('SensitiveDataFilter', () => {
   // ============================================================================
   // Exported Function Tests
   // ============================================================================
-
-  describe('Exported convenience functions', () => {
-    it('should export sanitizeString function', () => {
-      expect(typeof sanitizeString).toBe('function');
-      const result = sanitizeString('api_key: sk-test1234567890');
-      expect(result).toContain('***');
-    });
-
-    it('should export sanitizeObject function', () => {
-      expect(typeof sanitizeObject).toBe('function');
-      const result = sanitizeObject({ apiKey: 'secret' });
-      expect(result.apiKey).toBe('***');
-    });
-
-    it('should export sanitizeUrl function', () => {
-      expect(typeof sanitizeUrl).toBe('function');
-      const result = sanitizeUrl('https://api.com?token=secret');
-      expect(result).toContain('token=***');
-    });
-
-    it('should export sanitizeHeaders function', () => {
-      expect(typeof sanitizeHeaders).toBe('function');
-      const result = sanitizeHeaders({ authorization: 'Bearer token' });
-      expect(result.authorization).toBe('Bearer ***');
-    });
-
-    it('should export sanitizeError function', () => {
-      expect(typeof sanitizeError).toBe('function');
-      const error = new Error('api_key: sk-test1234567890');
-      const result = sanitizeError(error);
-      expect(result.message).toContain('***');
-    });
-
-    it('should export sanitizeArgs function', () => {
-      expect(typeof sanitizeArgs).toBe('function');
-      const result = sanitizeArgs('test', { apiKey: 'secret' });
-      expect(result).toHaveLength(2);
-      expect(result[1].apiKey).toBe('***');
-    });
-  });
 
   // ============================================================================
   // Integration Tests

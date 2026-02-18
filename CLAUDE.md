@@ -63,7 +63,6 @@ VoxChronicle/
 │   │   ├── KankaClient.mjs        # Base API client with rate limiting
 │   │   ├── KankaService.mjs       # CRUD for journals, characters, locations, items
 │   │   ├── KankaEntityManager.mjs # Entity lifecycle management
-│   │   ├── KankaRelationshipManager.mjs # Entity relationship management
 │   │   └── NarrativeExporter.mjs  # Format transcripts for Kanka journals
 │   ├── orchestration/
 │   │   ├── SessionOrchestrator.mjs # Dual-mode workflow: live + chronicle
@@ -71,13 +70,10 @@ VoxChronicle/
 │   │   ├── EntityProcessor.mjs     # Entity extraction workflow
 │   │   ├── ImageProcessor.mjs      # Image generation workflow
 │   │   └── KankaPublisher.mjs      # Kanka publishing workflow
-│   ├── content/
-│   │   └── CompendiumSearcher.mjs # Search Foundry compendiums for duplicates
 │   ├── data/
 │   │   └── dnd-vocabulary.mjs     # D&D vocabulary dictionary
 │   ├── ui/
 │   │   ├── MainPanel.mjs          # Unified floating panel (6 tabs) - singleton
-│   │   ├── RecorderControls.mjs   # Recording start/stop/pause UI
 │   │   ├── SpeakerLabeling.mjs    # Map speaker IDs to player names (inline rename)
 │   │   ├── EntityPreview.mjs      # Review entities before Kanka publish
 │   │   ├── RelationshipGraph.mjs  # Visualize entity relationships
@@ -88,7 +84,6 @@ VoxChronicle/
 │       ├── AudioUtils.mjs         # MIME detection, blob conversion
 │       ├── SensitiveDataFilter.mjs # Filter API keys from logs
 │       ├── HtmlUtils.mjs          # HTML sanitization and formatting
-│       ├── ApiKeyValidator.mjs    # Validate API keys before use
 │       ├── CacheManager.mjs       # Generic cache with TTL and invalidation
 │       ├── DomUtils.mjs           # DOM manipulation helpers
 │       └── ErrorNotificationHelper.mjs # Consistent error notifications to users

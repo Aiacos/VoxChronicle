@@ -294,17 +294,4 @@ export class SensitiveDataFilter {
   }
 }
 
-/**
- * Export individual sanitization functions for convenience
- */
-export const sanitizeString = SensitiveDataFilter.sanitizeString.bind(SensitiveDataFilter);
-export const sanitizeObject = SensitiveDataFilter.sanitizeObject.bind(SensitiveDataFilter);
-export const sanitizeUrl = SensitiveDataFilter.sanitizeUrl.bind(SensitiveDataFilter);
-export const sanitizeHeaders = SensitiveDataFilter.sanitizeHeaders.bind(SensitiveDataFilter);
-export const sanitizeError = SensitiveDataFilter.sanitizeError.bind(SensitiveDataFilter);
-export const sanitizeArgs = SensitiveDataFilter.sanitizeArgs.bind(SensitiveDataFilter);
-
-/**
- * Default export is the class
- */
-export default SensitiveDataFilter;
+export { SensitiveDataFilter };

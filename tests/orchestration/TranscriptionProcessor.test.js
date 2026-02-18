@@ -63,10 +63,8 @@ vi.mock('../../scripts/ai/TranscriptionService.mjs', () => ({
 }));
 
 // Import after mocks are set up
-import {
-  TranscriptionProcessor,
-  TranscriptionMode
-} from '../../scripts/orchestration/TranscriptionProcessor.mjs';
+import { TranscriptionProcessor } from '../../scripts/orchestration/TranscriptionProcessor.mjs';
+import { TranscriptionMode } from '../../scripts/ai/TranscriptionFactory.mjs';
 import { LocalWhisperService } from '../../scripts/ai/LocalWhisperService.mjs';
 import { TranscriptionService } from '../../scripts/ai/TranscriptionService.mjs';
 
