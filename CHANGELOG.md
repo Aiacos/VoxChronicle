@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.3] - 2026-02-18
+
+### Fixed
+- **Scene control tool handlers now properly handle v13 onChange(event, active) signature** — The v13 `onChange` callback receives `(event, active)` but handlers only accepted `(active)`. Fixed to use correct v13 signature.
+- **All async tool handlers now catch and log errors** — Previously, any error in dynamic import or ApplicationV2 render() would be silently swallowed. Now errors are caught, logged to console, and shown as UI notifications.
+- **ApplicationV2 render() calls are now awaited** — Ensures render errors propagate properly.
+- Added diagnostic logging to verify `foundry.applications.api` availability at startup.
+
 ## [2.3.2] - 2026-02-18
 
 ### Fixed
