@@ -970,9 +970,9 @@ describe('ImageGenerationService', () => {
       expect(estimate.estimatedCostUSD).toBe(0.08);
     });
 
-    it('should calculate lower cost for small sizes', () => {
-      const estimate = service.estimateCost(ImageQuality.MEDIUM, ImageSize.SMALL);
-      expect(estimate.estimatedCostUSD).toBe(0.03);
+    it('should calculate lower cost for square sizes', () => {
+      const estimate = service.estimateCost(ImageQuality.MEDIUM, ImageSize.SQUARE);
+      expect(estimate.estimatedCostUSD).toBe(0.04);
     });
 
     it('should calculate cost for low quality', () => {
@@ -999,24 +999,18 @@ describe('ImageGenerationService', () => {
       const sizes = ImageGenerationService.getAvailableSizes();
 
       expect(Array.isArray(sizes)).toBe(true);
-      expect(sizes).toHaveLength(7);
+      expect(sizes).toHaveLength(3);
 
       const square = sizes.find((s) => s.id === ImageSize.SQUARE);
       expect(square).toBeDefined();
       expect(square.name).toContain('Square');
       expect(square.aspectRatio).toBe('1:1');
 
-      const small = sizes.find((s) => s.id === ImageSize.SMALL);
-      expect(small).toBeDefined();
+      const portrait = sizes.find((s) => s.id === ImageSize.PORTRAIT);
+      expect(portrait).toBeDefined();
 
-      const medium = sizes.find((s) => s.id === ImageSize.MEDIUM);
-      expect(medium).toBeDefined();
-
-      const tall = sizes.find((s) => s.id === ImageSize.TALL);
-      expect(tall).toBeDefined();
-
-      const wide = sizes.find((s) => s.id === ImageSize.WIDE);
-      expect(wide).toBeDefined();
+      const landscape = sizes.find((s) => s.id === ImageSize.LANDSCAPE);
+      expect(landscape).toBeDefined();
     });
 
     it('getAvailableQualities should return quality list', () => {
@@ -1067,14 +1061,14 @@ describe('ImageGenerationService', () => {
       expect(ImageModel.DALLE_2).toBeUndefined();
     });
 
-    it('should export ImageSize enum with all sizes', () => {
-      expect(ImageSize.SMALL).toBe('256x256');
-      expect(ImageSize.MEDIUM).toBe('512x512');
+    it('should export ImageSize enum with valid gpt-image-1 sizes only', () => {
       expect(ImageSize.SQUARE).toBe('1024x1024');
-      expect(ImageSize.PORTRAIT).toBe('1024x1792');
-      expect(ImageSize.LANDSCAPE).toBe('1792x1024');
-      expect(ImageSize.TALL).toBe('1024x1536');
-      expect(ImageSize.WIDE).toBe('1536x1024');
+      expect(ImageSize.PORTRAIT).toBe('1024x1536');
+      expect(ImageSize.LANDSCAPE).toBe('1536x1024');
+      expect(ImageSize.SMALL).toBeUndefined();
+      expect(ImageSize.MEDIUM).toBeUndefined();
+      expect(ImageSize.TALL).toBeUndefined();
+      expect(ImageSize.WIDE).toBeUndefined();
     });
 
     it('should export ImageQuality enum with all quality options', () => {

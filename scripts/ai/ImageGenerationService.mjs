@@ -28,24 +28,16 @@ const ImageModel = {
 
 /**
  * Image size options
- * gpt-image-1 supports: 256x256, 512x512, 1024x1024, 1024x1536, 1536x1024, 1024x1792, 1792x1024
+ * gpt-image-1 supports: 1024x1024, 1024x1536, 1536x1024
  * @enum {string}
  */
 const ImageSize = {
-  /** Small square - fast generation, lower cost */
-  SMALL: '256x256',
-  /** Medium square - balanced speed and quality */
-  MEDIUM: '512x512',
   /** Square format - ideal for portraits and icons */
   SQUARE: '1024x1024',
   /** Portrait/vertical format - ideal for character portraits */
-  PORTRAIT: '1024x1792',
+  PORTRAIT: '1024x1536',
   /** Landscape format - ideal for scene illustrations */
-  LANDSCAPE: '1792x1024',
-  /** Tall format - alternate portrait aspect ratio */
-  TALL: '1024x1536',
-  /** Wide format - alternate landscape aspect ratio */
-  WIDE: '1536x1024'
+  LANDSCAPE: '1536x1024'
 };
 
 /**
@@ -750,22 +742,15 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {object} Cost estimate
    */
   estimateCost(quality = ImageQuality.HIGH, size = ImageSize.SQUARE) {
-    // Size categories
-    const smallSizes = [ImageSize.SMALL, ImageSize.MEDIUM];
-    const largeSizes = [ImageSize.PORTRAIT, ImageSize.LANDSCAPE, ImageSize.TALL, ImageSize.WIDE];
+    const isLarge = size === ImageSize.PORTRAIT || size === ImageSize.LANDSCAPE;
 
-    // Base pricing by quality
     let price;
-    const isSmall = smallSizes.includes(size);
-    const isLarge = largeSizes.includes(size);
-
     if (quality === ImageQuality.LOW) {
-      price = isSmall ? 0.02 : isLarge ? 0.04 : 0.03;
+      price = isLarge ? 0.04 : 0.03;
     } else if (quality === ImageQuality.HIGH) {
-      price = isSmall ? 0.04 : isLarge ? 0.12 : 0.08;
+      price = isLarge ? 0.12 : 0.08;
     } else {
-      // standard / medium
-      price = isSmall ? 0.03 : isLarge ? 0.08 : 0.04;
+      price = isLarge ? 0.08 : 0.04;
     }
 
     return {
@@ -788,18 +773,6 @@ class ImageGenerationService extends OpenAIClient {
   static getAvailableSizes() {
     return [
       {
-        id: ImageSize.SMALL,
-        name: 'Small (256x256)',
-        description: 'Fast generation, lower detail',
-        aspectRatio: '1:1'
-      },
-      {
-        id: ImageSize.MEDIUM,
-        name: 'Medium (512x512)',
-        description: 'Balanced speed and quality',
-        aspectRatio: '1:1'
-      },
-      {
         id: ImageSize.SQUARE,
         name: 'Square (1024x1024)',
         description: 'Best for portraits and icons',
@@ -807,26 +780,14 @@ class ImageGenerationService extends OpenAIClient {
       },
       {
         id: ImageSize.PORTRAIT,
-        name: 'Portrait (1024x1792)',
+        name: 'Portrait (1024x1536)',
         description: 'Vertical format for full-body characters',
-        aspectRatio: '9:16'
-      },
-      {
-        id: ImageSize.LANDSCAPE,
-        name: 'Landscape (1792x1024)',
-        description: 'Wide format for scenes and locations',
-        aspectRatio: '16:9'
-      },
-      {
-        id: ImageSize.TALL,
-        name: 'Tall (1024x1536)',
-        description: 'Alternate vertical format',
         aspectRatio: '2:3'
       },
       {
-        id: ImageSize.WIDE,
-        name: 'Wide (1536x1024)',
-        description: 'Alternate landscape format',
+        id: ImageSize.LANDSCAPE,
+        name: 'Landscape (1536x1024)',
+        description: 'Wide format for scenes and locations',
         aspectRatio: '3:2'
       }
     ];

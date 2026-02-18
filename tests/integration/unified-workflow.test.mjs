@@ -539,17 +539,11 @@ describe('Unified Live + Chronicle Workflow', () => {
       aiAssistant = new AIAssistant({ openaiClient: mockAIClient });
       aiAssistant.setAdventureContext('The party explores ancient ruins in search of a lost artifact.');
 
-      // The orchestrator calls generateSuggestions and detectOffTrack.
-      // Mock them on the instance so the orchestrator can invoke them.
-      aiAssistant.generateSuggestions = vi.fn().mockResolvedValue({
-        type: 'narration',
-        content: 'The shadows deepen as you explore the ruins',
-        confidence: 0.85
-      });
-      aiAssistant.detectOffTrack = vi.fn().mockResolvedValue({
-        isOffTrack: false,
-        severity: 0.1,
-        reason: 'Players are following the main plot'
+      // The orchestrator calls analyzeContext (single API call for suggestions + offTrack).
+      // Mock it on the instance so the orchestrator can invoke it.
+      aiAssistant.analyzeContext = vi.fn().mockResolvedValue({
+        suggestions: [{ type: 'narration', content: 'The shadows deepen as you explore the ruins', confidence: 0.85 }],
+        offTrack: { isOffTrack: false, severity: 0.1, reason: 'Players are following the main plot' }
       });
 
       sceneDetector = new SceneDetector();
@@ -593,15 +587,14 @@ describe('Unified Live + Chronicle Workflow', () => {
       // Manually trigger a live cycle to simulate transcription batch
       await orchestrator._liveCycle();
 
-      // After a live cycle, AI suggestions should have been generated
-      expect(aiAssistant.generateSuggestions).toHaveBeenCalled();
+      // After a live cycle, AI analysis should have been performed (single call)
+      expect(aiAssistant.analyzeContext).toHaveBeenCalled();
 
       const suggestions = orchestrator.getAISuggestions();
       expect(suggestions).toBeDefined();
-      expect(suggestions.content).toContain('shadows');
+      expect(suggestions[0].content).toContain('shadows');
 
-      // Verify off-track detection was attempted
-      expect(aiAssistant.detectOffTrack).toHaveBeenCalled();
+      // Verify off-track detection was included in the analysis
       const offTrack = orchestrator.getOffTrackStatus();
       expect(offTrack).toBeDefined();
       expect(offTrack.isOffTrack).toBe(false);

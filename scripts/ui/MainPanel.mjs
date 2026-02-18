@@ -63,6 +63,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._activeTab = 'live';
     this._logger = Logger.createChild('MainPanel');
     this._debouncedRender = debounce(() => this.render(), 150);
+
+    // Register callback so UI updates immediately when suggestions arrive
+    if (this._orchestrator?.setCallbacks) {
+      this._orchestrator.setCallbacks({
+        onStateChange: () => this._debouncedRender()
+      });
+    }
   }
 
   /**

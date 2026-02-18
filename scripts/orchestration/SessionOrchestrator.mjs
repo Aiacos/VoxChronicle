@@ -70,6 +70,7 @@ class SessionOrchestrator {
   _chapterTracker = null;
   _sceneDetector = null;
   _sessionAnalytics = null;
+  _journalParser = null;
 
   // Live mode state
   _liveMode = false;
@@ -601,6 +602,7 @@ class SessionOrchestrator {
     if (services.chapterTracker) this._chapterTracker = services.chapterTracker;
     if (services.sceneDetector) this._sceneDetector = services.sceneDetector;
     if (services.sessionAnalytics) this._sessionAnalytics = services.sessionAnalytics;
+    if (services.journalParser) this._journalParser = services.journalParser;
     this._logger.debug('Narrator services connected');
   }
 
@@ -749,6 +751,9 @@ class SessionOrchestrator {
         this._logger.debug('Analytics session started');
       }
 
+      // Wire journal context to AIAssistant for meaningful suggestions
+      await this._initializeJournalContext();
+
       await this._audioRecorder.startRecording(options.recordingOptions || {});
       this._updateState(SessionState.LIVE_LISTENING);
       this._scheduleLiveCycle();
@@ -758,6 +763,73 @@ class SessionOrchestrator {
       this._logger.error('Failed to start live mode:', error);
       this._handleError(error, 'startLiveMode');
       throw error;
+    }
+  }
+
+  /**
+   * Auto-detect adventure journal from active scene and feed content to AIAssistant.
+   * Uses the scene's linked journal, or falls back to the first world journal.
+   * @private
+   */
+  async _initializeJournalContext() {
+    if (!this._aiAssistant || !this._journalParser) return;
+
+    try {
+      // Try to find the adventure journal from the active scene
+      let journalId = null;
+      const scene = typeof canvas !== 'undefined' ? canvas?.scene : null;
+      if (scene?.journal) {
+        journalId = scene.journal;
+        this._logger.log(`Using scene-linked journal: ${journalId}`);
+      } else if (typeof game !== 'undefined' && game?.journal?.size > 0) {
+        // Fall back to the first world journal
+        const firstJournal = game.journal.contents?.[0];
+        if (firstJournal) {
+          journalId = firstJournal.id;
+          this._logger.log(`No scene journal linked, using first world journal: ${firstJournal.name}`);
+        }
+      }
+
+      if (!journalId) {
+        this._logger.warn('No journal found for AI context — suggestions will be generic');
+        return;
+      }
+
+      // Parse the journal and feed content to AIAssistant
+      await this._journalParser.parseJournal(journalId);
+      const fullText = this._journalParser.getFullText(journalId);
+
+      if (fullText) {
+        this._aiAssistant.setAdventureContext(fullText);
+        this._logger.log(`Adventure context loaded: ${fullText.length} chars from journal`);
+      }
+
+      // Configure ChapterTracker with the selected journal
+      if (this._chapterTracker) {
+        this._chapterTracker.setSelectedJournal(journalId);
+
+        // Try to detect current chapter from active scene
+        if (scene) {
+          this._chapterTracker.updateFromScene(scene);
+        }
+
+        const currentChapter = this._chapterTracker.getCurrentChapter();
+        if (currentChapter) {
+          this._aiAssistant.setChapterContext({
+            chapterName: currentChapter.title || '',
+            subsections: currentChapter.subchapters?.map(s => s.title) || [],
+            pageReferences: currentChapter.pageId ? [{
+              pageId: currentChapter.pageId,
+              pageName: currentChapter.pageName || '',
+              journalName: currentChapter.journalName || ''
+            }] : [],
+            summary: currentChapter.content?.substring(0, 3000) || ''
+          });
+          this._logger.log(`Chapter context set: ${currentChapter.title}`);
+        }
+      }
+    } catch (error) {
+      this._logger.warn(`Failed to initialize journal context: ${error.message}`);
     }
   }
 
@@ -841,6 +913,13 @@ class SessionOrchestrator {
         return;
       }
 
+      // Schedule next cycle immediately after capturing audio, so recording
+      // overlaps with transcription + AI analysis (pipeline architecture).
+      // This reduces perceived latency by ~batchDuration.
+      if (this._liveMode) {
+        this._scheduleLiveCycle();
+      }
+
       if (audioChunk && audioChunk.size > 0) {
         this._silenceStartTime = null;
         const chunkSizeMB = (audioChunk.size / (1024 * 1024)).toFixed(2);
@@ -896,12 +975,10 @@ class SessionOrchestrator {
       }
     }
 
-    // Only reschedule if still in live mode (could have been stopped during cycle)
     if (this._liveMode) {
       const cycleDuration = Date.now() - cycleStart;
       this._logger.debug(`Live cycle completed in ${cycleDuration}ms`);
       this._updateState(SessionState.LIVE_LISTENING);
-      this._scheduleLiveCycle();
     }
   }
 
@@ -926,37 +1003,53 @@ class SessionOrchestrator {
       const fullText = this._liveTranscript.map(s => s.text).join(' ');
       const currentChapter = this._chapterTracker?.getCurrentChapter?.() || null;
 
+      // Update chapter context on AIAssistant if chapter has changed
+      if (currentChapter && this._aiAssistant.setChapterContext) {
+        this._aiAssistant.setChapterContext({
+          chapterName: currentChapter.title || '',
+          subsections: currentChapter.subchapters?.map(s => s.title) || [],
+          pageReferences: currentChapter.pageId ? [{
+            pageId: currentChapter.pageId,
+            pageName: currentChapter.pageName || '',
+            journalName: currentChapter.journalName || ''
+          }] : [],
+          summary: currentChapter.content?.substring(0, 3000) || ''
+        });
+      }
+
       this._logger.log(`Running AI analysis (transcript: ${fullText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
 
-      const suggestions = await this._aiAssistant.generateSuggestions(fullText, {
-        currentChapter
+      // Use single analyzeContext() call instead of separate generateSuggestions + detectOffTrack
+      // This halves latency by making one API call instead of two
+      const analysis = await this._aiAssistant.analyzeContext(fullText, {
+        includeSuggestions: true,
+        checkOffTrack: true,
+        detectRules: false
       });
 
-      if (suggestions) {
-        this._lastAISuggestions = suggestions;
-        // Log suggestions detail for debugging
-        if (Array.isArray(suggestions)) {
-          this._logger.log(`AI suggestions received: ${suggestions.length} suggestion(s)`);
-          for (const s of suggestions) {
-            const preview = (s.content || '').substring(0, 100);
-            this._logger.debug(`  [${s.type || 'unknown'}] ${preview}${(s.content || '').length > 100 ? '...' : ''}`);
-          }
-        } else {
-          this._logger.log(`AI suggestions received: ${JSON.stringify(suggestions).substring(0, 200)}`);
+      if (analysis?.suggestions) {
+        this._lastAISuggestions = analysis.suggestions;
+        this._logger.log(`AI suggestions received: ${analysis.suggestions.length} suggestion(s)`);
+        for (const s of analysis.suggestions) {
+          const preview = (s.content || '').substring(0, 100);
+          this._logger.debug(`  [${s.type || 'unknown'}] ${preview}${(s.content || '').length > 100 ? '...' : ''}`);
         }
       } else {
         this._logger.debug('AI analysis returned no suggestions');
       }
 
-      const offTrack = await this._aiAssistant.detectOffTrack?.(fullText);
-
-      if (offTrack !== undefined) {
-        this._lastOffTrackStatus = offTrack;
-        if (offTrack.isOffTrack) {
-          this._logger.log(`Off-track detected: severity=${offTrack.severity}, reason="${offTrack.reason || 'N/A'}"`);
+      if (analysis?.offTrack !== undefined) {
+        this._lastOffTrackStatus = analysis.offTrack;
+        if (analysis.offTrack.isOffTrack) {
+          this._logger.log(`Off-track detected: severity=${analysis.offTrack.severity}, reason="${analysis.offTrack.reason || 'N/A'}"`);
         } else {
           this._logger.debug('Players on track');
         }
+      }
+
+      // Trigger UI update immediately so suggestions appear without waiting for next render cycle
+      if (this._callbacks.onStateChange) {
+        this._callbacks.onStateChange(this._state, this._state, { suggestionsReady: true });
       }
     } catch (error) {
       this._logger.error(`AI analysis error: ${error.message}`);

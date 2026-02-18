@@ -251,7 +251,8 @@ class VoxChronicle {
         aiAssistant: this.aiAssistant || null,
         chapterTracker: this.chapterTracker,
         sceneDetector: this.sceneDetector,
-        sessionAnalytics: this.sessionAnalytics
+        sessionAnalytics: this.sessionAnalytics,
+        journalParser: this.journalParser
       });
 
       // Initialize RAG services (if enabled and OpenAI configured)

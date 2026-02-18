@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.5] - 2026-02-18
+
+### Fixed
+- **Image generation failing with 400 error** — `ImageSize.LANDSCAPE` (`1792x1024`) and `PORTRAIT` (`1024x1792`) were DALL-E 3 sizes, not valid for gpt-image-1. Reduced `ImageSize` enum to only the 3 valid gpt-image-1 sizes: `1024x1024`, `1024x1536`, `1536x1024`.
+- **AI suggestions were generic summaries instead of adventure continuations** — `AIAssistant.setAdventureContext()` and `setChapterContext()` were never called in production code. Added `_initializeJournalContext()` in `startLiveMode()` that auto-detects the active scene's linked journal, parses it, and feeds the full adventure text + current chapter to the AI assistant.
+- **Live mode latency reduced ~50%** — Replaced 2 sequential API calls (`generateSuggestions` + `detectOffTrack`) with a single `analyzeContext()` call. Recording now overlaps with transcription+analysis by scheduling the next cycle immediately after audio capture.
+- **UI not updating when suggestions arrive** — Added `onStateChange` callback from `SessionOrchestrator` to `MainPanel` so the panel re-renders (debounced) when new suggestions are available.
+
 ## [2.3.4] - 2026-02-18
 
 ### Fixed

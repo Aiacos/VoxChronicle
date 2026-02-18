@@ -7,8 +7,7 @@
  * Verifies that:
  * - SceneDetector.detectSceneTransition() is called (not analyzeText)
  * - SessionAnalytics.addSegment() receives individual segments (not arrays)
- * - AIAssistant.detectOffTrack() receives a string (not an object)
- * - AIAssistant.generateSuggestions() returns .content property
+ * - AIAssistant.analyzeContext() receives a string and returns suggestions + offTrack
  * - ChapterTracker.getCurrentChapter() returns .title property
  */
 
@@ -187,7 +186,17 @@ function createOrchestrator(overrides = {}) {
       isOffTrack: false,
       severity: 0.1,
       reason: 'Players are on track'
-    })
+    }),
+    analyzeContext: vi.fn().mockResolvedValue({
+      suggestions: [
+        { type: 'narration', content: 'The tavern smells of ale and smoke', confidence: 0.8 },
+        { type: 'dialogue', content: 'Welcome, travelers! What brings you here?', confidence: 0.7 }
+      ],
+      offTrack: { isOffTrack: false, severity: 0.1, reason: 'Players are on track' }
+    }),
+    setChapterContext: vi.fn(),
+    setAdventureContext: vi.fn(),
+    isConfigured: vi.fn().mockReturnValue(true)
   };
 
   const sceneDetector = new SceneDetector();
@@ -322,33 +331,31 @@ describe('Live Cycle Integration', () => {
   });
 
   // =========================================================================
-  // Fix #3: detectOffTrack receives string, not object
+  // Fix #3: analyzeContext receives string transcription
   // =========================================================================
 
-  describe('AIAssistant.detectOffTrack integration', () => {
-    it('should pass a plain string to detectOffTrack, not an object', async () => {
+  describe('AIAssistant.analyzeContext integration', () => {
+    it('should pass a plain string to analyzeContext, not an object', async () => {
       const { orchestrator, aiAssistant } = createOrchestrator();
 
       await orchestrator.startLiveMode({ title: 'Test', batchDuration: 100000 });
       await orchestrator._liveCycle();
 
-      expect(aiAssistant.detectOffTrack).toHaveBeenCalled();
+      expect(aiAssistant.analyzeContext).toHaveBeenCalled();
 
-      const arg = aiAssistant.detectOffTrack.mock.calls[0][0];
+      const arg = aiAssistant.analyzeContext.mock.calls[0][0];
       expect(typeof arg).toBe('string');
-      // Should NOT be an object like { transcript: '...' }
-      expect(typeof arg).not.toBe('object');
 
       await orchestrator.stopLiveMode();
     });
 
-    it('should pass accumulated transcript text to detectOffTrack', async () => {
+    it('should pass accumulated transcript text to analyzeContext', async () => {
       const { orchestrator, aiAssistant } = createOrchestrator();
 
       await orchestrator.startLiveMode({ title: 'Test', batchDuration: 100000 });
       await orchestrator._liveCycle();
 
-      const fullText = aiAssistant.detectOffTrack.mock.calls[0][0];
+      const fullText = aiAssistant.analyzeContext.mock.calls[0][0];
       expect(fullText).toContain('party enters the tavern');
       expect(fullText).toContain('barkeep greets them');
 
@@ -357,11 +364,11 @@ describe('Live Cycle Integration', () => {
   });
 
   // =========================================================================
-  // Fix #4: generateSuggestions returns .content property
+  // Fix #4: analyzeContext returns suggestions with .content property
   // =========================================================================
 
-  describe('AIAssistant.generateSuggestions integration', () => {
-    it('should store suggestions with .content property from generateSuggestions', async () => {
+  describe('AIAssistant suggestions from analyzeContext', () => {
+    it('should store suggestions with .content property from analyzeContext', async () => {
       const { orchestrator } = createOrchestrator();
 
       await orchestrator.startLiveMode({ title: 'Test', batchDuration: 100000 });
@@ -377,13 +384,13 @@ describe('Live Cycle Integration', () => {
       await orchestrator.stopLiveMode();
     });
 
-    it('should pass transcription text as string to generateSuggestions', async () => {
+    it('should pass transcription text as string to analyzeContext', async () => {
       const { orchestrator, aiAssistant } = createOrchestrator();
 
       await orchestrator.startLiveMode({ title: 'Test', batchDuration: 100000 });
       await orchestrator._liveCycle();
 
-      const textArg = aiAssistant.generateSuggestions.mock.calls[0][0];
+      const textArg = aiAssistant.analyzeContext.mock.calls[0][0];
       expect(typeof textArg).toBe('string');
 
       await orchestrator.stopLiveMode();
@@ -395,16 +402,16 @@ describe('Live Cycle Integration', () => {
   // =========================================================================
 
   describe('ChapterTracker integration', () => {
-    it('should pass current chapter with .title property to generateSuggestions options', async () => {
+    it('should feed chapter context to AIAssistant via setChapterContext', async () => {
       const { orchestrator, aiAssistant, chapterTracker } = createOrchestrator();
 
       await orchestrator.startLiveMode({ title: 'Test', batchDuration: 100000 });
       await orchestrator._liveCycle();
 
-      const optionsArg = aiAssistant.generateSuggestions.mock.calls[0][1];
-      expect(optionsArg.currentChapter).toBeDefined();
-      expect(optionsArg.currentChapter.title).toBe('The Tavern');
-      expect(optionsArg.currentChapter.path).toBe('Act I > The Tavern');
+      // analyzeContext should have been called (not generateSuggestions)
+      expect(aiAssistant.analyzeContext).toHaveBeenCalled();
+      // setChapterContext should be called during _runAIAnalysis
+      expect(aiAssistant.setChapterContext).toHaveBeenCalled();
 
       await orchestrator.stopLiveMode();
     });
@@ -438,8 +445,7 @@ describe('Live Cycle Integration', () => {
       // Verify all integrations were called correctly
       expect(sceneDetector.detectSceneTransition).toHaveBeenCalled();
       expect(sessionAnalytics.addSegment).toHaveBeenCalledTimes(2);
-      expect(aiAssistant.generateSuggestions).toHaveBeenCalled();
-      expect(aiAssistant.detectOffTrack).toHaveBeenCalled();
+      expect(aiAssistant.analyzeContext).toHaveBeenCalled();
 
       // Verify transcript accumulated
       expect(orchestrator._liveTranscript).toHaveLength(2);
@@ -482,8 +488,7 @@ describe('Live Cycle Integration', () => {
       await orchestrator._liveCycle();
 
       // Should not call AI analysis when there's no audio
-      expect(aiAssistant.generateSuggestions).not.toHaveBeenCalled();
-      expect(aiAssistant.detectOffTrack).not.toHaveBeenCalled();
+      expect(aiAssistant.analyzeContext).not.toHaveBeenCalled();
 
       await orchestrator.stopLiveMode();
     });
@@ -503,7 +508,7 @@ describe('Live Cycle Integration', () => {
       await orchestrator.startLiveMode({ title: 'Null Chunk', batchDuration: 100000 });
       await orchestrator._liveCycle();
 
-      expect(aiAssistant.generateSuggestions).not.toHaveBeenCalled();
+      expect(aiAssistant.analyzeContext).not.toHaveBeenCalled();
 
       await orchestrator.stopLiveMode();
     });
