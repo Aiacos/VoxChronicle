@@ -34,7 +34,7 @@ const DEFAULT_SESSION_OPTIONS = {
   autoGenerateImages: true,
   autoPublishToKanka: false,
   confirmEntityCreation: true,
-  maxImagesPerSession: 5,
+  maxImagesPerSession: 3,
   imageQuality: 'high',
   includeTranscriptInChronicle: true,
   chronicleFormat: 'full'

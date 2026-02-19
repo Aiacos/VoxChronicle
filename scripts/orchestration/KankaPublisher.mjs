@@ -272,7 +272,7 @@ class KankaPublisher {
 
     // Create character sub-journals under the main chronicle
     if (entities.characters?.length > 0) {
-      await this._createCharacterSubJournals(sessionData, entities.characters, results, uploadImages);
+      await this._createCharacterSubJournals(sessionData, entities.characters, results);
     }
 
     // Create locations (only if validated against Foundry journal)
@@ -298,7 +298,7 @@ class KankaPublisher {
    * @returns {Promise<void>}
    * @private
    */
-  async _createCharacterSubJournals(sessionData, characters, results, uploadImages) {
+  async _createCharacterSubJournals(sessionData, characters, results) {
     this._reportProgress(30, 'Creating character journals...');
 
     const parentJournalId = results.journal?.id;
@@ -309,7 +309,6 @@ class KankaPublisher {
 
     for (const character of characters) {
       try {
-        // Build character description: prefer Foundry journal description if available
         const journalDescription = this._findJournalDescription(
           sessionData, character.name, 'character'
         );
@@ -325,22 +324,6 @@ class KankaPublisher {
         });
 
         results.characters.push(journal);
-
-        // Upload portrait if available
-        if (uploadImages) {
-          const portrait = this._findImageForEntity(sessionData, 'character', character.name);
-          if (portrait?.url) {
-            try {
-              await this._kankaService.uploadJournalImage(journal.id, portrait.url);
-              results.images.push({ entityId: journal.id, entityType: 'journal' });
-            } catch (imgError) {
-              this._logger.warn(
-                `Failed to upload portrait for ${character.name}:`,
-                imgError.message
-              );
-            }
-          }
-        }
       } catch (error) {
         results.errors.push({ entity: character.name, type: 'character', error: error.message });
       }
@@ -578,29 +561,6 @@ class KankaPublisher {
     return parts.join('\n');
   }
 
-  /**
-   * Find a generated image for an entity
-   *
-   * @param {SessionData} sessionData - Session data containing images
-   * @param {string} entityType - Entity type
-   * @param {string} entityName - Entity name
-   * @returns {object | null} Image result or null
-   * @private
-   */
-  _findImageForEntity(sessionData, entityType, entityName) {
-    if (!sessionData.images?.length) {
-      return null;
-    }
-
-    return (
-      sessionData.images.find((img) => {
-        if (img.success === false) return false;
-        if (img.entityType !== entityType) return false;
-        if (img.meta?.characterName === entityName) return true;
-        return false;
-      }) || null
-    );
-  }
 }
 
 // Export class and types

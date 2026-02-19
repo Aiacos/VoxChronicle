@@ -16,7 +16,7 @@ import { Logger } from '../utils/Logger.mjs';
  * @constant {object}
  */
 const DEFAULT_IMAGE_OPTIONS = {
-  maxImagesPerSession: 5,
+  maxImagesPerSession: 3,
   imageQuality: 'high'
 };
 
@@ -27,7 +27,7 @@ const DEFAULT_IMAGE_OPTIONS = {
  * const processor = new ImageProcessor({
  *   imageGenerationService: imageServiceInstance,
  *   options: {
- *     maxImagesPerSession: 5,
+ *     maxImagesPerSession: 3,
  *     imageQuality: 'high'
  *   }
  * });
@@ -140,19 +140,18 @@ class ImageProcessor {
   }
 
   /**
-   * Build image generation requests from moments and characters
+   * Build image generation requests from session moments (scene images only)
    *
    * @param {Array<object>} moments - Session moments with image prompts
-   * @param {object} entities - Extracted entities
+   * @param {object} _entities - Extracted entities (unused — no entity portraits)
    * @param {number} maxImages - Maximum number of images to generate
    * @param {string} imageQuality - Image quality setting
    * @returns {Array<object>} Array of image generation requests
    * @private
    */
-  _buildImageRequests(moments, entities, maxImages, imageQuality) {
+  _buildImageRequests(moments, _entities, maxImages, imageQuality) {
     const requests = [];
 
-    // Build image generation requests from moments
     if (moments?.length > 0) {
       for (const moment of moments.slice(0, maxImages)) {
         if (moment.imagePrompt) {
@@ -163,21 +162,6 @@ class ImageProcessor {
             meta: { momentId: moment.id, title: moment.title }
           });
         }
-      }
-    }
-
-    // Add character portraits if we have room
-    const remainingSlots = maxImages - requests.length;
-    if (remainingSlots > 0 && entities?.characters?.length > 0) {
-      const npcs = entities.characters.filter((c) => c.isNPC).slice(0, remainingSlots);
-
-      for (const character of npcs) {
-        requests.push({
-          entityType: 'character',
-          description: `${character.name}: ${character.description}`,
-          options: { quality: imageQuality },
-          meta: { characterName: character.name }
-        });
       }
     }
 
