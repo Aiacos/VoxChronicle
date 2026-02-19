@@ -2,7 +2,7 @@
 
 This document provides detailed API documentation for all service classes in the VoxChronicle module.
 
-**Last updated:** 2026-02-19 (v2.3.7)
+**Last updated:** 2026-02-19 (v3.0.1)
 
 ## Table of Contents
 
@@ -17,31 +17,33 @@ This document provides detailed API documentation for all service classes in the
    - [TranscriptionService](#transcriptionservice)
    - [ImageGenerationService](#imagegenerationservice)
    - [EntityExtractor](#entityextractor)
-   - [EmbeddingService](#embeddingservice)
-   - [RAGVectorStore](#ragvectorstore)
    - [TranscriptionFactory](#transcriptionfactory)
-4. [Narrator Services](#narrator-services)
+4. [RAG Services](#rag-services)
+   - [RAGProvider (Abstract)](#ragprovider-abstract)
+   - [RAGProviderFactory](#ragproviderfactory)
+   - [OpenAIFileSearchProvider](#openaifilesearchprovider)
+   - [RAGFlowProvider](#ragflowprovider)
+5. [Narrator Services](#narrator-services)
    - [AIAssistant](#aiassistant)
    - [ChapterTracker](#chaptertracker)
    - [CompendiumParser](#compendiumparser)
    - [JournalParser](#journalparser)
-   - [RAGRetriever](#ragretriever)
    - [RulesReference](#rulesreference)
    - [SceneDetector](#scenedetector)
    - [SessionAnalytics](#sessionanalytics)
    - [SilenceDetector](#silencedetector)
-5. [Kanka Services](#kanka-services)
+6. [Kanka Services](#kanka-services)
    - [KankaClient](#kankaclient)
    - [KankaService](#kankaservice)
    - [KankaEntityManager](#kankaentitymanager)
    - [NarrativeExporter](#narrativeexporter)
-6. [Orchestration](#orchestration)
+7. [Orchestration](#orchestration)
    - [SessionOrchestrator](#sessionorchestrator)
    - [TranscriptionProcessor](#transcriptionprocessor)
    - [EntityProcessor](#entityprocessor)
    - [ImageProcessor](#imageprocessor)
    - [KankaPublisher](#kankapublisher)
-7. [Utilities](#utilities)
+8. [Utilities](#utilities)
    - [Logger](#logger)
    - [RateLimiter](#ratelimiter)
    - [AudioUtils](#audioutils)
@@ -936,63 +938,6 @@ const chunks = await parser.parseJournal(game.journal.get(journalId));
 
 ##### `parseAllJournals(journalIds)`
 Parse multiple journals.
-
----
-
-### RAGRetriever
-
-Hybrid semantic + keyword retrieval with configurable scoring weights.
-
-**Import:**
-```javascript
-import { RAGRetriever } from './scripts/narrator/RAGRetriever.mjs';
-```
-
-#### Constructor
-
-```javascript
-const retriever = new RAGRetriever(embeddingService, vectorStore, {
-  semanticWeight: 0.7,
-  keywordWeight: 0.2,
-  recencyWeight: 0.1,
-  maxResults: 5,
-  similarityThreshold: 0.3
-});
-```
-
-#### Methods
-
-##### `retrieveContext(query, options)`
-Retrieve relevant context for a query using hybrid scoring.
-
-```javascript
-const results = await retriever.retrieveContext('What are the rules for grappling?', {
-  maxResults: 3
-});
-// [{ content, title, score, source }]
-```
-
-##### `buildIndex(journalIds, packIds, options)`
-Build the RAG index from journals and compendiums.
-
-```javascript
-await retriever.buildIndex(
-  ['journal-id-1', 'journal-id-2'],
-  ['dnd5e.rules'],
-  { onProgress: (progress) => console.log(progress) }
-);
-```
-
-##### `getIndexStatus()`
-Get index status.
-
-```javascript
-const status = retriever.getIndexStatus();
-// { vectorCount, ready, lastBuilt }
-```
-
-##### `clearIndex()`
-Clear the entire RAG index.
 
 ---
 
@@ -2210,7 +2155,7 @@ interface ExtractedItem {
 interface SalientMoment {
   id: string;          // Unique moment identifier
   title: string;       // Brief, evocative title
-  imagePrompt: string; // Detailed prompt for DALL-E
+  imagePrompt: string; // Detailed prompt for gpt-image-1
   context: string;     // Context from transcript
   dramaScore: number;  // Drama score 1-10
 }

@@ -40,7 +40,7 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 | Templates | Handlebars (.hbs) |
 | Transcription | OpenAI GPT-4o-transcribe-diarize |
 | Image Generation | gpt-image-1 (base64 responses) |
-| RAG | Custom vector store (v2.x) / OpenAI File Search (v3.0 planned) |
+| RAG | Modular RAGProvider: OpenAI File Search + RAGFlow (v3.0) |
 | Campaign Management | Kanka.io API v1.0 |
 | Styling | CSS with BEM-style `.vox-chronicle` namespace |
 | Testing | Vitest with jsdom (3600+ tests across 61+ files) |
@@ -744,15 +744,16 @@ Exponential backoff + jitter with sequential queue and automatic circuit breakin
 
 ---
 
-## v3.0 Planned Changes
+## v3.0 Changes (Released 2026-02-19)
 
-See `docs/plans/2026-02-19-v3-rewrite-plan.md` for the complete plan.
+See `docs/plans/2026-02-19-v3-rewrite-plan.md` for the original plan.
 
-**Summary:**
-1. **RAG:** Replace custom stack (EmbeddingService + RAGVectorStore + RAGRetriever) with modular RAGProvider interface + OpenAI File Search default implementation
-2. **UI:** Fix memory leaks in all 5 components using AbortController pattern; CSS-only tab switching in MainPanel
-3. **Workflow:** Simplify to 2-3 session scene images (no entity portraits); focus on journal publishing
+**What changed in v3.0:**
+1. **RAG:** Replaced custom stack (EmbeddingService + RAGVectorStore + RAGRetriever) with modular RAGProvider interface + OpenAI File Search + RAGFlow providers
+2. **UI:** Fixed memory leaks in all 5 components using AbortController pattern; CSS-only tab switching in MainPanel
+3. **Workflow:** Simplified to 2-3 session scene images (no entity portraits); focus on journal publishing
 4. **Documentation:** This file, API_REFERENCE.md, CLAUDE.md — all updated
+5. **Tests:** Complete rewrite — 3742 tests across 46 files with 95%+ coverage
 
 ---
 

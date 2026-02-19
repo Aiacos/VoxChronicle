@@ -297,7 +297,7 @@ Generate portraits for NPCs and characters:
 
 1. In the Entity Preview, select a character
 2. Click **Generate Portrait**
-3. Wait for DALL-E 3 to create the image
+3. Wait for gpt-image-1 to create the image
 4. Preview the result
 5. Accept or regenerate
 

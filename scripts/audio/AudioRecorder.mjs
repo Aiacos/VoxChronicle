@@ -420,6 +420,10 @@ class AudioRecorder {
    * @throws {Error} If no recording is active
    */
   pause() {
+    if (this._state === RecordingState.PAUSED) {
+      this._logger.debug('Already paused, ignoring duplicate pause()');
+      return;
+    }
     if (this._state !== RecordingState.RECORDING) {
       throw new Error('Cannot pause - not currently recording.');
     }
@@ -438,6 +442,10 @@ class AudioRecorder {
    * @throws {Error} If recording is not paused
    */
   resume() {
+    if (this._state === RecordingState.RECORDING) {
+      this._logger.debug('Already recording, ignoring duplicate resume()');
+      return;
+    }
     if (this._state !== RecordingState.PAUSED) {
       throw new Error('Cannot resume - recording is not paused.');
     }

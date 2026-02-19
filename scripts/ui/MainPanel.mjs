@@ -332,7 +332,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         } else {
           await this._orchestrator.stopSession({ processImmediately: false });
         }
-        ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStopped') || 'Recording stopped');
+        ui?.notifications?.info(game.i18n?.format('VOXCHRONICLE.Notifications.RecordingStopped', { duration: this._formatDuration() }) || 'Recording stopped');
       } else {
         // Start recording - use live mode by default (real-time AI assistance)
         if (this._orchestrator.hasTranscriptionService) {

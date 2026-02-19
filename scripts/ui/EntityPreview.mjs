@@ -1308,7 +1308,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
       relationships: this._relationships
     });
 
-    graph.render();
+    graph.render(true);
   }
 
   /**
@@ -1440,7 +1440,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
         ...options
       });
 
-      preview.render();
+      preview.render(true);
     });
   }
 }

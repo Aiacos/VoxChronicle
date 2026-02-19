@@ -278,6 +278,11 @@ class SessionOrchestrator {
   }
 
   pauseRecording() {
+    if (this._state === SessionState.PAUSED) {
+      this._logger.debug('Already paused, ignoring duplicate pauseRecording()');
+      return;
+    }
+
     const isLive = this._isLiveState(this._state);
 
     if (this._state !== SessionState.RECORDING && !isLive) {
@@ -300,6 +305,10 @@ class SessionOrchestrator {
   }
 
   resumeRecording() {
+    if (this._state === SessionState.RECORDING || this._isLiveState(this._state)) {
+      this._logger.debug('Already recording/live, ignoring duplicate resumeRecording()');
+      return;
+    }
     if (this._state !== SessionState.PAUSED) {
       throw new Error('Cannot resume - recording is not paused.');
     }
