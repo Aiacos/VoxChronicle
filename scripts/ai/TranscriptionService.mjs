@@ -173,6 +173,9 @@ class TranscriptionService extends OpenAIClient {
    * @returns {Promise<TranscriptionResult>} Transcription result with speaker-labeled segments
    */
   async transcribe(audioBlob, options = {}) {
+    this._logger.debug('transcribe called', { blobSize: audioBlob?.size, model: options.model, language: options.language });
+    const t0 = Date.now();
+
     // Circuit breaker check - fail fast if too many consecutive errors
     if (this._isCircuitOpen()) {
       throw new OpenAIError(
@@ -239,6 +242,12 @@ class TranscriptionService extends OpenAIClient {
         result = this._tagSegmentsWithLanguage(result);
       }
 
+      this._logger.debug(`transcribe completed in ${Date.now() - t0}ms`, {
+        segmentCount: result.segments?.length,
+        speakerCount: result.speakers?.length,
+        textLength: result.text?.length,
+        chunked: result.chunked || false
+      });
       return result;
     } catch (error) {
       // Increment circuit breaker counter on failure
@@ -249,6 +258,7 @@ class TranscriptionService extends OpenAIClient {
           `Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`
         );
       }
+      this._logger.error(`transcribe failed after ${Date.now() - t0}ms: ${error.message}`, { blobSize: audioBlob?.size });
       throw error;
     }
   }
@@ -262,6 +272,7 @@ class TranscriptionService extends OpenAIClient {
    * @private
    */
   async _transcribeSingle(audioBlob, options = {}) {
+    const t0 = Date.now();
     const speakerMap = options.speakerMap || this._defaultSpeakerMap;
     const language = options.language || this._defaultLanguage;
     const model = options.model || TranscriptionModel.GPT4O_DIARIZE;
@@ -306,10 +317,16 @@ class TranscriptionService extends OpenAIClient {
       // Map speakers to names
       const mappedResult = this._mapSpeakersToNames(response, speakerMap);
 
-      this._logger.log('Transcription completed successfully');
+      this._logger.log(`Transcription completed successfully in ${Date.now() - t0}ms`);
+      this._logger.debug('_transcribeSingle result', {
+        durationMs: Date.now() - t0,
+        segmentCount: mappedResult.segments?.length,
+        speakerCount: mappedResult.speakers?.length,
+        textLength: mappedResult.text?.length
+      });
       return mappedResult;
     } catch (error) {
-      this._logger.error('Transcription failed:', error.message);
+      this._logger.error(`_transcribeSingle failed after ${Date.now() - t0}ms: ${error.message}`, { model, blobSizeMB: AudioUtils.getBlobSizeMB(audioBlob) });
       throw error;
     }
   }
@@ -323,6 +340,7 @@ class TranscriptionService extends OpenAIClient {
    * @private
    */
   async _transcribeChunked(audioBlob, options = {}) {
+    const t0 = Date.now();
     const chunkingInfo = this._chunker.getChunkingInfo(audioBlob);
     this._logger.log(
       `Audio requires chunking: ${chunkingInfo.totalSizeMB}MB -> ~${chunkingInfo.estimatedChunkCount} chunks`
@@ -403,7 +421,14 @@ class TranscriptionService extends OpenAIClient {
     // 2. The same speaker gets the same human-readable name across the entire transcription
     // 3. Speaker continuity is preserved even when a speaker appears in multiple chunks
     const speakerMap = options.speakerMap || this._defaultSpeakerMap;
-    return this._mapSpeakersToNames(combinedResult, speakerMap);
+    const result = this._mapSpeakersToNames(combinedResult, speakerMap);
+
+    this._logger.debug(`_transcribeChunked completed in ${Date.now() - t0}ms`, {
+      chunkCount: chunks.length,
+      totalSegments: result.segments?.length,
+      uniqueSpeakers: allSpeakers.size
+    });
+    return result;
   }
 
   /**
@@ -704,6 +729,7 @@ class TranscriptionService extends OpenAIClient {
    * @returns {Promise<object>} Basic transcription result
    */
   async transcribeBasic(audioBlob, language = null) {
+    this._logger.debug('transcribeBasic called', { blobSize: audioBlob?.size, language });
     return this.transcribe(audioBlob, {
       model: TranscriptionModel.WHISPER,
       responseFormat: TranscriptionResponseFormat.JSON,

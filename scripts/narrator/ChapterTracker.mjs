@@ -248,6 +248,8 @@ export class ChapterTracker {
    * @returns {boolean} True if the chapter was found and set
    */
   setManualChapter(chapterId) {
+    this._logger.debug(`setManualChapter() entry — chapterId="${chapterId}"`);
+
     if (!chapterId || !this._journalParser || !this._selectedJournalId) {
       this._logger.warn('Cannot set manual chapter: missing requirements');
       return false;
@@ -379,8 +381,11 @@ export class ChapterTracker {
    */
   getCurrentChapterContentForAI(maxLength = 5000) {
     if (!this._currentChapter) {
+      this._logger.debug('getCurrentChapterContentForAI() — no current chapter set');
       return '';
     }
+
+    this._logger.debug(`getCurrentChapterContentForAI() — chapter="${this._currentChapter.title}", maxLength=${maxLength}`);
 
     const parts = [];
 
@@ -650,6 +655,8 @@ export class ChapterTracker {
       return;
     }
 
+    const prevTitle = this._currentChapter?.title || '(none)';
+
     // Add previous chapter to history
     if (this._currentChapter) {
       this._chapterHistory.push(this._currentChapter);
@@ -670,7 +677,7 @@ export class ChapterTracker {
     // Extract subchapters for navigation
     this._updateSubchapters();
 
-    this._logger.debug(`Current chapter set to: ${chapter.title}`);
+    this._logger.debug(`Chapter changed: "${prevTitle}" -> "${chapter.title}" (source=${sourceType})`);
   }
 
   /**

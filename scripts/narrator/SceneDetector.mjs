@@ -122,6 +122,8 @@ export class SceneDetector {
    * @returns {SceneTransition} The scene transition detection result
    */
   detectSceneTransition(text, _previousText = '') {
+    this._log.debug(`detectSceneTransition() entry — text length: ${(text || '').length}, current scene: ${this._currentSceneType}`);
+
     if (!text || typeof text !== 'string') {
       return {
         detected: false,
@@ -173,13 +175,10 @@ export class SceneDetector {
       );
 
       if (bestTransition.confidence >= this._minimumConfidence) {
+        const prevType = this._currentSceneType;
         this._updateSceneHistory(bestTransition.sceneType, text);
         this._currentSceneType = bestTransition.sceneType;
-        this._log.debug('Scene transition detected', {
-          type: bestTransition.type,
-          sceneType: bestTransition.sceneType,
-          confidence: bestTransition.confidence
-        });
+        this._log.debug(`detectSceneTransition() — transition "${prevType}" -> "${bestTransition.sceneType}", type=${bestTransition.type}, confidence=${bestTransition.confidence.toFixed(2)}, trigger="${bestTransition.trigger.substring(0, 50)}"`);
         return bestTransition;
       }
     }
@@ -199,6 +198,8 @@ export class SceneDetector {
    * @returns {string} The identified scene type (exploration, combat, social, rest, unknown)
    */
   identifySceneType(text) {
+    this._log.debug(`identifySceneType() entry — text length: ${(text || '').length}`);
+
     if (!text || typeof text !== 'string') {
       return SCENE_TYPES.UNKNOWN;
     }
@@ -232,9 +233,11 @@ export class SceneDetector {
 
     // Require minimum score to classify
     if (bestScore < 0.5) {
+      this._log.debug(`identifySceneType() exit — unknown (best score ${bestScore.toFixed(2)} below threshold)`);
       return SCENE_TYPES.UNKNOWN;
     }
 
+    this._log.debug(`identifySceneType() exit — type="${bestType}", score=${bestScore.toFixed(2)}`);
     return bestType;
   }
 

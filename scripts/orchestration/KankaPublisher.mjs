@@ -150,8 +150,14 @@ class KankaPublisher {
       this._onProgress = options.onProgress;
     }
 
+    const charCount = sessionData.entities?.characters?.length || 0;
+    const locCount = sessionData.entities?.locations?.length || 0;
+    const itemCount = sessionData.entities?.items?.length || 0;
+    const imageCount = sessionData.images?.length || 0;
+    this._logger.log(`Publishing to Kanka (chronicle=${createChronicle}, entities=${createEntities}, images=${uploadImages}): ${charCount} chars, ${locCount} locs, ${itemCount} items, ${imageCount} images`);
+
+    const publishStart = Date.now();
     try {
-      this._logger.log('Publishing to Kanka...');
       this._reportProgress(0, 'Preparing Kanka export...');
 
       const results = {
@@ -174,11 +180,13 @@ class KankaPublisher {
       }
 
       this._reportProgress(100, 'Publishing complete');
-      this._logger.log('Published to Kanka successfully');
+      const publishMs = Date.now() - publishStart;
+      this._logger.log(`Published to Kanka in ${publishMs}ms — journal: ${results.journal ? 'yes' : 'no'}, characters: ${results.characters.length}, locations: ${results.locations.length}, items: ${results.items.length}, errors: ${results.errors.length}`);
 
       return results;
     } catch (error) {
-      this._logger.error('Publishing failed:', error);
+      const publishMs = Date.now() - publishStart;
+      this._logger.error(`Publishing failed after ${publishMs}ms:`, error);
       throw error;
     } finally {
       // Restore original onProgress
@@ -199,8 +207,10 @@ class KankaPublisher {
    * @private
    */
   async _createChronicle(sessionData, results) {
+    this._logger.debug(`Creating chronicle: "${sessionData.title}", format=${this._chronicleFormat}, hasExporter=${!!this._narrativeExporter}`);
     this._reportProgress(10, 'Creating chronicle...');
 
+    const chronicleStart = Date.now();
     // Format chronicle using NarrativeExporter if available
     let chronicleData;
 
@@ -234,8 +244,11 @@ class KankaPublisher {
       const journal = await this._kankaService.createJournal(chronicleData);
       results.journal = journal;
 
-      this._logger.log(`Chronicle created: ${journal.name} (ID: ${journal.id})`);
+      const chronicleMs = Date.now() - chronicleStart;
+      this._logger.log(`Chronicle created: ${journal.name} (ID: ${journal.id}) in ${chronicleMs}ms`);
     } catch (error) {
+      const chronicleMs = Date.now() - chronicleStart;
+      this._logger.error(`Chronicle creation failed after ${chronicleMs}ms: ${error.message}`);
       results.errors.push({ entity: chronicleData.name, type: 'journal', error: error.message });
       throw error;
     }
@@ -266,9 +279,17 @@ class KankaPublisher {
       return;
     }
 
+    const charCount = entities.characters?.length || 0;
+    const locCount = entities.locations?.length || 0;
+    const itemCount = entities.items?.length || 0;
+    this._logger.debug(`Creating entities: ${charCount} characters, ${locCount} locations, ${itemCount} items`);
+    const entitiesStart = Date.now();
+
     // Pre-fetch existing Kanka entities for deduplication of locations/items
     this._logger.debug('Pre-fetching Kanka entities for cache...');
+    const preFetchStart = Date.now();
     await this._kankaService.preFetchEntities({ types: ['journals', 'locations', 'items'] });
+    this._logger.debug(`Pre-fetch completed in ${Date.now() - preFetchStart}ms`);
 
     // Create character sub-journals under the main chronicle
     if (entities.characters?.length > 0) {
@@ -284,6 +305,9 @@ class KankaPublisher {
     if (entities.items?.length > 0) {
       await this._createValidatedItems(sessionData, entities.items, results);
     }
+
+    const entitiesMs = Date.now() - entitiesStart;
+    this._logger.debug(`All entities created in ${entitiesMs}ms (errors: ${results.errors.length})`);
   }
 
   /**
@@ -299,6 +323,7 @@ class KankaPublisher {
    * @private
    */
   async _createCharacterSubJournals(sessionData, characters, results) {
+    this._logger.debug(`Creating ${characters.length} character sub-journals...`);
     this._reportProgress(30, 'Creating character journals...');
 
     const parentJournalId = results.journal?.id;
@@ -313,6 +338,7 @@ class KankaPublisher {
       return;
     }
 
+    const charsStart = Date.now();
     for (const character of characters) {
       try {
         const journalDescription = this._findJournalDescription(
@@ -321,6 +347,7 @@ class KankaPublisher {
         const description = journalDescription || character.description || '';
 
         const typeLabel = character.isNPC ? 'NPC' : 'PC';
+        this._logger.debug(`Creating character sub-journal: "${character.name}" (${typeLabel})`);
         const journal = await this._kankaService.createJournal({
           name: character.name,
           entry: description,
@@ -330,10 +357,14 @@ class KankaPublisher {
         });
 
         results.characters.push(journal);
+        this._logger.debug(`Character sub-journal created: "${character.name}" (ID: ${journal.id})`);
       } catch (error) {
+        this._logger.error(`Failed to create character sub-journal "${character.name}": ${error.message}`);
         results.errors.push({ entity: character.name, type: 'character', error: error.message });
       }
     }
+    const charsMs = Date.now() - charsStart;
+    this._logger.debug(`Character sub-journals done: ${results.characters.length}/${characters.length} created in ${charsMs}ms`);
   }
 
   /**
@@ -347,12 +378,18 @@ class KankaPublisher {
    * @private
    */
   async _createValidatedLocations(sessionData, locations, results) {
+    this._logger.debug(`Validating and creating ${locations.length} locations...`);
     this._reportProgress(50, 'Creating locations...');
+
+    const locsStart = Date.now();
+    let skipped = 0;
+    let deduplicated = 0;
 
     for (const location of locations) {
       // Only create if entity exists in the adventure journal
       if (!this._isEntityInJournal(sessionData, location.name)) {
         this._logger.debug(`Skipping location "${location.name}" - not found in adventure journal`);
+        skipped++;
         continue;
       }
 
@@ -361,6 +398,7 @@ class KankaPublisher {
           sessionData, location.name, 'location'
         );
 
+        this._logger.debug(`Creating location: "${location.name}"`);
         const created = await this._kankaService.createIfNotExists('locations', {
           name: location.name,
           entry: journalDescription || location.description,
@@ -369,11 +407,18 @@ class KankaPublisher {
 
         if (!created._alreadyExisted) {
           results.locations.push(created);
+          this._logger.debug(`Location created: "${location.name}" (ID: ${created.id})`);
+        } else {
+          deduplicated++;
+          this._logger.debug(`Location already exists: "${location.name}" — skipped`);
         }
       } catch (error) {
+        this._logger.error(`Failed to create location "${location.name}": ${error.message}`);
         results.errors.push({ entity: location.name, type: 'location', error: error.message });
       }
     }
+    const locsMs = Date.now() - locsStart;
+    this._logger.debug(`Locations done: ${results.locations.length} created, ${skipped} not in journal, ${deduplicated} deduplicated in ${locsMs}ms`);
   }
 
   /**
@@ -387,12 +432,18 @@ class KankaPublisher {
    * @private
    */
   async _createValidatedItems(sessionData, items, results) {
+    this._logger.debug(`Validating and creating ${items.length} items...`);
     this._reportProgress(70, 'Creating items...');
+
+    const itemsStart = Date.now();
+    let skipped = 0;
+    let deduplicated = 0;
 
     for (const item of items) {
       // Only create if entity exists in the adventure journal
       if (!this._isEntityInJournal(sessionData, item.name)) {
         this._logger.debug(`Skipping item "${item.name}" - not found in adventure journal`);
+        skipped++;
         continue;
       }
 
@@ -401,6 +452,7 @@ class KankaPublisher {
           sessionData, item.name, 'item'
         );
 
+        this._logger.debug(`Creating item: "${item.name}"`);
         const created = await this._kankaService.createIfNotExists('items', {
           name: item.name,
           entry: journalDescription || item.description,
@@ -409,11 +461,18 @@ class KankaPublisher {
 
         if (!created._alreadyExisted) {
           results.items.push(created);
+          this._logger.debug(`Item created: "${item.name}" (ID: ${created.id})`);
+        } else {
+          deduplicated++;
+          this._logger.debug(`Item already exists: "${item.name}" — skipped`);
         }
       } catch (error) {
+        this._logger.error(`Failed to create item "${item.name}": ${error.message}`);
         results.errors.push({ entity: item.name, type: 'item', error: error.message });
       }
     }
+    const itemsMs = Date.now() - itemsStart;
+    this._logger.debug(`Items done: ${results.items.length} created, ${skipped} not in journal, ${deduplicated} deduplicated in ${itemsMs}ms`);
   }
 
   // ============================================================================
@@ -523,6 +582,7 @@ class KankaPublisher {
    * @private
    */
   _formatBasicChronicle(sessionData) {
+    this._logger.debug(`Formatting basic chronicle: "${sessionData.title}", segments=${sessionData.transcript?.segments?.length || 0}`);
     const parts = [];
 
     // Header

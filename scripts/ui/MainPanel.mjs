@@ -156,6 +156,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this._logger.debug('_onRender called', { activeTab: this._activeTab, isRecording: context?.isRecording });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
@@ -238,6 +239,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<void>}
    */
   async close(options = {}) {
+    this._logger.debug('MainPanel closing');
     this.#listenerController?.abort();
     return super.close(options);
   }

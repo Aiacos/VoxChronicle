@@ -580,6 +580,7 @@ class OpenAIClient {
    * All queued promises will be rejected with a cancellation error.
    */
   clearQueue() {
+    this._logger.debug('clearQueue called');
     const queueSize = this._requestQueue.length;
 
     const cancellationError = new Error('Request cancelled: queue cleared');
@@ -661,6 +662,7 @@ class OpenAIClient {
   async _makeRequest(endpoint, options = {}) {
     const url = this._buildUrl(endpoint);
     const method = options.method || 'GET';
+    const t0 = Date.now();
 
     // Build headers - use JSON headers unless body is FormData
     const isFormData = options.body instanceof FormData;
@@ -704,6 +706,7 @@ class OpenAIClient {
 
         // Handle error responses
         if (!response.ok) {
+          this._logger.debug(`Request to ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`);
           const error = await this._parseErrorResponse(response);
 
           // If rate limited, pause the rate limiter
@@ -717,7 +720,7 @@ class OpenAIClient {
 
         // Parse and return JSON response
         const data = await response.json();
-        this._logger.debug(`Request to ${endpoint} completed successfully`);
+        this._logger.debug(`Request to ${endpoint} completed successfully in ${Date.now() - t0}ms, status: ${response.status}`);
         return data;
       } catch (error) {
         // Clear timeout
@@ -781,6 +784,8 @@ class OpenAIClient {
    * @throws {OpenAIError} If the request fails
    */
   async request(endpoint, options = {}) {
+    this._logger.debug('request called', { endpoint, method: options.method || 'GET', useQueue: options.useQueue ?? true, useRetry: options.useRetry ?? true });
+
     if (!this.isConfigured) {
       throw new OpenAIError(
         'OpenAI API key not configured. Please add your API key in module settings.',
@@ -817,6 +822,7 @@ class OpenAIClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async post(endpoint, data, options = {}) {
+    this._logger.debug('post called', { endpoint });
     return this.request(endpoint, {
       ...options,
       method: 'POST',
@@ -833,6 +839,7 @@ class OpenAIClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async postFormData(endpoint, formData, options = {}) {
+    this._logger.debug('postFormData called', { endpoint });
     return this.request(endpoint, {
       ...options,
       method: 'POST',
@@ -846,7 +853,11 @@ class OpenAIClient {
    * @returns {Promise<boolean>} True if API key is valid
    */
   async validateApiKey() {
+    this._logger.debug('validateApiKey called');
+    const t0 = Date.now();
+
     if (!this._apiKey) {
+      this._logger.debug('validateApiKey: no API key set');
       return false;
     }
 
@@ -854,16 +865,16 @@ class OpenAIClient {
       // Make a minimal request to models endpoint to validate key
       // Bypass queue/retry for validation
       await this.request('/models', { method: 'GET', useQueue: false, useRetry: false });
-      this._logger.log('API key validated successfully');
+      this._logger.log(`API key validated successfully in ${Date.now() - t0}ms`);
       return true;
     } catch (error) {
       if (error.type === OpenAIErrorType.AUTHENTICATION_ERROR) {
-        this._logger.warn('API key validation failed: Invalid key');
+        this._logger.warn(`API key validation failed after ${Date.now() - t0}ms: Invalid key`);
         return false;
       }
       // Non-auth errors mean we cannot verify — don't assume valid
       const sanitizedMessage = SensitiveDataFilter.sanitizeString(error.message);
-      this._logger.error('API key validation could not be completed:', sanitizedMessage);
+      this._logger.error(`API key validation could not be completed after ${Date.now() - t0}ms:`, sanitizedMessage);
       throw error;
     }
   }

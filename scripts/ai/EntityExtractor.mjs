@@ -147,6 +147,9 @@ class EntityExtractor extends OpenAIClient {
    * @returns {Promise<ExtractionResult>} Extracted entities categorized by type
    */
   async extractEntities(transcriptText, options = {}) {
+    this._logger.debug('extractEntities called', { textLength: transcriptText?.length, existingEntities: options.existingEntities?.length, includePlayerCharacters: options.includePlayerCharacters });
+    const t0 = Date.now();
+
     if (!transcriptText || typeof transcriptText !== 'string') {
       throw new OpenAIError(
         'Invalid transcript: expected non-empty string',
@@ -192,13 +195,19 @@ class EntityExtractor extends OpenAIClient {
           `${result.locations.length} locations, ${result.items.length} items`
       );
 
+      this._logger.debug(`extractEntities completed in ${Date.now() - t0}ms`, {
+        characters: result.characters.length,
+        locations: result.locations.length,
+        items: result.items.length,
+        totalCount: result.totalCount
+      });
       return result;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        this._logger.error('Failed to parse extraction response as JSON');
+        this._logger.error(`extractEntities failed after ${Date.now() - t0}ms: Failed to parse extraction response as JSON`);
         throw new OpenAIError('Entity extraction returned invalid JSON', OpenAIErrorType.API_ERROR);
       }
-      this._logger.error('Entity extraction failed:', error.message);
+      this._logger.error(`extractEntities failed after ${Date.now() - t0}ms: ${error.message}`, { textLength: transcriptText?.length });
       throw error;
     }
   }
@@ -214,6 +223,9 @@ class EntityExtractor extends OpenAIClient {
    * @returns {Promise<Array<SalientMoment>>} Array of moment descriptions for image generation
    */
   async identifySalientMoments(transcriptText, options = {}) {
+    this._logger.debug('identifySalientMoments called', { textLength: transcriptText?.length, maxMoments: options.maxMoments });
+    const t0 = Date.now();
+
     if (!transcriptText || typeof transcriptText !== 'string') {
       throw new OpenAIError(
         'Invalid transcript: expected non-empty string',
@@ -255,16 +267,17 @@ class EntityExtractor extends OpenAIClient {
 
       this._logger.log(`Identified ${validatedMoments.length} salient moments`);
 
+      this._logger.debug(`identifySalientMoments completed in ${Date.now() - t0}ms`, { momentCount: validatedMoments.length });
       return validatedMoments;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        this._logger.error('Failed to parse moments response as JSON');
+        this._logger.error(`identifySalientMoments failed after ${Date.now() - t0}ms: Failed to parse moments response as JSON`);
         throw new OpenAIError(
           'Moment identification returned invalid JSON',
           OpenAIErrorType.API_ERROR
         );
       }
-      this._logger.error('Moment identification failed:', error.message);
+      this._logger.error(`identifySalientMoments failed after ${Date.now() - t0}ms: ${error.message}`, { textLength: transcriptText?.length });
       throw error;
     }
   }
@@ -281,6 +294,9 @@ class EntityExtractor extends OpenAIClient {
    * @returns {Promise<Array<ExtractedRelationship>>} Array of detected relationships
    */
   async extractRelationships(transcriptText, entities, options = {}) {
+    this._logger.debug('extractRelationships called', { textLength: transcriptText?.length, entityCount: entities?.length, minConfidence: options.minConfidence });
+    const t0 = Date.now();
+
     if (!transcriptText || typeof transcriptText !== 'string') {
       throw new OpenAIError(
         'Invalid transcript: expected non-empty string',
@@ -332,16 +348,17 @@ class EntityExtractor extends OpenAIClient {
 
       this._logger.log(`Extracted ${result.length} relationships`);
 
+      this._logger.debug(`extractRelationships completed in ${Date.now() - t0}ms`, { relationshipCount: result.length });
       return result;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        this._logger.error('Failed to parse relationship response as JSON');
+        this._logger.error(`extractRelationships failed after ${Date.now() - t0}ms: Failed to parse relationship response as JSON`);
         throw new OpenAIError(
           'Relationship extraction returned invalid JSON',
           OpenAIErrorType.API_ERROR
         );
       }
-      this._logger.error('Relationship extraction failed:', error.message);
+      this._logger.error(`extractRelationships failed after ${Date.now() - t0}ms: ${error.message}`, { textLength: transcriptText?.length, entityCount: entities?.length });
       throw error;
     }
   }
@@ -355,10 +372,20 @@ class EntityExtractor extends OpenAIClient {
    * @returns {Promise<CombinedExtractionResult>} Combined results
    */
   async extractAll(transcriptText, options = {}) {
+    this._logger.debug('extractAll called', { textLength: transcriptText?.length });
+    const t0 = Date.now();
+
     const [entities, moments] = await Promise.all([
       this.extractEntities(transcriptText, options),
       this.identifySalientMoments(transcriptText, options)
     ]);
+
+    this._logger.debug(`extractAll completed in ${Date.now() - t0}ms`, {
+      characters: entities.characters.length,
+      locations: entities.locations.length,
+      items: entities.items.length,
+      moments: moments.length
+    });
 
     return {
       ...entities,

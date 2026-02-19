@@ -141,7 +141,11 @@ class LocalWhisperService {
    * @returns {Promise<boolean>} True if backend is healthy
    */
   async healthCheck(options = {}) {
-    return this._backend.healthCheck(options);
+    this._logger.debug('healthCheck called');
+    const t0 = Date.now();
+    const result = await this._backend.healthCheck(options);
+    this._logger.debug(`healthCheck completed in ${Date.now() - t0}ms`, { healthy: result });
+    return result;
   }
 
   /**
@@ -167,6 +171,9 @@ class LocalWhisperService {
    * @returns {Promise<TranscriptionResult>} Transcription result with speaker-labeled segments
    */
   async transcribe(audioBlob, options = {}) {
+    this._logger.debug('transcribe called', { blobSize: audioBlob?.size, language: options.language });
+    const t0 = Date.now();
+
     if (!audioBlob || !(audioBlob instanceof Blob)) {
       throw new WhisperError(
         'Invalid audio input: expected Blob or File',
@@ -180,11 +187,19 @@ class LocalWhisperService {
     }
 
     // Check if audio exceeds size limit and needs chunking
+    let result;
     if (this._chunker.needsChunking(audioBlob)) {
-      return this._transcribeChunked(audioBlob, options);
+      result = await this._transcribeChunked(audioBlob, options);
+    } else {
+      result = await this._transcribeSingle(audioBlob, options);
     }
 
-    return this._transcribeSingle(audioBlob, options);
+    this._logger.debug(`transcribe completed in ${Date.now() - t0}ms`, {
+      segmentCount: result.segments?.length,
+      speakerCount: result.speakers?.length,
+      textLength: result.text?.length
+    });
+    return result;
   }
 
   /**
@@ -196,6 +211,7 @@ class LocalWhisperService {
    * @private
    */
   async _transcribeSingle(audioBlob, options = {}) {
+    const t0 = Date.now();
     const speakerMap = options.speakerMap || this._defaultSpeakerMap;
     const language = options.language || this._defaultLanguage;
     const responseFormat = options.responseFormat || LocalWhisperResponseFormat.JSON;
@@ -217,10 +233,16 @@ class LocalWhisperService {
       // Map speakers to names if diarization is available
       const mappedResult = this._mapSpeakersToNames(normalizedResult, speakerMap);
 
-      this._logger.log('Local transcription completed successfully');
+      this._logger.log(`Local transcription completed successfully in ${Date.now() - t0}ms`);
+      this._logger.debug('_transcribeSingle result', {
+        durationMs: Date.now() - t0,
+        segmentCount: mappedResult.segments?.length,
+        speakerCount: mappedResult.speakers?.length,
+        textLength: mappedResult.text?.length
+      });
       return mappedResult;
     } catch (error) {
-      this._logger.error('Local transcription failed:', error.message);
+      this._logger.error(`_transcribeSingle failed after ${Date.now() - t0}ms: ${error.message}`, { blobSizeMB: AudioUtils.getBlobSizeMB(audioBlob) });
       throw error;
     }
   }
@@ -234,6 +256,7 @@ class LocalWhisperService {
    * @private
    */
   async _transcribeChunked(audioBlob, options = {}) {
+    const t0 = Date.now();
     const chunkingInfo = this._chunker.getChunkingInfo(audioBlob);
     this._logger.log(
       `Audio requires chunking: ${chunkingInfo.totalSizeMB}MB -> ~${chunkingInfo.estimatedChunkCount} chunks`
@@ -299,7 +322,14 @@ class LocalWhisperService {
 
     // Apply speaker mapping to final result
     const speakerMap = options.speakerMap || this._defaultSpeakerMap;
-    return this._mapSpeakersToNames(combinedResult, speakerMap);
+    const result = this._mapSpeakersToNames(combinedResult, speakerMap);
+
+    this._logger.debug(`_transcribeChunked completed in ${Date.now() - t0}ms`, {
+      chunkCount: chunks.length,
+      totalSegments: result.segments?.length,
+      uniqueSpeakers: allSpeakers.size
+    });
+    return result;
   }
 
   /**
@@ -569,6 +599,7 @@ class LocalWhisperService {
    * @returns {Promise<object>} Basic transcription result
    */
   async transcribeBasic(audioBlob, language = null) {
+    this._logger.debug('transcribeBasic called', { blobSize: audioBlob?.size, language });
     return this.transcribe(audioBlob, {
       responseFormat: LocalWhisperResponseFormat.TEXT,
       language: language || this._defaultLanguage
@@ -582,7 +613,9 @@ class LocalWhisperService {
    * @returns {Promise<boolean>} True if diarization is supported
    */
   async checkDiarizationSupport() {
+    this._logger.debug('checkDiarizationSupport called');
     if (this._supportsDiarization !== null) {
+      this._logger.debug('checkDiarizationSupport: returning cached value', { supportsDiarization: this._supportsDiarization });
       return this._supportsDiarization;
     }
 

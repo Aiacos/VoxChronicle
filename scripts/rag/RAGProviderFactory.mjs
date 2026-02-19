@@ -39,6 +39,7 @@ export class RAGProviderFactory {
    */
   static create(providerType, config = {}) {
     const type = providerType || DEFAULT_PROVIDER;
+    logger.debug(`create() called — type="${type}", requested="${providerType || '(default)'}", configKeys=[${Object.keys(config).join(',')}]`);
 
     const ProviderClass = providerRegistry.get(type);
 
@@ -47,13 +48,15 @@ export class RAGProviderFactory {
       const FallbackClass = providerRegistry.get(DEFAULT_PROVIDER);
 
       if (!FallbackClass) {
+        logger.error(`No fallback provider registered for "${DEFAULT_PROVIDER}"`);
         throw new Error(`No RAG provider available for type "${type}" and no fallback registered`);
       }
 
+      logger.debug(`create() returning fallback provider: ${DEFAULT_PROVIDER}`);
       return new FallbackClass(config);
     }
 
-    logger.debug(`Creating RAG provider: ${type}`);
+    logger.debug(`create() returning provider: ${type}`);
     return new ProviderClass(config);
   }
 
@@ -63,6 +66,7 @@ export class RAGProviderFactory {
    * @param {typeof import('./RAGProvider.mjs').RAGProvider} ProviderClass - Provider constructor
    */
   static register(type, ProviderClass) {
+    logger.debug(`register() called — type="${type}", class="${ProviderClass?.name || '(invalid)'}"`);
     if (!type || typeof type !== 'string') {
       throw new Error('Provider type must be a non-empty string');
     }
@@ -70,8 +74,9 @@ export class RAGProviderFactory {
       throw new Error('ProviderClass must be a constructor');
     }
 
-    logger.debug(`Registering RAG provider: ${type}`);
+    const isOverwrite = providerRegistry.has(type);
     providerRegistry.set(type, ProviderClass);
+    logger.debug(`register() complete — type="${type}"${isOverwrite ? ' (overwritten)' : ' (new)'}`);
   }
 
   /**
@@ -80,7 +85,9 @@ export class RAGProviderFactory {
    * @returns {boolean}
    */
   static has(type) {
-    return providerRegistry.has(type);
+    const result = providerRegistry.has(type);
+    logger.debug(`has("${type}") → ${result}`);
+    return result;
   }
 
   /**
@@ -88,6 +95,8 @@ export class RAGProviderFactory {
    * @returns {string[]}
    */
   static getAvailableProviders() {
-    return Array.from(providerRegistry.keys());
+    const providers = Array.from(providerRegistry.keys());
+    logger.debug(`getAvailableProviders() → [${providers.join(', ')}]`);
+    return providers;
   }
 }

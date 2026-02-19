@@ -228,8 +228,10 @@ export class VocabularyDictionary {
    */
   exportDictionary() {
     const dictionary = this._getDictionary();
+    const totalTerms = this.getTotalTermCount();
 
     this._logger.log('Exporting vocabulary dictionary');
+    this._logger.debug(`Export contains ${totalTerms} terms`);
 
     return JSON.stringify(dictionary, null, 2);
   }
@@ -242,6 +244,8 @@ export class VocabularyDictionary {
    * @returns {Promise<object>} Import statistics (added, skipped, total)
    */
   async importDictionary(json, merge = false) {
+    this._logger.debug(`importDictionary called, merge: ${merge}, json length: ${json?.length || 0}`);
+
     if (!json || typeof json !== 'string') {
       throw new Error('JSON must be a non-empty string');
     }
@@ -433,6 +437,7 @@ export class VocabularyDictionary {
    * // Returns: { character_names: ['Goblin', 'Troll'], items: ['Longsword', 'Potion of Healing'] }
    */
   async extractFromFoundryCompendiums() {
+    this._logger.debug('extractFromFoundryCompendiums called');
     this._logger.debug('Extracting terms from Foundry compendiums...');
 
     // Check if game.packs is available (Foundry VTT context)

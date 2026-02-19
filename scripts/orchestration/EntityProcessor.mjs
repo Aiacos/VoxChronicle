@@ -82,17 +82,20 @@ class EntityProcessor {
       return null;
     }
 
-    this._logger.log('Extracting entities...');
+    const textLength = transcriptText.length;
+    this._logger.log(`Extracting entities (text: ${textLength} chars, checkDuplicates: ${options.checkDuplicates !== false})...`);
 
     const onProgress = options.onProgress || (() => {});
     onProgress(0, 'Extracting entities from transcript...');
 
+    const extractionStart = Date.now();
     try {
       // Get existing entities from Kanka to avoid duplicates
       let existingEntities = [];
       if (options.checkDuplicates !== false && this._kankaService) {
         try {
           existingEntities = await this.getExistingKankaEntities();
+          this._logger.debug(`Deduplication: ${existingEntities.length} existing entities loaded`);
         } catch (error) {
           this._logger.warn('Could not fetch existing Kanka entities:', error.message);
         }
@@ -107,14 +110,20 @@ class EntityProcessor {
 
       onProgress(100, 'Entity extraction complete');
 
+      const extractionMs = Date.now() - extractionStart;
+      const chars = extractionResult.characters?.length || 0;
+      const locs = extractionResult.locations?.length || 0;
+      const items = extractionResult.items?.length || 0;
       this._logger.log(
-        `Extracted ${extractionResult.totalCount || 0} entities, ` +
-          `${extractionResult.moments?.length || 0} salient moments`
+        `Extracted ${extractionResult.totalCount || 0} entities ` +
+          `(${chars} characters, ${locs} locations, ${items} items), ` +
+          `${extractionResult.moments?.length || 0} moments in ${extractionMs}ms`
       );
 
       return extractionResult;
     } catch (error) {
-      this._logger.error('Entity extraction failed:', error);
+      const extractionMs = Date.now() - extractionStart;
+      this._logger.error(`Entity extraction failed after ${extractionMs}ms:`, error);
       // Don't throw - extraction failure shouldn't stop the workflow
       return null;
     }
@@ -142,19 +151,20 @@ class EntityProcessor {
       return [];
     }
 
-    this._logger.log('Extracting relationships...');
+    // Build flat list of all entities
+    const allEntities = [
+      ...(extractionResult.characters || []),
+      ...(extractionResult.locations || []),
+      ...(extractionResult.items || [])
+    ];
+
+    this._logger.log(`Extracting relationships (text: ${transcriptText.length} chars, ${allEntities.length} entities, minConfidence: ${options.minConfidence || 5})...`);
 
     const onProgress = options.onProgress || (() => {});
     onProgress(0, 'Extracting relationships from transcript...');
 
+    const relStart = Date.now();
     try {
-      // Build flat list of all entities
-      const allEntities = [
-        ...(extractionResult.characters || []),
-        ...(extractionResult.locations || []),
-        ...(extractionResult.items || [])
-      ];
-
       if (allEntities.length === 0) {
         this._logger.debug('No entities to extract relationships for');
         return [];
@@ -172,11 +182,13 @@ class EntityProcessor {
 
       onProgress(100, 'Relationship extraction complete');
 
-      this._logger.log(`Extracted ${relationships?.length || 0} relationships`);
+      const relMs = Date.now() - relStart;
+      this._logger.log(`Extracted ${relationships?.length || 0} relationships in ${relMs}ms`);
 
       return relationships || [];
     } catch (error) {
-      this._logger.error('Relationship extraction failed:', error);
+      const relMs = Date.now() - relStart;
+      this._logger.error(`Relationship extraction failed after ${relMs}ms:`, error);
       // Don't throw - relationship extraction failure shouldn't stop the workflow
       return [];
     }
@@ -193,7 +205,9 @@ class EntityProcessor {
       return [];
     }
 
+    this._logger.debug('Fetching existing Kanka entities for deduplication...');
     const names = [];
+    const fetchStart = Date.now();
 
     try {
       // Pre-fetch entity types (uses cache if valid, otherwise fetches fresh)
@@ -212,9 +226,11 @@ class EntityProcessor {
         names.push(...entities.items.data.map((i) => i.name));
       }
 
-      this._logger.debug(`Found ${names.length} existing entities in Kanka`);
+      const fetchMs = Date.now() - fetchStart;
+      this._logger.debug(`Found ${names.length} existing entities in Kanka in ${fetchMs}ms`);
     } catch (error) {
-      this._logger.warn('Failed to fetch existing entities:', error.message);
+      const fetchMs = Date.now() - fetchStart;
+      this._logger.warn(`Failed to fetch existing entities after ${fetchMs}ms:`, error.message);
     }
 
     return names;
@@ -230,7 +246,7 @@ class EntityProcessor {
       throw new Error('EntityExtractor cannot be null');
     }
     this._entityExtractor = entityExtractor;
-    this._logger.debug('Entity extractor updated');
+    this._logger.debug(`Entity extractor updated: ${entityExtractor.constructor?.name || 'unknown'}`);
   }
 
   /**
@@ -240,7 +256,7 @@ class EntityProcessor {
    */
   updateKankaService(kankaService) {
     this._kankaService = kankaService;
-    this._logger.debug('Kanka service updated');
+    this._logger.debug(`Kanka service updated: ${kankaService ? 'configured' : 'removed'}`);
   }
 
   /**

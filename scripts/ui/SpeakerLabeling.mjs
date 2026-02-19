@@ -122,6 +122,7 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this._logger.debug('_onRender called', { knownSpeakers: this._knownSpeakers.length, labelCount: Object.keys(this._labels).length });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
@@ -148,6 +149,8 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    const speakerCount = Object.keys(data).filter(k => k.startsWith('speaker-') && data[k]?.trim()).length;
+    this._logger.debug(`Form submitted with ${speakerCount} speaker label(s)`);
     await this._updateObject(event, data);
     this.close();
   }
@@ -158,6 +161,7 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<void>}
    */
   async close(options = {}) {
+    this._logger.debug('SpeakerLabeling closing');
     this.#listenerController?.abort();
     return super.close(options);
   }

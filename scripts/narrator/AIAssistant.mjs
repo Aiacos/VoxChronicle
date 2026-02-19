@@ -706,7 +706,8 @@ class AIAssistant {
     const checkOffTrack = options.checkOffTrack !== false;
     const detectRules = options.detectRules !== false;
 
-    this._logger.debug(`Analyzing context, transcription length: ${transcription.length}`);
+    this._logger.debug(`analyzeContext() entry — transcription length: ${transcription.length}, suggestions=${includeSuggestions}, offTrack=${checkOffTrack}, rules=${detectRules}`);
+    const _analyzeStart = performance.now();
 
     // Detect rules questions if enabled
     let rulesDetection = null;
@@ -742,7 +743,7 @@ class AIAssistant {
       this._sessionState.suggestionsCount++;
       this._previousTranscription = transcription;
 
-      this._logger.info(`Analysis complete, ${analysis.suggestions.length} suggestions`);
+      this._logger.debug(`analyzeContext() exit — ${analysis.suggestions.length} suggestions, ${analysis.rulesQuestions.length} rules questions, ${(performance.now() - _analyzeStart).toFixed(1)}ms`);
 
       return {
         ...analysis,
@@ -753,7 +754,7 @@ class AIAssistant {
         }
       };
     } catch (error) {
-      this._logger.error('Context analysis failed:', error.message);
+      this._logger.error(`analyzeContext() failed after ${(performance.now() - _analyzeStart).toFixed(1)}ms:`, error.message);
       throw error;
     }
   }
@@ -780,7 +781,8 @@ class AIAssistant {
       };
     }
 
-    this._logger.debug('Checking off-track status');
+    this._logger.debug(`detectOffTrack() entry — transcription length: ${transcription.length}`);
+    const _offTrackStart = performance.now();
 
     try {
       // Retrieve RAG context if available
@@ -799,9 +801,10 @@ class AIAssistant {
 
       this._sessionState.lastOffTrackCheck = new Date();
 
+      this._logger.debug(`detectOffTrack() exit — isOffTrack=${result.isOffTrack}, severity=${result.severity}, ${(performance.now() - _offTrackStart).toFixed(1)}ms`);
       return result;
     } catch (error) {
-      this._logger.error('Off-track detection failed:', error.message);
+      this._logger.error(`detectOffTrack() failed after ${(performance.now() - _offTrackStart).toFixed(1)}ms:`, error.message);
       throw error;
     }
   }
@@ -822,7 +825,8 @@ class AIAssistant {
 
     const maxSuggestions = options.maxSuggestions || 3;
 
-    this._logger.debug('Generating suggestions');
+    this._logger.debug(`generateSuggestions() entry — transcription length: ${transcription.length}, maxSuggestions=${maxSuggestions}`);
+    const _suggestStart = performance.now();
 
     try {
       // Retrieve RAG context if available
@@ -839,9 +843,10 @@ class AIAssistant {
       const response = await this._makeChatRequest(messages);
       const suggestions = this._parseSuggestionsResponse(response, maxSuggestions);
 
+      this._logger.debug(`generateSuggestions() exit — ${suggestions.length} suggestions, types=[${suggestions.map(s => s.type).join(',')}], ${(performance.now() - _suggestStart).toFixed(1)}ms`);
       return suggestions;
     } catch (error) {
-      this._logger.error('Suggestion generation failed:', error.message);
+      this._logger.error(`generateSuggestions() failed after ${(performance.now() - _suggestStart).toFixed(1)}ms:`, error.message);
       throw error;
     }
   }
@@ -859,7 +864,8 @@ class AIAssistant {
       throw new Error('AIAssistant: OpenAI client not configured');
     }
 
-    this._logger.debug('Generating narrative bridge');
+    this._logger.debug(`generateNarrativeBridge() entry — situation length: ${currentSituation.length}, target length: ${targetScene.length}`);
+    const _bridgeStart = performance.now();
 
     try {
       // Retrieve RAG context if available, using both situation and target as query
@@ -875,9 +881,12 @@ class AIAssistant {
       const messages = this._buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
       const response = await this._makeChatRequest(messages);
       const content = response.choices?.[0]?.message?.content || '';
-      return content.trim();
+      const result = content.trim();
+
+      this._logger.debug(`generateNarrativeBridge() exit — result length: ${result.length}, ${(performance.now() - _bridgeStart).toFixed(1)}ms`);
+      return result;
     } catch (error) {
-      this._logger.error('Narrative bridge generation failed:', error.message);
+      this._logger.error(`generateNarrativeBridge() failed after ${(performance.now() - _bridgeStart).toFixed(1)}ms:`, error.message);
       throw error;
     }
   }
@@ -904,16 +913,18 @@ class AIAssistant {
 
     const maxOptions = options.maxOptions || 3;
 
-    this._logger.debug(`Generating NPC dialogue for ${npcName}`);
+    this._logger.debug(`generateNPCDialogue() entry — npc="${npcName}", context length: ${(npcContext || '').length}, maxOptions=${maxOptions}`);
+    const _npcStart = performance.now();
 
     try {
       const messages = this._buildNPCDialogueMessages(npcName, npcContext, transcription, maxOptions);
       const response = await this._makeChatRequest(messages);
       const dialogueOptions = this._parseNPCDialogueResponse(response, maxOptions);
 
+      this._logger.debug(`generateNPCDialogue() exit — ${dialogueOptions.length} dialogue options for "${npcName}", ${(performance.now() - _npcStart).toFixed(1)}ms`);
       return dialogueOptions;
     } catch (error) {
-      this._logger.error(`NPC dialogue generation failed for ${npcName}:`, error.message);
+      this._logger.error(`generateNPCDialogue() failed for "${npcName}" after ${(performance.now() - _npcStart).toFixed(1)}ms:`, error.message);
       throw error;
     }
   }
@@ -969,6 +980,8 @@ class AIAssistant {
    * Resets the session state
    */
   resetSession() {
+    this._logger.debug('resetSession() — clearing conversation history, session state, and RAG cache');
+
     // Stop silence monitoring if active
     if (this._silenceMonitoringActive) {
       this.stopSilenceMonitoring();
@@ -1027,6 +1040,9 @@ class AIAssistant {
    * @private
    */
   async _makeChatRequest(messages) {
+    this._logger.debug(`_makeChatRequest() — model=${this._model}, ${messages.length} messages`);
+    const _chatStart = performance.now();
+
     const response = await this._openaiClient.post('/chat/completions', {
       model: this._model,
       messages,
@@ -1034,6 +1050,7 @@ class AIAssistant {
       max_tokens: 1000
     });
 
+    this._logger.debug(`_makeChatRequest() — completed in ${(performance.now() - _chatStart).toFixed(1)}ms`);
     return response;
   }
 
@@ -1666,6 +1683,7 @@ Respond in JSON format:
     }
 
     const maxResults = options.maxResults || this._ragMaxResults;
+    const _ragStart = performance.now();
 
     try {
       const ragResult = await this._ragProvider.query(query, { maxResults });
@@ -1676,11 +1694,11 @@ Respond in JSON format:
       const result = { context, sources };
 
       this._cachedRAGContext = result;
-      this._logger.debug(`Retrieved RAG context: ${sources.length} sources, ${context.length} chars`);
+      this._logger.debug(`_getRAGContext() — ${sources.length} sources, ${context.length} chars, ${(performance.now() - _ragStart).toFixed(1)}ms`);
 
       return result;
     } catch (error) {
-      this._logger.warn('RAG context retrieval failed, falling back to truncated context:', error.message);
+      this._logger.warn(`_getRAGContext() failed after ${(performance.now() - _ragStart).toFixed(1)}ms:`, error.message);
       return { context: '', sources: [] };
     }
   }

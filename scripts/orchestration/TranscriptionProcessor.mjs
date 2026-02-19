@@ -90,8 +90,7 @@ class TranscriptionProcessor {
       throw new Error('Invalid audio blob provided for transcription');
     }
 
-    this._logger.log('Processing transcription...');
-
+    const blobSizeMB = (audioBlob.size / (1024 * 1024)).toFixed(2);
     const speakerMap = options.speakerMap || {};
     const language = options.language;
     const onProgress = options.onProgress || (() => {});
@@ -101,8 +100,11 @@ class TranscriptionProcessor {
     const mode =
       this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
 
+    this._logger.log(`Processing transcription: ${blobSizeMB}MB, mode=${mode}, language=${language || 'auto'}, speakers=${Object.keys(speakerMap).length}`);
+
     onProgress(0, `Starting transcription (${mode} mode)...`);
 
+    const transcriptionStart = Date.now();
     try {
       // Attempt transcription with primary service
       const transcriptResult = await this._transcribeWithService(
@@ -112,8 +114,11 @@ class TranscriptionProcessor {
       );
 
       onProgress(100, 'Transcription complete');
+      const transcriptionMs = Date.now() - transcriptionStart;
+      const segmentCount = transcriptResult.segments?.length || 0;
+      const textLength = transcriptResult.text?.length || 0;
       this._logger.log(
-        `Transcription complete: ${transcriptResult.segments?.length || 0} segments`
+        `Transcription complete: ${segmentCount} segments, ${textLength} chars in ${transcriptionMs}ms`
       );
 
       return transcriptResult;
@@ -140,6 +145,7 @@ class TranscriptionProcessor {
 
         this._logger.log('Using OpenAI API as fallback');
 
+        const fallbackStart = Date.now();
         try {
           // Retry with API service
           const transcriptResult = await this._transcribeWithService(apiService, audioBlob, {
@@ -150,7 +156,8 @@ class TranscriptionProcessor {
             }
           });
 
-          this._logger.log('Fallback to API transcription successful');
+          const fallbackMs = Date.now() - fallbackStart;
+          this._logger.log(`Fallback to API transcription successful in ${fallbackMs}ms`);
           onProgress(100, 'Transcription complete (via API fallback)');
 
           return transcriptResult;
@@ -181,6 +188,9 @@ class TranscriptionProcessor {
    */
   async _transcribeWithService(service, audioBlob, options) {
     const { speakerMap, language, onProgress } = options;
+    const serviceName = service.constructor?.name || 'unknown';
+    const blobSizeMB = (audioBlob.size / (1024 * 1024)).toFixed(2);
+    this._logger.debug(`Calling ${serviceName}.transcribe (${blobSizeMB}MB)`);
 
     return await service.transcribe(audioBlob, {
       speakerMap,
@@ -202,7 +212,9 @@ class TranscriptionProcessor {
    */
   getMode() {
     const isLocalService = this._transcriptionService instanceof LocalWhisperService;
-    return this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
+    const mode = this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
+    this._logger.debug(`getMode: ${mode}`);
+    return mode;
   }
 
   /**
@@ -212,8 +224,10 @@ class TranscriptionProcessor {
    */
   hasFallback() {
     const isLocalService = this._transcriptionService instanceof LocalWhisperService;
-    const mode = this.getMode();
-    return isLocalService && mode === TranscriptionMode.AUTO && !!this._config?.openaiApiKey;
+    const mode = this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
+    const result = isLocalService && mode === TranscriptionMode.AUTO && !!this._config?.openaiApiKey;
+    this._logger.debug(`hasFallback: ${result} (isLocal=${isLocalService}, mode=${mode}, hasKey=${!!this._config?.openaiApiKey})`);
+    return result;
   }
 
   /**
@@ -225,7 +239,7 @@ class TranscriptionProcessor {
    */
   updateConfig(config) {
     this._config = { ...this._config, ...config };
-    this._logger.debug('Transcription configuration updated');
+    this._logger.debug(`Transcription configuration updated: mode=${this._config.mode || 'default'}, hasKey=${!!this._config.openaiApiKey}`);
   }
 }
 

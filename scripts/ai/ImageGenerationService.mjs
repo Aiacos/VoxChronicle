@@ -173,6 +173,9 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generatePortrait(entityType, description, options = {}) {
+    this._logger.debug('generatePortrait called', { entityType, descriptionLength: description?.length, size: options.size, quality: options.quality });
+    const t0 = Date.now();
+
     if (!description || typeof description !== 'string') {
       throw new OpenAIError(
         'Invalid description: expected non-empty string',
@@ -191,7 +194,7 @@ class ImageGenerationService extends OpenAIClient {
     const prompt = this._buildPrompt(validEntityType, description, options.additionalContext);
 
     this._logger.log(`Generating ${validEntityType} image: ${size}, ${quality} quality`);
-    this._logger.debug(`Prompt: ${prompt.substring(0, 100)}...`);
+    this._logger.debug(`Prompt length: ${prompt.length}, preview: ${prompt.substring(0, 100)}...`);
 
     // gpt-image-1: no style parameter, no response_format (returns b64_json by default)
     const requestBody = {
@@ -234,10 +237,11 @@ class ImageGenerationService extends OpenAIClient {
         });
       }
 
-      this._logger.log('Image generated successfully');
+      this._logger.log(`Image generated successfully in ${Date.now() - t0}ms`);
+      this._logger.debug('generatePortrait result', { durationMs: Date.now() - t0, entityType: validEntityType, size, quality, hasBase64: Boolean(result.base64), hasUrl: Boolean(result.url) });
       return result;
     } catch (error) {
-      this._logger.error('Image generation failed:', error.message);
+      this._logger.error(`Image generation failed after ${Date.now() - t0}ms: ${error.message}`, { entityType: validEntityType, size, quality });
       throw error;
     }
   }
@@ -250,6 +254,7 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateCharacterPortrait(description, options = {}) {
+    this._logger.debug('generateCharacterPortrait called', { descriptionLength: description?.length });
     return this.generatePortrait(EntityType.CHARACTER, description, {
       size: options.size || ImageSize.SQUARE,
       ...options
@@ -264,6 +269,7 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateLocationImage(description, options = {}) {
+    this._logger.debug('generateLocationImage called', { descriptionLength: description?.length });
     return this.generatePortrait(EntityType.LOCATION, description, {
       size: options.size || ImageSize.LANDSCAPE,
       ...options
@@ -278,6 +284,7 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateItemImage(description, options = {}) {
+    this._logger.debug('generateItemImage called', { descriptionLength: description?.length });
     return this.generatePortrait(EntityType.ITEM, description, {
       size: options.size || ImageSize.SQUARE,
       ...options
@@ -292,6 +299,7 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateSceneImage(description, options = {}) {
+    this._logger.debug('generateSceneImage called', { descriptionLength: description?.length });
     return this.generatePortrait(EntityType.SCENE, description, {
       size: options.size || ImageSize.LANDSCAPE,
       ...options
@@ -310,6 +318,9 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<Array<ImageGenerationResult>>} Array of results
    */
   async generateBatch(requests, onProgress = null) {
+    this._logger.debug('generateBatch called', { requestCount: requests?.length });
+    const t0 = Date.now();
+
     if (!Array.isArray(requests) || requests.length === 0) {
       return [];
     }
@@ -355,6 +366,8 @@ class ImageGenerationService extends OpenAIClient {
       });
     }
 
+    const successCount = results.filter(r => r.success).length;
+    this._logger.debug(`generateBatch completed in ${Date.now() - t0}ms`, { total: requests.length, successCount, failedCount: requests.length - successCount });
     return results;
   }
 
@@ -366,6 +379,9 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<Blob>} Image blob
    */
   async downloadImage(url) {
+    this._logger.debug('downloadImage called');
+    const t0 = Date.now();
+
     if (!url) {
       throw new OpenAIError(
         'Invalid URL: expected non-empty string',
@@ -377,6 +393,7 @@ class ImageGenerationService extends OpenAIClient {
       const response = await fetch(url);
 
       if (!response.ok) {
+        this._logger.error(`downloadImage failed after ${Date.now() - t0}ms: HTTP ${response.status}`);
         throw new OpenAIError(
           `Failed to download image: ${response.status} ${response.statusText}`,
           OpenAIErrorType.API_ERROR,
@@ -385,12 +402,13 @@ class ImageGenerationService extends OpenAIClient {
       }
 
       const blob = await response.blob();
-      this._logger.debug(`Downloaded image: ${(blob.size / 1024).toFixed(1)}KB`);
+      this._logger.debug(`Downloaded image in ${Date.now() - t0}ms: ${(blob.size / 1024).toFixed(1)}KB`);
       return blob;
     } catch (error) {
       if (error instanceof OpenAIError) {
         throw error;
       }
+      this._logger.error(`downloadImage failed after ${Date.now() - t0}ms: ${error.message}`);
       throw new OpenAIError(
         `Failed to download image: ${error.message}`,
         OpenAIErrorType.NETWORK_ERROR
@@ -474,6 +492,7 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<void>}
    */
   async saveToGallery(imageData) {
+    this._logger.debug('saveToGallery called', { entityType: imageData?.entityType, hasBase64: Boolean(imageData?.base64) });
     try {
       let gallery = await this.loadGallery();
 
@@ -515,9 +534,11 @@ class ImageGenerationService extends OpenAIClient {
    * @returns {Promise<Array<object>>} The gallery array
    */
   async loadGallery() {
+    this._logger.debug('loadGallery called');
     try {
       const gallery = await game.settings.get(MODULE_ID, 'imageGallery');
       this._gallery = gallery || [];
+      this._logger.debug(`loadGallery completed, ${this._gallery.length} images loaded`);
       return this._gallery;
     } catch (error) {
       // Setting may not be registered yet (Task 18)

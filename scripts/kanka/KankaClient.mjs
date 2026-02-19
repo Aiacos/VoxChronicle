@@ -469,6 +469,7 @@ class KankaClient {
     // Sanitize URL in debug logs to prevent exposing sensitive query parameters
     const sanitizedUrl = SensitiveDataFilter.sanitizeUrl(url);
     this._logger.debug(`Making ${method} request to ${sanitizedUrl}`);
+    const requestStartTime = Date.now();
 
     // Execute request with rate limiting and retry logic
     return this._rateLimiter.executeWithRetry(async () => {
@@ -478,11 +479,14 @@ class KankaClient {
         // Clear timeout
         clearTimeout(controller.timeoutId);
 
+        const elapsed = Date.now() - requestStartTime;
+
         // Update rate limiter based on response headers
         this._handleRateLimitHeaders(response);
 
         // Handle error responses
         if (!response.ok) {
+          this._logger.debug(`Request ${method} ${sanitizedUrl} failed: status=${response.status}, elapsed=${elapsed}ms`);
           const error = await this._parseErrorResponse(response);
 
           // If rate limited (429), pause the rate limiter
@@ -500,7 +504,7 @@ class KankaClient {
         const data = await response.json();
         // Sanitize endpoint to prevent exposing sensitive query parameters
         const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
-        this._logger.debug(`Request to ${sanitizedEndpoint} completed successfully`);
+        this._logger.debug(`Request to ${sanitizedEndpoint} completed: status=${response.status}, elapsed=${elapsed}ms`);
         return data;
       } catch (error) {
         // Clear timeout
@@ -554,8 +558,10 @@ class KankaClient {
    */
   _handleRateLimitHeaders(response) {
     const remaining = response.headers.get('x-ratelimit-remaining');
+    const limit = response.headers.get('x-ratelimit-limit');
     if (remaining !== null) {
       const remainingNum = parseInt(remaining, 10);
+      this._logger.debug(`Rate limit: ${remaining}/${limit || '?'} remaining`);
 
       // Log warning if running low on requests
       if (remainingNum <= 5) {
@@ -585,6 +591,7 @@ class KankaClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async get(endpoint, options = {}) {
+    this._logger.debug(`GET ${endpoint}`);
     return this.request(endpoint, {
       ...options,
       method: 'GET'
@@ -600,6 +607,7 @@ class KankaClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async post(endpoint, data, options = {}) {
+    this._logger.debug(`POST ${endpoint}`);
     return this.request(endpoint, {
       ...options,
       method: 'POST',
@@ -616,6 +624,7 @@ class KankaClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async put(endpoint, data, options = {}) {
+    this._logger.debug(`PUT ${endpoint}`);
     return this.request(endpoint, {
       ...options,
       method: 'PUT',
@@ -632,6 +641,7 @@ class KankaClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async patch(endpoint, data, options = {}) {
+    this._logger.debug(`PATCH ${endpoint}`);
     return this.request(endpoint, {
       ...options,
       method: 'PATCH',
@@ -647,6 +657,7 @@ class KankaClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async delete(endpoint, options = {}) {
+    this._logger.debug(`DELETE ${endpoint}`);
     return this.request(endpoint, {
       ...options,
       method: 'DELETE'
@@ -662,6 +673,7 @@ class KankaClient {
    * @returns {Promise<object>} Parsed JSON response
    */
   async postFormData(endpoint, formData, options = {}) {
+    this._logger.debug(`POST (FormData) ${endpoint}`);
     return this.request(endpoint, {
       ...options,
       method: 'POST',
@@ -698,7 +710,9 @@ class KankaClient {
    * @returns {Promise<boolean>} True if API token is valid
    */
   async validateApiToken() {
+    this._logger.debug('Validating API token');
     if (!this._apiToken) {
+      this._logger.debug('No API token set, returning false');
       return false;
     }
 

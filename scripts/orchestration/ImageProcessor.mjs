@@ -100,16 +100,21 @@ class ImageProcessor {
     const imageQuality = options.imageQuality || this._options.imageQuality;
 
     // Build image generation requests
+    this._logger.debug(`generateImages called: ${moments?.length || 0} moments, maxImages=${maxImages}, quality=${imageQuality}`);
     const requests = this._buildImageRequests(moments, entities, maxImages, imageQuality);
 
     if (requests.length === 0) {
-      this._logger.debug('No image generation requests');
+      this._logger.debug('No image generation requests built from moments');
       return [];
     }
 
-    this._logger.log(`Generating ${requests.length} images...`);
+    this._logger.log(`Generating ${requests.length} images (quality: ${imageQuality})...`);
+    for (let i = 0; i < requests.length; i++) {
+      this._logger.debug(`  Request ${i + 1}: type=${requests[i].entityType}, title="${requests[i].meta?.title || 'untitled'}"`);
+    }
     onProgress(0, `Generating ${requests.length} images...`);
 
+    const totalStart = Date.now();
     try {
       // Generate images in batch with progress tracking
       const results = await this._imageGenerationService.generateBatch(requests, (progress) => {
@@ -128,12 +133,15 @@ class ImageProcessor {
 
       onProgress(100, 'Image generation complete');
 
+      const totalMs = Date.now() - totalStart;
       const successCount = resultsWithMetadata.filter((r) => r.success !== false).length;
-      this._logger.log(`Generated ${successCount} images`);
+      const failCount = resultsWithMetadata.length - successCount;
+      this._logger.log(`Generated ${successCount}/${resultsWithMetadata.length} images in ${totalMs}ms (${failCount} failed)`);
 
       return resultsWithMetadata;
     } catch (error) {
-      this._logger.error('Image generation failed:', error);
+      const totalMs = Date.now() - totalStart;
+      this._logger.error(`Image generation failed after ${totalMs}ms:`, error);
       onProgress(0, `Image generation failed: ${error.message}`);
       return [];
     }
@@ -153,7 +161,11 @@ class ImageProcessor {
     const requests = [];
 
     if (moments?.length > 0) {
-      for (const moment of moments.slice(0, maxImages)) {
+      const candidateMoments = moments.slice(0, maxImages);
+      const withPrompt = candidateMoments.filter(m => m.imagePrompt);
+      this._logger.debug(`Building image requests: ${moments.length} moments, ${candidateMoments.length} candidates, ${withPrompt.length} with prompts`);
+
+      for (const moment of candidateMoments) {
         if (moment.imagePrompt) {
           requests.push({
             entityType: 'scene',
@@ -163,8 +175,11 @@ class ImageProcessor {
           });
         }
       }
+    } else {
+      this._logger.debug('No moments provided for image request building');
     }
 
+    this._logger.debug(`Built ${requests.length} image requests`);
     return requests;
   }
 
@@ -177,7 +192,7 @@ class ImageProcessor {
    */
   updateOptions(options) {
     this._options = { ...this._options, ...options };
-    this._logger.debug('Image processing options updated');
+    this._logger.debug(`Image options updated: maxImages=${this._options.maxImagesPerSession}, quality=${this._options.imageQuality}`);
   }
 
   /**

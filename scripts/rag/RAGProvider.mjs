@@ -49,6 +49,7 @@ export class RAGProvider {
       throw new Error('RAGProvider is abstract and cannot be instantiated directly');
     }
     this._logger = Logger.createChild(this.constructor.name);
+    this._logger.debug(`RAGProvider subclass constructed: ${this.constructor.name}`);
   }
 
   // ─── Lifecycle ──────────────────────────────────────────────────────

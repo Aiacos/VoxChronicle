@@ -479,7 +479,9 @@ class KankaService extends KankaClient {
   async listCampaigns() {
     this._logger.debug('Fetching campaigns list');
     const response = await this.get('/campaigns');
-    return response.data || [];
+    const campaigns = response.data || [];
+    this._logger.debug(`listCampaigns: returned ${campaigns.length} campaigns`);
+    return campaigns;
   }
 
   /**
@@ -496,6 +498,7 @@ class KankaService extends KankaClient {
 
     this._logger.debug(`Fetching campaign: ${id}`);
     const response = await this.get(`/campaigns/${id}`);
+    this._logger.debug(`getCampaign: retrieved "${response.data?.name}"`);
     return response.data;
   }
 
@@ -543,6 +546,7 @@ class KankaService extends KankaClient {
    * });
    */
   async createJournal(journalData) {
+    this._logger.debug(`createJournal: name="${journalData?.name}", type="${journalData?.type || 'Session Chronicle'}"`);
     // Apply default type for session chronicles if not specified
     // This makes it easier for callers who just want to record sessions
     const dataWithDefaults = {
@@ -551,7 +555,9 @@ class KankaService extends KankaClient {
     };
 
     // Delegate to entity manager for generic CRUD handling
-    return this._entityManager.create(KankaEntityType.JOURNAL, dataWithDefaults);
+    const result = await this._entityManager.create(KankaEntityType.JOURNAL, dataWithDefaults);
+    this._logger.debug(`createJournal: created ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -561,7 +567,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Journal data
    */
   async getJournal(journalId) {
-    return this._entityManager.get(KankaEntityType.JOURNAL, journalId);
+    this._logger.debug(`getJournal: id=${journalId}`);
+    const result = await this._entityManager.get(KankaEntityType.JOURNAL, journalId);
+    this._logger.debug(`getJournal: retrieved "${result?.name}"`);
+    return result;
   }
 
   /**
@@ -572,7 +581,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated journal data
    */
   async updateJournal(journalId, journalData) {
-    return this._entityManager.update(KankaEntityType.JOURNAL, journalId, journalData);
+    this._logger.debug(`updateJournal: id=${journalId}, fields=[${Object.keys(journalData || {}).join(', ')}]`);
+    const result = await this._entityManager.update(KankaEntityType.JOURNAL, journalId, journalData);
+    this._logger.debug(`updateJournal: updated ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -582,7 +594,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteJournal(journalId) {
-    return this._entityManager.delete(KankaEntityType.JOURNAL, journalId);
+    this._logger.debug(`deleteJournal: id=${journalId}`);
+    await this._entityManager.delete(KankaEntityType.JOURNAL, journalId);
+    this._logger.debug(`deleteJournal: deleted id=${journalId}`);
   }
 
   /**
@@ -594,7 +608,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Paginated journal list with data and meta
    */
   async listJournals(options = {}) {
-    return this._entityManager.list(KankaEntityType.JOURNAL, options);
+    this._logger.debug(`listJournals: options=${JSON.stringify(options)}`);
+    const result = await this._entityManager.list(KankaEntityType.JOURNAL, options);
+    this._logger.debug(`listJournals: returned ${result?.data?.length || 0} journals`);
+    return result;
   }
 
   // ============================================================================
@@ -647,6 +664,7 @@ class KankaService extends KankaClient {
    * });
    */
   async createCharacter(characterData) {
+    this._logger.debug(`createCharacter: name="${characterData?.name}", type="${characterData?.type || CharacterType.NPC}"`);
     // Apply default type 'NPC' if not specified
     // This is the most common case for entities extracted from transcripts
     const dataWithDefaults = {
@@ -655,7 +673,9 @@ class KankaService extends KankaClient {
     };
 
     // Delegate to entity manager for generic CRUD handling
-    return this._entityManager.create(KankaEntityType.CHARACTER, dataWithDefaults);
+    const result = await this._entityManager.create(KankaEntityType.CHARACTER, dataWithDefaults);
+    this._logger.debug(`createCharacter: created ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -665,7 +685,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Character data
    */
   async getCharacter(characterId) {
-    return this._entityManager.get(KankaEntityType.CHARACTER, characterId);
+    this._logger.debug(`getCharacter: id=${characterId}`);
+    const result = await this._entityManager.get(KankaEntityType.CHARACTER, characterId);
+    this._logger.debug(`getCharacter: retrieved "${result?.name}"`);
+    return result;
   }
 
   /**
@@ -676,7 +699,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated character data
    */
   async updateCharacter(characterId, characterData) {
-    return this._entityManager.update(KankaEntityType.CHARACTER, characterId, characterData);
+    this._logger.debug(`updateCharacter: id=${characterId}, fields=[${Object.keys(characterData || {}).join(', ')}]`);
+    const result = await this._entityManager.update(KankaEntityType.CHARACTER, characterId, characterData);
+    this._logger.debug(`updateCharacter: updated ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -686,7 +712,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteCharacter(characterId) {
-    return this._entityManager.delete(KankaEntityType.CHARACTER, characterId);
+    this._logger.debug(`deleteCharacter: id=${characterId}`);
+    await this._entityManager.delete(KankaEntityType.CHARACTER, characterId);
+    this._logger.debug(`deleteCharacter: deleted id=${characterId}`);
   }
 
   /**
@@ -699,12 +727,15 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Paginated character list with data and meta
    */
   async listCharacters(options = {}) {
+    this._logger.debug(`listCharacters: options=${JSON.stringify(options)}`);
     // Convert boolean is_dead to 0/1 for API compatibility
     const apiOptions = { ...options };
     if (apiOptions.is_dead !== undefined) {
       apiOptions.is_dead = apiOptions.is_dead ? 1 : 0;
     }
-    return this._entityManager.list(KankaEntityType.CHARACTER, apiOptions);
+    const result = await this._entityManager.list(KankaEntityType.CHARACTER, apiOptions);
+    this._logger.debug(`listCharacters: returned ${result?.data?.length || 0} characters`);
+    return result;
   }
 
   // ============================================================================
@@ -724,7 +755,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Created location data
    */
   async createLocation(locationData) {
-    return this._entityManager.create(KankaEntityType.LOCATION, locationData);
+    this._logger.debug(`createLocation: name="${locationData?.name}", type="${locationData?.type || ''}"`);
+    const result = await this._entityManager.create(KankaEntityType.LOCATION, locationData);
+    this._logger.debug(`createLocation: created ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -734,7 +768,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Location data
    */
   async getLocation(locationId) {
-    return this._entityManager.get(KankaEntityType.LOCATION, locationId);
+    this._logger.debug(`getLocation: id=${locationId}`);
+    const result = await this._entityManager.get(KankaEntityType.LOCATION, locationId);
+    this._logger.debug(`getLocation: retrieved "${result?.name}"`);
+    return result;
   }
 
   /**
@@ -745,7 +782,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated location data
    */
   async updateLocation(locationId, locationData) {
-    return this._entityManager.update(KankaEntityType.LOCATION, locationId, locationData);
+    this._logger.debug(`updateLocation: id=${locationId}, fields=[${Object.keys(locationData || {}).join(', ')}]`);
+    const result = await this._entityManager.update(KankaEntityType.LOCATION, locationId, locationData);
+    this._logger.debug(`updateLocation: updated ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -755,7 +795,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteLocation(locationId) {
-    return this._entityManager.delete(KankaEntityType.LOCATION, locationId);
+    this._logger.debug(`deleteLocation: id=${locationId}`);
+    await this._entityManager.delete(KankaEntityType.LOCATION, locationId);
+    this._logger.debug(`deleteLocation: deleted id=${locationId}`);
   }
 
   /**
@@ -768,7 +810,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Paginated location list with data and meta
    */
   async listLocations(options = {}) {
-    return this._entityManager.list(KankaEntityType.LOCATION, options);
+    this._logger.debug(`listLocations: options=${JSON.stringify(options)}`);
+    const result = await this._entityManager.list(KankaEntityType.LOCATION, options);
+    this._logger.debug(`listLocations: returned ${result?.data?.length || 0} locations`);
+    return result;
   }
 
   // ============================================================================
@@ -791,7 +836,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Created item data
    */
   async createItem(itemData) {
-    return this._entityManager.create(KankaEntityType.ITEM, itemData);
+    this._logger.debug(`createItem: name="${itemData?.name}", type="${itemData?.type || ''}"`);
+    const result = await this._entityManager.create(KankaEntityType.ITEM, itemData);
+    this._logger.debug(`createItem: created ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -801,7 +849,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Item data
    */
   async getItem(itemId) {
-    return this._entityManager.get(KankaEntityType.ITEM, itemId);
+    this._logger.debug(`getItem: id=${itemId}`);
+    const result = await this._entityManager.get(KankaEntityType.ITEM, itemId);
+    this._logger.debug(`getItem: retrieved "${result?.name}"`);
+    return result;
   }
 
   /**
@@ -812,7 +863,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated item data
    */
   async updateItem(itemId, itemData) {
-    return this._entityManager.update(KankaEntityType.ITEM, itemId, itemData);
+    this._logger.debug(`updateItem: id=${itemId}, fields=[${Object.keys(itemData || {}).join(', ')}]`);
+    const result = await this._entityManager.update(KankaEntityType.ITEM, itemId, itemData);
+    this._logger.debug(`updateItem: updated ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -822,7 +876,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteItem(itemId) {
-    return this._entityManager.delete(KankaEntityType.ITEM, itemId);
+    this._logger.debug(`deleteItem: id=${itemId}`);
+    await this._entityManager.delete(KankaEntityType.ITEM, itemId);
+    this._logger.debug(`deleteItem: deleted id=${itemId}`);
   }
 
   /**
@@ -835,7 +891,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Paginated item list with data and meta
    */
   async listItems(options = {}) {
-    return this._entityManager.list(KankaEntityType.ITEM, options);
+    this._logger.debug(`listItems: options=${JSON.stringify(options)}`);
+    const result = await this._entityManager.list(KankaEntityType.ITEM, options);
+    this._logger.debug(`listItems: returned ${result?.data?.length || 0} items`);
+    return result;
   }
 
   // ============================================================================
@@ -856,13 +915,16 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Created organisation data
    */
   async createOrganisation(organisationData) {
+    this._logger.debug(`createOrganisation: name="${organisationData?.name}", type="${organisationData?.type || OrganisationType.OTHER}"`);
     // Set default type if not provided
     const dataWithDefaults = {
       ...organisationData,
       type: organisationData?.type || OrganisationType.OTHER
     };
 
-    return this._entityManager.create(KankaEntityType.ORGANISATION, dataWithDefaults);
+    const result = await this._entityManager.create(KankaEntityType.ORGANISATION, dataWithDefaults);
+    this._logger.debug(`createOrganisation: created ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -872,7 +934,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Organisation data
    */
   async getOrganisation(organisationId) {
-    return this._entityManager.get(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`getOrganisation: id=${organisationId}`);
+    const result = await this._entityManager.get(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`getOrganisation: retrieved "${result?.name}"`);
+    return result;
   }
 
   /**
@@ -883,11 +948,14 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated organisation data
    */
   async updateOrganisation(organisationId, organisationData) {
-    return this._entityManager.update(
+    this._logger.debug(`updateOrganisation: id=${organisationId}, fields=[${Object.keys(organisationData || {}).join(', ')}]`);
+    const result = await this._entityManager.update(
       KankaEntityType.ORGANISATION,
       organisationId,
       organisationData
     );
+    this._logger.debug(`updateOrganisation: updated ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -897,7 +965,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteOrganisation(organisationId) {
-    return this._entityManager.delete(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`deleteOrganisation: id=${organisationId}`);
+    await this._entityManager.delete(KankaEntityType.ORGANISATION, organisationId);
+    this._logger.debug(`deleteOrganisation: deleted id=${organisationId}`);
   }
 
   /**
@@ -910,7 +980,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Paginated organisation list with data and meta
    */
   async listOrganisations(options = {}) {
-    return this._entityManager.list(KankaEntityType.ORGANISATION, options);
+    this._logger.debug(`listOrganisations: options=${JSON.stringify(options)}`);
+    const result = await this._entityManager.list(KankaEntityType.ORGANISATION, options);
+    this._logger.debug(`listOrganisations: returned ${result?.data?.length || 0} organisations`);
+    return result;
   }
 
   // ============================================================================
@@ -933,13 +1006,16 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Created quest data
    */
   async createQuest(questData) {
+    this._logger.debug(`createQuest: name="${questData?.name}", type="${questData?.type || QuestType.OTHER}"`);
     // Set default type if not provided
     const dataWithDefaults = {
       ...questData,
       type: questData?.type || QuestType.OTHER
     };
 
-    return this._entityManager.create(KankaEntityType.QUEST, dataWithDefaults);
+    const result = await this._entityManager.create(KankaEntityType.QUEST, dataWithDefaults);
+    this._logger.debug(`createQuest: created ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -949,7 +1025,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Quest data
    */
   async getQuest(questId) {
-    return this._entityManager.get(KankaEntityType.QUEST, questId);
+    this._logger.debug(`getQuest: id=${questId}`);
+    const result = await this._entityManager.get(KankaEntityType.QUEST, questId);
+    this._logger.debug(`getQuest: retrieved "${result?.name}"`);
+    return result;
   }
 
   /**
@@ -960,7 +1039,10 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated quest data
    */
   async updateQuest(questId, questData) {
-    return this._entityManager.update(KankaEntityType.QUEST, questId, questData);
+    this._logger.debug(`updateQuest: id=${questId}, fields=[${Object.keys(questData || {}).join(', ')}]`);
+    const result = await this._entityManager.update(KankaEntityType.QUEST, questId, questData);
+    this._logger.debug(`updateQuest: updated ID=${result?.id}`);
+    return result;
   }
 
   /**
@@ -970,7 +1052,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<void>}
    */
   async deleteQuest(questId) {
-    return this._entityManager.delete(KankaEntityType.QUEST, questId);
+    this._logger.debug(`deleteQuest: id=${questId}`);
+    await this._entityManager.delete(KankaEntityType.QUEST, questId);
+    this._logger.debug(`deleteQuest: deleted id=${questId}`);
   }
 
   /**
@@ -984,12 +1068,15 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Paginated quest list with data and meta
    */
   async listQuests(options = {}) {
+    this._logger.debug(`listQuests: options=${JSON.stringify(options)}`);
     // Convert boolean is_completed to 0/1 for API compatibility
     const apiOptions = { ...options };
     if (apiOptions.is_completed !== undefined) {
       apiOptions.is_completed = apiOptions.is_completed ? 1 : 0;
     }
-    return this._entityManager.list(KankaEntityType.QUEST, apiOptions);
+    const result = await this._entityManager.list(KankaEntityType.QUEST, apiOptions);
+    this._logger.debug(`listQuests: returned ${result?.data?.length || 0} quests`);
+    return result;
   }
 
   // ============================================================================
@@ -1091,8 +1178,10 @@ class KankaService extends KankaClient {
     const endpoint = this._buildCampaignEndpoint(entityType, entityId);
 
     this._logger.log(`Uploading image to ${entityType}/${entityId}`);
+    const uploadStartTime = Date.now();
     const response = await this.postFormData(endpoint, formData);
-    this._logger.log(`Image uploaded successfully to ${entityType}/${entityId}`);
+    const uploadElapsed = Date.now() - uploadStartTime;
+    this._logger.log(`Image uploaded to ${entityType}/${entityId} in ${uploadElapsed}ms`);
 
     return response.data;
   }
@@ -1106,6 +1195,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated character data
    */
   async uploadCharacterImage(characterId, imageSource, options = {}) {
+    this._logger.debug(`uploadCharacterImage: id=${characterId}`);
     return this.uploadImage(KankaEntityType.CHARACTER, characterId, imageSource, options);
   }
 
@@ -1118,6 +1208,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated location data
    */
   async uploadLocationImage(locationId, imageSource, options = {}) {
+    this._logger.debug(`uploadLocationImage: id=${locationId}`);
     return this.uploadImage(KankaEntityType.LOCATION, locationId, imageSource, options);
   }
 
@@ -1130,6 +1221,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated item data
    */
   async uploadItemImage(itemId, imageSource, options = {}) {
+    this._logger.debug(`uploadItemImage: id=${itemId}`);
     return this.uploadImage(KankaEntityType.ITEM, itemId, imageSource, options);
   }
 
@@ -1142,6 +1234,7 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated journal data
    */
   async uploadJournalImage(journalId, imageSource, options = {}) {
+    this._logger.debug(`uploadJournalImage: id=${journalId}`);
     return this.uploadImage(KankaEntityType.JOURNAL, journalId, imageSource, options);
   }
 
@@ -1244,6 +1337,7 @@ class KankaService extends KankaClient {
     // Flatten results
     const results = searchResults.flat();
 
+    this._logger.debug(`searchEntities: found ${results.length} total results for "${query}"`);
     return results;
   }
 
@@ -1313,6 +1407,7 @@ class KankaService extends KankaClient {
    * }
    */
   async createIfNotExists(entityType, entityData) {
+    this._logger.debug(`createIfNotExists: type=${entityType}, name="${entityData?.name}"`);
     // Validate required name field
     if (!entityData?.name) {
       throw new KankaError('Entity name is required', KankaErrorType.VALIDATION_ERROR);
@@ -1399,6 +1494,8 @@ class KankaService extends KankaClient {
    * console.log(`Created ${success.length}, Failed ${errors.length}`);
    */
   async batchCreate(entityType, entitiesData, options = {}) {
+    this._logger.debug(`batchCreate: type=${entityType}, count=${entitiesData?.length || 0}, skipExisting=${options.skipExisting ?? true}`);
+    const batchStartTime = Date.now();
     const skipExisting = options.skipExisting ?? true;
     const onProgress = options.onProgress || (() => {});
     const results = [];
@@ -1459,6 +1556,10 @@ class KankaService extends KankaClient {
       }
     }
 
+    const batchElapsed = Date.now() - batchStartTime;
+    const successCount = results.filter(r => !r._error).length;
+    const errorCount = results.filter(r => r._error).length;
+    this._logger.debug(`batchCreate: completed in ${batchElapsed}ms — ${successCount} succeeded, ${errorCount} failed`);
     return results;
   }
 }

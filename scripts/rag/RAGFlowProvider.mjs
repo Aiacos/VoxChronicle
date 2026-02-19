@@ -75,6 +75,9 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<void>}
    */
   async initialize(config) {
+    const startTime = Date.now();
+    this._logger.debug(`initialize() called — baseUrl="${config?.baseUrl || '(none)'}", datasetId="${config?.datasetId || '(none)'}", chatId="${config?.chatId || '(none)'}", modelName="${config?.modelName || '(default)'}"`);
+
     if (!config?.baseUrl) {
       throw new Error('RAGFlowProvider requires a baseUrl (config.baseUrl)');
     }
@@ -124,6 +127,7 @@ export class RAGFlowProvider extends RAGProvider {
     }
 
     this.#initialized = true;
+    this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms — datasetId=${this.#datasetId}, chatId=${this.#chatId}`);
   }
 
   /**
@@ -131,12 +135,13 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<void>}
    */
   async destroy() {
+    const startTime = Date.now();
     if (!this.#initialized) {
       this._logger.debug('Already destroyed or not initialized, skipping');
       return;
     }
     this.#initialized = false; // Set FIRST to prevent re-entrant calls
-    this._logger.info('Destroying RAGFlow provider');
+    this._logger.info(`Destroying RAGFlow provider — ${this.#documentIds.size} docs, dataset=${this.#datasetId}, chat=${this.#chatId}`);
 
     // Delete chat assistant
     if (this.#chatId) {
@@ -167,6 +172,7 @@ export class RAGFlowProvider extends RAGProvider {
     this.#documentIds.clear();
     this.#datasetId = null;
     this.#chatId = null;
+    this._logger.debug(`destroy() complete in ${Date.now() - startTime}ms`);
   }
 
   // ─── Indexing ───────────────────────────────────────────────────────
@@ -180,9 +186,11 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<{indexed: number, failed: number}>}
    */
   async indexDocuments(documents, options = {}) {
+    const startTime = Date.now();
     this.#ensureInitialized();
 
     if (!documents?.length) {
+      this._logger.debug('indexDocuments() called with empty documents array');
       return { indexed: 0, failed: 0 };
     }
 
@@ -190,10 +198,12 @@ export class RAGFlowProvider extends RAGProvider {
     let indexed = 0;
     let failed = 0;
 
-    this._logger.info(`Indexing ${documents.length} documents`);
+    const totalContentSize = documents.reduce((sum, d) => sum + (d.content?.length || 0), 0);
+    this._logger.info(`Indexing ${documents.length} documents (total content: ${totalContentSize} chars)`);
 
     // Upload each document
     const uploadedDocIds = [];
+    const uploadStart = Date.now();
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i];
       try {
@@ -207,24 +217,27 @@ export class RAGFlowProvider extends RAGProvider {
         }
 
         // Upload document as text file
+        const docUploadStart = Date.now();
         const ragflowDocId = await this.#uploadDocument(doc);
         this.#documentIds.set(doc.id, ragflowDocId);
         uploadedDocIds.push(ragflowDocId);
         indexed++;
-        this._logger.debug(`Uploaded document: "${doc.title}" (${ragflowDocId})`);
+        this._logger.debug(`Uploaded document: "${doc.title}" (${ragflowDocId}) in ${Date.now() - docUploadStart}ms (${doc.content?.length || 0} chars)`);
       } catch (err) {
         failed++;
         this._logger.error(`Failed to upload document "${doc.title}": ${err.message}`);
       }
     }
+    this._logger.debug(`Upload phase complete in ${Date.now() - uploadStart}ms — ${uploadedDocIds.length} uploaded, ${failed} failed`);
 
     // Trigger parsing for all uploaded documents at once
     if (uploadedDocIds.length > 0) {
       try {
         onProgress?.(documents.length, documents.length, 'Parsing documents...');
+        const parseStart = Date.now();
         await this.#triggerParsing(uploadedDocIds);
         await this.#waitForParsing(uploadedDocIds);
-        this._logger.info(`Parsing complete for ${uploadedDocIds.length} documents`);
+        this._logger.info(`Parsing complete for ${uploadedDocIds.length} documents in ${Date.now() - parseStart}ms`);
       } catch (err) {
         this._logger.error(`Document parsing failed: ${err.message}`);
         // Docs are uploaded but not parsed — don't count as failure since they may still be usable
@@ -232,7 +245,7 @@ export class RAGFlowProvider extends RAGProvider {
     }
 
     onProgress?.(documents.length, documents.length, `Done: ${indexed} indexed, ${failed} failed`);
-    this._logger.info(`Indexing complete: ${indexed} indexed, ${failed} failed`);
+    this._logger.info(`Indexing complete: ${indexed} indexed, ${failed} failed in ${Date.now() - startTime}ms`);
     return { indexed, failed };
   }
 
@@ -242,6 +255,8 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<boolean>}
    */
   async removeDocument(documentId) {
+    const startTime = Date.now();
+    this._logger.debug(`removeDocument() called — id="${documentId}"`);
     this.#ensureInitialized();
 
     const ragflowDocId = this.#documentIds.get(documentId);
@@ -256,7 +271,7 @@ export class RAGFlowProvider extends RAGProvider {
         body: JSON.stringify({ ids: [ragflowDocId] })
       });
       this.#documentIds.delete(documentId);
-      this._logger.debug(`Removed document: "${documentId}"`);
+      this._logger.debug(`Removed document: "${documentId}" in ${Date.now() - startTime}ms`);
       return true;
     } catch (err) {
       this._logger.error(`Failed to remove document "${documentId}": ${err.message}`);
@@ -269,6 +284,7 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<void>}
    */
   async clearIndex() {
+    const startTime = Date.now();
     this.#ensureInitialized();
     this._logger.info(`Clearing index (${this.#documentIds.size} documents)`);
 
@@ -287,7 +303,7 @@ export class RAGFlowProvider extends RAGProvider {
     }
 
     this.#documentIds.clear();
-    this._logger.info('Index cleared');
+    this._logger.info(`Index cleared in ${Date.now() - startTime}ms`);
   }
 
   // ─── Querying ───────────────────────────────────────────────────────
@@ -302,13 +318,14 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<import('./RAGProvider.mjs').RAGQueryResult>}
    */
   async query(question, options = {}) {
+    const startTime = Date.now();
     this.#ensureInitialized();
 
     if (!question?.trim()) {
       throw new Error('Question cannot be empty');
     }
 
-    this._logger.debug(`Querying RAGFlow: "${question.substring(0, 80)}..."`);
+    this._logger.debug(`Querying RAGFlow: "${question.substring(0, 80)}..." (chatId=${this.#chatId})`);
 
     // Use the OpenAI-compatible chat completions endpoint
     const response = await this.#request(`/api/v1/chats_openai/${this.#chatId}/chat/completions`, {
@@ -321,7 +338,9 @@ export class RAGFlowProvider extends RAGProvider {
       })
     });
 
-    return this.#parseQueryResponse(response);
+    const result = this.#parseQueryResponse(response);
+    this._logger.debug(`query() complete in ${Date.now() - startTime}ms — answer=${result.answer.length} chars, ${result.sources.length} sources`);
+    return result;
   }
 
   // ─── Status ─────────────────────────────────────────────────────────
@@ -331,6 +350,7 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<import('./RAGProvider.mjs').RAGStatus>}
    */
   async getStatus() {
+    this._logger.debug('getStatus() called');
     const status = {
       ready: this.#initialized,
       documentCount: this.#documentIds.size,
@@ -358,6 +378,7 @@ export class RAGFlowProvider extends RAGProvider {
       }
     }
 
+    this._logger.debug(`getStatus() → ready=${status.ready}, docs=${status.documentCount}`);
     return status;
   }
 
@@ -366,6 +387,7 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {string|null}
    */
   getDatasetId() {
+    this._logger.debug(`getDatasetId() → ${this.#datasetId || '(null)'}`);
     return this.#datasetId;
   }
 
@@ -374,6 +396,7 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {string|null}
    */
   getChatId() {
+    this._logger.debug(`getChatId() → ${this.#chatId || '(null)'}`);
     return this.#chatId;
   }
 

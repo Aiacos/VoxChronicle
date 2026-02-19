@@ -161,6 +161,9 @@ class NarrativeExporter {
     const includeMoments = options.includeMoments ?? true;
     const includeTimestamps = options.includeTimestamps ?? false;
 
+    this._logger.debug(
+      `formatChronicle: title="${sessionData.title}", segments=${sessionData.segments?.length || 0}, entities=${this._countEntities(sessionData.entities)}, moments=${sessionData.moments?.length || 0}`
+    );
     this._logger.log(
       `Formatting chronicle: ${sessionData.title} (format: ${format}, style: ${style})`
     );
@@ -275,6 +278,7 @@ class NarrativeExporter {
       summary = `${summary.substring(0, maxLength - 3)}...`;
     }
 
+    this._logger.debug(`generateSummary: produced ${summary.length} chars from ${segments.length} segments`);
     return summary;
   }
 
@@ -314,9 +318,11 @@ class NarrativeExporter {
     const campaignContext = options.campaignContext || this._campaignName || '';
 
     this._logger.log(`Generating AI summary from ${segments.length} segments (style: ${style})`);
+    const aiStartTime = Date.now();
 
     // Build the transcript text for the AI
     const transcriptText = this._buildTranscriptText(segments);
+    this._logger.debug(`generateAISummary: transcript text length=${transcriptText.length} chars`);
 
     // Build the system prompt based on style
     const systemPrompt = this._buildAISummaryPrompt(
@@ -338,8 +344,9 @@ class NarrativeExporter {
       });
 
       const aiSummary = response.choices?.[0]?.message?.content || '';
+      const aiElapsed = Date.now() - aiStartTime;
 
-      this._logger.log(`AI summary generated successfully (${aiSummary.length} chars)`);
+      this._logger.log(`AI summary generated in ${aiElapsed}ms (${aiSummary.length} chars)`);
 
       return {
         summary: aiSummary.trim(),
@@ -436,6 +443,7 @@ class NarrativeExporter {
    * @param {string|OpenAIClient} clientOrKey - OpenAI API key or client instance
    */
   setOpenAIClient(clientOrKey) {
+    this._logger.debug(`setOpenAIClient: type=${typeof clientOrKey}`);
     if (typeof clientOrKey === 'string') {
       this._openAIClient = new OpenAIClient(clientOrKey);
     } else if (clientOrKey instanceof OpenAIClient) {
@@ -456,8 +464,10 @@ class NarrativeExporter {
    * @returns {KankaJournalData} Data ready for KankaService.createJournal()
    */
   export(sessionData, options = {}) {
+    this._logger.debug(`export: title="${sessionData?.title}", format=${options.format || this._defaultFormat}, style=${options.style || this._defaultStyle}`);
     const chronicle = this.formatChronicle(sessionData, options);
 
+    this._logger.debug(`export: produced entry of ${chronicle.entry?.length || 0} chars`);
     return {
       name: chronicle.name,
       entry: chronicle.entry,
@@ -486,7 +496,7 @@ class NarrativeExporter {
 
     this._logger.log(`Exporting batch of ${sessions.length} sessions`);
 
-    return sessions
+    const results = sessions
       .map((session, index) => {
         try {
           return this.export(session, options);
@@ -496,6 +506,9 @@ class NarrativeExporter {
         }
       })
       .filter(Boolean);
+
+    this._logger.debug(`exportBatch: exported ${results.length}/${sessions.length} sessions`);
+    return results;
   }
 
   // ============================================================================
@@ -513,9 +526,11 @@ class NarrativeExporter {
    */
   formatTranscript(segments, options = {}) {
     if (!segments || !Array.isArray(segments) || segments.length === 0) {
+      this._logger.debug('formatTranscript: no segments provided');
       return '';
     }
 
+    this._logger.debug(`formatTranscript: ${segments.length} segments, timestamps=${options.includeTimestamps ?? false}, groupBySpeaker=${options.groupBySpeaker ?? true}`);
     const includeTimestamps = options.includeTimestamps ?? false;
     const groupBySpeaker = options.groupBySpeaker ?? true;
 
@@ -539,7 +554,9 @@ class NarrativeExporter {
       return `**${speaker}:** ${text}`;
     });
 
-    return lines.join('\n\n');
+    const result = lines.join('\n\n');
+    this._logger.debug(`formatTranscript: produced ${result.length} chars`);
+    return result;
   }
 
   // ============================================================================

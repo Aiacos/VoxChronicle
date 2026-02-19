@@ -169,6 +169,7 @@ class SessionOrchestrator {
    */
   setCallbacks(callbacks) {
     this._callbacks = { ...this._callbacks, ...callbacks };
+    this._logger.debug(`Callbacks set: ${Object.keys(callbacks).filter(k => callbacks[k]).join(', ')}`);
   }
 
   _updateState(newState, data = {}) {
@@ -181,6 +182,7 @@ class SessionOrchestrator {
   }
 
   _reportProgress(stage, progress, message = '') {
+    this._logger.debug(`Progress: [${stage}] ${progress}% — ${message || '(no message)'}`);
     if (this._callbacks.onProgress) {
       this._callbacks.onProgress({
         stage,
@@ -231,7 +233,7 @@ class SessionOrchestrator {
 
       await this._audioRecorder.startRecording(sessionOptions.recordingOptions || {});
       this._updateState(SessionState.RECORDING, { session: this._currentSession });
-      this._logger.log(`Session started: ${this._currentSession.title}`);
+      this._logger.log(`Session started: ${this._currentSession.title} (id: ${this._currentSession.id})`);
     } catch (error) {
       this._logger.error('Failed to start session:', error);
       this._handleError(error, 'startSession');
@@ -258,7 +260,8 @@ class SessionOrchestrator {
       this._currentSession.endTime = Date.now();
       this._currentSession.audioBlob = audioBlob;
 
-      this._logger.log(`Recording stopped. Duration: ${this._getSessionDuration()}s`);
+      const blobSizeMB = audioBlob ? (audioBlob.size / (1024 * 1024)).toFixed(2) : '0';
+      this._logger.log(`Recording stopped. Duration: ${this._getSessionDuration()}s, audio: ${blobSizeMB}MB`);
 
       if (options.processImmediately ?? true) {
         await this.processTranscription();
@@ -317,7 +320,7 @@ class SessionOrchestrator {
 
   cancelSession() {
     if (!this.isSessionActive) return;
-    this._logger.log('Cancelling session...');
+    this._logger.log(`Cancelling session (from state: ${this._state})...`);
 
     // Clear live cycle timer to prevent orphaned cycles
     if (this._liveCycleTimer) {
@@ -349,9 +352,11 @@ class SessionOrchestrator {
       throw new Error('Transcription service not configured.');
     }
 
-    this._logger.log('Processing transcription...');
+    const audioSizeMB = (this._currentSession.audioBlob.size / (1024 * 1024)).toFixed(2);
+    this._logger.log(`Processing transcription (audio: ${audioSizeMB}MB)...`);
     this._updateState(SessionState.PROCESSING);
 
+    const transcriptionStart = Date.now();
     try {
       const transcriptResult = await this._transcriptionProcessor.processTranscription(
         this._currentSession.audioBlob,
@@ -364,8 +369,9 @@ class SessionOrchestrator {
       );
 
       this._currentSession.transcript = transcriptResult;
+      const transcriptionMs = Date.now() - transcriptionStart;
       this._logger.log(
-        `Transcription complete: ${transcriptResult.segments?.length || 0} segments`
+        `Transcription complete: ${transcriptResult.segments?.length || 0} segments in ${transcriptionMs}ms`
       );
 
       if (this._options.autoExtractEntities && this._entityProcessor) {
@@ -400,9 +406,10 @@ class SessionOrchestrator {
       return null;
     }
 
-    this._logger.log('Extracting entities...');
+    this._logger.log(`Extracting entities (text: ${this._currentSession.transcript.text.length} chars)...`);
     this._updateState(SessionState.EXTRACTING);
 
+    const extractionStart = Date.now();
     const extractionResult = await this._entityProcessor.extractEntities(
       this._currentSession.transcript.text,
       {
@@ -427,9 +434,10 @@ class SessionOrchestrator {
     };
     this._currentSession.moments = extractionResult.moments || [];
 
+    const extractionMs = Date.now() - extractionStart;
     this._logger.log(
       `Extracted ${extractionResult.totalCount || 0} entities, ` +
-        `${this._currentSession.moments.length} salient moments`
+        `${this._currentSession.moments.length} salient moments in ${extractionMs}ms`
     );
 
     if (this._options.autoExtractRelationships) {
@@ -445,19 +453,20 @@ class SessionOrchestrator {
       return null;
     }
 
-    this._logger.log('Extracting relationships...');
-
     const allEntities = [
       ...(extractionResult.characters || []),
       ...(extractionResult.locations || []),
       ...(extractionResult.items || [])
     ];
 
+    this._logger.log(`Extracting relationships (${allEntities.length} entities)...`);
+
     if (allEntities.length === 0) {
       this._logger.debug('No entities to extract relationships for');
       return [];
     }
 
+    const relStart = Date.now();
     const relationships = await this._entityProcessor.extractRelationships(
       this._currentSession.transcript.text,
       extractionResult,
@@ -470,7 +479,8 @@ class SessionOrchestrator {
 
     if (relationships) {
       this._currentSession.relationships = relationships;
-      this._logger.log(`Extracted ${relationships.length} relationships`);
+      const relMs = Date.now() - relStart;
+      this._logger.log(`Extracted ${relationships.length} relationships in ${relMs}ms`);
     } else {
       this._currentSession.errors.push({
         stage: 'relationship_extraction',
@@ -488,9 +498,11 @@ class SessionOrchestrator {
       return [];
     }
 
-    this._logger.log('Generating images...');
+    const momentCount = this._currentSession.moments?.length || 0;
+    this._logger.log(`Generating images (${momentCount} moments available)...`);
     this._updateState(SessionState.GENERATING_IMAGES);
 
+    const imageStart = Date.now();
     const results = await this._imageProcessor.generateImages(
       this._currentSession.moments || [],
       this._currentSession.entities || {},
@@ -503,7 +515,8 @@ class SessionOrchestrator {
 
     if (results && results.length > 0) {
       this._currentSession.images = results;
-      this._logger.log(`Generated ${results.filter((r) => r.success !== false).length} images`);
+      const imageMs = Date.now() - imageStart;
+      this._logger.log(`Generated ${results.filter((r) => r.success !== false).length} images in ${imageMs}ms`);
     } else {
       this._currentSession.errors.push({
         stage: 'image_generation',
@@ -536,6 +549,7 @@ class SessionOrchestrator {
     // Enrich session with Foundry journal context for entity validation
     await this._enrichSessionWithJournalContext();
 
+    const publishStart = Date.now();
     try {
       const results = await this._kankaPublisher.publishSession(this._currentSession, {
         createEntities: options.createEntities ?? true,
@@ -549,7 +563,8 @@ class SessionOrchestrator {
         this._currentSession.chronicle = results.journal;
       }
 
-      this._logger.log('Published to Kanka successfully');
+      const publishMs = Date.now() - publishStart;
+      this._logger.log(`Published to Kanka in ${publishMs}ms (errors: ${results.errors?.length || 0})`);
       return results;
     } catch (error) {
       this._logger.error('Publishing failed:', error);
@@ -577,7 +592,8 @@ class SessionOrchestrator {
     if (services.sessionAnalytics !== undefined) this._sessionAnalytics = services.sessionAnalytics;
 
     this._initializeProcessors();
-    this._logger.debug('Services updated');
+    const updatedKeys = Object.keys(services).filter(k => services[k] !== undefined);
+    this._logger.debug(`Services updated: ${updatedKeys.join(', ')}`);
   }
 
   setOptions(options) {
@@ -657,6 +673,7 @@ class SessionOrchestrator {
   }
 
   _handleError(error, stage) {
+    this._logger.debug(`Error handler invoked: stage=${stage}, error=${error.message}`);
     this._updateState(SessionState.ERROR, { error, stage });
     if (this._currentSession) {
       this._currentSession.errors.push({ stage, error: error.message, timestamp: Date.now() });
@@ -667,6 +684,7 @@ class SessionOrchestrator {
   }
 
   reset() {
+    this._logger.debug(`Resetting orchestrator (from state: ${this._state}, liveMode: ${this._liveMode})`);
     if (this._liveCycleTimer) {
       clearTimeout(this._liveCycleTimer);
       this._liveCycleTimer = null;
@@ -748,6 +766,8 @@ class SessionOrchestrator {
     }
 
     try {
+      this._logger.debug(`Live session created: ${this._currentSession.id}`);
+
       // Start analytics session so addSegment() works during live cycle
       if (this._sessionAnalytics) {
         this._sessionAnalytics.startSession(this._currentSession.id);
@@ -848,6 +868,7 @@ class SessionOrchestrator {
       return;
     }
 
+    const enrichStart = Date.now();
     try {
       // Find the adventure journal (same logic as _initializeJournalContext)
       let journalId = null;
@@ -882,6 +903,9 @@ class SessionOrchestrator {
         this._currentSession.npcProfiles = npcProfiles;
         this._logger.debug(`NPC profiles loaded for publishing: ${npcProfiles.length} profiles`);
       }
+
+      const enrichMs = Date.now() - enrichStart;
+      this._logger.debug(`Journal enrichment completed in ${enrichMs}ms`);
     } catch (error) {
       this._logger.warn(`Failed to enrich session with journal context: ${error.message}`);
       // Non-fatal: publishing will proceed without journal validation
@@ -900,6 +924,7 @@ class SessionOrchestrator {
 
     this._logger.log('Stopping live mode...');
     this._liveMode = false;
+    const stopStart = Date.now();
 
     if (this._liveCycleTimer) {
       clearTimeout(this._liveCycleTimer);
@@ -929,7 +954,8 @@ class SessionOrchestrator {
       this._updateState(SessionState.IDLE);
       const segmentCount = this._liveTranscript.length;
       const duration = this._currentSession ? this._getSessionDuration() : 0;
-      this._logger.log(`Live mode stopped (${segmentCount} segments, ${duration}s duration)`);
+      const stopMs = Date.now() - stopStart;
+      this._logger.log(`Live mode stopped (${segmentCount} segments, ${duration}s duration, shutdown: ${stopMs}ms)`);
       return this._currentSession;
     } catch (error) {
       this._logger.error('Failed to stop live mode:', error);
@@ -974,6 +1000,7 @@ class SessionOrchestrator {
         const chunkSizeMB = (audioChunk.size / (1024 * 1024)).toFixed(2);
         this._logger.log(`Live cycle: got audio chunk ${chunkSizeMB}MB, transcribing...`);
 
+        const transcribeStart = Date.now();
         const result = await this._transcriptionService.transcribe(audioChunk, {
           language: this._currentSession?.language,
           speakerMap: this._currentSession?.speakerMap
@@ -986,8 +1013,9 @@ class SessionOrchestrator {
         }
 
         if (result?.segments?.length > 0) {
+          const transcribeMs = Date.now() - transcribeStart;
           const textPreview = (result.text || '').substring(0, 120);
-          this._logger.log(`Transcription result: ${result.segments.length} segments, text: "${textPreview}${(result.text || '').length > 120 ? '...' : ''}"`);
+          this._logger.log(`Transcription result: ${result.segments.length} segments in ${transcribeMs}ms, text: "${textPreview}${(result.text || '').length > 120 ? '...' : ''}"`);
 
           this._liveTranscript.push(...result.segments);
 
@@ -1080,15 +1108,17 @@ class SessionOrchestrator {
 
       // Use single analyzeContext() call instead of separate generateSuggestions + detectOffTrack
       // This halves latency by making one API call instead of two
+      const analysisStart = Date.now();
       const analysis = await this._aiAssistant.analyzeContext(fullText, {
         includeSuggestions: true,
         checkOffTrack: true,
         detectRules: false
       });
 
+      const analysisMs = Date.now() - analysisStart;
       if (analysis?.suggestions) {
         this._lastAISuggestions = analysis.suggestions;
-        this._logger.log(`AI suggestions received: ${analysis.suggestions.length} suggestion(s)`);
+        this._logger.log(`AI suggestions received: ${analysis.suggestions.length} suggestion(s) in ${analysisMs}ms`);
         for (const s of analysis.suggestions) {
           const preview = (s.content || '').substring(0, 100);
           this._logger.debug(`  [${s.type || 'unknown'}] ${preview}${(s.content || '').length > 100 ? '...' : ''}`);
@@ -1125,12 +1155,13 @@ class SessionOrchestrator {
   _handleSilence() {
     if (!this._silenceStartTime) {
       this._silenceStartTime = Date.now();
+      this._logger.debug('Silence started');
       return;
     }
 
     const silenceDuration = Date.now() - this._silenceStartTime;
     if (silenceDuration >= this._silenceThreshold) {
-      this._logger.debug('Silence detected for over 30s');
+      this._logger.debug(`Silence threshold reached: ${(silenceDuration / 1000).toFixed(1)}s`);
       if (this._callbacks.onSilenceDetected) {
         this._callbacks.onSilenceDetected(silenceDuration);
       }
@@ -1142,6 +1173,7 @@ class SessionOrchestrator {
    * @param {object} scene - Foundry scene object
    */
   updateChapter(scene) {
+    this._logger.debug(`updateChapter called (scene: ${scene?.name || scene?.id || 'unknown'})`);
     if (this._chapterTracker) {
       this._chapterTracker.updateFromScene(scene);
     }

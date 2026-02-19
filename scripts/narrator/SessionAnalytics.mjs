@@ -157,6 +157,8 @@ export class SessionAnalytics {
    * @returns {string} The session ID
    */
   startSession(sessionId = null) {
+    log.debug(`startSession() entry — sessionId="${sessionId || '(auto)'}", bucketSize=${this._bucketSize}`);
+
     // End any active session first
     if (this._currentSession && this._currentSession.status === 'active') {
       log.info('Ending previous active session before starting new one');
@@ -178,7 +180,7 @@ export class SessionAnalytics {
     this._speakerMetrics = {};
     this._segments = [];
 
-    log.info(`Session started: ${id}`);
+    log.debug(`startSession() exit — session "${id}" active`);
     return id;
   }
 
@@ -212,7 +214,7 @@ export class SessionAnalytics {
       this._sessionHistory = this._sessionHistory.slice(0, this._maxHistorySize);
     }
 
-    log.info(`Session ended: ${this._currentSession.sessionId} (${this._currentSession.duration.toFixed(1)}s)`);
+    log.debug(`endSession() — session "${this._currentSession.sessionId}": duration=${this._currentSession.duration.toFixed(1)}s, speakers=${summary.speakerCount}, segments=${this._segments.length}, dominant="${summary.dominantSpeaker || 'none'}"`);
 
     // Reset current session
     this._currentSession = null;
@@ -271,6 +273,7 @@ export class SessionAnalytics {
     }
 
     this._segments.push(segment);
+    log.debug(`addSegment() — speaker="${segment.speaker}", duration=${(segment.end - segment.start).toFixed(1)}s, total segments: ${this._segments.length}`);
 
     // Initialize speaker metrics if this is a new speaker
     if (!this._speakerMetrics[segment.speaker]) {
@@ -399,6 +402,7 @@ export class SessionAnalytics {
    */
   getSessionSummary() {
     if (!this._currentSession) {
+      log.debug('getSessionSummary() — no current session');
       return null;
     }
 
@@ -407,7 +411,7 @@ export class SessionAnalytics {
     const speakerStats = this.getSpeakerStats();
     const totalSpeakingTime = speakerStats.reduce((sum, s) => sum + s.speakingTime, 0);
 
-    return {
+    const summary = {
       metadata: { ...this._currentSession },
       speakers: { ...this._speakerMetrics },
       totalSpeakingTime,
@@ -417,6 +421,9 @@ export class SessionAnalytics {
         speakerStats.length > 0 ? speakerStats[speakerStats.length - 1].speakerId : null,
       timeline: this.getTimeline()
     };
+
+    log.debug(`getSessionSummary() — speakers=${summary.speakerCount}, totalSpeakingTime=${totalSpeakingTime.toFixed(1)}s, timeline buckets=${summary.timeline.length}`);
+    return summary;
   }
 
   // ---------------------------------------------------------------------------

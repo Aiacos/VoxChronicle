@@ -123,6 +123,9 @@ export class CompendiumParser {
    * @returns {Promise<ParsedCompendium[]>} Array of parsed journal compendiums
    */
   async parseJournalCompendiums() {
+    this._log.debug('parseJournalCompendiums() entry');
+    const _startTime = performance.now();
+
     if (!game.packs) {
       this._log.warn('Compendium packs not available');
       return [];
@@ -145,7 +148,8 @@ export class CompendiumParser {
     }
 
     this._journalCompendiums = results;
-    this._log.info(`Parsed ${results.length} journal compendiums with content`);
+    const totalEntries = results.reduce((sum, c) => sum + c.entries.length, 0);
+    this._log.debug(`parseJournalCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
 
     return results;
   }
@@ -157,6 +161,9 @@ export class CompendiumParser {
    * @returns {Promise<ParsedCompendium[]>} Array of parsed rules compendiums
    */
   async parseRulesCompendiums() {
+    this._log.debug('parseRulesCompendiums() entry');
+    const _startTime = performance.now();
+
     if (!game.packs) {
       this._log.warn('Compendium packs not available');
       return [];
@@ -204,7 +211,8 @@ export class CompendiumParser {
     }
 
     this._rulesCompendiums = results;
-    this._log.info(`Parsed ${results.length} rules compendiums with content`);
+    const totalEntries = results.reduce((sum, c) => sum + c.entries.length, 0);
+    this._log.debug(`parseRulesCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
 
     return results;
   }
@@ -257,6 +265,8 @@ export class CompendiumParser {
     if (!query || typeof query !== 'string') {
       return [];
     }
+
+    this._log.debug(`search() entry — query="${query}", cached compendiums: ${this._cachedContent.size}`);
 
     const normalizedQuery = query.toLowerCase().trim();
     const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
@@ -537,6 +547,9 @@ export class CompendiumParser {
    * @throws {Error} If the pack is not cached
    */
   async getChunksForEmbedding(packId, options = {}) {
+    this._log.debug(`getChunksForEmbedding() entry — packId="${packId}"`);
+    const _chunkStart = performance.now();
+
     const cached = this._cachedContent.get(packId);
     if (!cached) {
       throw new Error(
@@ -588,8 +601,8 @@ export class CompendiumParser {
     }
 
     this._log.debug(
-      `Extracted ${allChunks.length} chunks from compendium "${cached.name}" ` +
-      `(${cached.entries.length} entries, chunkSize=${chunkSize}, overlap=${overlap})`
+      `getChunksForEmbedding() exit — ${allChunks.length} chunks from "${cached.name}" ` +
+      `(${cached.entries.length} entries, chunkSize=${chunkSize}, overlap=${overlap}), ${(performance.now() - _chunkStart).toFixed(1)}ms`
     );
 
     return allChunks;
@@ -677,7 +690,8 @@ export class CompendiumParser {
     const packName = pack.metadata?.label || pack.title || packId;
     const documentName = pack.documentName;
 
-    this._log.debug(`Parsing compendium: ${packName} (${documentName})`);
+    this._log.debug(`_parseCompendiumPack() entry — "${packName}" (${documentName})`);
+    const _parseStart = performance.now();
 
     // Get the index first (lightweight operation)
     const index = await pack.getIndex();
@@ -731,7 +745,7 @@ export class CompendiumParser {
     this._buildKeywordIndex(packId, entries);
 
     this._log.debug(
-      `Parsed ${entries.length} entries, ${totalCharacters} characters from "${packName}"`
+      `_parseCompendiumPack() exit — ${entries.length} entries, ${totalCharacters} chars from "${packName}", ${(performance.now() - _parseStart).toFixed(1)}ms`
     );
 
     return parsedCompendium;

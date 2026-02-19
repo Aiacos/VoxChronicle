@@ -99,6 +99,9 @@ class AudioChunker {
       throw new Error('Invalid audio blob provided');
     }
 
+    const sizeMB = AudioUtils.getBlobSizeMB(audioBlob);
+    this._logger.debug(`splitIfNeeded called: ${sizeMB}MB, needs chunking: ${this.needsChunking(audioBlob)}`);
+
     if (!this.needsChunking(audioBlob)) {
       this._logger.debug('Audio blob is within size limit, no chunking needed');
       return [audioBlob];
@@ -177,6 +180,8 @@ class AudioChunker {
       throw new Error('Invalid recording chunks array');
     }
 
+    const totalSize = recordingChunks.reduce((sum, c) => sum + c.size, 0);
+    this._logger.debug(`splitFromChunks called: ${recordingChunks.length} chunks, total ${(totalSize / 1024 / 1024).toFixed(2)}MB, mimeType: ${mimeType}`);
     this._logger.debug(`Processing ${recordingChunks.length} recording chunks`);
 
     const resultChunks = [];
@@ -289,6 +294,8 @@ class AudioChunker {
    * @returns {Promise<Array<Blob>>} Array of overlapping audio blob chunks
    */
   async splitWithOverlap(audioBlob, overlapBytes = 0) {
+    this._logger.debug(`splitWithOverlap called: ${audioBlob?.size ? AudioUtils.getBlobSizeMB(audioBlob) + 'MB' : 'invalid'}, overlap: ${overlapBytes} bytes`);
+
     if (!audioBlob || !(audioBlob instanceof Blob)) {
       throw new Error('Invalid audio blob provided');
     }

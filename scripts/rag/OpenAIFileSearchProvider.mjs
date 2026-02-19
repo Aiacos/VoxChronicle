@@ -82,6 +82,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {Promise<void>}
    */
   async initialize(config) {
+    const startTime = Date.now();
+    this._logger.debug(`initialize() called — vectorStoreId="${config?.vectorStoreId || '(none)'}", storeName="${config?.storeName || '(default)'}"`);
+
     if (!config?.client) {
       throw new Error('OpenAIFileSearchProvider requires an OpenAIClient instance (config.client)');
     }
@@ -96,6 +99,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
         this.#vectorStoreId = config.vectorStoreId;
         this._logger.info(`Reusing vector store: ${this.#vectorStoreId}`);
         this.#initialized = true;
+        this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms (reused store)`);
         return;
       }
       this._logger.warn(`Vector store ${config.vectorStoreId} not found or expired, creating new one`);
@@ -106,6 +110,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     this.#vectorStoreId = await this.#createVectorStore(storeName);
     this._logger.info(`Created vector store: ${this.#vectorStoreId}`);
     this.#initialized = true;
+    this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms (new store)`);
   }
 
   /**
@@ -113,8 +118,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {Promise<void>}
    */
   async destroy() {
+    const startTime = Date.now();
     this.#ensureInitialized();
-    this._logger.info('Destroying OpenAI File Search provider');
+    this._logger.info(`Destroying OpenAI File Search provider — ${this.#fileIds.size} files, vectorStore=${this.#vectorStoreId}`);
 
     // Delete all uploaded files
     const deletePromises = [];
@@ -140,6 +146,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
 
     this.#vectorStoreId = null;
     this.#initialized = false;
+    this._logger.debug(`destroy() complete in ${Date.now() - startTime}ms`);
   }
 
   // ─── Indexing ───────────────────────────────────────────────────────
@@ -153,9 +160,11 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {Promise<{indexed: number, failed: number}>}
    */
   async indexDocuments(documents, options = {}) {
+    const startTime = Date.now();
     this.#ensureInitialized();
 
     if (!documents?.length) {
+      this._logger.debug('indexDocuments() called with empty documents array');
       return { indexed: 0, failed: 0 };
     }
 
@@ -163,7 +172,8 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     let indexed = 0;
     let failed = 0;
 
-    this._logger.info(`Indexing ${documents.length} documents`);
+    const totalContentSize = documents.reduce((sum, d) => sum + (d.content?.length || 0), 0);
+    this._logger.info(`Indexing ${documents.length} documents (total content: ${totalContentSize} chars)`);
 
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i];
@@ -178,10 +188,14 @@ export class OpenAIFileSearchProvider extends RAGProvider {
         }
 
         // Upload file
+        const uploadStart = Date.now();
         const fileId = await this.#uploadDocument(doc);
+        this._logger.debug(`Upload took ${Date.now() - uploadStart}ms for "${doc.title}" (${doc.content?.length || 0} chars)`);
 
         // Add to vector store
+        const processStart = Date.now();
         await this.#addFileToVectorStore(fileId);
+        this._logger.debug(`Vector store processing took ${Date.now() - processStart}ms for "${doc.title}"`);
 
         this.#fileIds.set(doc.id, fileId);
         indexed++;
@@ -193,7 +207,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     }
 
     onProgress?.(documents.length, documents.length, `Done: ${indexed} indexed, ${failed} failed`);
-    this._logger.info(`Indexing complete: ${indexed} indexed, ${failed} failed`);
+    this._logger.info(`Indexing complete: ${indexed} indexed, ${failed} failed in ${Date.now() - startTime}ms`);
     return { indexed, failed };
   }
 
@@ -203,6 +217,8 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {Promise<boolean>}
    */
   async removeDocument(documentId) {
+    const startTime = Date.now();
+    this._logger.debug(`removeDocument() called — id="${documentId}"`);
     this.#ensureInitialized();
 
     const fileId = this.#fileIds.get(documentId);
@@ -216,7 +232,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
       await this.#removeFileFromVectorStore(fileId);
       await this.#deleteFile(fileId);
       this.#fileIds.delete(documentId);
-      this._logger.debug(`Removed document: "${documentId}"`);
+      this._logger.debug(`Removed document: "${documentId}" in ${Date.now() - startTime}ms`);
       return true;
     } catch (err) {
       this._logger.error(`Failed to remove document "${documentId}": ${err.message}`);
@@ -229,6 +245,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {Promise<void>}
    */
   async clearIndex() {
+    const startTime = Date.now();
     this.#ensureInitialized();
     this._logger.info(`Clearing index (${this.#fileIds.size} documents)`);
 
@@ -244,9 +261,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     this.#fileIds.clear();
 
     if (errors.length > 0) {
-      this._logger.warn(`Cleared index with ${errors.length} errors: ${errors.join('; ')}`);
+      this._logger.warn(`Cleared index with ${errors.length} errors in ${Date.now() - startTime}ms: ${errors.join('; ')}`);
     } else {
-      this._logger.info('Index cleared successfully');
+      this._logger.info(`Index cleared successfully in ${Date.now() - startTime}ms`);
     }
   }
 
@@ -263,6 +280,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {Promise<import('./RAGProvider.mjs').RAGQueryResult>}
    */
   async query(question, options = {}) {
+    const startTime = Date.now();
     this.#ensureInitialized();
 
     if (!question?.trim()) {
@@ -272,7 +290,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     const maxResults = options.maxResults ?? 5;
     const model = options.model || this.#model;
 
-    this._logger.debug(`Querying RAG: "${question.substring(0, 80)}..." (max ${maxResults} results)`);
+    this._logger.debug(`Querying RAG: "${question.substring(0, 80)}..." (max ${maxResults} results, model=${model})`);
 
     const requestBody = {
       model,
@@ -290,7 +308,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     }
 
     const response = await this.#client.post('/responses', requestBody);
-    return this.#parseQueryResponse(response);
+    const result = this.#parseQueryResponse(response);
+    this._logger.debug(`query() complete in ${Date.now() - startTime}ms — answer=${result.answer.length} chars, ${result.sources.length} sources`);
+    return result;
   }
 
   // ─── Status ─────────────────────────────────────────────────────────
@@ -300,6 +320,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {Promise<import('./RAGProvider.mjs').RAGStatus>}
    */
   async getStatus() {
+    this._logger.debug('getStatus() called');
     const status = {
       ready: this.#initialized,
       documentCount: this.#fileIds.size,
@@ -323,6 +344,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
       }
     }
 
+    this._logger.debug(`getStatus() → ready=${status.ready}, docs=${status.documentCount}`);
     return status;
   }
 
@@ -331,6 +353,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    * @returns {string|null}
    */
   getVectorStoreId() {
+    this._logger.debug(`getVectorStoreId() → ${this.#vectorStoreId || '(null)'}`);
     return this.#vectorStoreId;
   }
 

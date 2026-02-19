@@ -157,7 +157,8 @@ export class JournalParser {
       );
     }
 
-    this._logger.debug(`Parsing journal: ${journal.name}`);
+    this._logger.debug(`parseJournal() entry — "${journal.name}" (${journalId})`);
+    const _parseStart = performance.now();
 
     const pages = [];
     let totalCharacters = 0;
@@ -189,7 +190,7 @@ export class JournalParser {
     // Build keyword index for the journal
     this._buildKeywordIndex(journalId, pages);
 
-    this._logger.debug(`Parsed ${pages.length} pages, ${totalCharacters} characters`);
+    this._logger.debug(`parseJournal() exit — ${pages.length} pages, ${totalCharacters} chars from "${journal.name}", ${(performance.now() - _parseStart).toFixed(1)}ms`);
 
     return parsedJournal;
   }
@@ -201,6 +202,9 @@ export class JournalParser {
    * @returns {Promise<ParsedJournal[]>} Array of all parsed journals
    */
   async parseAll() {
+    this._logger.debug('parseAll() entry');
+    const _startTime = performance.now();
+
     if (!game.journal) {
       this._logger.warn('Journal collection not available');
       return [];
@@ -218,7 +222,8 @@ export class JournalParser {
       }
     }
 
-    this._logger.debug(`Parsed ${results.length} journals total`);
+    const totalPages = results.reduce((sum, j) => sum + j.pages.length, 0);
+    this._logger.debug(`parseAll() exit — ${results.length} journals, ${totalPages} pages total, ${(performance.now() - _startTime).toFixed(1)}ms`);
     return results;
   }
 
@@ -311,6 +316,8 @@ export class JournalParser {
    * @returns {ChapterStructure|null} The chapter structure or null if journal is not cached
    */
   extractChapterStructure(journalId) {
+    this._logger.debug(`extractChapterStructure() entry — journalId="${journalId}"`);
+
     const cached = this._cachedContent.get(journalId);
     if (!cached) {
       this._logger.warn(`Journal not cached: ${journalId}`);
@@ -489,6 +496,8 @@ export class JournalParser {
    * @returns {Array<{name: string, description: string, personality: string, pages: string[]}>} Array of NPC profile objects
    */
   extractNPCProfiles(journalId) {
+    this._logger.debug(`extractNPCProfiles() entry — journalId="${journalId}"`);
+
     const cached = this._cachedContent.get(journalId);
     if (!cached) {
       this._logger.warn(`Journal not cached: ${journalId}`);
@@ -699,6 +708,9 @@ export class JournalParser {
    * @throws {Error} If the journal ID is invalid or the journal is not found
    */
   async getChunksForEmbedding(journalId, options = {}) {
+    this._logger.debug(`getChunksForEmbedding() entry — journalId="${journalId}"`);
+    const _chunkStart = performance.now();
+
     // Ensure journal is parsed and cached
     const parsedJournal = await this.parseJournal(journalId);
 
@@ -744,8 +756,8 @@ export class JournalParser {
     }
 
     this._logger.debug(
-      `Extracted ${allChunks.length} chunks from journal "${parsedJournal.name}" ` +
-      `(${parsedJournal.pages.length} pages, chunkSize=${chunkSize}, overlap=${overlap})`
+      `getChunksForEmbedding() exit — ${allChunks.length} chunks from "${parsedJournal.name}" ` +
+      `(${parsedJournal.pages.length} pages, chunkSize=${chunkSize}, overlap=${overlap}), ${(performance.now() - _chunkStart).toFixed(1)}ms`
     );
 
     return allChunks;

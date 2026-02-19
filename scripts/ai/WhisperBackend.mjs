@@ -200,6 +200,8 @@ class WhisperBackend {
    * @returns {Promise<boolean>} True if backend is healthy and accessible
    */
   async healthCheck(options = {}) {
+    this._logger.debug('healthCheck called', { timeout: options.timeout, useCache: options.useCache });
+    const t0 = Date.now();
     const timeout = options.timeout || HEALTH_CHECK_TIMEOUT_MS;
     const useCache = options.useCache ?? true;
     const cacheMaxAge = options.cacheMaxAge || 30000;
@@ -287,6 +289,9 @@ class WhisperBackend {
    * @returns {Promise<object>} Transcription result
    */
   async transcribe(audioBlob, options = {}) {
+    this._logger.debug('transcribe called', { blobSize: audioBlob?.size, language: options.language, task: options.task });
+    const t0 = Date.now();
+
     if (!audioBlob || !(audioBlob instanceof Blob)) {
       throw new WhisperError(
         'Invalid audio input: expected Blob or File',
@@ -336,10 +341,10 @@ class WhisperBackend {
         body: formData
       });
 
-      this._logger.log('Local transcription completed successfully');
+      this._logger.log(`Local transcription completed successfully in ${Date.now() - t0}ms`);
       return response;
     } catch (error) {
-      this._logger.error('Local transcription failed:', error.message);
+      this._logger.error(`Local transcription failed after ${Date.now() - t0}ms: ${error.message}`, { blobSize: audioBlob?.size });
       throw error;
     }
   }
@@ -355,6 +360,8 @@ class WhisperBackend {
    */
   async _requestWithRetry(endpoint, options = {}, retryCount = 0) {
     const url = `${this._baseUrl}${endpoint}`;
+    const t0 = Date.now();
+    this._logger.debug(`_requestWithRetry ${options.method || 'GET'} ${endpoint}`, { retryCount });
 
     try {
       const controller = new AbortController();
@@ -369,6 +376,7 @@ class WhisperBackend {
 
       // Handle response
       if (!response.ok) {
+        this._logger.debug(`_requestWithRetry ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`);
         const errorData = await this._parseErrorResponse(response);
         throw new WhisperError(
           errorData.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -377,6 +385,8 @@ class WhisperBackend {
           errorData
         );
       }
+
+      this._logger.debug(`_requestWithRetry ${endpoint} completed in ${Date.now() - t0}ms, status: ${response.status}`);
 
       // Parse response based on content type
       const contentType = response.headers.get('content-type');
@@ -504,6 +514,8 @@ class WhisperBackend {
    * @returns {Promise<object | null>} Server info or null if not supported
    */
   async getServerInfo() {
+    this._logger.debug('getServerInfo called');
+    const t0 = Date.now();
     try {
       const response = await this._requestWithRetry('/info', {
         method: 'GET',
@@ -512,10 +524,11 @@ class WhisperBackend {
         }
       });
 
+      this._logger.debug(`getServerInfo completed in ${Date.now() - t0}ms`);
       return response;
     } catch (error) {
       // Info endpoint may not exist on all backends
-      this._logger.debug('Server info not available:', error.message);
+      this._logger.debug(`Server info not available after ${Date.now() - t0}ms:`, error.message);
       return null;
     }
   }

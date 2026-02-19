@@ -309,6 +309,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this._logger.debug('_onRender called', { mode: this._mode, entityCount: this._getTotalEntityCount() });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
@@ -1287,6 +1288,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
 
     if (section) {
       section.classList.toggle('collapsed');
+      this._logger.debug('Section toggled');
     }
   }
 
@@ -1387,6 +1389,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<void>}
    */
   async close(options = {}) {
+    this._logger.debug('EntityPreview closing', { mode: this._mode, created: this._results.created.length, failed: this._results.failed.length });
     this.#listenerController?.abort();
     if (this._renderTimeout !== null) {
       clearTimeout(this._renderTimeout);
@@ -1400,6 +1403,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    * Reset the preview state
    */
   reset() {
+    this._logger.debug('Resetting EntityPreview state');
     this._entities = { characters: [], locations: [], items: [] };
     this._relationships = [];
     this._selections.clear();

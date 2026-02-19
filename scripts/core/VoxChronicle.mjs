@@ -158,6 +158,7 @@ class VoxChronicle {
       }
 
       // Initialize audio recorder (always available)
+      logger.debug('Creating AudioRecorder...');
       this.audioRecorder = new AudioRecorder(audioSettings);
 
       // Initialize transcription service using factory
@@ -174,12 +175,14 @@ class VoxChronicle {
 
       // Initialize other OpenAI services (if API key configured)
       if (openaiApiKey) {
+        logger.debug('Creating ImageGenerationService and EntityExtractor...');
         this.imageGenerationService = new ImageGenerationService(openaiApiKey);
         this.entityExtractor = new EntityExtractor(openaiApiKey);
       }
 
       // Initialize Kanka services (if configured)
       if (kankaApiToken && kankaCampaignId) {
+        logger.debug('Creating KankaService and NarrativeExporter...');
         this.kankaService = new KankaService(kankaApiToken, kankaCampaignId);
         this.narrativeExporter = new NarrativeExporter();
         // Set OpenAI client on narrative exporter for AI summaries
@@ -189,6 +192,7 @@ class VoxChronicle {
       }
 
       // Initialize session orchestrator with available services
+      logger.debug('Creating SessionOrchestrator...');
       this.sessionOrchestrator = new SessionOrchestrator({
         audioRecorder: this.audioRecorder,
         transcriptionService: this.transcriptionService,
@@ -213,6 +217,7 @@ class VoxChronicle {
       await vocabularyDictionary.initialize();
 
       // Initialize Narrator Master services
+      logger.debug('Creating Narrator services (JournalParser, CompendiumParser, ChapterTracker, SceneDetector, SessionAnalytics)...');
       this.journalParser = new JournalParser();
       this.compendiumParser = new CompendiumParser();
       this.chapterTracker = new ChapterTracker({ journalParser: this.journalParser });
@@ -221,6 +226,7 @@ class VoxChronicle {
 
       // Initialize AI-dependent narrator services (if OpenAI configured)
       if (openaiApiKey) {
+        logger.debug('Creating AIAssistant with OpenAI client...');
         this.aiAssistant = new AIAssistant({
           openaiClient: new OpenAIClient(openaiApiKey),
           primaryLanguage: transcriptionLanguage || 'en'
@@ -437,6 +443,7 @@ class VoxChronicle {
    * @returns {object} Status of each service
    */
   getServicesStatus() {
+    logger.debug('getServicesStatus called');
     return {
       initialized: this.isInitialized,
       services: {

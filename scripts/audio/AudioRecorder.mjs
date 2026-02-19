@@ -315,6 +315,7 @@ class AudioRecorder {
     }
 
     const source = options.source || CaptureSource.MICROPHONE;
+    this._logger.debug('startRecording called', { source, timeslice: options.timeslice, echoCancellation: options.echoCancellation });
     this._logger.log(`Starting recording from source: ${source}`);
 
     try {
@@ -388,6 +389,7 @@ class AudioRecorder {
           this._logger.log(
             `Recording stopped. Duration: ${AudioUtils.formatDuration(duration)}, Size: ${sizeMB}MB`
           );
+          this._logger.debug('stopRecording result', { sizeMB, mimeType, durationSec: duration });
 
           // Cleanup resources
           this._cleanup();
@@ -497,11 +499,13 @@ class AudioRecorder {
    */
   async getLatestChunk() {
     if (this._state !== RecordingState.RECORDING || !this._mediaRecorder) {
+      this._logger.debug('getLatestChunk: no active recording, returning null');
       return null;
     }
 
     // Rotate: stop current recorder → collect valid blob → start fresh recorder
     const blob = await this._rotateRecorder();
+    this._logger.debug(`getLatestChunk result: ${blob ? `${(blob.size / 1024).toFixed(1)}KB` : 'null'}`);
     return blob;
   }
 

@@ -986,7 +986,7 @@ class Settings {
    * @static
    */
   static getRAGSettings() {
-    return {
+    const settings = {
       enabled: Settings.get('ragEnabled'),
       provider: Settings.get('ragProvider'),
       maxResults: Settings.get('ragMaxResults'),
@@ -1000,6 +1000,8 @@ class Settings {
       ragflowDatasetId: Settings.get('ragflowDatasetId'),
       ragflowChatId: Settings.get('ragflowChatId')
     };
+    logger.debug('getRAGSettings', { enabled: settings.enabled, provider: settings.provider, hasVectorStoreId: !!settings.vectorStoreId });
+    return settings;
   }
 
   /**
@@ -1020,15 +1022,22 @@ class Settings {
    * @static
    */
   static isRAGConfigured() {
-    if (!Settings.get('ragEnabled')) return false;
+    if (!Settings.get('ragEnabled')) {
+      logger.debug('isRAGConfigured: RAG disabled');
+      return false;
+    }
     const provider = Settings.get('ragProvider');
     if (provider === 'ragflow') {
       const url = Settings.get('ragflowBaseUrl');
       const key = Settings.get('ragflowApiKey');
-      return !!(url?.trim() && key?.trim());
+      const configured = !!(url?.trim() && key?.trim());
+      logger.debug(`isRAGConfigured: ragflow, configured=${configured}`);
+      return configured;
     }
     // Default: OpenAI File Search requires OpenAI API key
-    return Settings.isOpenAIConfigured();
+    const configured = Settings.isOpenAIConfigured();
+    logger.debug(`isRAGConfigured: openai-file-search, configured=${configured}`);
+    return configured;
   }
 }
 

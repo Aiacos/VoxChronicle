@@ -79,6 +79,9 @@ class TranscriptionFactory {
    * });
    */
   static async create(config) {
+    this._logger.debug('create called', { mode: config?.mode, hasApiKey: Boolean(config?.openaiApiKey), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
+    const t0 = Date.now();
+
     if (!config || typeof config !== 'object') {
       throw new Error('TranscriptionFactory.create() requires a configuration object');
     }
@@ -88,20 +91,28 @@ class TranscriptionFactory {
 
     this._logger.debug(`Creating transcription service with mode: ${mode}`);
 
+    let service;
     switch (mode) {
       case TranscriptionMode.API:
-        return this._createApiService(config.openaiApiKey, options);
+        service = this._createApiService(config.openaiApiKey, options);
+        break;
 
       case TranscriptionMode.LOCAL:
-        return this._createLocalService(config.whisperBackendUrl, options);
+        service = this._createLocalService(config.whisperBackendUrl, options);
+        break;
 
       case TranscriptionMode.AUTO:
-        return this._createAutoService(config.openaiApiKey, config.whisperBackendUrl, options);
+        service = await this._createAutoService(config.openaiApiKey, config.whisperBackendUrl, options);
+        break;
 
       default:
         this._logger.warn(`Unknown transcription mode: ${mode}, falling back to 'api'`);
-        return this._createApiService(config.openaiApiKey, options);
+        service = this._createApiService(config.openaiApiKey, options);
+        break;
     }
+
+    this._logger.debug(`create completed in ${Date.now() - t0}ms, service: ${service.constructor.name}`);
+    return service;
   }
 
   /**
@@ -114,6 +125,7 @@ class TranscriptionFactory {
    * @private
    */
   static _createApiService(apiKey, options = {}) {
+    this._logger.debug('_createApiService called');
     if (!apiKey) {
       throw new Error('OpenAI API key is required for API transcription mode');
     }
@@ -133,6 +145,7 @@ class TranscriptionFactory {
    * @private
    */
   static _createLocalService(backendUrl, options = {}) {
+    this._logger.debug('_createLocalService called', { backendUrl });
     if (!backendUrl) {
       throw new Error('Whisper backend URL is required for local transcription mode');
     }
@@ -154,6 +167,7 @@ class TranscriptionFactory {
    * @private
    */
   static async _createAutoService(apiKey, backendUrl, options = {}) {
+    this._logger.debug('_createAutoService called', { hasApiKey: Boolean(apiKey), backendUrl });
     this._logger.log('Auto mode: checking local Whisper backend availability...');
 
     // Try local service first
@@ -206,15 +220,21 @@ class TranscriptionFactory {
    * }
    */
   static async checkLocalBackend(backendUrl, options = {}) {
+    this._logger.debug('checkLocalBackend called', { backendUrl });
+    const t0 = Date.now();
+
     if (!backendUrl) {
+      this._logger.debug('checkLocalBackend: no URL provided');
       return false;
     }
 
     try {
       const localService = new LocalWhisperService(backendUrl);
-      return await localService.healthCheck(options);
+      const result = await localService.healthCheck(options);
+      this._logger.debug(`checkLocalBackend completed in ${Date.now() - t0}ms`, { healthy: result });
+      return result;
     } catch (error) {
-      this._logger.debug(`Backend check failed: ${error.message}`);
+      this._logger.debug(`Backend check failed after ${Date.now() - t0}ms: ${error.message}`);
       return false;
     }
   }
@@ -235,6 +255,7 @@ class TranscriptionFactory {
    * // Returns 'auto' since both are available
    */
   static getRecommendedMode(config) {
+    this._logger.debug('getRecommendedMode called', { hasApiKey: Boolean(config?.openaiApiKey), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
     const hasApiKey = Boolean(config.openaiApiKey);
     const hasBackendUrl = Boolean(config.whisperBackendUrl);
 

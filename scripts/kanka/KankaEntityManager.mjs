@@ -241,8 +241,10 @@ class KankaEntityManager {
     }
 
     this._logger.log(`Creating ${entityType}: ${entityData.name}`);
+    const createStartTime = Date.now();
     const response = await this._client.post(endpoint, payload);
-    this._logger.log(`${entityType} created with ID: ${response.data?.id}`);
+    const createElapsed = Date.now() - createStartTime;
+    this._logger.log(`${entityType} created with ID: ${response.data?.id} in ${createElapsed}ms`);
 
     return response.data;
   }
@@ -262,6 +264,7 @@ class KankaEntityManager {
     const endpoint = this._buildCampaignEndpoint(entityType, entityId);
     this._logger.debug(`Fetching ${entityType}: ${entityId}`);
     const response = await this._client.get(endpoint);
+    this._logger.debug(`Fetched ${entityType}/${entityId}: "${response.data?.name}"`);
     return response.data;
   }
 
@@ -282,8 +285,9 @@ class KankaEntityManager {
    */
   async update(entityType, entityId, entityData) {
     const endpoint = this._buildCampaignEndpoint(entityType, entityId);
-    this._logger.debug(`Updating ${entityType}: ${entityId}`);
+    this._logger.debug(`Updating ${entityType}: ${entityId}, fields=[${Object.keys(entityData || {}).join(', ')}]`);
     const response = await this._client.put(endpoint, entityData);
+    this._logger.debug(`Updated ${entityType}/${entityId}: "${response.data?.name}"`);
     return response.data;
   }
 
@@ -351,11 +355,13 @@ class KankaEntityManager {
     this._logger.debug(`Fetching ${entityType} list`);
     const response = await this._client.get(endpoint);
 
-    return {
+    const result = {
       data: response.data || [],
       meta: response.meta || {},
       links: response.links || {}
     };
+    this._logger.debug(`Listed ${entityType}: ${result.data.length} entities (page ${result.meta.current_page || '?'}/${result.meta.last_page || '?'})`);
+    return result;
   }
 
   // ============================================================================
@@ -447,8 +453,10 @@ class KankaEntityManager {
     const endpoint = this._buildCampaignEndpoint(entityType, entityId);
 
     this._logger.log(`Uploading image to ${entityType}: ${entityId}`);
+    const imgUploadStartTime = Date.now();
     const response = await this._client.postFormData(endpoint, formData);
-    this._logger.log(`Image uploaded successfully to ${entityType}: ${entityId}`);
+    const imgUploadElapsed = Date.now() - imgUploadStartTime;
+    this._logger.log(`Image uploaded to ${entityType}/${entityId} in ${imgUploadElapsed}ms`);
 
     return response.data;
   }
@@ -540,10 +548,12 @@ class KankaEntityManager {
    * console.log(`Cache expires after ${stats.expiryMs}ms`);
    */
   getCacheStats() {
-    return {
+    const stats = {
       entries: this._searchCache.size,
       expiryMs: this._cacheExpiryMs
     };
+    this._logger.debug(`getCacheStats: ${stats.entries} entries, expiry=${stats.expiryMs}ms`);
+    return stats;
   }
 
   // ============================================================================
@@ -650,6 +660,7 @@ class KankaEntityManager {
     this._searchCache.set(cacheKey, results);
     this._cacheTimestamps.set(cacheKey, Date.now());
 
+    this._logger.debug(`searchEntities: found ${results.length} results for "${query}" (type=${entityType || 'all'})`);
     return results;
   }
 }

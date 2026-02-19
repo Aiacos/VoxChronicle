@@ -167,8 +167,10 @@ export class RulesReference {
    * @returns {Promise<void>}
    */
   async loadRules() {
+    this._log.debug('loadRules() entry');
     // TODO: Implementation
     this._isLoaded = true;
+    this._log.debug('loadRules() exit — rules loaded');
   }
 
   /**
@@ -180,7 +182,9 @@ export class RulesReference {
    * @returns {Promise<SearchResult[]>} Array of search results
    */
   async searchRules(_query, _options = {}) {
+    this._log.debug(`searchRules() entry — query="${_query}"`);
     // TODO: Implementation
+    this._log.debug('searchRules() exit — 0 results (not implemented)');
     return [];
   }
 
@@ -190,7 +194,9 @@ export class RulesReference {
    * @returns {Promise<RuleEntry|null>} The rule entry or null if not found
    */
   async getRuleById(_ruleId) {
+    this._log.debug(`getRuleById() entry — ruleId="${_ruleId}"`);
     // TODO: Implementation
+    this._log.debug('getRuleById() exit — null (not implemented)');
     return null;
   }
 
@@ -208,6 +214,7 @@ export class RulesReference {
    * @returns {Promise<void>}
    */
   async reloadRules() {
+    this._log.debug('reloadRules() — clearing cache and reloading');
     this._rulesCache.clear();
     this._searchIndex.clear();
     this._recentRules = [];
@@ -245,6 +252,8 @@ export class RulesReference {
    * @property {string} [extractedTopic] - The specific topic/mechanic being asked about
    */
   detectRulesQuestion(text) {
+    this._log.debug(`detectRulesQuestion() entry — text length: ${(text || '').length}`);
+
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return {
         isRulesQuestion: false,
@@ -304,13 +313,16 @@ export class RulesReference {
       confidence = Math.min(confidence + 0.2, 1.0);
     }
 
-    return {
+    const result = {
       isRulesQuestion: confidence > 0.3,
       confidence: Math.min(confidence, 1.0),
       detectedTerms,
       questionType,
       extractedTopic
     };
+
+    this._log.debug(`detectRulesQuestion() exit — isRulesQuestion=${result.isRulesQuestion}, confidence=${result.confidence.toFixed(2)}, type=${questionType}, terms=[${detectedTerms.join(',')}]`);
+    return result;
   }
 
   /**
@@ -526,8 +538,9 @@ export class RulesReference {
     const normalizedQuery = query.toLowerCase().trim();
     const limit = options.limit || this._resultLimit;
     const results = [];
+    const _searchStart = performance.now();
 
-    this._log.debug(`Searching compendiums for: "${query}"`);
+    this._log.debug(`searchCompendiums() entry — query="${query}", limit=${limit}`);
 
     // Iterate through all compendium packs
     for (const pack of game.packs) {
@@ -555,7 +568,7 @@ export class RulesReference {
     // Limit results
     const limitedResults = results.slice(0, limit);
 
-    this._log.debug(`Found ${results.length} total results, returning ${limitedResults.length}`);
+    this._log.debug(`searchCompendiums() exit — ${results.length} total results, returning ${limitedResults.length}, ${(performance.now() - _searchStart).toFixed(1)}ms`);
 
     return limitedResults;
   }

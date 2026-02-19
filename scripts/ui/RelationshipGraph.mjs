@@ -321,6 +321,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this._logger.debug('_onRender called', { mode: this._mode, entities: this._getTotalEntityCount(), relationships: this._relationships.length });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
@@ -507,6 +508,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   async _waitForVisLibrary() {
+    this._logger.debug('Waiting for vis-network library to load...');
     const maxWaitTime = 5000; // 5 seconds
     const checkInterval = 100; // 100ms
     let waited = 0;
@@ -519,6 +521,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
     if (typeof vis === 'undefined') {
       throw new Error('vis-network library failed to load');
     }
+    this._logger.debug(`vis-network loaded after ${waited}ms`);
   }
 
   /**
@@ -697,6 +700,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<void>}
    */
   async close(options = {}) {
+    this._logger.debug('RelationshipGraph closing');
     this.#listenerController?.abort();
 
     // Destroy the network instance to free resources

@@ -132,6 +132,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this._logger.debug('_onRender called', { activeCategory: this._activeCategory, totalTerms: this._dictionary.getTotalTermCount() });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
@@ -162,6 +163,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
    * @returns {Promise<void>}
    */
   async close(options = {}) {
+    this._logger.debug('VocabularyManager closing');
     this.#listenerController?.abort();
     return super.close(options);
   }
@@ -304,10 +306,13 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
       return;
     }
 
+    this._logger.debug(`_onAddTerm: "${term}" to category "${category}"`);
+
     try {
       const added = await this._dictionary.addTerm(category, term);
 
       if (added) {
+        this._logger.debug(`Term added: "${term}" in ${category}, total: ${this._dictionary.getTotalTermCount()}`);
         ui.notifications.info(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSuccess') || 'Term added successfully'
         );
@@ -340,10 +345,13 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     const term = button.dataset.term;
     const category = button.closest('.category-content')?.dataset?.category;
 
+    this._logger.debug(`_onRemoveTerm: "${term}" from category "${category}"`);
+
     try {
       const removed = await this._dictionary.removeTerm(category, term);
 
       if (removed) {
+        this._logger.debug(`Term removed: "${term}" from ${category}, total: ${this._dictionary.getTotalTermCount()}`);
         ui.notifications.info(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.RemoveSuccess') || 'Term removed'
         );
@@ -482,7 +490,9 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
             }
 
             try {
+              this._logger.debug(`Importing dictionary, merge: ${merge}`);
               const stats = await this._dictionary.importDictionary(json, merge);
+              this._logger.debug('Import complete', stats);
 
               ui.notifications.info(
                 game.i18n?.format('VOXCHRONICLE.Vocabulary.ImportStats', stats) ||
@@ -516,6 +526,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     event.preventDefault();
 
     try {
+      this._logger.debug(`Exporting dictionary: ${this._dictionary.getTotalTermCount()} terms`);
       const json = this._dictionary.exportDictionary();
 
       // Display in a dialog with copy button
