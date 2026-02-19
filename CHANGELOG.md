@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.7] - 2026-02-19
+
+### Changed
+- **Kanka publishing: characters as sub-journals** — Characters are now published as child journal entries under the main chronicle journal, not as separate Kanka character entities. This keeps all session content grouped together in one hierarchical journal structure.
+- **Journal-validated entity publishing** — Locations and items are only created in Kanka if they appear in the Foundry adventure journal text, reducing noise from AI hallucinations.
+- **Entity descriptions sourced from Foundry journals** — NPC descriptions are extracted from journal NPC profiles first, then from context sentences in the journal text, falling back to AI-extracted descriptions only as a last resort.
+
+### Fixed
+- **Image uploads targeting wrong entity type** — Character image uploads now correctly target the journal endpoint (`uploadJournalImage`) instead of the removed character endpoint.
+
 ## [2.3.6] - 2026-02-18
 
 ### Fixed

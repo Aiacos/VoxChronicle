@@ -401,37 +401,40 @@ describe('Unified Live + Chronicle Workflow', () => {
         });
       }
 
-      if (url.includes('/campaigns/') && url.includes('/journals') && options?.method === 'POST') {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          headers: createMockHeaders(),
-          json: () => Promise.resolve({
-            data: {
-              id: 1001,
-              name: 'Session Chronicle',
-              entry: '<p>Chronicle content</p>',
-              type: 'Session Chronicle',
-              entity_id: 5001
-            }
-          })
-        });
-      }
-
-      if (url.includes('/campaigns/') && url.includes('/characters')) {
+      // Kanka API - Journal operations (chronicles + character sub-journals)
+      if (url.includes('/campaigns/') && url.includes('/journals')) {
         if (options?.method === 'POST') {
+          // Parse body to check for journal_id (sub-journal)
+          let body = {};
+          try { body = JSON.parse(options.body); } catch { /* ignore */ }
+          if (body.journal_id) {
+            // Character sub-journal
+            return Promise.resolve({
+              ok: true,
+              status: 201,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve({
+                data: { id: 2001, name: body.name || 'Sub-Journal', journal_id: body.journal_id, entity_id: 5002 }
+              })
+            });
+          }
+          // Main chronicle
           return Promise.resolve({
             ok: true,
-            status: 201,
+            status: 200,
             headers: createMockHeaders(),
             json: () => Promise.resolve({
-              data: { id: 2001, name: 'Gandalf', entity_id: 5002 }
-            }),
-            text: () => Promise.resolve(JSON.stringify({
-              data: { id: 2001, name: 'Gandalf', entity_id: 5002 }
-            }))
+              data: {
+                id: 1001,
+                name: 'Session Chronicle',
+                entry: '<p>Chronicle content</p>',
+                type: 'Session Chronicle',
+                entity_id: 5001
+              }
+            })
           });
         }
+        // GET - list journals (for preFetchEntities)
         return Promise.resolve({
           ok: true,
           status: 200,

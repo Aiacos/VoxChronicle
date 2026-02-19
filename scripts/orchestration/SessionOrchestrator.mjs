@@ -533,6 +533,9 @@ class SessionOrchestrator {
     this._logger.log('Publishing to Kanka...');
     this._updateState(SessionState.PUBLISHING);
 
+    // Enrich session with Foundry journal context for entity validation
+    await this._enrichSessionWithJournalContext();
+
     try {
       const results = await this._kankaPublisher.publishSession(this._currentSession, {
         createEntities: options.createEntities ?? true,
@@ -830,6 +833,58 @@ class SessionOrchestrator {
       }
     } catch (error) {
       this._logger.warn(`Failed to initialize journal context: ${error.message}`);
+    }
+  }
+
+  /**
+   * Enrich the current session with Foundry journal data for Kanka publishing.
+   * Adds journalText and npcProfiles to _currentSession so KankaPublisher can
+   * validate entities against the adventure journal and use journal descriptions.
+   * @private
+   */
+  async _enrichSessionWithJournalContext() {
+    if (!this._journalParser) {
+      this._logger.debug('No journal parser available - publishing without journal validation');
+      return;
+    }
+
+    try {
+      // Find the adventure journal (same logic as _initializeJournalContext)
+      let journalId = null;
+      const scene = typeof canvas !== 'undefined' ? canvas?.scene : null;
+      if (scene?.journal) {
+        journalId = scene.journal;
+      } else if (typeof game !== 'undefined' && game?.journal?.size > 0) {
+        const firstJournal = game.journal.contents?.[0];
+        if (firstJournal) {
+          journalId = firstJournal.id;
+        }
+      }
+
+      if (!journalId) {
+        this._logger.debug('No journal found for entity validation');
+        return;
+      }
+
+      // Parse the journal (uses cache if already parsed)
+      await this._journalParser.parseJournal(journalId);
+
+      // Add full journal text for entity name validation
+      const fullText = this._journalParser.getFullText(journalId);
+      if (fullText) {
+        this._currentSession.journalText = fullText;
+        this._logger.debug(`Journal text loaded for publishing: ${fullText.length} chars`);
+      }
+
+      // Add NPC profiles for character descriptions
+      const npcProfiles = this._journalParser.extractNPCProfiles(journalId);
+      if (npcProfiles?.length > 0) {
+        this._currentSession.npcProfiles = npcProfiles;
+        this._logger.debug(`NPC profiles loaded for publishing: ${npcProfiles.length} profiles`);
+      }
+    } catch (error) {
+      this._logger.warn(`Failed to enrich session with journal context: ${error.message}`);
+      // Non-fatal: publishing will proceed without journal validation
     }
   }
 

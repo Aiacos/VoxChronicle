@@ -432,29 +432,39 @@ describe('Full Session Flow Integration', () => {
         });
       }
 
-      // Kanka API - Journal creation
-      if (url.includes('/campaigns/') && url.includes('/journals') && options?.method === 'POST') {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          headers: createMockHeaders(),
-          json: () => Promise.resolve(mockResponses.kankaJournal)
-        });
-      }
-
-      // Kanka API - Character operations
-      if (url.includes('/campaigns/') && url.includes('/characters')) {
-        if (options?.method === 'POST') {
-          // Create operation
+      // Kanka API - Journal operations (chronicle + character sub-journals)
+      if (url.includes('/campaigns/') && url.includes('/journals')) {
+        if (options?.method === 'POST' && !(options?.body instanceof FormData)) {
+          // Parse body to detect sub-journal vs chronicle
+          let body = {};
+          try { body = JSON.parse(options.body); } catch { /* ignore */ }
+          if (body.journal_id) {
+            // Character sub-journal
+            return Promise.resolve({
+              ok: true,
+              status: 201,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve({
+                data: { id: 2001, name: body.name, journal_id: body.journal_id, type: body.type, entity_id: 5002 }
+              })
+            });
+          }
+          // Chronicle journal
           return Promise.resolve({
             ok: true,
-            status: 201,
+            status: 200,
             headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.kankaCharacter),
-            text: () => Promise.resolve(JSON.stringify(mockResponses.kankaCharacter))
+            json: () => Promise.resolve(mockResponses.kankaJournal)
           });
         }
-        // Default to list operation for GET or undefined method
+        // Image upload or GET list
+        if (options?.method === 'POST' && options?.body instanceof FormData) {
+          return Promise.resolve({
+            ok: true,
+            headers: createMockHeaders(),
+            json: () => Promise.resolve({ data: { id: 2001, image: 'uploaded.png' } })
+          });
+        }
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -971,8 +981,6 @@ describe('Full Session Flow Integration', () => {
     });
 
     it('should handle partial Kanka publication failures', async () => {
-      let characterCallCount = 0;
-
       mockFetch.mockImplementation((url, options) => {
         // Default responses for transcription and extraction
         if (url.includes('/audio/transcriptions')) {
@@ -993,30 +1001,49 @@ describe('Full Session Flow Integration', () => {
           });
         }
 
-        // Fail on first character creation attempt
-        if (url.includes('/characters') && options?.method === 'POST') {
-          characterCallCount++;
-          if (characterCallCount === 1) {
+        // Journal operations - fail on sub-journal creation (character)
+        if (url.includes('/journals')) {
+          if (options?.method === 'POST' && !(options?.body instanceof FormData)) {
+            let body = {};
+            try { body = JSON.parse(options.body); } catch { /* ignore */ }
+            if (body.journal_id) {
+              // Sub-journal (character) creation fails
+              return Promise.resolve({
+                ok: false,
+                status: 500,
+                statusText: 'Internal Server Error',
+                headers: createMockHeaders(),
+                json: () => Promise.resolve({ error: 'Server error' })
+              });
+            }
+            // Chronicle creation succeeds
             return Promise.resolve({
-              ok: false,
-              status: 500,
-              statusText: 'Internal Server Error',
-              headers: createMockHeaders()
+              ok: true,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve(mockResponses.kankaJournal)
             });
           }
+          // GET list
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.kankaCharacter)
+            json: () => Promise.resolve(mockResponses.kankaList)
           });
         }
 
-        // Success for other operations
-        if (url.includes('/journals') && options?.method === 'POST') {
+        // Success for location/item operations
+        if (url.includes('/locations') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.kankaJournal)
+            json: () => Promise.resolve(mockResponses.kankaLocation)
+          });
+        }
+        if (url.includes('/items') && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            headers: createMockHeaders(),
+            json: () => Promise.resolve(mockResponses.kankaItem)
           });
         }
 
@@ -1036,7 +1063,7 @@ describe('Full Session Flow Integration', () => {
       // Chronicle should be created
       expect(publishResult.journal).toBeDefined();
 
-      // Should have errors for failed operations
+      // Should have errors for failed character sub-journal operations
       expect(publishResult.errors).toBeDefined();
       expect(publishResult.errors.length).toBeGreaterThan(0);
     });

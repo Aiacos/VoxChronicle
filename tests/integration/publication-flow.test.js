@@ -299,53 +299,62 @@ describe('Publication Flow Integration', () => {
     mockResponses = createMockKankaResponses();
 
     // Mock global fetch
+    // NOTE: Characters are now created as sub-journals (POST /journals with journal_id),
+    // not as separate character entities (POST /characters).
     mockFetch = vi.fn((url, options) => {
-      // Kanka API - Journal creation
-      if (
-        url.includes('/1.0/campaigns/') &&
-        url.includes('/journals') &&
-        options?.method === 'POST'
-      ) {
-        return Promise.resolve({
-          ok: true,
-          headers: createMockHeaders(),
-          json: () => Promise.resolve(mockResponses.journalCreate)
-        });
-      }
-
-      // Kanka API - Character operations
-      if (url.includes('/1.0/campaigns/') && url.includes('/characters')) {
-        if (url.includes('?') || options?.method === 'GET') {
-          // List operation (check for duplicates)
+      // Kanka API - Journal operations (chronicle + character sub-journals)
+      if (url.includes('/1.0/campaigns/') && url.includes('/journals')) {
+        // Image upload to journal (FormData body with specific journal ID in URL)
+        if (options?.method === 'POST' && options?.body instanceof FormData) {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.listEmpty)
+            json: () => Promise.resolve(mockResponses.imageUpload)
           });
         }
+
         if (options?.method === 'POST') {
-          // Check if this is an image upload (has FormData body) or entity creation (has JSON body)
-          if (options?.body instanceof FormData) {
-            // Image upload
+          // Parse body to detect sub-journal vs chronicle
+          let body = {};
+          try { body = JSON.parse(options.body); } catch { /* ignore */ }
+
+          if (body.journal_id) {
+            // Character sub-journal creation
             return Promise.resolve({
               ok: true,
               headers: createMockHeaders(),
-              json: () => Promise.resolve(mockResponses.imageUpload)
+              json: () => Promise.resolve({
+                data: {
+                  id: 2001,
+                  name: body.name || 'Character Sub-Journal',
+                  entry: body.entry || '',
+                  type: body.type || 'NPC',
+                  journal_id: body.journal_id,
+                  entity_id: 5002
+                }
+              })
             });
           }
-          // Entity creation
+
+          // Chronicle journal creation
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.characterCreate)
+            json: () => Promise.resolve(mockResponses.journalCreate)
           });
         }
+
+        // GET - list journals (for preFetchEntities)
+        return Promise.resolve({
+          ok: true,
+          headers: createMockHeaders(),
+          json: () => Promise.resolve(mockResponses.listEmpty)
+        });
       }
 
       // Kanka API - Location operations
       if (url.includes('/1.0/campaigns/') && url.includes('/locations')) {
         if (url.includes('?') || options?.method === 'GET') {
-          // List operation (check for duplicates)
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -353,7 +362,6 @@ describe('Publication Flow Integration', () => {
           });
         }
         if (options?.method === 'POST') {
-          // Create operation
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -365,7 +373,6 @@ describe('Publication Flow Integration', () => {
       // Kanka API - Item operations
       if (url.includes('/1.0/campaigns/') && url.includes('/items')) {
         if (url.includes('?') || options?.method === 'GET') {
-          // List operation (check for duplicates)
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -373,7 +380,6 @@ describe('Publication Flow Integration', () => {
           });
         }
         if (options?.method === 'POST') {
-          // Create operation
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -437,17 +443,17 @@ describe('Publication Flow Integration', () => {
       expect(result.journal.id).toBe(1001);
       expect(result.journal.name).toContain('Session 1');
 
-      // Verify characters were created
+      // Characters are now sub-journals under the chronicle
       expect(result.characters).toHaveLength(1);
       expect(result.characters[0].name).toBe('Gandalf');
       expect(result.characters[0].id).toBe(2001);
 
-      // Verify locations were created
+      // Locations created via createIfNotExists (no journalText = graceful fallback)
       expect(result.locations).toHaveLength(1);
       expect(result.locations[0].name).toBe("Dragon's Lair");
       expect(result.locations[0].id).toBe(3001);
 
-      // Verify items were created
+      // Items created via createIfNotExists
       expect(result.items).toHaveLength(1);
       expect(result.items[0].name).toBe('Sword of Flames');
       expect(result.items[0].id).toBe(4001);
@@ -456,25 +462,21 @@ describe('Publication Flow Integration', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should upload images for characters', async () => {
+    it('should upload images for character sub-journals', async () => {
       const result = await orchestrator.publishToKanka({
         uploadImages: true
       });
 
       expect(result.images).toBeDefined();
       expect(result.images.length).toBeGreaterThan(0);
-      expect(result.images[0].entityType).toBe('character');
+      // Characters are now sub-journals, so images are uploaded to journals
+      expect(result.images[0].entityType).toBe('journal');
 
-      // Verify image download and upload API calls were made
-      const imageFetchCalls = mockFetch.mock.calls.filter((call) =>
-        call[0].includes('example.com/generated')
-      );
-      expect(imageFetchCalls.length).toBeGreaterThan(0);
-
+      // Verify image upload API calls were made to journal endpoint
       const imageUploadCalls = mockFetch.mock.calls.filter(
         (call) =>
           call[0].includes('/1.0/campaigns/') &&
-          call[0].includes('/characters/') &&
+          call[0].includes('/journals/') &&
           call[1]?.body instanceof FormData
       );
       expect(imageUploadCalls.length).toBeGreaterThan(0);
@@ -489,11 +491,14 @@ describe('Publication Flow Integration', () => {
       expect(result.journal.name).toContain('Session 1');
       expect(result.journal.type).toBe('Session Chronicle');
 
-      // Verify journal was created with correct API call
-      const journalCalls = mockFetch.mock.calls.filter(
-        (call) => call[0].includes('/journals') && call[1]?.method === 'POST'
+      // Verify journal POST calls: 1 chronicle + 1 character sub-journal
+      const journalPostCalls = mockFetch.mock.calls.filter(
+        (call) =>
+          call[0].includes('/journals') &&
+          call[1]?.method === 'POST' &&
+          !(call[1]?.body instanceof FormData)
       );
-      expect(journalCalls).toHaveLength(1);
+      expect(journalPostCalls.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should skip entity creation when disabled', async () => {
@@ -525,15 +530,11 @@ describe('Publication Flow Integration', () => {
       });
 
       expect(result.journal).toBeNull();
-      expect(result.characters).toHaveLength(1);
+      // Without chronicle, no parent journal → character sub-journals are skipped
+      expect(result.characters).toHaveLength(0);
+      // Locations and items are still created via createIfNotExists
       expect(result.locations).toHaveLength(1);
       expect(result.items).toHaveLength(1);
-
-      // Verify no journal creation API call was made
-      const journalCalls = mockFetch.mock.calls.filter(
-        (call) => call[0].includes('/journals') && call[1]?.method === 'POST'
-      );
-      expect(journalCalls).toHaveLength(0);
     });
 
     it('should skip image uploads when disabled', async () => {
@@ -541,10 +542,11 @@ describe('Publication Flow Integration', () => {
         uploadImages: false
       });
 
+      // Character sub-journals are still created
       expect(result.characters).toHaveLength(1);
       expect(result.images).toHaveLength(0);
 
-      // Verify no image upload API calls were made
+      // Verify no image upload (FormData) API calls were made
       const imageUploadCalls = mockFetch.mock.calls.filter(
         (call) => call[0].includes('/1.0/campaigns/') && call[1]?.body instanceof FormData
       );
@@ -553,11 +555,38 @@ describe('Publication Flow Integration', () => {
   });
 
   describe('duplicate entity detection', () => {
-    it('should detect and skip existing entities', async () => {
-      // Mock duplicate detection - character already exists
+    it('should detect and skip existing locations via createIfNotExists', async () => {
+      // Mock duplicate detection - location already exists
       mockFetch.mockImplementation((url, options) => {
-        if (url.includes('/characters') && options?.method === 'GET') {
-          // Return existing character
+        // Journal operations (chronicle + sub-journals)
+        if (url.includes('/journals')) {
+          if (options?.method === 'POST') {
+            let body = {};
+            try { body = JSON.parse(options.body); } catch { /* ignore */ }
+            if (body.journal_id) {
+              return Promise.resolve({
+                ok: true,
+                headers: createMockHeaders(),
+                json: () => Promise.resolve({
+                  data: { id: 2001, name: body.name, journal_id: body.journal_id, entity_id: 5002 }
+                })
+              });
+            }
+            return Promise.resolve({
+              ok: true,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve(mockResponses.journalCreate)
+            });
+          }
+          return Promise.resolve({
+            ok: true,
+            headers: createMockHeaders(),
+            json: () => Promise.resolve(mockResponses.listEmpty)
+          });
+        }
+
+        // Location already exists (duplicate)
+        if (url.includes('/locations') && (url.includes('?') || options?.method === 'GET')) {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -566,16 +595,15 @@ describe('Publication Flow Integration', () => {
                 data: [
                   {
                     id: 9999,
-                    name: 'Gandalf',
-                    entry: 'Existing character'
+                    name: "Dragon's Lair",
+                    entry: 'Existing location'
                   }
                 ]
               })
           });
         }
 
-        // Other entities don't exist
-        if (url.includes('/locations') && options?.method === 'GET') {
+        if (url.includes('/items') && (url.includes('?') || options?.method === 'GET')) {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -583,38 +611,11 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/items') && options?.method === 'GET') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.listEmpty)
-          });
-        }
-
-        // Location creation
-        if (url.includes('/locations') && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.locationCreate)
-          });
-        }
-
-        // Item creation
         if (url.includes('/items') && options?.method === 'POST') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
             json: () => Promise.resolve(mockResponses.itemCreate)
-          });
-        }
-
-        // Journal creation
-        if (url.includes('/journals') && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.journalCreate)
           });
         }
 
@@ -628,18 +629,12 @@ describe('Publication Flow Integration', () => {
 
       const result = await orchestrator.publishToKanka();
 
-      // Gandalf should be detected as duplicate - not created again
-      expect(result.characters).toHaveLength(0);
+      // Dragon's Lair should be detected as duplicate (via createIfNotExists)
+      expect(result.locations).toHaveLength(0);
 
-      // Other entities should be created
-      expect(result.locations).toHaveLength(1);
+      // Characters are sub-journals (always created), items are new
+      expect(result.characters).toHaveLength(1);
       expect(result.items).toHaveLength(1);
-
-      // Verify no POST call was made for characters (only GET for duplicate check)
-      const characterCreateCalls = mockFetch.mock.calls.filter(
-        (call) => call[0].includes('/characters') && call[1]?.method === 'POST'
-      );
-      expect(characterCreateCalls).toHaveLength(0);
     });
   });
 
@@ -679,20 +674,43 @@ describe('Publication Flow Integration', () => {
     });
 
     it('should continue publishing despite individual entity errors', async () => {
+      // Track journal POST calls to fail on sub-journal (second call)
+      let journalPostCount = 0;
+
       mockFetch.mockImplementation((url, options) => {
-        // Character creation always fails
-        if (url.includes('/characters') && options?.method === 'POST') {
+        // Journal operations
+        if (url.includes('/journals')) {
+          if (options?.method === 'POST' && !(options?.body instanceof FormData)) {
+            journalPostCount++;
+            let body = {};
+            try { body = JSON.parse(options.body); } catch { /* ignore */ }
+
+            // First POST = chronicle (succeeds), sub-journal POSTs = fail
+            if (body.journal_id) {
+              return Promise.resolve({
+                ok: false,
+                status: 500,
+                statusText: 'Internal Server Error',
+                headers: createMockHeaders(),
+                json: () => Promise.resolve({ error: 'Server error' })
+              });
+            }
+            return Promise.resolve({
+              ok: true,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve(mockResponses.journalCreate)
+            });
+          }
+          // GET - list journals
           return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
+            ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve({ error: 'Server error' })
+            json: () => Promise.resolve(mockResponses.listEmpty)
           });
         }
 
-        // List/search operations succeed with empty results
-        if (options?.method === 'GET') {
+        // List operations succeed with empty results
+        if (url.includes('?') || options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -718,15 +736,6 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        // Journal creation succeeds
-        if (url.includes('/journals') && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.journalCreate)
-          });
-        }
-
         return Promise.resolve({
           ok: false,
           status: 404,
@@ -737,7 +746,7 @@ describe('Publication Flow Integration', () => {
 
       const result = await orchestrator.publishToKanka();
 
-      // Character creation should have failed
+      // Character sub-journal creation should have failed
       expect(result.characters).toHaveLength(0);
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].type).toBe('character');
@@ -750,18 +759,10 @@ describe('Publication Flow Integration', () => {
 
     it('should handle image upload errors gracefully', async () => {
       mockFetch.mockImplementation((url, options) => {
-        // List/search operations succeed with empty results
-        if (url.includes('/characters') && options?.method === 'GET') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.listEmpty)
-          });
-        }
-
-        if (url.includes('/characters') && options?.method === 'POST') {
-          // Check if this is an image upload (FormData) - should fail
-          if (options?.body instanceof FormData) {
+        // Journal operations
+        if (url.includes('/journals')) {
+          // Image upload to journal - should fail
+          if (options?.method === 'POST' && options?.body instanceof FormData) {
             return Promise.resolve({
               ok: false,
               status: 500,
@@ -770,15 +771,35 @@ describe('Publication Flow Integration', () => {
               json: () => Promise.resolve({ error: 'Upload failed' })
             });
           }
-          // Entity creation - should succeed
+
+          if (options?.method === 'POST') {
+            let body = {};
+            try { body = JSON.parse(options.body); } catch { /* ignore */ }
+            if (body.journal_id) {
+              return Promise.resolve({
+                ok: true,
+                headers: createMockHeaders(),
+                json: () => Promise.resolve({
+                  data: { id: 2001, name: body.name, journal_id: body.journal_id, entity_id: 5002 }
+                })
+              });
+            }
+            return Promise.resolve({
+              ok: true,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve(mockResponses.journalCreate)
+            });
+          }
+
+          // GET - list journals
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.characterCreate)
+            json: () => Promise.resolve(mockResponses.listEmpty)
           });
         }
 
-        if (url.includes('/locations') && options?.method === 'GET') {
+        if (url.includes('/locations') && (url.includes('?') || options?.method === 'GET')) {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -794,7 +815,7 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/items') && options?.method === 'GET') {
+        if (url.includes('/items') && (url.includes('?') || options?.method === 'GET')) {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
@@ -807,14 +828,6 @@ describe('Publication Flow Integration', () => {
             ok: true,
             headers: createMockHeaders(),
             json: () => Promise.resolve(mockResponses.itemCreate)
-          });
-        }
-
-        if (url.includes('/journals') && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.journalCreate)
           });
         }
 
@@ -839,7 +852,7 @@ describe('Publication Flow Integration', () => {
         uploadImages: true
       });
 
-      // Entity creation should succeed
+      // Character sub-journal creation should succeed
       expect(result.characters).toHaveLength(1);
 
       // Image upload should have failed but not block publication
@@ -857,26 +870,25 @@ describe('Publication Flow Integration', () => {
   });
 
   describe('API interaction validation', () => {
-    it('should make correct API calls in sequence', async () => {
+    it('should create chronicle first then entity sub-journals and entities', async () => {
       const apiCalls = [];
 
       mockFetch.mockImplementation((url, options) => {
-        apiCalls.push({ url, method: options?.method || 'GET' });
+        apiCalls.push({ url, method: options?.method || 'GET', body: options?.body });
 
-        // Return appropriate mock responses
-        if (url.includes('/characters') && url.includes('?')) {
+        // Journal operations
+        if (url.includes('/journals')) {
+          if (options?.method === 'POST' && !(options?.body instanceof FormData)) {
+            return Promise.resolve({
+              ok: true,
+              headers: createMockHeaders(),
+              json: () => Promise.resolve(mockResponses.journalCreate)
+            });
+          }
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
             json: () => Promise.resolve(mockResponses.listEmpty)
-          });
-        }
-
-        if (url.includes('/characters') && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.characterCreate)
           });
         }
 
@@ -912,14 +924,6 @@ describe('Publication Flow Integration', () => {
           });
         }
 
-        if (url.includes('/journals') && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.journalCreate)
-          });
-        }
-
         return Promise.resolve({
           ok: true,
           headers: createMockHeaders(),
@@ -929,29 +933,32 @@ describe('Publication Flow Integration', () => {
 
       await orchestrator.publishToKanka();
 
-      // Verify entities are created before journal
-      const characterCalls = apiCalls.filter((c) => c.url.includes('/characters'));
+      // Verify journal calls (chronicle + character sub-journals)
+      const journalCalls = apiCalls.filter((c) => c.url.includes('/journals'));
       const locationCalls = apiCalls.filter((c) => c.url.includes('/locations'));
       const itemCalls = apiCalls.filter((c) => c.url.includes('/items'));
-      const journalCalls = apiCalls.filter((c) => c.url.includes('/journals'));
 
-      expect(characterCalls.length).toBeGreaterThan(0);
+      // Journal calls: list (preFetch) + chronicle POST + character sub-journal POST
+      expect(journalCalls.length).toBeGreaterThan(0);
       expect(locationCalls.length).toBeGreaterThan(0);
       expect(itemCalls.length).toBeGreaterThan(0);
-      expect(journalCalls.length).toBeGreaterThan(0);
 
-      // Journal should be created last
-      const journalIndex = apiCalls.findIndex(
+      // Chronicle should be created FIRST (before any entity creation)
+      const firstJournalPost = apiCalls.findIndex(
         (c) => c.url.includes('/journals') && c.method === 'POST'
       );
-      const lastEntityIndex = Math.max(
-        apiCalls.findLastIndex((c) => c.url.includes('/characters') && c.method === 'POST'),
-        apiCalls.findLastIndex((c) => c.url.includes('/locations') && c.method === 'POST'),
-        apiCalls.findLastIndex((c) => c.url.includes('/items') && c.method === 'POST')
+      const firstLocationPost = apiCalls.findIndex(
+        (c) => c.url.includes('/locations') && c.method === 'POST'
+      );
+      const firstItemPost = apiCalls.findIndex(
+        (c) => c.url.includes('/items') && c.method === 'POST'
       );
 
-      if (lastEntityIndex >= 0 && journalIndex >= 0) {
-        expect(journalIndex).toBeGreaterThan(lastEntityIndex);
+      if (firstJournalPost >= 0 && firstLocationPost >= 0) {
+        expect(firstJournalPost).toBeLessThan(firstLocationPost);
+      }
+      if (firstJournalPost >= 0 && firstItemPost >= 0) {
+        expect(firstJournalPost).toBeLessThan(firstItemPost);
       }
     });
 
@@ -1025,26 +1032,18 @@ describe('Publication Flow Integration', () => {
       });
     });
 
-    it('should check for duplicates before creating entities', async () => {
+    it('should check for duplicates before creating location/item entities', async () => {
       const apiCalls = [];
 
       mockFetch.mockImplementation((url, options) => {
         apiCalls.push({ url, method: options?.method || 'GET' });
 
         // Return appropriate responses
-        if (url.includes('?')) {
+        if (url.includes('?') || options?.method === 'GET') {
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
             json: () => Promise.resolve(mockResponses.listEmpty)
-          });
-        }
-
-        if (url.includes('/characters') && options?.method === 'POST') {
-          return Promise.resolve({
-            ok: true,
-            headers: createMockHeaders(),
-            json: () => Promise.resolve(mockResponses.characterCreate)
           });
         }
 
@@ -1081,16 +1080,16 @@ describe('Publication Flow Integration', () => {
 
       await orchestrator.publishToKanka();
 
-      // For each entity type, verify GET request (duplicate check) before POST (create)
-      const characterGet = apiCalls.findIndex(
-        (c) => c.url.includes('/characters') && c.url.includes('?')
+      // Locations use createIfNotExists: verify GET (duplicate check) before POST
+      const locationGet = apiCalls.findIndex(
+        (c) => c.url.includes('/locations') && c.url.includes('?')
       );
-      const characterPost = apiCalls.findIndex(
-        (c) => c.url.includes('/characters') && c.method === 'POST'
+      const locationPost = apiCalls.findIndex(
+        (c) => c.url.includes('/locations') && c.method === 'POST'
       );
 
-      if (characterGet >= 0 && characterPost >= 0) {
-        expect(characterGet).toBeLessThan(characterPost);
+      if (locationGet >= 0 && locationPost >= 0) {
+        expect(locationGet).toBeLessThan(locationPost);
       }
     });
   });

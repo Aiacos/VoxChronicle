@@ -141,8 +141,15 @@ function createMockServices() {
     },
     kankaService: {
       createIfNotExists: vi.fn().mockResolvedValue({ id: 1, name: 'Test Entity' }),
-      createJournal: vi.fn().mockResolvedValue({ id: 1, name: 'Test Journal' }),
+      createJournal: vi.fn().mockImplementation((data) => {
+        // Return different IDs for chronicle vs sub-journal
+        if (data.journal_id) {
+          return Promise.resolve({ id: 20, name: data.name });
+        }
+        return Promise.resolve({ id: 1, name: data.name || 'Test Journal' });
+      }),
       uploadCharacterImage: vi.fn().mockResolvedValue({ success: true }),
+      uploadJournalImage: vi.fn().mockResolvedValue({ success: true }),
       listCharacters: vi.fn().mockResolvedValue({ data: [] }),
       listLocations: vi.fn().mockResolvedValue({ data: [] }),
       listItems: vi.fn().mockResolvedValue({ data: [] }),
@@ -817,7 +824,8 @@ describe('SessionOrchestrator', () => {
 
       await orchestrator.publishToKanka({ uploadImages: true });
 
-      expect(mockServices.kankaService.uploadCharacterImage).toHaveBeenCalled();
+      // Characters are now sub-journals, so images are uploaded via uploadJournalImage
+      expect(mockServices.kankaService.uploadJournalImage).toHaveBeenCalled();
     });
 
     it('should skip image upload if uploadImages is false', async () => {
@@ -827,7 +835,7 @@ describe('SessionOrchestrator', () => {
 
       await orchestrator.publishToKanka({ uploadImages: false });
 
-      expect(mockServices.kankaService.uploadCharacterImage).not.toHaveBeenCalled();
+      expect(mockServices.kankaService.uploadJournalImage).not.toHaveBeenCalled();
     });
 
     it('should use NarrativeExporter if available', async () => {

@@ -249,6 +249,19 @@ describe('Kanka Cache Integration', () => {
         });
       }
 
+      // Journal creation (chronicle or character sub-journal)
+      if (url.includes('/journals') && options?.method === 'POST') {
+        const body = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          headers: createMockHeaders(),
+          json: () =>
+            Promise.resolve({
+              data: { id: body.journal_id ? 200 : 130, name: body.name }
+            })
+        });
+      }
+
       // Journals list
       if (url.includes('/journals') && (!options?.method || options?.method === 'GET')) {
         return Promise.resolve({
@@ -515,11 +528,12 @@ describe('Kanka Cache Integration', () => {
   });
 
   describe('KankaPublisher integration', () => {
-    it('should use cache in createEntities workflow', async () => {
+    it('should use cache in _createEntities workflow', async () => {
+      // Characters are now sub-journals, so we need a parent chronicle
       const sessionData = createMockSessionData();
 
       const results = {
-        journal: null,
+        journal: { id: 999, name: 'Test Chronicle' }, // Simulate chronicle already created
         characters: [],
         locations: [],
         items: [],
@@ -527,41 +541,22 @@ describe('Kanka Cache Integration', () => {
         errors: []
       };
 
+      // Pre-populate cache with data arrays
+      kankaService._setCachedEntities('journals', mockData.journals.data);
+      kankaService._setCachedEntities('locations', mockData.locations.data);
+      kankaService._setCachedEntities('items', mockData.items.data);
+
       mockFetch.mockClear();
 
-      // Call createEntities which should pre-fetch cache
-      await publisher.createEntities(sessionData, results, false);
+      // Call _createEntities (private method, accessed directly in tests)
+      await publisher._createEntities(sessionData, results, false);
 
-      // Fix cache after pre-fetch to store data arrays
-      kankaService._entityCache.set('characters', mockData.characters.data);
-      kankaService._entityCache.set('locations', mockData.locations.data);
-      kankaService._entityCache.set('items', mockData.items.data);
-
-      // Clear results and fetch calls, then re-run to test with proper cache
-      results.characters = [];
-      results.locations = [];
-      results.items = [];
-      results.errors = [];
-      mockFetch.mockClear();
-
-      // Re-run with properly cached data
-      await publisher.createEntities(sessionData, results, false);
-
-      // Verify entities were created/skipped correctly
-      // Should create: 2 new characters, 1 new location, 1 new item (4 total)
-      // Should skip: 1 duplicate character (Aragorn), 1 duplicate location (Rivendell), 1 duplicate item (The One Ring)
-      expect(results.characters.length).toBe(2); // Only new characters
-      expect(results.locations.length).toBe(1); // Only new location
-      expect(results.items.length).toBe(1); // Only new item
-
-      // Verify only POST calls were made (no GET calls because cache was used)
-      const getCalls = mockFetch.mock.calls.filter(
-        (call) => !call[1]?.method || call[1]?.method === 'GET'
-      );
-      expect(getCalls.length).toBe(0); // No GET calls - cache was used
-
-      const postCalls = mockFetch.mock.calls.filter((call) => call[1]?.method === 'POST');
-      expect(postCalls.length).toBe(4); // 4 new entities created
+      // Characters are sub-journals (always created, no dedup for sub-journals)
+      // Locations use createIfNotExists (deduplication via cache)
+      // Items use createIfNotExists (deduplication via cache)
+      expect(results.characters.length).toBe(3); // All 3 characters as sub-journals
+      expect(results.locations.length).toBe(1); // Only new location (Rivendell is duplicate)
+      expect(results.items.length).toBe(1); // Only new item (The One Ring is duplicate)
     });
 
     it('should handle complete publish workflow with cache', async () => {
@@ -575,8 +570,9 @@ describe('Kanka Cache Integration', () => {
         }
       };
 
-      // Pre-populate cache with data arrays
-      kankaService._setCachedEntities('characters', mockData.characters.data);
+      // Pre-populate cache with data arrays (journals, locations, items)
+      // Characters are now sub-journals, so character cache is not needed
+      kankaService._setCachedEntities('journals', mockData.journals.data);
       kankaService._setCachedEntities('locations', mockData.locations.data);
       kankaService._setCachedEntities('items', mockData.items.data);
 
@@ -586,17 +582,17 @@ describe('Kanka Cache Integration', () => {
       mockFetch.mockImplementation((url, options) => {
         // Handle entity creation
         if (options?.method === 'POST') {
-          const body = JSON.parse(options.body);
+          let body = {};
+          try { body = JSON.parse(options.body); } catch { /* ignore */ }
           let id = 100;
-          if (url.includes('/characters')) id = 100;
-          else if (url.includes('/locations')) id = 110;
+          if (url.includes('/locations')) id = 110;
           else if (url.includes('/items')) id = 120;
-          else if (url.includes('/journals')) id = 130;
+          else if (url.includes('/journals')) id = body.journal_id ? 200 : 130;
 
           return Promise.resolve({
             ok: true,
             headers: createMockHeaders(),
-            json: () => Promise.resolve({ data: { id, name: body.name } })
+            json: () => Promise.resolve({ data: { id, name: body.name || 'Entity' } })
           });
         }
 
@@ -617,9 +613,12 @@ describe('Kanka Cache Integration', () => {
       });
 
       // Verify results
-      expect(result.characters.length).toBe(2); // 2 new characters
-      expect(result.locations.length).toBe(1); // 1 new location
-      expect(result.items.length).toBe(1); // 1 new item
+      // Characters: all 3 created as sub-journals (no dedup for sub-journals)
+      expect(result.characters.length).toBe(3);
+      // Locations: 1 new (Rivendell is duplicate in cache)
+      expect(result.locations.length).toBe(1);
+      // Items: 1 new (The One Ring is duplicate in cache)
+      expect(result.items.length).toBe(1);
       expect(result.journal).toBeDefined(); // Chronicle created
       expect(result.errors.length).toBe(0); // No errors
 
@@ -631,8 +630,8 @@ describe('Kanka Cache Integration', () => {
 
       // Should have 0 GET calls because cache was pre-populated
       expect(getCalls.length).toBe(0);
-      // 4 POST calls for new entities + 1 for journal = 5
-      expect(postCalls.length).toBe(5);
+      // 1 chronicle + 3 character sub-journals + 1 new location + 1 new item = 6
+      expect(postCalls.length).toBe(6);
     });
   });
 
