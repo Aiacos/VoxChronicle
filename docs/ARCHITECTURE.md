@@ -2,545 +2,508 @@
 
 This document describes the system architecture, components, and data flow of the VoxChronicle Foundry VTT module.
 
+**Last updated:** 2026-02-19 (v2.3.7)
+
 ## Table of Contents
 
 1. [System Overview](#system-overview)
 2. [High-Level Architecture](#high-level-architecture)
-3. [Component Diagram](#component-diagram)
+3. [Component Map](#component-map)
 4. [Service Layers](#service-layers)
-5. [Data Flow](#data-flow)
-6. [Module Initialization](#module-initialization)
-7. [Design Patterns](#design-patterns)
-8. [External Integrations](#external-integrations)
-9. [Security Considerations](#security-considerations)
-10. [Error Handling Strategy](#error-handling-strategy)
+5. [Dual-Mode Operation](#dual-mode-operation)
+6. [RAG Architecture](#rag-architecture)
+7. [Data Flow](#data-flow)
+8. [Module Initialization](#module-initialization)
+9. [UI Architecture](#ui-architecture)
+10. [Design Patterns](#design-patterns)
+11. [External Integrations](#external-integrations)
+12. [Security Considerations](#security-considerations)
+13. [Error Handling Strategy](#error-handling-strategy)
+14. [v3.0 Planned Changes](#v30-planned-changes)
 
 ---
 
 ## System Overview
 
-VoxChronicle is a Foundry VTT module that automates the transcription and documentation of tabletop RPG sessions. The system:
+VoxChronicle is a Foundry VTT module that provides AI-powered session transcription, real-time DM assistance, and Kanka chronicle publishing. The module operates in two modes:
 
-- **Captures** audio from game sessions (Foundry VTT WebRTC or browser microphone)
-- **Transcribes** audio using OpenAI's GPT-4o with speaker diarization
-- **Extracts** entities (NPCs, locations, items) from transcripts using AI
-- **Generates** AI images using DALL-E 3 for characters, locations, and scenes
-- **Publishes** chronicles and entities to Kanka campaign management platform
+- **Live Mode**: Real-time AI assistance during gameplay — narration suggestions, off-track detection, NPC dialogue, rules Q&A, scene detection, and session analytics
+- **Chronicle Mode**: Post-session workflow — audio transcription, entity extraction, image generation, and Kanka publishing
 
 ### Key Technologies
 
 | Component | Technology |
 |-----------|------------|
-| Platform | Foundry VTT v11/v12 |
+| Platform | Foundry VTT v13 |
 | Language | JavaScript ES6+ (`.mjs` modules) |
-| UI Framework | Foundry Application classes + Handlebars |
+| UI Framework | ApplicationV2 + HandlebarsApplicationMixin |
+| Templates | Handlebars (.hbs) |
 | Transcription | OpenAI GPT-4o-transcribe-diarize |
-| Image Generation | DALL-E 3 |
+| Image Generation | gpt-image-1 (base64 responses) |
+| RAG | Custom vector store (v2.x) / OpenAI File Search (v3.0 planned) |
 | Campaign Management | Kanka.io API v1.0 |
-| Styling | CSS with BEM-style naming |
-| Testing | Vitest with jsdom |
+| Styling | CSS with BEM-style `.vox-chronicle` namespace |
+| Testing | Vitest with jsdom (3600+ tests across 61+ files) |
 
 ---
 
 ## High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           FOUNDRY VTT CLIENT                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                        VoxChronicle Module                              │ │
-│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │ │
-│  │  │   UI Layer      │  │  Orchestration  │  │   Core Services          │ │ │
-│  │  │                 │  │                 │  │                          │ │ │
-│  │  │ RecorderControls│  │   Session       │  │ VoxChronicle (Singleton) │ │ │
-│  │  │ SpeakerLabeling │◄─┤  Orchestrator   ├─►│ Settings                 │ │ │
-│  │  │ EntityPreview   │  │                 │  │ Logger                   │ │ │
-│  │  └────────┬────────┘  └────────┬────────┘  └────────────────────────┘ │ │
-│  │           │                    │                                       │ │
-│  │           ▼                    ▼                                       │ │
-│  │  ┌─────────────────────────────────────────────────────────────────┐  │ │
-│  │  │                      Service Layer                               │  │ │
-│  │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────────┐ │  │ │
-│  │  │  │AudioRecorder │ │ Transcription│ │ ImageGenerationService   │ │  │ │
-│  │  │  │AudioChunker  │ │   Service    │ │ EntityExtractor          │ │  │ │
-│  │  │  └──────┬───────┘ └──────┬───────┘ └────────────┬─────────────┘ │  │ │
-│  │  │         │                │                      │                │  │ │
-│  │  │  ┌──────────────┐ ┌──────────────┐ ┌───────────────────────────┐ │  │ │
-│  │  │  │ KankaService │ │ Narrative    │ │ CompendiumSearcher        │ │  │ │
-│  │  │  │ KankaClient  │ │  Exporter    │ │ (Foundry integration)     │ │  │ │
-│  │  │  └──────┬───────┘ └──────────────┘ └───────────────────────────┘ │  │ │
-│  │  └─────────┼──────────────────────────────────────────────────────┘  │ │
-│  └────────────┼─────────────────────────────────────────────────────────┘ │
-└───────────────┼─────────────────────────────────────────────────────────────┘
-                │
-                ▼
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                          EXTERNAL SERVICES                                     │
-│  ┌─────────────────────────┐  ┌─────────────────────────┐                     │
-│  │      OpenAI API         │  │       Kanka API         │                     │
-│  │                         │  │                         │                     │
-│  │  • Audio Transcription  │  │  • Campaign Management  │                     │
-│  │  • Speaker Diarization  │  │  • Entity CRUD          │                     │
-│  │  • Entity Extraction    │  │  • Image Upload         │                     │
-│  │  • Image Generation     │  │  • Rate Limited Access  │                     │
-│  │                         │  │                         │                     │
-│  │  Endpoint:              │  │  Endpoint:              │                     │
-│  │  api.openai.com/v1      │  │  api.kanka.io/1.0       │                     │
-│  └─────────────────────────┘  └─────────────────────────┘                     │
-└───────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           FOUNDRY VTT CLIENT (v13)                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │                        VoxChronicle Module                             │  │
+│  │                                                                        │  │
+│  │  ┌──────────────┐  ┌───────────────┐  ┌──────────────────────────┐   │  │
+│  │  │   UI Layer   │  │ Orchestration │  │    Core Services         │   │  │
+│  │  │              │  │               │  │                          │   │  │
+│  │  │ MainPanel    │  │  Session      │  │ VoxChronicle (Singleton) │   │  │
+│  │  │ EntityPreview│◄─┤  Orchestrator ├─►│ Settings                 │   │  │
+│  │  │ SpeakerLabel │  │  (dual-mode)  │  │ VocabularyDictionary     │   │  │
+│  │  │ RelGraph     │  │               │  │                          │   │  │
+│  │  │ VocabMgr     │  │ Processors:   │  └──────────────────────────┘   │  │
+│  │  └──────┬───────┘  │ Transcription │                                  │  │
+│  │         │          │ Entity        │                                  │  │
+│  │         ▼          │ Image         │                                  │  │
+│  │  ┌─────────────────┤ KankaPublish  │                                  │  │
+│  │  │  Service Layer  └───────┬───────┘                                  │  │
+│  │  │                         │                                          │  │
+│  │  │  ┌──────────┐ ┌────────┴─────┐ ┌──────────────┐ ┌─────────────┐  │  │
+│  │  │  │  Audio   │ │     AI       │ │   Narrator   │ │    Kanka    │  │  │
+│  │  │  │          │ │              │ │              │ │             │  │  │
+│  │  │  │ Recorder │ │ OpenAIClient │ │ AIAssistant  │ │ KankaClient │  │  │
+│  │  │  │ Chunker  │ │ Transcription│ │ SceneDetect  │ │ KankaService│  │  │
+│  │  │  │          │ │ ImageGen     │ │ ChapterTrack │ │ EntityMgr   │  │  │
+│  │  │  │          │ │ EntityExtract│ │ RulesRef     │ │ Narrative   │  │  │
+│  │  │  │          │ │ Embedding    │ │ Analytics    │ │  Exporter   │  │  │
+│  │  │  │          │ │ RAGVectorStr │ │ RAGRetriever │ │             │  │  │
+│  │  │  │          │ │ WhisperLocal │ │ SilenceDetect│ │             │  │  │
+│  │  │  └──────────┘ └──────────────┘ └──────────────┘ └─────────────┘  │  │
+│  │  │                                                                    │  │
+│  │  │  ┌──────────────────────────────────────────────────────────────┐  │  │
+│  │  │  │  Utils: Logger, RateLimiter, AudioUtils, CacheManager,      │  │  │
+│  │  │  │         HtmlUtils, DomUtils, SensitiveDataFilter,           │  │  │
+│  │  │  │         ErrorNotificationHelper                             │  │  │
+│  │  │  └──────────────────────────────────────────────────────────────┘  │  │
+│  │  └────────────────────────────────────────────────────────────────────┘  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────┘
+                │                                    │
+                ▼                                    ▼
+┌──────────────────────────────┐  ┌──────────────────────────────────────────┐
+│        OpenAI API            │  │             Kanka API                    │
+│                              │  │                                          │
+│  • Audio Transcription       │  │  • Campaign Management                   │
+│  • Speaker Diarization       │  │  • Journal CRUD (chronicles)             │
+│  • Entity Extraction (GPT-4o)│  │  • Character/Location/Item CRUD         │
+│  • Image Gen (gpt-image-1)   │  │  • Image Upload                         │
+│  • Embeddings (text-embed-3) │  │  • Rate Limited: 30/90 req/min          │
+│  • Chat (GPT-4o-mini)        │  │                                          │
+│                              │  │  Endpoint: api.kanka.io/1.0              │
+│  Endpoint: api.openai.com/v1 │  │                                          │
+└──────────────────────────────┘  └──────────────────────────────────────────┘
 ```
 
 ---
 
-## Component Diagram
+## Component Map
+
+48 source files across 8 directories:
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              scripts/                                         │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  ┌─────────────┐                                                             │
-│  │   main.mjs  │ ─────► Entry point, Hooks registration, MODULE_ID export   │
-│  └──────┬──────┘                                                             │
-│         │                                                                     │
-│         ▼                                                                     │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                           core/                                          │ │
-│  │  ┌───────────────────────┐  ┌───────────────────────┐                   │ │
-│  │  │   VoxChronicle.mjs    │  │    Settings.mjs       │                   │ │
-│  │  │                       │  │                       │                   │ │
-│  │  │  • Singleton pattern  │  │  • registerSettings() │                   │ │
-│  │  │  • Service references │  │  • Foundry settings   │                   │ │
-│  │  │  • Session management │  │  • API key storage    │                   │ │
-│  │  │  • Status tracking    │  │  • Configuration      │                   │ │
-│  │  └───────────────────────┘  └───────────────────────┘                   │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                          audio/                                          │ │
-│  │  ┌───────────────────────┐  ┌───────────────────────┐                   │ │
-│  │  │  AudioRecorder.mjs    │  │   AudioChunker.mjs    │                   │ │
-│  │  │                       │  │                       │                   │ │
-│  │  │  • MediaRecorder API  │  │  • Split large files  │                   │ │
-│  │  │  • Microphone capture │  │  • 25MB chunk limit   │                   │ │
-│  │  │  • WebRTC capture     │  │  • Duration tracking  │                   │ │
-│  │  │  • State management   │  │                       │                   │ │
-│  │  └───────────────────────┘  └───────────────────────┘                   │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                            ai/                                           │ │
-│  │  ┌───────────────────┐  ┌────────────────────┐  ┌────────────────────┐  │ │
-│  │  │ OpenAIClient.mjs  │  │TranscriptionService│  │ImageGenerationSvc │  │ │
-│  │  │                   │  │        .mjs        │  │       .mjs        │  │ │
-│  │  │ • Base API client │  │                    │  │                   │  │ │
-│  │  │ • Auth handling   │  │ • GPT-4o-transcribe│  │ • DALL-E 3        │  │ │
-│  │  │ • Request queue   │  │ • Speaker diarize  │  │ • Prompt building │  │ │
-│  │  │ • Rate limiting   │  │ • Speaker mapping  │  │ • URL management  │  │ │
-│  │  └───────────────────┘  └────────────────────┘  └────────────────────┘  │ │
-│  │                                                                          │ │
-│  │  ┌───────────────────┐                                                   │ │
-│  │  │EntityExtractor.mjs│                                                   │ │
-│  │  │                   │                                                   │ │
-│  │  │ • GPT-4o analysis │                                                   │ │
-│  │  │ • NPC extraction  │                                                   │ │
-│  │  │ • Location detect │                                                   │ │
-│  │  │ • Salient moments │                                                   │ │
-│  │  └───────────────────┘                                                   │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                           kanka/                                         │ │
-│  │  ┌───────────────────┐  ┌───────────────────┐  ┌─────────────────────┐  │ │
-│  │  │  KankaClient.mjs  │  │  KankaService.mjs │  │NarrativeExporter.mjs│  │ │
-│  │  │                   │  │                   │  │                     │  │ │
-│  │  │ • Base API client │  │ • Entity CRUD     │  │ • Chronicle format  │  │ │
-│  │  │ • Rate limiting   │  │ • Image upload    │  │ • HTML generation   │  │ │
-│  │  │ • Error handling  │  │ • Batch creation  │  │ • Entity links      │  │ │
-│  │  │ • 30/90 req/min   │  │ • Duplicate check │  │                     │  │ │
-│  │  └───────────────────┘  └───────────────────┘  └─────────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                       orchestration/                                     │ │
-│  │  ┌───────────────────────────────────────────────────────────────────┐  │ │
-│  │  │                   SessionOrchestrator.mjs                          │  │ │
-│  │  │                                                                    │  │ │
-│  │  │  Manages complete workflow: Record → Transcribe → Extract →       │  │ │
-│  │  │  Generate Images → Publish to Kanka                                │  │ │
-│  │  │                                                                    │  │ │
-│  │  │  States: IDLE → RECORDING → PROCESSING → EXTRACTING →             │  │ │
-│  │  │          GENERATING_IMAGES → PUBLISHING → COMPLETE                 │  │ │
-│  │  └───────────────────────────────────────────────────────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                            ui/                                           │ │
-│  │  ┌───────────────────┐  ┌───────────────────┐  ┌─────────────────────┐  │ │
-│  │  │RecorderControls   │  │ SpeakerLabeling   │  │ EntityPreview       │  │ │
-│  │  │       .mjs        │  │      .mjs         │  │      .mjs           │  │ │
-│  │  │                   │  │                   │  │                     │  │ │
-│  │  │ • Start/Stop/Pause│  │ • Speaker mapping │  │ • Entity review     │  │ │
-│  │  │ • Timer display   │  │ • Player names    │  │ • Before publish    │  │ │
-│  │  │ • Status indicator│  │ • GM assignment   │  │ • Selection UI      │  │ │
-│  │  └───────────────────┘  └───────────────────┘  └─────────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                          utils/                                          │ │
-│  │  ┌───────────────────┐  ┌───────────────────┐  ┌─────────────────────┐  │ │
-│  │  │    Logger.mjs     │  │  RateLimiter.mjs  │  │   AudioUtils.mjs    │  │ │
-│  │  │                   │  │                   │  │                     │  │ │
-│  │  │ • Prefixed logs   │  │ • Request queue   │  │ • MIME detection    │  │ │
-│  │  │ • Log levels      │  │ • Throttling      │  │ • Blob handling     │  │ │
-│  │  │ • Child loggers   │  │ • Backoff logic   │  │ • Format conversion │  │ │
-│  │  └───────────────────┘  └───────────────────┘  └─────────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                         content/                                         │ │
-│  │  ┌───────────────────────────────────────────────────────────────────┐  │ │
-│  │  │                   CompendiumSearcher.mjs                           │  │ │
-│  │  │                                                                    │  │ │
-│  │  │  Search Foundry compendiums for existing entities to prevent      │  │ │
-│  │  │  duplicate creation in Kanka                                       │  │ │
-│  │  └───────────────────────────────────────────────────────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
+scripts/
+├── main.mjs                          # Entry point: Hooks, scene controls
+├── constants.mjs                     # MODULE_ID (dependency-free leaf)
+│
+├── core/                             # Singletons and configuration
+│   ├── VoxChronicle.mjs              # Main singleton, service orchestration
+│   ├── Settings.mjs                  # 40+ Foundry settings registration
+│   └── VocabularyDictionary.mjs      # Custom vocabulary for transcription
+│
+├── audio/                            # Audio capture and processing
+│   ├── AudioRecorder.mjs             # MediaRecorder wrapper, WebRTC/mic, level metering
+│   └── AudioChunker.mjs             # Split >25MB files for API limit
+│
+├── ai/                               # OpenAI API services
+│   ├── OpenAIClient.mjs              # Base client: auth, retry, queue, circuit breaker
+│   ├── TranscriptionService.mjs      # GPT-4o-transcribe-diarize, speaker mapping
+│   ├── TranscriptionFactory.mjs      # Cloud/local/auto mode factory
+│   ├── LocalWhisperService.mjs       # Local Whisper backend client
+│   ├── WhisperBackend.mjs            # HTTP client for whisper.cpp server
+│   ├── ImageGenerationService.mjs    # gpt-image-1, base64 responses
+│   ├── EntityExtractor.mjs           # GPT-4o entity extraction + salient moments
+│   ├── EmbeddingService.mjs          # text-embedding-3-small (512-dim)
+│   └── RAGVectorStore.mjs            # IndexedDB + in-memory cosine similarity
+│
+├── narrator/                         # Real-time DM assistant services
+│   ├── AIAssistant.mjs               # Contextual suggestions with RAG injection
+│   ├── ChapterTracker.mjs            # Chapter/scene tracking from journals
+│   ├── CompendiumParser.mjs          # Parse compendiums for rules + text chunking
+│   ├── JournalParser.mjs             # Parse journals for story + text chunking
+│   ├── RAGRetriever.mjs              # Hybrid semantic+keyword retrieval
+│   ├── RulesReference.mjs            # D&D rules Q&A with citations
+│   ├── SceneDetector.mjs             # Scene type: combat/social/exploration/rest
+│   ├── SessionAnalytics.mjs          # Speaker participation, timeline, stats
+│   └── SilenceDetector.mjs           # Timer-based silence detection
+│
+├── kanka/                            # Kanka campaign management
+│   ├── KankaClient.mjs               # Base client with rate limiting
+│   ├── KankaService.mjs              # CRUD: journals, characters, locations, items
+│   ├── KankaEntityManager.mjs        # Entity lifecycle management
+│   └── NarrativeExporter.mjs         # Format transcripts as Kanka journals
+│
+├── orchestration/                    # Workflow coordination
+│   ├── SessionOrchestrator.mjs       # Dual-mode: live + chronicle workflows
+│   ├── TranscriptionProcessor.mjs    # Audio → transcript workflow
+│   ├── EntityProcessor.mjs           # Transcript → entities workflow
+│   ├── ImageProcessor.mjs            # Entities → images workflow
+│   └── KankaPublisher.mjs            # Entities + images → Kanka workflow
+│
+├── ui/                               # ApplicationV2 UI components
+│   ├── MainPanel.mjs                 # 6-tab floating panel (singleton)
+│   ├── EntityPreview.mjs             # Entity review before Kanka publish
+│   ├── SpeakerLabeling.mjs           # Speaker ID → player name mapping
+│   ├── RelationshipGraph.mjs         # vis-network entity relationship graph
+│   └── VocabularyManager.mjs         # Custom vocabulary management
+│
+├── data/
+│   └── dnd-vocabulary.mjs            # Built-in D&D vocabulary
+│
+└── utils/                            # Shared utilities
+    ├── Logger.mjs                    # Module-prefixed logging
+    ├── RateLimiter.mjs               # Request throttling with queue
+    ├── AudioUtils.mjs                # MIME detection, blob conversion
+    ├── CacheManager.mjs              # Generic cache with TTL
+    ├── HtmlUtils.mjs                 # HTML sanitization
+    ├── DomUtils.mjs                  # DOM manipulation helpers
+    ├── SensitiveDataFilter.mjs       # Filter API keys from logs
+    └── ErrorNotificationHelper.mjs   # User-facing error notifications
 ```
 
 ---
 
 ## Service Layers
 
-VoxChronicle follows a layered architecture with clear separation of concerns:
+### Layer 1: Entry Point (`main.mjs`)
 
-### Layer 1: Entry Point & Hooks (`main.mjs`)
-
-The entry point registers Foundry VTT hooks and exports the module ID:
+Registers Foundry hooks and scene control buttons:
 
 ```javascript
-const MODULE_ID = 'vox-chronicle';
-
-Hooks.once('init', () => {
-  // Register settings before game loads
-  Settings.registerSettings();
-});
-
-Hooks.once('ready', async () => {
-  // Initialize services after game data is ready
-  await VoxChronicle.getInstance().initialize();
-});
-
-Hooks.on('getSceneControlButtons', (controls) => {
-  // Add VoxChronicle controls to scene toolbar
-});
+Hooks.once('init', () => Settings.registerSettings());
+Hooks.once('ready', async () => await VoxChronicle.getInstance().initialize());
+Hooks.on('getSceneControlButtons', (controls) => { /* v13 object format */ });
 ```
 
-### Layer 2: Core Controllers (`core/`)
+### Layer 2: Core (`core/`)
 
-**VoxChronicle.mjs** - Main singleton that orchestrates all services:
+- **VoxChronicle** — Singleton that owns all service instances and manages lifecycle
+- **Settings** — 40+ Foundry settings (API keys, campaign ID, RAG config, UI preferences)
+- **VocabularyDictionary** — Custom vocabulary for transcription accuracy
 
-- Manages service lifecycle
-- Tracks recording state
-- Provides unified API for session management
+### Layer 3: Audio (`audio/`)
 
-**Settings.mjs** - Configuration management:
+- **AudioRecorder** — MediaRecorder wrapper with WebRTC/microphone capture, level metering, and dual-buffer architecture (full session + live chunks)
+- **AudioChunker** — Splits audio >25MB for OpenAI API limit
 
-- API key storage (client-side for OpenAI)
-- Campaign settings (world-side for Kanka)
-- Speaker label mappings
-- Module preferences
+### Layer 4: AI Services (`ai/`)
 
-### Layer 3: Business Services
+- **OpenAIClient** — Base client with Bearer auth, exponential backoff + jitter retry, sequential request queue, circuit breaker
+- **TranscriptionService** — GPT-4o-transcribe-diarize with speaker mapping, multi-language
+- **TranscriptionFactory** — Factory for cloud/local/auto transcription modes
+- **LocalWhisperService** / **WhisperBackend** — Local Whisper backend for offline transcription
+- **ImageGenerationService** — gpt-image-1 (base64 responses, NOT URLs), 3 valid sizes: 1024x1024, 1024x1536, 1536x1024
+- **EntityExtractor** — GPT-4o structured JSON output for NPCs, locations, items, salient moments
+- **EmbeddingService** — text-embedding-3-small (512-dim) for RAG vector generation
+- **RAGVectorStore** — IndexedDB persistence + in-memory Map, brute-force cosine similarity, LRU eviction
 
-**Audio Services (`audio/`):**
-- `AudioRecorder` - MediaRecorder wrapper with multiple capture modes
-- `AudioChunker` - Splits large files for API limits
+### Layer 5: Narrator Services (`narrator/`)
 
-**AI Services (`ai/`):**
-- `OpenAIClient` - Base client with auth and rate limiting
-- `TranscriptionService` - GPT-4o transcription with diarization
-- `ImageGenerationService` - DALL-E 3 image generation
-- `EntityExtractor` - NLP entity extraction
+Real-time DM assistant services for Live Mode:
 
-**Kanka Services (`kanka/`):**
-- `KankaClient` - Base client with rate limiting
-- `KankaService` - Entity CRUD operations
-- `NarrativeExporter` - Chronicle formatting
+- **AIAssistant** — Contextual suggestions (narration, dialogue, action, reference) with RAG context injection
+- **ChapterTracker** — Track current chapter/scene from Foundry journal entries
+- **CompendiumParser** — Parse Foundry compendiums for rules content + text chunking for RAG
+- **JournalParser** — Parse Foundry journals for story context + text chunking for RAG
+- **RAGRetriever** — Hybrid semantic (70%) + keyword (20%) + recency (10%) retrieval
+- **RulesReference** — D&D rules Q&A with compendium citations
+- **SceneDetector** — Detect scene type (combat, social, exploration, rest) from transcript
+- **SessionAnalytics** — Speaker participation, timeline, session statistics
+- **SilenceDetector** — Timer-based silence detection for auto-triggering AI suggestions
 
-### Layer 4: Orchestration (`orchestration/`)
+### Layer 6: Kanka Services (`kanka/`)
 
-**SessionOrchestrator** - Coordinates the complete workflow:
+- **KankaClient** — Base client with Bearer auth, rate limiting (30/90 req/min)
+- **KankaService** — CRUD for journals, characters, locations, items; image upload; entity search
+- **KankaEntityManager** — Entity lifecycle: create-if-not-exists, batch create, cache
+- **NarrativeExporter** — Format transcripts as Kanka journal entries (transcript/narrative/summary/full)
 
-1. Session start/stop/pause
-2. Transcription processing
-3. Entity extraction
-4. Image generation
-5. Kanka publishing
+### Layer 7: Orchestration (`orchestration/`)
 
-### Layer 5: UI Components (`ui/`)
+- **SessionOrchestrator** — Dual-mode workflow coordinator (live + chronicle)
+- **TranscriptionProcessor** — Audio → transcript with auto-fallback (cloud/local)
+- **EntityProcessor** — Transcript → extracted entities
+- **ImageProcessor** — Entities/moments → generated images
+- **KankaPublisher** — Journal + entities + images → Kanka
 
-Foundry Application classes:
-- `RecorderControls` - Recording interface
-- `SpeakerLabeling` - Speaker-to-player mapping
-- `EntityPreview` - Entity confirmation before publish
+### Layer 8: UI (`ui/`)
 
-### Layer 6: Utilities (`utils/`)
+All 5 components use ApplicationV2 + HandlebarsApplicationMixin (v13):
 
-Shared helpers:
-- `Logger` - Module-prefixed logging
-- `RateLimiter` - API request throttling
-- `AudioUtils` - Audio blob handling
+- **MainPanel** — Singleton 6-tab floating panel (Live, Chronicle, Images, Transcript, Entities, Analytics)
+- **EntityPreview** — Review and select entities before Kanka publish
+- **SpeakerLabeling** — Map speaker IDs to player names with inline rename
+- **RelationshipGraph** — vis-network entity relationship visualization
+- **VocabularyManager** — Manage custom vocabulary dictionaries
+
+### Layer 9: Utilities (`utils/`)
+
+- **Logger** — Module-prefixed logging with child loggers and log levels
+- **RateLimiter** — Sliding window throttling with queue and presets
+- **AudioUtils** — MIME detection, blob conversion, duration estimation
+- **CacheManager** — Generic cache with TTL and invalidation
+- **HtmlUtils** — HTML sanitization and escaping
+- **DomUtils** — DOM manipulation helpers
+- **SensitiveDataFilter** — Strip API keys from log output
+- **ErrorNotificationHelper** — Consistent user-facing error notifications
+
+---
+
+## Dual-Mode Operation
+
+### Live Mode
+
+Real-time AI assistance during gameplay:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    LIVE MODE CYCLE (~30s)                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   AudioRecorder.getLatestChunk()                                │
+│          │                                                       │
+│          ▼                                                       │
+│   TranscriptionService.transcribe(chunk)                        │
+│          │                                                       │
+│          ├──► SceneDetector.detectSceneTransition(text)          │
+│          ├──► SessionAnalytics.addSegment(segments)             │
+│          ├──► ChapterTracker.update(text)                       │
+│          │                                                       │
+│          ▼                                                       │
+│   AIAssistant.analyzeContext({                                   │
+│     transcript, sceneType, chapter, ragContext                  │
+│   })                                                             │
+│          │                                                       │
+│          ▼                                                       │
+│   MainPanel.render() ◄── suggestions, off-track alerts          │
+│                                                                  │
+│   [Cycle repeats after audio capture of next chunk]             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Services used: AudioRecorder, TranscriptionService, AIAssistant, SceneDetector, ChapterTracker, SessionAnalytics, SilenceDetector, RAGRetriever, RulesReference
+
+### Chronicle Mode
+
+Post-session publishing workflow:
+
+```
+Record → Transcribe → Extract Entities → Generate Images → Publish to Kanka
+```
+
+Services used: AudioRecorder, TranscriptionProcessor, EntityProcessor, ImageProcessor, KankaPublisher
+
+---
+
+## RAG Architecture
+
+### Current (v2.x): Custom Vector Store
+
+```
+JournalParser / CompendiumParser
+    │ (text chunks: 500 tokens, 100 overlap)
+    ▼
+EmbeddingService (text-embedding-3-small, 512-dim)
+    │ (OpenAI API: $0.02/1M tokens)
+    ▼
+RAGVectorStore (IndexedDB + in-memory Map)
+    │ (brute-force cosine similarity, LRU eviction)
+    ▼
+RAGRetriever (hybrid scoring)
+    │ semantic: 70% | keyword: 20% | recency: 10%
+    ▼
+AIAssistant (injects RAG context into GPT-4o-mini prompt)
+```
+
+**Limitations:**
+- Brute-force cosine similarity doesn't scale beyond ~10K vectors
+- No reranking — relevance depends on embedding quality alone
+- IndexedDB persistence is fragile (cleared by browser, per-origin)
+- Complex hybrid scoring is hard to tune
+
+### Planned (v3.0): Modular RAG Provider
+
+See `docs/plans/2026-02-19-v3-rewrite-plan.md` for full details.
+
+```
+RAGProvider (abstract interface)
+├── initialize(config)
+├── indexDocuments(documents)
+├── query(question, options) → {answer, sources}
+├── clearIndex()
+└── getStatus()
+
+OpenAIFileSearchProvider (default)
+├── Creates vector store via OpenAI API
+├── Uploads documents as files
+├── Queries via Responses API + file_search tool
+└── Auto-chunking (800 tokens) + reranking
+```
 
 ---
 
 ## Data Flow
 
-### Complete Session Workflow
+### Complete Chronicle Session
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        RECORDING PHASE                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   User clicks "Start Recording"                                             │
-│            │                                                                 │
-│            ▼                                                                 │
-│   ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐     │
-│   │ RecorderControls│─────►│ AudioRecorder   │─────►│ MediaRecorder   │     │
-│   │    (UI)         │      │ startRecording()│      │     API         │     │
-│   └─────────────────┘      └─────────────────┘      └────────┬────────┘     │
-│                                                               │              │
-│                            Audio Chunks (10s intervals) ◄─────┘              │
-│                                     │                                        │
-│   User clicks "Stop Recording"      ▼                                        │
-│            │               ┌─────────────────┐                              │
-│            └──────────────►│ stopRecording() │                              │
-│                            │                 │                              │
-│                            └────────┬────────┘                              │
-│                                     │                                        │
-│                                     ▼                                        │
-│                            ┌─────────────────┐                              │
-│                            │   Audio Blob    │                              │
-│                            │  (WebM/Opus)    │                              │
-│                            └────────┬────────┘                              │
-└─────────────────────────────────────┼───────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      TRANSCRIPTION PHASE                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────┐      ┌─────────────────┐                              │
-│   │   Audio Blob    │─────►│  AudioChunker   │                              │
-│   │   (> 25MB?)     │      │  splitIfNeeded()│                              │
-│   └─────────────────┘      └────────┬────────┘                              │
-│                                     │                                        │
-│                     Chunks (≤ 25MB each)                                     │
-│                                     │                                        │
-│                                     ▼                                        │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    TranscriptionService                              │   │
-│   │                                                                      │   │
-│   │   FormData {                                                         │   │
-│   │     file: audioBlob,                                                 │   │
-│   │     model: 'gpt-4o-transcribe-diarize',                             │   │
-│   │     response_format: 'diarized_json',                               │   │
-│   │     chunking_strategy: 'auto'                                        │   │
-│   │   }                                                                  │   │
-│   └─────────────────────────────────┬───────────────────────────────────┘   │
-│                                     │                                        │
-│                              POST /v1/audio/transcriptions                   │
-│                                     │                                        │
-│                                     ▼                                        │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                      OpenAI API Response                             │   │
-│   │                                                                      │   │
-│   │   {                                                                  │   │
-│   │     text: "Full transcription...",                                   │   │
-│   │     segments: [                                                      │   │
-│   │       { speaker: "SPEAKER_00", text: "...", start: 0, end: 5.2 },   │   │
-│   │       { speaker: "SPEAKER_01", text: "...", start: 5.3, end: 10.1 } │   │
-│   │     ]                                                                │   │
-│   │   }                                                                  │   │
-│   └─────────────────────────────────┬───────────────────────────────────┘   │
-│                                     │                                        │
-│                        Speaker Mapping Applied                               │
-│                   (SPEAKER_00 → "Game Master")                              │
-│                   (SPEAKER_01 → "Player 1")                                 │
-│                                     │                                        │
-│                                     ▼                                        │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                      Mapped Transcript                               │   │
-│   │   {                                                                  │   │
-│   │     text: "Full transcription...",                                   │   │
-│   │     segments: [                                                      │   │
-│   │       { speaker: "Game Master", text: "...", start: 0, end: 5.2 },  │   │
-│   │       { speaker: "Player 1", text: "...", start: 5.3, end: 10.1 }   │   │
-│   │     ],                                                               │   │
-│   │     speakers: [                                                      │   │
-│   │       { id: "SPEAKER_00", name: "Game Master", isMapped: true },    │   │
-│   │       { id: "SPEAKER_01", name: "Player 1", isMapped: true }        │   │
-│   │     ]                                                                │   │
-│   │   }                                                                  │   │
-│   └─────────────────────────────────┬───────────────────────────────────┘   │
-└─────────────────────────────────────┼───────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       EXTRACTION PHASE                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                      EntityExtractor                                 │   │
-│   │                                                                      │   │
-│   │   GPT-4o Chat Completion:                                           │   │
-│   │   "Analyze this RPG transcript and extract named entities..."       │   │
-│   │                                                                      │   │
-│   │   Response:                                                          │   │
-│   │   {                                                                  │   │
-│   │     characters: [{ name: "Thorn", isNPC: true, desc: "..." }],      │   │
-│   │     locations: [{ name: "Silver Dragon Inn", type: "tavern" }],     │   │
-│   │     items: [{ name: "Blade of Dawn", type: "weapon" }]              │   │
-│   │   }                                                                  │   │
-│   └─────────────────────────────────┬───────────────────────────────────┘   │
-│                                     │                                        │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                   Salient Moment Identification                      │   │
-│   │                                                                      │   │
-│   │   GPT-4o: "Identify dramatic moments suitable for illustration"     │   │
-│   │                                                                      │   │
-│   │   Response:                                                          │   │
-│   │   {                                                                  │   │
-│   │     moments: [                                                       │   │
-│   │       { title: "Dragon's Ambush", imagePrompt: "...", context: "..."}│   │
-│   │     ]                                                                │   │
-│   │   }                                                                  │   │
-│   └─────────────────────────────────┬───────────────────────────────────┘   │
-└─────────────────────────────────────┼───────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     IMAGE GENERATION PHASE                                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                   ImageGenerationService                             │   │
-│   │                                                                      │   │
-│   │   For each moment/character:                                         │   │
-│   │                                                                      │   │
-│   │   POST /v1/images/generations                                        │   │
-│   │   {                                                                  │   │
-│   │     model: "dall-e-3",           // MUST specify!                   │   │
-│   │     prompt: "Fantasy RPG character portrait: Thorn...",             │   │
-│   │     n: 1,                        // DALL-E 3 only supports n=1      │   │
-│   │     size: "1024x1024",                                               │   │
-│   │     quality: "standard"                                              │   │
-│   │   }                                                                  │   │
-│   │                                                                      │   │
-│   │   Response: { url: "https://..." }  ⚠️ Expires in 60 minutes!       │   │
-│   │                                                                      │   │
-│   │   ─── IMMEDIATELY DOWNLOAD IMAGE ───                                │   │
-│   │                                                                      │   │
-│   └─────────────────────────────────┬───────────────────────────────────┘   │
-└─────────────────────────────────────┼───────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      PUBLISHING PHASE                                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                       EntityPreview (UI)                             │   │
-│   │                                                                      │   │
-│   │   User reviews and confirms entities before creation                 │   │
-│   └─────────────────────────────────┬───────────────────────────────────┘   │
-│                                     │                                        │
-│                                     ▼                                        │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                        KankaService                                  │   │
-│   │                                                                      │   │
-│   │   1. Check for existing entities (avoid duplicates)                 │   │
-│   │      GET /campaigns/{id}/characters?name=Thorn                      │   │
-│   │                                                                      │   │
-│   │   2. Create new entities                                             │   │
-│   │      POST /campaigns/{id}/characters                                │   │
-│   │      POST /campaigns/{id}/locations                                 │   │
-│   │      POST /campaigns/{id}/items                                     │   │
-│   │                                                                      │   │
-│   │   3. Upload portraits                                                │   │
-│   │      POST /campaigns/{id}/characters/{id}/image                     │   │
-│   │                                                                      │   │
-│   │   4. Create session chronicle                                        │   │
-│   │      POST /campaigns/{id}/journals                                  │   │
-│   │                                                                      │   │
-│   │   ⚠️ Rate Limited: 30 req/min (free) / 90 req/min (premium)        │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      RECORDING PHASE                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   User clicks "Start Recording"                                 │
+│          │                                                       │
+│          ▼                                                       │
+│   AudioRecorder.startRecording({source, echoCancellation})      │
+│          │                                                       │
+│   MediaRecorder API → audio chunks (10s intervals)              │
+│          │                                                       │
+│   User clicks "Stop Recording"                                  │
+│          │                                                       │
+│          ▼                                                       │
+│   AudioRecorder.stopRecording() → Audio Blob (WebM/Opus)       │
+└─────────────────────────────────┬───────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    TRANSCRIPTION PHASE                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   AudioChunker.splitIfNeeded(blob) → chunks (≤25MB each)       │
+│          │                                                       │
+│          ▼                                                       │
+│   TranscriptionService.transcribe(chunk, {                      │
+│     model: 'gpt-4o-transcribe-diarize',                        │
+│     response_format: 'diarized_json',                           │
+│     speakerMap                                                   │
+│   })                                                             │
+│          │                                                       │
+│          ▼                                                       │
+│   Mapped Transcript: {                                           │
+│     text, segments: [{speaker, text, start, end}],              │
+│     speakers: [{id, name, isMapped}]                            │
+│   }                                                              │
+└─────────────────────────────────┬───────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    EXTRACTION PHASE                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   EntityExtractor.extractEntities(text, {existingEntities})     │
+│          │  (GPT-4o, structured JSON output)                    │
+│          ▼                                                       │
+│   { characters: [{name, desc, isNPC}],                          │
+│     locations: [{name, desc, type}],                            │
+│     items: [{name, desc, type}] }                               │
+│                                                                  │
+│   EntityExtractor.identifySalientMoments(text, {maxMoments: 3})│
+│          │                                                       │
+│          ▼                                                       │
+│   [{ title, imagePrompt, context, dramaScore }]                 │
+└─────────────────────────────────┬───────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  IMAGE GENERATION PHASE                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ImageGenerationService.generatePortrait(type, desc, {         │
+│     model: 'gpt-image-1',                                       │
+│     size: '1024x1024',                                          │
+│     quality: 'medium'                                            │
+│   })                                                             │
+│          │                                                       │
+│          ▼                                                       │
+│   { b64_json: '...' }  ← base64 PNG (NOT a URL)                │
+│          │                                                       │
+│          ▼                                                       │
+│   base64ToBlob(b64_json, 'image/png') → Image Blob             │
+└─────────────────────────────────┬───────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    PUBLISHING PHASE                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   EntityPreview (UI) — user reviews and confirms                │
+│          │                                                       │
+│          ▼                                                       │
+│   KankaPublisher:                                                │
+│   1. Create chronicle journal (POST /campaigns/{id}/journals)   │
+│   2. Create character sub-journals (children of chronicle)      │
+│   3. Create locations/items (only if found in Foundry journals) │
+│   4. Upload images (POST /campaigns/{id}/{type}/{id}/image)    │
+│                                                                  │
+│   ⚠️ Rate Limited: 30 req/min (free) / 90 req/min (premium)    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### State Machine
 
-The SessionOrchestrator manages session state transitions:
-
 ```
-                              startSession()
-                                    │
-                                    ▼
-┌────────────┐            ┌────────────────┐
-│            │            │                │
-│   IDLE     │◄───────────│   RECORDING    │◄──── resumeRecording()
-│            │  cancel()  │                │
-└────────────┘            └───────┬────────┘
-      ▲                           │
-      │                     pauseRecording()
-      │                           │
-      │                           ▼
-      │                   ┌────────────────┐
-      │                   │                │
-      │                   │    PAUSED      │
-      │                   │                │
-      │                   └────────────────┘
-      │
-      │                   stopSession()
-      │                         │
-      │                         ▼
-      │                   ┌────────────────┐
-      │                   │                │
-      │                   │  PROCESSING    │──── Transcription
-      │                   │                │
-      │                   └───────┬────────┘
-      │                           │
-      │                           ▼
-      │                   ┌────────────────┐
-      │                   │                │
-      │                   │  EXTRACTING    │──── Entity Extraction
-      │                   │                │
-      │                   └───────┬────────┘
-      │                           │
-      │                           ▼
-      │                   ┌────────────────┐
-      │                   │ GENERATING_    │
-      │                   │   IMAGES       │──── DALL-E 3
-      │                   │                │
-      │                   └───────┬────────┘
-      │                           │
-      │                           ▼
-      │                   ┌────────────────┐
-      │                   │                │
-      │                   │  PUBLISHING    │──── Kanka Upload
-      │                   │                │
-      │                   └───────┬────────┘
-      │                           │
-      │                           ▼
-      │                   ┌────────────────┐
-      │   reset()         │                │
-      └───────────────────│   COMPLETE     │
-                          │                │
-                          └────────────────┘
+                         startLiveMode()          startChronicleMode()
+                              │                         │
+                              ▼                         ▼
+┌──────────┐     ┌────────────────────┐     ┌────────────────┐
+│          │     │    LIVE MODE       │     │   RECORDING    │
+│   IDLE   │◄────┤                    │     │                │◄── resumeRecording()
+│          │     │ LIVE_LISTENING     │     └───────┬────────┘
+└──────────┘     │ LIVE_TRANSCRIBING  │             │ pauseRecording()
+      ▲          │ LIVE_ANALYZING     │             ▼
+      │          └────────────────────┘     ┌────────────────┐
+      │                                     │    PAUSED      │
+      │          stopSession()              └────────────────┘
+      │               │
+      │               ▼                     stopSession()
+      │          ┌────────────────┐              │
+      │          │  PROCESSING    │◄─────────────┘
+      │          │ (Transcription)│
+      │          └───────┬────────┘
+      │                  │
+      │                  ▼
+      │          ┌────────────────┐
+      │          │  EXTRACTING    │
+      │          │ (Entities)     │
+      │          └───────┬────────┘
+      │                  │
+      │                  ▼
+      │          ┌────────────────┐
+      │          │ GENERATING_    │
+      │          │   IMAGES       │ (gpt-image-1)
+      │          └───────┬────────┘
+      │                  │
+      │                  ▼
+      │          ┌────────────────┐
+      │          │  PUBLISHING    │ (Kanka)
+      │          └───────┬────────┘
+      │                  │
+      │                  ▼
+      │          ┌────────────────┐
+      │ reset()  │   COMPLETE     │
+      └──────────│                │
+                 └────────────────┘
 ```
 
 ---
@@ -551,128 +514,141 @@ The SessionOrchestrator manages session state transitions:
 Foundry VTT Startup
         │
         ▼
-┌───────────────────────────────────────────────────────────────┐
-│                    'init' Hook                                 │
-│                                                               │
-│   • Register module settings (API keys, campaign ID)         │
-│   • Store module reference on game object                    │
-│   • Settings accessible before game data loads                │
-│                                                               │
-│   game.settings.register(MODULE_ID, 'openaiApiKey', {...});  │
-│   game.settings.register(MODULE_ID, 'kankaApiToken', {...}); │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                    'init' Hook                             │
+│                                                            │
+│   Settings.registerSettings()                             │
+│   • 40+ settings (API keys, campaign ID, RAG, UI prefs)  │
+│   • Client-scope: openaiApiKey, speakerLabels             │
+│   • World-scope: kankaCampaignId, kankaApiToken           │
+└───────────────────────────────────────────────────────────┘
         │
         ▼
-┌───────────────────────────────────────────────────────────────┐
-│                    'ready' Hook                                │
-│                                                               │
-│   • All game data is loaded                                   │
-│   • Initialize VoxChronicle singleton                         │
-│   • Create service instances with API keys from settings     │
-│   • Mark module as ready                                      │
-│                                                               │
-│   const vox = VoxChronicle.getInstance();                    │
-│   await vox.initialize();                                     │
-│   game[MODULE_ID].ready = true;                              │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│              'getSceneControlButtons' Hook                  │
+│                                                            │
+│   Adds VoxChronicle controls to scene toolbar (v13 format)│
+│   • controls object (NOT array — v13 breaking change)     │
+│   • SceneControl with name, title, icon, activeTool, tools│
+│   • SceneControlTool with onChange (NOT onClick — v13)     │
+│                                                            │
+│   ⚠️ Fires ONCE, result cached. Register immediately.     │
+└───────────────────────────────────────────────────────────┘
         │
         ▼
-┌───────────────────────────────────────────────────────────────┐
-│              'getSceneControlButtons' Hook                     │
-│                                                               │
-│   • Add VoxChronicle controls to scene toolbar               │
-│   • Only visible if module is ready                           │
-│   • Controls: Recorder, Speaker Labels, Settings             │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│                    'ready' Hook                            │
+│                                                            │
+│   VoxChronicle.getInstance().initialize()                 │
+│   • Creates all service instances                          │
+│   • Initializes RAG if configured                          │
+│   • Marks module as ready                                  │
+└───────────────────────────────────────────────────────────┘
+```
+
+---
+
+## UI Architecture
+
+### ApplicationV2 + HandlebarsApplicationMixin (v13)
+
+All 5 UI components use Foundry v13's ApplicationV2 framework:
+
+```javascript
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
+class MyPanel extends HandlebarsApplicationMixin(ApplicationV2) {
+  static DEFAULT_OPTIONS = {
+    id: 'vox-chronicle-my-panel',
+    classes: ['vox-chronicle'],
+    window: { title: 'VOXCHRONICLE.MyPanel.Title', resizable: true },
+    position: { width: 400 },
+    actions: { 'my-action': MyPanel._onMyAction }
+  };
+
+  static PARTS = {
+    main: { template: `modules/vox-chronicle/templates/my-panel.hbs` }
+  };
+
+  async _prepareContext(options) { return { /* template data */ }; }
+  _onRender(context, options) { /* non-click event listeners */ }
+}
+```
+
+### Key Differences from Application v1
+
+| v1 (Application) | v2 (ApplicationV2) |
+|------|------|
+| `static get defaultOptions()` | `static DEFAULT_OPTIONS` + `static PARTS` |
+| `getData()` | `async _prepareContext(options)` |
+| `activateListeners(html)` | `actions` map (click) + `_onRender()` (non-click) |
+| `this.render(false)` | `this.render()` |
+| `this.render(true)` | `this.render(true)` (first render needs force) |
+| jQuery `html.find(...)` | `this.element.querySelector(...)` |
+
+### Known Issue: Memory Leaks in `_onRender()`
+
+`_onRender()` is called on EVERY render cycle. Event listeners added here accumulate without cleanup. The fix (planned for v3.0) uses AbortController:
+
+```javascript
+#listenerController = null;
+
+_onRender(context, options) {
+  this.#listenerController?.abort();
+  this.#listenerController = new AbortController();
+  const { signal } = this.#listenerController;
+  this.element.querySelector('select')
+    .addEventListener('change', handler, { signal });
+}
 ```
 
 ---
 
 ## Design Patterns
 
-### 1. Singleton Pattern (VoxChronicle)
-
-The main module class ensures single instance across the application:
+### 1. Singleton (VoxChronicle, MainPanel)
 
 ```javascript
 class VoxChronicle {
   static instance = null;
-
   static getInstance() {
-    if (!VoxChronicle.instance) {
-      VoxChronicle.instance = new VoxChronicle();
-    }
+    if (!VoxChronicle.instance) VoxChronicle.instance = new VoxChronicle();
     return VoxChronicle.instance;
   }
+  static resetInstance() { VoxChronicle.instance = null; }
 }
 ```
 
-### 2. Service Layer Pattern
+### 2. Service Layer
 
-Each service encapsulates a specific domain:
-- `TranscriptionService` - Audio → Text
-- `ImageGenerationService` - Text → Image
-- `KankaService` - Data → Kanka API
+Each service encapsulates a specific domain with Logger, try/catch, and consistent constructor pattern.
 
-### 3. Facade Pattern (SessionOrchestrator)
+### 3. Facade (SessionOrchestrator)
 
-Provides a simplified interface for complex workflow:
+Provides simplified interface for complex dual-mode workflow.
 
-```javascript
-// Instead of managing each service individually:
-await orchestrator.startSession();
-// ... recording ...
-await orchestrator.stopSession();
-await orchestrator.publishToKanka();
-```
+### 4. Factory (TranscriptionFactory, RAGProviderFactory planned)
 
-### 4. State Pattern
+Creates appropriate service based on settings.
 
-SessionOrchestrator uses state enum for workflow management:
+### 5. State Machine (SessionOrchestrator)
 
-```javascript
-const SessionState = {
-  IDLE: 'idle',
-  RECORDING: 'recording',
-  PAUSED: 'paused',
-  PROCESSING: 'processing',
-  EXTRACTING: 'extracting',
-  GENERATING_IMAGES: 'generating_images',
-  PUBLISHING: 'publishing',
-  COMPLETE: 'complete',
-  ERROR: 'error'
-};
-```
+Enum-based state management: IDLE → RECORDING → PROCESSING → EXTRACTING → GENERATING_IMAGES → PUBLISHING → COMPLETE.
 
-### 5. Observer Pattern (Callbacks)
+### 6. Observer (Callbacks)
 
-Services notify clients of state changes:
-
+Services notify UI of state changes:
 ```javascript
 orchestrator.setCallbacks({
   onStateChange: (newState, oldState) => { ... },
   onProgress: ({ stage, progress, message }) => { ... },
-  onError: (error, stage) => { ... },
-  onSessionComplete: (sessionData) => { ... }
+  onError: (error, stage) => { ... }
 });
 ```
 
-### 6. Inheritance Pattern (API Clients)
+### 7. Retry + Circuit Breaker (OpenAIClient)
 
-API clients extend base classes:
-
-```javascript
-class TranscriptionService extends OpenAIClient {
-  // Inherits auth, rate limiting from OpenAIClient
-}
-
-class KankaService extends KankaClient {
-  // Inherits rate limiting from KankaClient
-}
-```
+Exponential backoff + jitter with sequential queue and automatic circuit breaking after consecutive failures.
 
 ---
 
@@ -680,17 +656,17 @@ class KankaService extends KankaClient {
 
 ### OpenAI API
 
-| Endpoint | Purpose | Method |
-|----------|---------|--------|
-| `/v1/audio/transcriptions` | Transcribe audio with diarization | POST (FormData) |
-| `/v1/chat/completions` | Entity extraction, moment identification | POST (JSON) |
-| `/v1/images/generations` | DALL-E 3 image generation | POST (JSON) |
+| Endpoint | Purpose | Model | Method |
+|----------|---------|-------|--------|
+| `/v1/audio/transcriptions` | Transcribe + diarize | gpt-4o-transcribe-diarize | POST (FormData) |
+| `/v1/chat/completions` | Entity extraction, suggestions | gpt-4o / gpt-4o-mini | POST (JSON) |
+| `/v1/images/generations` | Image generation | gpt-image-1 | POST (JSON) |
+| `/v1/embeddings` | RAG vector generation | text-embedding-3-small | POST (JSON) |
 
-**Critical Requirements:**
-- Audio sent as FormData (NOT JSON)
-- Must specify `model: 'dall-e-3'` (defaults to dall-e-2)
-- Image URLs expire in 60 minutes - download immediately
-- Audio files must be ≤ 25MB (chunk larger files)
+**Critical notes:**
+- Audio: FormData (NOT JSON), ≤25MB per chunk
+- Images: gpt-image-1 returns base64 `b64_json` (NOT URLs)
+- Valid gpt-image-1 sizes: `1024x1024`, `1024x1536`, `1536x1024`
 
 ### Kanka API
 
@@ -700,12 +676,9 @@ class KankaService extends KankaClient {
 | `/campaigns/{id}/characters` | NPCs and PCs | GET/POST/PUT/DELETE |
 | `/campaigns/{id}/locations` | Places | GET/POST/PUT/DELETE |
 | `/campaigns/{id}/items` | Objects | GET/POST/PUT/DELETE |
-| `/campaigns/{id}/{type}/{id}` | Image upload | POST (FormData) |
+| `/campaigns/{id}/{type}/{id}/image` | Image upload | POST (FormData) |
 
-**Rate Limits:**
-- Free tier: 30 requests/minute
-- Premium: 90 requests/minute
-- Token expires after 364 days
+**Rate Limits:** 30/min (free) / 90/min (premium). Token expires after 364 days.
 
 ---
 
@@ -713,139 +686,73 @@ class KankaService extends KankaClient {
 
 ### API Key Storage
 
-```javascript
-// Client-side storage (per user) - for personal keys
-game.settings.register(MODULE_ID, 'openaiApiKey', {
-  scope: 'client',  // Stored in browser localStorage
-  config: true,
-  type: String
-});
-
-// World-side storage (shared) - for campaign settings
-game.settings.register(MODULE_ID, 'kankaApiToken', {
-  scope: 'world',   // Stored in world database
-  config: true,
-  type: String
-});
-```
+- **Client-scope** (per user, localStorage): `openaiApiKey`
+- **World-scope** (shared, server DB): `kankaApiToken`, `kankaCampaignId`
 
 ### Data Handling
 
-- Audio files processed in browser, sent directly to OpenAI
-- Transcripts stored temporarily in session memory
-- No persistent storage of raw audio after transcription
-- Entity data only persisted in Kanka after user confirmation
+- Audio processed in browser, sent directly to OpenAI — no server-side storage
+- Transcripts stored in session memory only (cleared on reset)
+- Entity data persisted in Kanka only after user confirmation
+- API keys filtered from log output by `SensitiveDataFilter`
 
 ### Permission Model
 
 - Recording controls visible to all users
-- Settings restricted to GM (`restricted: true`)
+- Settings restricted to GM
 - Kanka publishing requires configured API credentials
 
 ---
 
 ## Error Handling Strategy
 
-### Layered Error Handling
-
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    UI Layer (RecorderControls)                   │
-│   • Display user-friendly notifications                         │
-│   • ui.notifications.error('VoxChronicle: ...')                │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│              UI Layer (MainPanel)                 │
+│   ErrorNotificationHelper.notify(type, error)   │
+│   → ui.notifications.error(user-friendly msg)   │
+└─────────────────────────────────────────────────┘
         ▲
-        │ Caught & displayed
-        │
-┌─────────────────────────────────────────────────────────────────┐
-│                 Orchestration Layer                              │
-│   • Catch service errors                                         │
-│   • Update state to ERROR                                        │
-│   • Call onError callback                                        │
-│   • Log with context                                             │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│           Orchestration Layer                     │
+│   SessionOrchestrator catches service errors     │
+│   → Updates state to ERROR                       │
+│   → Calls onError callback                       │
+└─────────────────────────────────────────────────┘
         ▲
-        │ Thrown with context
-        │
-┌─────────────────────────────────────────────────────────────────┐
-│                    Service Layer                                 │
-│   • Throw typed errors (OpenAIError, KankaError)               │
-│   • Include error type, status code, context                   │
-│   • Log to console with Logger                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Error Types
-
-```javascript
-// OpenAI errors
-const OpenAIErrorType = {
-  AUTHENTICATION_ERROR: 'authentication_error',
-  RATE_LIMIT_ERROR: 'rate_limit_error',
-  INVALID_REQUEST_ERROR: 'invalid_request_error',
-  API_ERROR: 'api_error',
-  NETWORK_ERROR: 'network_error'
-};
-
-// Kanka errors
-const KankaErrorType = {
-  AUTHENTICATION_ERROR: 'authentication_error',
-  RATE_LIMIT_ERROR: 'rate_limit_error',
-  VALIDATION_ERROR: 'validation_error',
-  NOT_FOUND: 'not_found',
-  API_ERROR: 'api_error'
-};
+┌─────────────────────────────────────────────────┐
+│              Service Layer                        │
+│   Throws typed errors (OpenAIError, KankaError) │
+│   → Includes error type, status, context         │
+│   → Logs with Logger.error()                     │
+└─────────────────────────────────────────────────┘
 ```
 
 ### Retry Strategy
 
-```javascript
-// Rate limit handling with exponential backoff
-if (response.status === 429) {
-  const retryAfter = response.headers.get('Retry-After') || 60;
-  await this.delay(retryAfter * 1000);
-  return this.request(endpoint, method, data); // Retry
-}
-```
+- OpenAI: Exponential backoff (1s, 2s, 4s) + random jitter, max 3 retries
+- Kanka: Rate limit pause (60s) + retry
+- Circuit breaker: Auto-stops after 5 consecutive failures
 
 ---
 
-## Performance Considerations
+## v3.0 Planned Changes
 
-### Audio Processing
+See `docs/plans/2026-02-19-v3-rewrite-plan.md` for the complete plan.
 
-- Use Web Workers for large file handling (future enhancement)
-- Stream audio in 10-second chunks during recording
-- Chunk files > 25MB before transcription
-
-### API Optimization
-
-- Rate limiter queue prevents 429 errors
-- Batch entity checking before creation
-- Image URLs downloaded immediately (60-min expiry)
-
-### Memory Management
-
-- Audio chunks cleared after blob creation
-- Session data cleared on reset
-- Stream tracks stopped after recording
-
----
-
-## Future Considerations
-
-1. **Offline Support** - Cache transcripts locally
-2. **Multi-language UI** - Extend beyond EN/IT
-3. **Custom Entity Types** - Support additional Kanka entity types
-4. **Real-time Preview** - Live transcription during recording
-5. **Session Resume** - Recovery after connection loss
-6. **Export Formats** - PDF, Markdown export options
+**Summary:**
+1. **RAG:** Replace custom stack (EmbeddingService + RAGVectorStore + RAGRetriever) with modular RAGProvider interface + OpenAI File Search default implementation
+2. **UI:** Fix memory leaks in all 5 components using AbortController pattern; CSS-only tab switching in MainPanel
+3. **Workflow:** Simplify to 2-3 session scene images (no entity portraits); focus on journal publishing
+4. **Documentation:** This file, API_REFERENCE.md, CLAUDE.md — all updated
 
 ---
 
 ## Related Documentation
 
-- [API Reference](./API_REFERENCE.md) - Detailed service API documentation
-- [User Guide](./USER_GUIDE.md) - End-user instructions
-- [CLAUDE.md](../CLAUDE.md) - AI development context
-- [README.md](../README.md) - Project overview
+- [API Reference](./API_REFERENCE.md) — Service class API documentation
+- [User Guide](./USER_GUIDE.md) — End-user instructions
+- [CLAUDE.md](../CLAUDE.md) — AI development context
+- [Whisper Setup](./WHISPER_SETUP.md) — Local Whisper backend setup
+- [GPT-4o Transcribe API](./GPT4O_TRANSCRIBE_API.md) — Diarization API specifics
+- [v3.0 Rewrite Plan](./plans/2026-02-19-v3-rewrite-plan.md) — Planned architecture changes

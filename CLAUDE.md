@@ -25,8 +25,9 @@ Core capabilities:
 - **UI Framework**: Foundry VTT ApplicationV2 + HandlebarsApplicationMixin
 - **Templates**: Handlebars (.hbs)
 - **Styling**: CSS with `.vox-chronicle` namespace
-- **Testing**: Vitest with jsdom environment (3094+ tests across 55+ files)
-- **External APIs**: OpenAI (transcription, images, chat), Kanka (campaign management)
+- **Testing**: Vitest with jsdom environment (3600+ tests across 61+ files)
+- **External APIs**: OpenAI (transcription, images, chat, embeddings), Kanka (campaign management)
+- **RAG**: Custom vector store with IndexedDB persistence (v2.x); planned migration to OpenAI File Search (v3.0)
 
 ## Project Structure
 
@@ -50,15 +51,19 @@ VoxChronicle/
 │   │   ├── LocalWhisperService.mjs   # Local Whisper backend client
 │   │   ├── WhisperBackend.mjs        # HTTP client for whisper.cpp server
 │   │   ├── ImageGenerationService.mjs # gpt-image-1 image generation
-│   │   └── EntityExtractor.mjs    # Extract NPCs/locations/items from text
+│   │   ├── EntityExtractor.mjs    # Extract NPCs/locations/items from text
+│   │   ├── EmbeddingService.mjs   # OpenAI text-embedding-3-small (512-dim) for RAG
+│   │   └── RAGVectorStore.mjs     # IndexedDB + in-memory vector store with cosine similarity
 │   ├── narrator/                   # Real-time DM assistant services (from Narrator Master)
-│   │   ├── AIAssistant.mjs         # Contextual AI suggestions (narration, dialogue, action, reference)
+│   │   ├── AIAssistant.mjs         # Contextual AI suggestions with RAG context injection
 │   │   ├── ChapterTracker.mjs      # Chapter/scene tracking from Foundry journals
-│   │   ├── CompendiumParser.mjs    # Parse Foundry compendiums for rules content
-│   │   ├── JournalParser.mjs       # Parse Foundry journal entries for story context
+│   │   ├── CompendiumParser.mjs    # Parse Foundry compendiums for rules content + text chunking
+│   │   ├── JournalParser.mjs       # Parse Foundry journal entries for story context + text chunking
+│   │   ├── RAGRetriever.mjs        # Hybrid semantic+keyword retrieval (70/20/10 scoring)
 │   │   ├── RulesReference.mjs      # D&D rules Q&A with compendium citations
 │   │   ├── SceneDetector.mjs       # Scene type detection (combat, social, exploration, rest)
-│   │   └── SessionAnalytics.mjs    # Speaker participation, timeline, session stats
+│   │   ├── SessionAnalytics.mjs    # Speaker participation, timeline, session stats
+│   │   └── SilenceDetector.mjs     # Timer-based silence detection for auto-suggestions
 │   ├── kanka/
 │   │   ├── KankaClient.mjs        # Base API client with rate limiting
 │   │   ├── KankaService.mjs       # CRUD for journals, characters, locations, items
@@ -108,13 +113,15 @@ VoxChronicle/
 │   ├── pt.json                    # Portuguese
 │   └── template.json             # Translation template
 ├── tests/
-│   └── ...                        # 55+ test files, 3094+ tests
+│   └── ...                        # 61+ test files, 3600+ tests
 ├── docs/
 │   ├── ARCHITECTURE.md            # System design documentation
 │   ├── API_REFERENCE.md           # Service class documentation
 │   ├── USER_GUIDE.md              # End-user instructions
 │   ├── WHISPER_SETUP.md           # Local Whisper backend setup
-│   └── GPT4O_TRANSCRIBE_API.md   # Diarization API documentation
+│   ├── GPT4O_TRANSCRIBE_API.md   # Diarization API documentation
+│   └── plans/                     # Design and implementation plans
+│       └── 2026-02-19-v3-rewrite-plan.md  # v3.0 RAG + UI rewrite plan
 ├── README.md                      # Project overview and setup
 ├── CHANGELOG.md                   # Version history
 ├── CLAUDE.md                      # This file - AI development context
@@ -401,8 +408,19 @@ export class MyApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   _onRender(context, options) {
-    // Non-click event listeners (change, keypress, submit)
-    this.element?.querySelector('select')?.addEventListener('change', this._handler.bind(this));
+    // IMPORTANT: Clean up previous listeners to prevent memory leaks
+    // _onRender is called on EVERY render, so listeners accumulate without cleanup
+    this.#listenerController?.abort();
+    this.#listenerController = new AbortController();
+    const { signal } = this.#listenerController;
+
+    // Non-click event listeners (change, keypress, submit) — use { signal } for auto-cleanup
+    this.element?.querySelector('select')?.addEventListener('change', this._handler.bind(this), { signal });
+  }
+
+  async close(options) {
+    this.#listenerController?.abort();
+    return super.close(options);
   }
 
   static _onMyAction(event, target) {
@@ -435,6 +453,20 @@ All CSS classes are namespaced:
 .vox-chronicle-recorder__button { /* BEM-style element */ }
 .vox-chronicle-recorder--recording { /* BEM-style modifier */ }
 ```
+
+### RAG Architecture (v2.x → v3.0 Migration Planned)
+
+**Current (v2.x):** Custom RAG stack with three components:
+- `EmbeddingService` — text-embedding-3-small (512-dim), batch embedding
+- `RAGVectorStore` — IndexedDB persistence + in-memory Map, brute-force cosine similarity, LRU eviction
+- `RAGRetriever` — Hybrid semantic+keyword search (70% semantic, 20% keyword, 10% recency)
+
+**Planned (v3.0):** Modular RAG provider interface with OpenAI File Search:
+- `RAGProvider` — Abstract interface for any RAG backend
+- `OpenAIFileSearchProvider` — Default implementation using OpenAI Responses API + file_search tool
+- `RAGProviderFactory` — Factory for creating providers based on settings
+
+See `docs/plans/2026-02-19-v3-rewrite-plan.md` for full migration details.
 
 ## Important Patterns
 
@@ -684,6 +716,8 @@ Before starting any work, check `TODO.md` for known issues and open tasks. After
 8. **gpt-image-1 returns base64**: Unlike dall-e-3, gpt-image-1 returns base64 data, not URLs. No need to download before uploading to Kanka.
 9. **Circular imports**: Always import MODULE_ID from `constants.mjs`, never from `main.mjs`
 10. **MainPanel singleton**: Use `MainPanel.getInstance()` - never construct directly
+11. **ApplicationV2 _onRender memory leaks**: `_onRender()` is called on every render cycle. Event listeners added here accumulate without cleanup. Always use AbortController pattern (see UI Components pattern above)
+12. **RelationshipGraph CDN loading**: vis-network script must be loaded once, not on every render. Guard with `if (!window.vis)` check
 
 ## Testing
 
@@ -739,8 +773,11 @@ When testing with real APIs:
 | Service | Cost |
 |---------|------|
 | Transcription (GPT-4o) | $0.006/minute |
-| Images (gpt-image-1 Standard) | $0.02/image |
-| Images (gpt-image-1 HD) | $0.04/image |
+| Images (gpt-image-1 medium) | $0.02/image |
+| Images (gpt-image-1 high) | $0.04/image |
+| Embeddings (text-embedding-3-small) | $0.02/1M tokens |
+| File Search (v3.0 planned) | $0.10/GB/day + $2.50/1000 queries |
+| Chat (GPT-4o-mini for suggestions) | $0.15/1M input, $0.60/1M output |
 
 Use mocks for development and save real API calls for integration testing.
 
@@ -751,3 +788,4 @@ If you're unsure about:
 - **API details**: Check `docs/API_REFERENCE.md`
 - **User workflows**: Check `docs/USER_GUIDE.md`
 - **Recent changes**: Check `CHANGELOG.md`
+- **v3.0 rewrite plan**: Check `docs/plans/2026-02-19-v3-rewrite-plan.md`

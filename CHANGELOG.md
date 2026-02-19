@@ -5,7 +5,35 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] — v3.0.0 (Planned)
+
+### Changed
+- **RAG: Modular provider architecture** — Custom RAG stack (EmbeddingService + RAGVectorStore + RAGRetriever) replaced with modular `RAGProvider` interface. Default implementation uses OpenAI Responses API + File Search for managed vector storage, auto-chunking, and built-in reranking.
+- **UI: Memory leak fixes in all 5 components** — All ApplicationV2 components now use AbortController pattern to clean up event listeners between renders, preventing accumulation in `_onRender()`.
+- **UI: CSS-only tab switching in MainPanel** — Tab switching no longer triggers full `render()` call; uses `hidden` attribute toggling instead.
+- **Simplified workflow** — Default image generation reduced to 2-3 session scene images (no entity portraits). Focus on RAG-powered DM assistance + session summary + Kanka journal publishing.
+- **RelationshipGraph: CDN script loading fixed** — vis-network script loaded once on first render with `if (!window.vis)` guard, not on every render.
+
+### Added
+- `scripts/rag/RAGProvider.mjs` — Abstract base class for RAG providers
+- `scripts/rag/OpenAIFileSearchProvider.mjs` — OpenAI File Search implementation
+- `scripts/rag/RAGProviderFactory.mjs` — Factory for creating RAG providers
+- Memory leak regression tests for all UI components
+- New RAG settings: `ragProvider`, `ragVectorStoreId`, `ragMaxResults`, `ragAutoIndex`
+
+### Removed
+- `scripts/ai/EmbeddingService.mjs` — Replaced by File Search managed embeddings
+- `scripts/ai/RAGVectorStore.mjs` — Replaced by File Search hosted vector store
+- `scripts/narrator/RAGRetriever.mjs` — Replaced by RAGProvider interface
+- Old RAG settings: `embeddingDimensions`, `ragChunkSize`, `ragChunkOverlap`, `ragSimilarityThreshold`, `ragMaxStorageMB`
+
+### Fixed
+- **Memory leak in MainPanel** — Tab click listeners accumulated on every render
+- **Memory leak in EntityPreview** — Checkbox change listeners accumulated on every render
+- **Memory leak in SpeakerLabeling** — Form submit listener accumulated on every render
+- **Memory leak in RelationshipGraph** — vis-network CDN script reloaded on every render, Network instance never destroyed
+- **Memory leak in VocabularyManager** — Keypress and tab listeners accumulated on every render
+- **XSS vulnerability in VocabularyManager** — Dialog HTML content now escaped with HtmlUtils.escapeHtml()
 
 ## [2.3.7] - 2026-02-19
 
@@ -534,7 +562,23 @@ For flexibility with automatic fallback:
 
 ---
 
-[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.7...HEAD
+[2.3.7]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.6...v2.3.7
+[2.3.6]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.5...v2.3.6
+[2.3.5]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.4...v2.3.5
+[2.3.4]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.3...v2.3.4
+[2.3.3]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.2...v2.3.3
+[2.3.2]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.1...v2.3.2
+[2.3.1]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.0...v2.3.1
+[2.3.0]: https://github.com/Aiacos/VoxChronicle/compare/v2.2.3...v2.3.0
+[2.2.3]: https://github.com/Aiacos/VoxChronicle/compare/v2.2.2...v2.2.3
+[2.2.2]: https://github.com/Aiacos/VoxChronicle/compare/v2.2.1...v2.2.2
+[2.2.1]: https://github.com/Aiacos/VoxChronicle/compare/v2.2.0...v2.2.1
+[2.2.0]: https://github.com/Aiacos/VoxChronicle/compare/v2.1.3...v2.2.0
+[2.1.3]: https://github.com/Aiacos/VoxChronicle/compare/v2.1.2...v2.1.3
+[2.1.2]: https://github.com/Aiacos/VoxChronicle/compare/v2.1.1...v2.1.2
+[2.1.1]: https://github.com/Aiacos/VoxChronicle/compare/v2.1.0...v2.1.1
+[2.1.0]: https://github.com/Aiacos/VoxChronicle/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.4.0...v2.0.0
 [1.4.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Aiacos/VoxChronicle/compare/v1.2.2...v1.3.0

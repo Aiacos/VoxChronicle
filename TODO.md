@@ -1,6 +1,43 @@
 # TODO - VoxChronicle
 
-Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-18.
+Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-19.
+
+## V3.0 REWRITE PLAN
+
+Piano completo: `docs/plans/2026-02-19-v3-rewrite-plan.md`
+
+### RAG: Sostituzione sistema RAG custom con OpenAI File Search
+- [ ] Creare interfaccia `RAGProvider` (scripts/rag/RAGProvider.mjs)
+- [ ] Creare `OpenAIFileSearchProvider` (scripts/rag/OpenAIFileSearchProvider.mjs)
+- [ ] Creare `RAGProviderFactory` (scripts/rag/RAGProviderFactory.mjs)
+- [ ] Aggiornare `AIAssistant.mjs` per usare RAGProvider
+- [ ] Aggiornare `SessionOrchestrator.mjs` per usare RAGProviderFactory
+- [ ] Aggiornare `Settings.mjs` (rimuovere vecchi setting RAG, aggiungere nuovi)
+- [ ] Scrivere test per nuovo RAG
+- [ ] Eliminare vecchi file: EmbeddingService.mjs, RAGVectorStore.mjs, RAGRetriever.mjs
+
+### UI: Fix memory leak in tutti i 5 componenti
+- [ ] MainPanel.mjs — AbortController + CSS-only tab switching
+- [ ] EntityPreview.mjs — AbortController per checkbox listeners
+- [ ] SpeakerLabeling.mjs — AbortController per form submit listener
+- [ ] RelationshipGraph.mjs — AbortController + CDN loading guard + vis-network cleanup
+- [ ] VocabularyManager.mjs — AbortController + XSS fix in dialog HTML
+- [ ] Scrivere test di regressione per memory leak
+
+### Workflow: Semplificazione
+- [ ] Ridurre `maxImagesPerSession` default a 3
+- [ ] ImageProcessor genera solo immagini di scena (non ritratti entita')
+- [ ] KankaPublisher focalizzato su journal entries
+
+### Documentazione
+- [x] Scrivere piano v3.0 (docs/plans/2026-02-19-v3-rewrite-plan.md)
+- [x] Aggiornare CLAUDE.md con architettura attuale
+- [x] Aggiornare CHANGELOG.md con sezione [Unreleased]
+- [x] Aggiornare TODO.md con piano v3.0
+- [ ] Riscrivere ARCHITECTURE.md (completamente obsoleto)
+- [ ] Aggiornare API_REFERENCE.md (mancano servizi narrator, RAG, utilities)
+
+---
 
 ## ALL CRITICAL AND WARNING ITEMS RESOLVED
 

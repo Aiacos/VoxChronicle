@@ -2,6 +2,8 @@
 
 This document provides detailed API documentation for all service classes in the VoxChronicle module.
 
+**Last updated:** 2026-02-19 (v2.3.7)
+
 ## Table of Contents
 
 1. [Core Services](#core-services)
@@ -15,18 +17,41 @@ This document provides detailed API documentation for all service classes in the
    - [TranscriptionService](#transcriptionservice)
    - [ImageGenerationService](#imagegenerationservice)
    - [EntityExtractor](#entityextractor)
-4. [Kanka Services](#kanka-services)
+   - [EmbeddingService](#embeddingservice)
+   - [RAGVectorStore](#ragvectorstore)
+   - [TranscriptionFactory](#transcriptionfactory)
+4. [Narrator Services](#narrator-services)
+   - [AIAssistant](#aiassistant)
+   - [ChapterTracker](#chaptertracker)
+   - [CompendiumParser](#compendiumparser)
+   - [JournalParser](#journalparser)
+   - [RAGRetriever](#ragretriever)
+   - [RulesReference](#rulesreference)
+   - [SceneDetector](#scenedetector)
+   - [SessionAnalytics](#sessionanalytics)
+   - [SilenceDetector](#silencedetector)
+5. [Kanka Services](#kanka-services)
    - [KankaClient](#kankaclient)
    - [KankaService](#kankaservice)
+   - [KankaEntityManager](#kankaentitymanager)
    - [NarrativeExporter](#narrativeexporter)
-5. [Orchestration](#orchestration)
+6. [Orchestration](#orchestration)
    - [SessionOrchestrator](#sessionorchestrator)
-6. [Utilities](#utilities)
+   - [TranscriptionProcessor](#transcriptionprocessor)
+   - [EntityProcessor](#entityprocessor)
+   - [ImageProcessor](#imageprocessor)
+   - [KankaPublisher](#kankapublisher)
+7. [Utilities](#utilities)
    - [Logger](#logger)
    - [RateLimiter](#ratelimiter)
    - [AudioUtils](#audioutils)
-7. [Type Definitions](#type-definitions)
-8. [Enumerations](#enumerations)
+   - [CacheManager](#cachemanager)
+   - [HtmlUtils](#htmlutils)
+   - [DomUtils](#domutils)
+   - [ErrorNotificationHelper](#errornotificationhelper)
+   - [SensitiveDataFilter](#sensitivedatafilter)
+8. [Type Definitions](#type-definitions)
+9. [Enumerations](#enumerations)
 
 ---
 
@@ -449,7 +474,7 @@ Get available transcription models.
 
 ### ImageGenerationService
 
-DALL-E 3 image generation for entities and scenes.
+gpt-image-1 image generation for entities and scenes. Returns base64 data (NOT URLs).
 
 **Import:**
 ```javascript
@@ -566,9 +591,11 @@ imageGen.setCampaignStyle('steampunk');
 Estimate generation cost.
 
 ```javascript
-const cost = imageGen.estimateCost('hd', '1024x1024');
-// { estimatedCostUSD: 0.08, ... }
+const cost = imageGen.estimateCost('medium', '1024x1024');
+// { estimatedCostUSD: 0.02, ... }
 ```
+
+> **Note:** gpt-image-1 uses quality levels `low`, `medium`, `high` (not `standard`/`hd` like DALL-E 3).
 
 #### Static Methods
 
@@ -677,6 +704,413 @@ Estimate extraction cost.
 const cost = extractor.estimateCost(transcriptText);
 // { estimatedTokens, estimatedCostUSD }
 ```
+
+---
+
+### EmbeddingService
+
+Generate vector embeddings for RAG using OpenAI's text-embedding-3-small model.
+
+**Import:**
+```javascript
+import { EmbeddingService } from './scripts/ai/EmbeddingService.mjs';
+```
+
+#### Constructor
+
+```javascript
+const embeddings = new EmbeddingService(apiKey, {
+  model: 'text-embedding-3-small',
+  dimensions: 512
+});
+```
+
+#### Methods
+
+##### `generateEmbedding(text)`
+Generate an embedding vector for a single text.
+
+```javascript
+const vector = await embeddings.generateEmbedding('The dragon attacked the village');
+// Float32Array(512) [0.023, -0.041, ...]
+```
+
+**Returns:** `Promise<Float32Array>` — 512-dimensional vector
+
+##### `generateBatchEmbeddings(texts)`
+Generate embeddings for multiple texts in a single API call.
+
+```javascript
+const vectors = await embeddings.generateBatchEmbeddings([
+  'Text chunk 1...',
+  'Text chunk 2...'
+]);
+// [Float32Array(512), Float32Array(512)]
+```
+
+**Returns:** `Promise<Float32Array[]>`
+
+---
+
+### RAGVectorStore
+
+In-memory vector store with IndexedDB persistence for RAG retrieval.
+
+**Import:**
+```javascript
+import { RAGVectorStore } from './scripts/ai/RAGVectorStore.mjs';
+```
+
+#### Constructor
+
+```javascript
+const store = new RAGVectorStore({
+  maxVectors: 10000,
+  dbName: 'vox-chronicle-rag'
+});
+```
+
+#### Methods
+
+##### `addVector(id, vector, metadata)`
+Store a vector with metadata.
+
+##### `search(queryVector, options)`
+Find most similar vectors using cosine similarity.
+
+```javascript
+const results = await store.search(queryVector, { topK: 5 });
+// [{ id, score, metadata }]
+```
+
+##### `getStats()`
+Get store statistics.
+
+```javascript
+const stats = store.getStats();
+// { vectorCount, estimatedSizeBytes, dbName }
+```
+
+##### `clear()`
+Remove all vectors from store and IndexedDB.
+
+---
+
+### TranscriptionFactory
+
+Factory for creating appropriate transcription service based on mode setting.
+
+**Import:**
+```javascript
+import { TranscriptionFactory } from './scripts/ai/TranscriptionFactory.mjs';
+```
+
+#### Static Methods
+
+##### `create(mode, apiKey, options)`
+Create a transcription service based on mode.
+
+```javascript
+const service = TranscriptionFactory.create('auto', apiKey, {
+  whisperUrl: 'http://localhost:8080'
+});
+```
+
+| Mode | Description |
+|------|-------------|
+| `'api'` | OpenAI cloud transcription only |
+| `'local'` | Local Whisper backend only |
+| `'auto'` | Try local first, fallback to cloud |
+
+---
+
+## Narrator Services
+
+Real-time DM assistant services for Live Mode. These services are activated when the user starts a live session and provide contextual AI assistance during gameplay.
+
+### AIAssistant
+
+Contextual AI suggestions with RAG context injection.
+
+**Import:**
+```javascript
+import { AIAssistant } from './scripts/narrator/AIAssistant.mjs';
+```
+
+#### Constructor
+
+```javascript
+const assistant = new AIAssistant(openAIClient, {
+  model: 'gpt-4o-mini',
+  ragRetriever: ragRetrieverInstance
+});
+```
+
+#### Methods
+
+##### `analyzeContext(context)`
+Generate suggestions and detect off-track situations in a single API call.
+
+```javascript
+const result = await assistant.analyzeContext({
+  transcript: 'recent transcript text...',
+  sceneType: 'combat',
+  chapter: { title: 'Chapter 3', summary: '...' },
+  characters: ['Thorn', 'Elara']
+});
+// {
+//   suggestions: [{ type: 'narration'|'dialogue'|'action'|'reference', content: '...' }],
+//   offTrack: { detected: true, bridge: 'The tavern keeper clears his throat...' }
+// }
+```
+
+##### `generateSuggestions(context)`
+Generate contextual suggestions only.
+
+##### `detectOffTrack(transcript)`
+Detect if players are going off-track from the adventure.
+
+##### `setAdventureContext(adventureText)`
+Set the full adventure text for context-aware suggestions.
+
+##### `setChapterContext(chapter)`
+Set the current chapter for focused suggestions.
+
+---
+
+### ChapterTracker
+
+Track current chapter/scene from Foundry journal entries.
+
+**Import:**
+```javascript
+import { ChapterTracker } from './scripts/narrator/ChapterTracker.mjs';
+```
+
+#### Methods
+
+##### `loadFromJournal(journalEntry)`
+Parse a Foundry journal entry into chapters.
+
+##### `getCurrentChapter()`
+Get the current active chapter.
+
+```javascript
+const chapter = tracker.getCurrentChapter();
+// { title: 'Chapter 3: The Dark Forest', summary: '...', pages: [...] }
+```
+
+##### `update(transcriptText)`
+Update chapter tracking based on latest transcript content.
+
+---
+
+### CompendiumParser
+
+Parse Foundry compendiums for rules content and text chunking for RAG.
+
+**Import:**
+```javascript
+import { CompendiumParser } from './scripts/narrator/CompendiumParser.mjs';
+```
+
+#### Methods
+
+##### `parseCompendium(pack)`
+Parse a Foundry compendium pack into searchable text chunks.
+
+```javascript
+const chunks = await parser.parseCompendium(game.packs.get('dnd5e.rules'));
+// [{ id, title, content, source, tokens }]
+```
+
+##### `parseAllCompendiums(packIds)`
+Parse multiple compendiums.
+
+---
+
+### JournalParser
+
+Parse Foundry journal entries for story context and text chunking for RAG.
+
+**Import:**
+```javascript
+import { JournalParser } from './scripts/narrator/JournalParser.mjs';
+```
+
+#### Methods
+
+##### `parseJournal(journalEntry)`
+Parse a single Foundry journal entry into text chunks.
+
+```javascript
+const chunks = await parser.parseJournal(game.journal.get(journalId));
+// [{ id, title, content, pageId, tokens }]
+```
+
+##### `parseAllJournals(journalIds)`
+Parse multiple journals.
+
+---
+
+### RAGRetriever
+
+Hybrid semantic + keyword retrieval with configurable scoring weights.
+
+**Import:**
+```javascript
+import { RAGRetriever } from './scripts/narrator/RAGRetriever.mjs';
+```
+
+#### Constructor
+
+```javascript
+const retriever = new RAGRetriever(embeddingService, vectorStore, {
+  semanticWeight: 0.7,
+  keywordWeight: 0.2,
+  recencyWeight: 0.1,
+  maxResults: 5,
+  similarityThreshold: 0.3
+});
+```
+
+#### Methods
+
+##### `retrieveContext(query, options)`
+Retrieve relevant context for a query using hybrid scoring.
+
+```javascript
+const results = await retriever.retrieveContext('What are the rules for grappling?', {
+  maxResults: 3
+});
+// [{ content, title, score, source }]
+```
+
+##### `buildIndex(journalIds, packIds, options)`
+Build the RAG index from journals and compendiums.
+
+```javascript
+await retriever.buildIndex(
+  ['journal-id-1', 'journal-id-2'],
+  ['dnd5e.rules'],
+  { onProgress: (progress) => console.log(progress) }
+);
+```
+
+##### `getIndexStatus()`
+Get index status.
+
+```javascript
+const status = retriever.getIndexStatus();
+// { vectorCount, ready, lastBuilt }
+```
+
+##### `clearIndex()`
+Clear the entire RAG index.
+
+---
+
+### RulesReference
+
+D&D rules Q&A with compendium citations.
+
+**Import:**
+```javascript
+import { RulesReference } from './scripts/narrator/RulesReference.mjs';
+```
+
+#### Methods
+
+##### `lookupRule(question)`
+Look up a rule and provide an answer with citations.
+
+```javascript
+const result = await rulesRef.lookupRule('How does opportunity attack work?');
+// { answer: '...', citations: [{ source, page, excerpt }] }
+```
+
+---
+
+### SceneDetector
+
+Detect scene type from transcript content.
+
+**Import:**
+```javascript
+import { SceneDetector } from './scripts/narrator/SceneDetector.mjs';
+```
+
+#### Methods
+
+##### `detectSceneTransition(transcript)`
+Detect the current scene type and any transitions.
+
+```javascript
+const scene = await detector.detectSceneTransition(recentTranscript);
+// { type: 'combat'|'social'|'exploration'|'rest', confidence: 0.85, transition: true }
+```
+
+---
+
+### SessionAnalytics
+
+Speaker participation, timeline, and session statistics.
+
+**Import:**
+```javascript
+import { SessionAnalytics } from './scripts/narrator/SessionAnalytics.mjs';
+```
+
+#### Methods
+
+##### `addSegment(segment)`
+Add a transcript segment to analytics tracking.
+
+```javascript
+analytics.addSegment({ speaker: 'Game Master', text: '...', start: 0, end: 5.2 });
+```
+
+##### `getStats()`
+Get session statistics.
+
+```javascript
+const stats = analytics.getStats();
+// {
+//   totalDuration, speakerBreakdown: { 'GM': { segments, duration, percentage } },
+//   timeline: [...], silenceDuration
+// }
+```
+
+---
+
+### SilenceDetector
+
+Timer-based silence detection for auto-triggering AI suggestions.
+
+**Import:**
+```javascript
+import { SilenceDetector } from './scripts/narrator/SilenceDetector.mjs';
+```
+
+#### Constructor
+
+```javascript
+const detector = new SilenceDetector({
+  silenceThreshold: 30000, // 30 seconds
+  onSilenceDetected: () => { /* trigger AI suggestion */ }
+});
+```
+
+#### Methods
+
+##### `start()`
+Start silence monitoring.
+
+##### `reset()`
+Reset the silence timer (call when new speech is detected).
+
+##### `stop()`
+Stop silence monitoring.
 
 ---
 
@@ -1094,6 +1528,35 @@ Check if AI summaries are available.
 
 ---
 
+### KankaEntityManager
+
+Entity lifecycle management with caching and batch operations.
+
+**Import:**
+```javascript
+import { KankaEntityManager } from './scripts/kanka/KankaEntityManager.mjs';
+```
+
+#### Methods
+
+##### `createEntities(entities, options)`
+Create multiple entities with duplicate checking and caching.
+
+```javascript
+const results = await manager.createEntities({
+  characters: [{ name: 'Thorn', entry: '...' }],
+  locations: [{ name: 'Silver Inn', entry: '...' }]
+}, { onProgress: (current, total) => { ... } });
+```
+
+##### `preFetchEntities()`
+Pre-fetch all entity types into cache for bulk operations.
+
+##### `clearCache(entityType)`
+Clear entity cache for a specific type or all types.
+
+---
+
 ## Orchestration
 
 ### SessionOrchestrator
@@ -1246,6 +1709,86 @@ const summary = orchestrator.getSessionSummary();
 
 ##### `reset()`
 Reset to idle state.
+
+---
+
+### TranscriptionProcessor
+
+Audio transcription workflow with auto-fallback between cloud and local.
+
+**Import:**
+```javascript
+import { TranscriptionProcessor } from './scripts/orchestration/TranscriptionProcessor.mjs';
+```
+
+#### Methods
+
+##### `process(audioBlob, options)`
+Process audio blob into a transcript.
+
+```javascript
+const transcript = await processor.process(audioBlob, {
+  speakerMap, language, onProgress
+});
+```
+
+---
+
+### EntityProcessor
+
+Entity extraction workflow from transcript text.
+
+**Import:**
+```javascript
+import { EntityProcessor } from './scripts/orchestration/EntityProcessor.mjs';
+```
+
+#### Methods
+
+##### `process(transcript, options)`
+Extract entities from transcript.
+
+---
+
+### ImageProcessor
+
+Image generation workflow for entities and moments.
+
+**Import:**
+```javascript
+import { ImageProcessor } from './scripts/orchestration/ImageProcessor.mjs';
+```
+
+#### Methods
+
+##### `process(entities, moments, options)`
+Generate images for entities and salient moments.
+
+---
+
+### KankaPublisher
+
+Kanka publishing workflow — journals, entities, and images.
+
+**Import:**
+```javascript
+import { KankaPublisher } from './scripts/orchestration/KankaPublisher.mjs';
+```
+
+#### Methods
+
+##### `publish(sessionData, options)`
+Publish a complete session to Kanka.
+
+```javascript
+const results = await publisher.publish(sessionData, {
+  createEntities: true,
+  uploadImages: true,
+  createChronicle: true,
+  onProgress
+});
+// { journal, characters, locations, items, images, errors }
+```
 
 ---
 
@@ -1470,6 +2013,132 @@ const options = AudioUtils.getRecorderOptions();
 
 ---
 
+### CacheManager
+
+Generic cache with TTL and invalidation.
+
+**Import:**
+```javascript
+import { CacheManager } from './scripts/utils/CacheManager.mjs';
+```
+
+#### Constructor
+
+```javascript
+const cache = new CacheManager({ ttl: 300000, maxSize: 100 }); // 5 min TTL, 100 items
+```
+
+#### Methods
+
+##### `get(key)`
+Get a cached value (returns `undefined` if expired or missing).
+
+##### `set(key, value, ttl)`
+Set a value with optional custom TTL.
+
+##### `has(key)`
+Check if key exists and is not expired.
+
+##### `delete(key)`
+Remove a specific key.
+
+##### `clear()`
+Clear all cached entries.
+
+##### `getStats()`
+Get cache statistics: `{ size, hits, misses, hitRate }`.
+
+---
+
+### HtmlUtils
+
+HTML sanitization and formatting.
+
+**Import:**
+```javascript
+import { HtmlUtils } from './scripts/utils/HtmlUtils.mjs';
+```
+
+#### Static Methods
+
+##### `escapeHtml(text)`
+Escape HTML special characters to prevent XSS.
+
+```javascript
+HtmlUtils.escapeHtml('<script>alert("xss")</script>');
+// '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+```
+
+##### `stripHtml(html)`
+Remove all HTML tags from a string.
+
+##### `sanitize(html)`
+Sanitize HTML, keeping safe tags and removing dangerous ones.
+
+---
+
+### DomUtils
+
+DOM manipulation helpers for ApplicationV2 components.
+
+**Import:**
+```javascript
+import { DomUtils } from './scripts/utils/DomUtils.mjs';
+```
+
+---
+
+### ErrorNotificationHelper
+
+Consistent user-facing error notifications.
+
+**Import:**
+```javascript
+import { ErrorNotificationHelper } from './scripts/utils/ErrorNotificationHelper.mjs';
+```
+
+#### Static Methods
+
+##### `notify(type, error, options)`
+Show a user-friendly error notification.
+
+```javascript
+ErrorNotificationHelper.notify('transcription', error, {
+  context: 'recording session',
+  showDetails: true
+});
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | `string` | Error category: 'transcription', 'image', 'kanka', 'recording' |
+| `error` | `Error` | The error object |
+| `options.context` | `string` | Additional context for the error message |
+| `options.showDetails` | `boolean` | Show technical details in notification |
+
+---
+
+### SensitiveDataFilter
+
+Filter API keys and tokens from log output.
+
+**Import:**
+```javascript
+import { SensitiveDataFilter } from './scripts/utils/SensitiveDataFilter.mjs';
+```
+
+#### Static Methods
+
+##### `filter(text)`
+Replace sensitive data patterns (API keys, tokens) with masked versions.
+
+```javascript
+SensitiveDataFilter.filter('Bearer sk-abc123def456...');
+// 'Bearer sk-***...***'
+```
+
+---
+
 ## Type Definitions
 
 ### TranscriptionResult
@@ -1505,16 +2174,14 @@ interface SpeakerInfo {
 
 ```typescript
 interface ImageGenerationResult {
-  url: string;               // Generated image URL (expires in 60 min!)
-  revisedPrompt?: string;    // Prompt as revised by DALL-E 3
+  b64_json: string;          // Base64-encoded PNG image data
   entityType: string;        // Type of entity generated
   originalDescription: string; // Original description
-  size: string;              // Image size
-  quality: string;           // Image quality
-  style: string;             // Image style
+  size: string;              // Image size (1024x1024, 1024x1536, 1536x1024)
+  quality: string;           // Image quality (low, medium, high)
   generatedAt: number;       // Timestamp when generated
-  expiresAt: number;         // Timestamp when URL expires
 }
+// NOTE: gpt-image-1 returns base64 data, NOT URLs like DALL-E 3
 ```
 
 ### ExtractionResult
@@ -1648,31 +2315,25 @@ const TranscriptionModel = {
 };
 ```
 
-### ImageSize
+### ImageSize (gpt-image-1)
 
 ```javascript
 const ImageSize = {
-  SQUARE: '1024x1024',    // Best for portraits
-  PORTRAIT: '1024x1792',  // Vertical, full-body
-  LANDSCAPE: '1792x1024'  // Wide, scenes
+  SQUARE: '1024x1024',      // Best for portraits
+  PORTRAIT: '1024x1536',    // Vertical, full-body
+  LANDSCAPE: '1536x1024'    // Wide, scenes
 };
 ```
 
-### ImageQuality
+> **Note:** These are the only 3 valid sizes for gpt-image-1. DALL-E 3 sizes (1024x1792, 1792x1024) are NOT valid.
+
+### ImageQuality (gpt-image-1)
 
 ```javascript
 const ImageQuality = {
-  STANDARD: 'standard',  // $0.04/image
-  HD: 'hd'               // $0.08/image
-};
-```
-
-### ImageStyle
-
-```javascript
-const ImageStyle = {
-  VIVID: 'vivid',      // Hyper-real, dramatic
-  NATURAL: 'natural'   // More realistic
+  LOW: 'low',          // Fastest
+  MEDIUM: 'medium',    // $0.02/image
+  HIGH: 'high'         // $0.04/image, best quality
 };
 ```
 
