@@ -147,7 +147,17 @@
       "RAGStorageLimit": "",
       "RAGStorageLimitHint": "",
       "RAGSilenceThreshold": "",
-      "RAGSilenceThresholdHint": ""
+      "RAGSilenceThresholdHint": "",
+      "RAGProvider": "",
+      "RAGProviderHint": "",
+      "RAGProviderOpenAIFileSearch": "",
+      "RAGProviderRAGFlow": "",
+      "RAGFlowBaseUrl": "",
+      "RAGFlowBaseUrlHint": "",
+      "RAGFlowApiKey": "",
+      "RAGFlowApiKeyHint": "",
+      "RAGFlowModelName": "",
+      "RAGFlowModelNameHint": ""
     },
     "Panel": {
       "Title": "",

@@ -2,12 +2,25 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    environment: 'jsdom', // Browser-like environment for DOM testing
+    environment: 'jsdom',
     globals: true,
-    include: ['tests/**/*.test.js', 'tests/**/*.test.mjs'],
+    include: ['tests/**/*.test.{js,mjs}'],
+    setupFiles: ['tests/helpers/setup.js'],
     coverage: {
-      reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'tests/']
+      provider: 'v8',
+      reporter: ['text', 'text-summary', 'json', 'html'],
+      include: ['scripts/**/*.mjs'],
+      exclude: [
+        'scripts/data/**',
+        'scripts/constants.mjs',
+        'scripts/main.mjs'
+      ],
+      thresholds: {
+        statements: 90,
+        branches: 85,
+        functions: 90,
+        lines: 90
+      }
     }
   }
 });

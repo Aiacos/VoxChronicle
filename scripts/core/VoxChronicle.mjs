@@ -356,33 +356,55 @@ class VoxChronicle {
         return;
       }
 
-      // Check if OpenAI is configured (required for File Search)
-      if (!openaiApiKey) {
-        logger.warn('RAG services require OpenAI API key - skipping initialization');
-        return;
-      }
-
-      logger.info('Initializing RAG services...');
-
       // Create RAG provider via factory
       const providerType = ragSettings.provider || 'openai-file-search';
+      logger.info(`Initializing RAG services (provider: ${providerType})...`);
+
       this.ragProvider = RAGProviderFactory.create(providerType);
 
-      // Create dedicated OpenAI client for RAG operations
-      const ragClient = new OpenAIClient(openaiApiKey);
+      // Initialize based on provider type
+      if (providerType === 'ragflow') {
+        // RAGFlow provider uses its own server + API key
+        if (!ragSettings.ragflowBaseUrl || !ragSettings.ragflowApiKey) {
+          logger.warn('RAGFlow requires base URL and API key - skipping initialization');
+          this.ragProvider = null;
+          return;
+        }
+        await this.ragProvider.initialize({
+          baseUrl: ragSettings.ragflowBaseUrl,
+          apiKey: ragSettings.ragflowApiKey,
+          datasetId: ragSettings.ragflowDatasetId || null,
+          chatId: ragSettings.ragflowChatId || null,
+          modelName: ragSettings.ragflowModelName || ''
+        });
 
-      // Initialize provider with client and persisted vector store ID
-      await this.ragProvider.initialize({
-        client: ragClient,
-        vectorStoreId: ragSettings.vectorStoreId || null,
-        storeName: `vox-chronicle-${ragSettings.campaignId || 'default'}`
-      });
+        // Persist dataset + chat IDs for reuse across sessions
+        if (this.ragProvider.getDatasetId) {
+          const dsId = this.ragProvider.getDatasetId();
+          if (dsId) Settings.set('ragflowDatasetId', dsId);
+        }
+        if (this.ragProvider.getChatId) {
+          const chatId = this.ragProvider.getChatId();
+          if (chatId) Settings.set('ragflowChatId', chatId);
+        }
+      } else {
+        // OpenAI File Search provider requires OpenAI API key
+        if (!openaiApiKey) {
+          logger.warn('RAG services require OpenAI API key - skipping initialization');
+          this.ragProvider = null;
+          return;
+        }
+        const ragClient = new OpenAIClient(openaiApiKey);
+        await this.ragProvider.initialize({
+          client: ragClient,
+          vectorStoreId: ragSettings.vectorStoreId || null,
+          storeName: `vox-chronicle-${ragSettings.campaignId || 'default'}`
+        });
 
-      // Persist vector store ID for reuse across sessions
-      if (this.ragProvider.getVectorStoreId) {
-        const vsId = this.ragProvider.getVectorStoreId();
-        if (vsId) {
-          Settings.setRAGVectorStoreId(vsId);
+        // Persist vector store ID for reuse across sessions
+        if (this.ragProvider.getVectorStoreId) {
+          const vsId = this.ragProvider.getVectorStoreId();
+          if (vsId) Settings.setRAGVectorStoreId(vsId);
         }
       }
 

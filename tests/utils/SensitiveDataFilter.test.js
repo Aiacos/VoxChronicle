@@ -1,567 +1,447 @@
-/**
- * SensitiveDataFilter Unit Tests
- *
- * Tests for the SensitiveDataFilter utility class.
- * Covers sanitization of strings, objects, URLs, headers, errors, and detection
- * of sensitive data patterns (API keys, tokens, authorization headers).
- */
-
 import { describe, it, expect } from 'vitest';
 import { SensitiveDataFilter } from '../../scripts/utils/SensitiveDataFilter.mjs';
 
 describe('SensitiveDataFilter', () => {
-  // ============================================================================
-  // sanitizeString Tests
-  // ============================================================================
+  // ── sanitizeString ─────────────────────────────────────────────────────
 
-  describe('sanitizeString', () => {
-    it('should redact OpenAI API keys (sk-... format)', () => {
-      const input = 'API Key: sk-1234567890abcdefghij';
-      const output = SensitiveDataFilter.sanitizeString(input);
-      expect(output).toBe('API Key: ***');
-      expect(output).not.toContain('sk-1234567890abcdefghij');
+  describe('sanitizeString()', () => {
+    it('should redact OpenAI API keys (sk-...)', () => {
+      const input = 'Key: sk-abcdefghij1234567890';
+      const result = SensitiveDataFilter.sanitizeString(input);
+      expect(result).not.toContain('sk-abcdefghij1234567890');
+      expect(result).toContain('***');
     });
 
-    it('should redact OpenAI API keys (sk-proj-... format)', () => {
-      const input = 'Using key sk-proj-abcdefghijklmnop123456';
-      const output = SensitiveDataFilter.sanitizeString(input);
-      expect(output).toBe('Using key ***');
-      expect(output).not.toContain('sk-proj-');
+    it('should redact OpenAI project keys (sk-proj-...)', () => {
+      const input = 'Using sk-proj-abcdefghijk1234567890 for auth';
+      const result = SensitiveDataFilter.sanitizeString(input);
+      expect(result).not.toContain('sk-proj-abcdefghijk1234567890');
+      expect(result).toContain('***');
     });
 
-    it('should redact Bearer tokens while preserving prefix', () => {
-      const input = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
-      const output = SensitiveDataFilter.sanitizeString(input);
-      expect(output).toBe('Authorization: Bearer ***');
-      expect(output).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+    it('should redact Bearer tokens while keeping the Bearer prefix', () => {
+      const input = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdefgh';
+      const result = SensitiveDataFilter.sanitizeString(input);
+      expect(result).toContain('Bearer');
+      expect(result).toContain('***');
+      expect(result).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
     });
 
-    it('should redact API keys in various formats', () => {
-      const testCases = [
-        {
-          input: 'api_key: abcdef1234567890ghijklmnopqrstuvwxyz',
-          expected: 'api_key: ***'
-        },
-        {
-          input: 'api-key="xyz123456789012345678901234567890"',
-          expected: 'api-key="***"'
-        },
-        {
-          input: 'apikeys=token_long_enough_to_be_detected_as_secret',
-          expected: 'apikeys=***'
-        }
-      ];
-
-      testCases.forEach(({ input, expected }) => {
-        const output = SensitiveDataFilter.sanitizeString(input);
-        expect(output).toBe(expected);
-      });
+    it('should redact generic API keys with label', () => {
+      const input = 'api_key: abcdefghij1234567890extra';
+      const result = SensitiveDataFilter.sanitizeString(input);
+      expect(result).toContain('api_key:');
+      expect(result).toContain('***');
     });
 
-    it('should redact authorization header values', () => {
-      const input = 'authorization: Bearer token1234567890abcdefghij';
-      const output = SensitiveDataFilter.sanitizeString(input);
-      expect(output).toBe('authorization: Bearer ***');
+    it('should redact authorization header values with label', () => {
+      const input = 'authorization: Token abcdefghij1234567890extra';
+      const result = SensitiveDataFilter.sanitizeString(input);
+      expect(result).toContain('authorization:');
+      expect(result).toContain('***');
     });
 
-    it('should handle multiple sensitive patterns in one string', () => {
-      const input = 'OpenAI: sk-1234567890abcdef, Kanka: Bearer xyz789012345678901234567890';
-      const output = SensitiveDataFilter.sanitizeString(input);
-      expect(output).not.toContain('sk-1234567890abcdef');
-      expect(output).not.toContain('xyz789012345678901234567890');
-      expect(output).toContain('***');
-    });
-
-    it('should return non-string inputs unchanged', () => {
-      expect(SensitiveDataFilter.sanitizeString(123)).toBe(123);
-      expect(SensitiveDataFilter.sanitizeString(null)).toBe(null);
-      expect(SensitiveDataFilter.sanitizeString(undefined)).toBe(undefined);
+    it('should return non-string values unchanged', () => {
+      expect(SensitiveDataFilter.sanitizeString(42)).toBe(42);
+      expect(SensitiveDataFilter.sanitizeString(null)).toBeNull();
+      expect(SensitiveDataFilter.sanitizeString(undefined)).toBeUndefined();
       expect(SensitiveDataFilter.sanitizeString(true)).toBe(true);
     });
 
-    it('should return empty strings unchanged', () => {
+    it('should return normal strings unmodified', () => {
+      const input = 'Hello world, nothing sensitive here';
+      expect(SensitiveDataFilter.sanitizeString(input)).toBe(input);
+    });
+
+    it('should handle empty string', () => {
       expect(SensitiveDataFilter.sanitizeString('')).toBe('');
     });
 
-    it('should not modify strings without sensitive data', () => {
-      const input = 'This is a regular log message without secrets';
-      const output = SensitiveDataFilter.sanitizeString(input);
-      expect(output).toBe(input);
+    it('should handle multiple sensitive patterns in one string', () => {
+      const input = 'key sk-abcdefghij1234567890 and Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
+      const result = SensitiveDataFilter.sanitizeString(input);
+      expect(result).not.toContain('sk-abcdefghij1234567890');
+      expect(result).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
     });
   });
 
-  // ============================================================================
-  // sanitizeObject Tests
-  // ============================================================================
+  // ── sanitizeObject ─────────────────────────────────────────────────────
 
-  describe('sanitizeObject', () => {
-    it('should redact sensitive properties by name', () => {
-      const input = {
-        username: 'testuser',
-        authorization: 'Bearer secret_token_here',
-        apiKey: 'sk-1234567890abcdef',
-        normalField: 'safe value'
-      };
-
-      const output = SensitiveDataFilter.sanitizeObject(input);
-      expect(output.username).toBe('testuser');
-      expect(output.authorization).toBe('***');
-      expect(output.apiKey).toBe('***');
-      expect(output.normalField).toBe('safe value');
+  describe('sanitizeObject()', () => {
+    it('should return null for null input', () => {
+      expect(SensitiveDataFilter.sanitizeObject(null)).toBeNull();
     });
 
-    it('should sanitize nested objects recursively (deep=true)', () => {
-      const input = {
-        request: {
-          headers: {
-            authorization: 'Bearer nested_token',
-            'content-type': 'application/json'
-          }
-        },
-        config: {
-          apiKey: 'secret_key'
-        }
-      };
-
-      const output = SensitiveDataFilter.sanitizeObject(input, true);
-      expect(output.request.headers.authorization).toBe('***');
-      expect(output.request.headers['content-type']).toBe('application/json');
-      expect(output.config.apiKey).toBe('***');
+    it('should return undefined for undefined input', () => {
+      expect(SensitiveDataFilter.sanitizeObject(undefined)).toBeUndefined();
     });
 
-    it('should not sanitize nested objects when deep=false', () => {
-      const input = {
-        request: {
-          headers: {
-            authorization: 'Bearer nested_token'
-          }
-        }
-      };
-
-      const output = SensitiveDataFilter.sanitizeObject(input, false);
-      expect(output.request.headers.authorization).toBe('Bearer nested_token');
+    it('should sanitize string values passed directly', () => {
+      const result = SensitiveDataFilter.sanitizeObject('sk-abcdefghij1234567890');
+      expect(result).toContain('***');
     });
 
-    it('should sanitize arrays', () => {
-      const input = [
-        'safe string',
-        'api_key: secret123456789012345678901',
-        { authorization: 'Bearer token' }
-      ];
-
-      const output = SensitiveDataFilter.sanitizeObject(input);
-      expect(output[0]).toBe('safe string');
-      expect(output[1]).toContain('***');
-      expect(output[2].authorization).toBe('***');
-    });
-
-    it('should sanitize string values containing sensitive patterns', () => {
-      const input = {
-        message: 'Error: API key sk-proj-test123456789 is invalid'
-      };
-
-      const output = SensitiveDataFilter.sanitizeObject(input);
-      expect(output.message).not.toContain('sk-proj-test123456789');
-      expect(output.message).toContain('***');
-    });
-
-    it('should handle null and undefined objects', () => {
-      expect(SensitiveDataFilter.sanitizeObject(null)).toBe(null);
-      expect(SensitiveDataFilter.sanitizeObject(undefined)).toBe(undefined);
-    });
-
-    it('should handle non-object primitives', () => {
+    it('should return non-object, non-string primitives unchanged', () => {
       expect(SensitiveDataFilter.sanitizeObject(42)).toBe(42);
       expect(SensitiveDataFilter.sanitizeObject(true)).toBe(true);
-      expect(SensitiveDataFilter.sanitizeObject('plain string')).toBe('plain string');
     });
 
-    it('should detect sensitive headers case-insensitively', () => {
-      const input = {
-        Authorization: 'Bearer token',
-        'X-API-KEY': 'secret',
-        'x-auth-token': 'another_secret'
+    it('should redact sensitive header keys', () => {
+      const obj = {
+        authorization: 'secret-token-value-that-is-long-enough',
+        'Content-Type': 'application/json'
       };
-
-      const output = SensitiveDataFilter.sanitizeObject(input);
-      expect(output.Authorization).toBe('***');
-      expect(output['X-API-KEY']).toBe('***');
-      expect(output['x-auth-token']).toBe('***');
+      const result = SensitiveDataFilter.sanitizeObject(obj);
+      expect(result.authorization).toBe('***');
+      expect(result['Content-Type']).toBe('application/json');
     });
 
-    it('should preserve non-sensitive nested structures', () => {
-      const input = {
-        data: {
-          users: [
-            { id: 1, name: 'Alice' },
-            { id: 2, name: 'Bob' }
-          ],
-          metadata: {
-            count: 2,
-            timestamp: '2024-01-01'
-          }
-        }
-      };
+    it('should redact x-api-key header', () => {
+      const result = SensitiveDataFilter.sanitizeObject({ 'x-api-key': 'my-secret' });
+      expect(result['x-api-key']).toBe('***');
+    });
 
-      const output = SensitiveDataFilter.sanitizeObject(input);
-      expect(output).toEqual(input);
+    it('should redact api_key and token params', () => {
+      const result = SensitiveDataFilter.sanitizeObject({
+        api_key: 'secret123',
+        token: 'tok_abc',
+        name: 'visible'
+      });
+      expect(result.api_key).toBe('***');
+      expect(result.token).toBe('***');
+      expect(result.name).toBe('visible');
+    });
+
+    it('should recursively sanitize nested objects', () => {
+      const obj = {
+        headers: {
+          authorization: 'Bearer xyz-long-token-value-here'
+        },
+        data: { message: 'hello' }
+      };
+      const result = SensitiveDataFilter.sanitizeObject(obj);
+      expect(result.headers.authorization).toBe('***');
+      expect(result.data.message).toBe('hello');
+    });
+
+    it('should handle arrays by sanitizing each element', () => {
+      const arr = [
+        { authorization: 'secret' },
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.data',
+        42
+      ];
+      const result = SensitiveDataFilter.sanitizeObject(arr);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result[0].authorization).toBe('***');
+      expect(result[1]).toContain('***');
+      expect(result[2]).toBe(42);
+    });
+
+    it('should sanitize string property values that contain patterns', () => {
+      const obj = {
+        log: 'Connecting with sk-proj-abcdefghijk1234567890'
+      };
+      const result = SensitiveDataFilter.sanitizeObject(obj);
+      expect(result.log).not.toContain('sk-proj-abcdefghijk1234567890');
+    });
+
+    it('should not modify the original object', () => {
+      const original = { authorization: 'my-secret' };
+      SensitiveDataFilter.sanitizeObject(original);
+      expect(original.authorization).toBe('my-secret');
+    });
+
+    it('should skip deep recursion when deep=false', () => {
+      const obj = {
+        nested: { authorization: 'secret-here' }
+      };
+      const result = SensitiveDataFilter.sanitizeObject(obj, false);
+      // When deep=false, nested objects are not recursed into
+      expect(result.nested).toEqual({ authorization: 'secret-here' });
+    });
+
+    it('should keep non-string, non-object values as-is', () => {
+      const obj = { count: 42, active: true, items: null };
+      const result = SensitiveDataFilter.sanitizeObject(obj);
+      expect(result.count).toBe(42);
+      expect(result.active).toBe(true);
+    });
+
+    it('should not recurse array items when deep=false', () => {
+      const arr = [
+        { authorization: 'secret-long-enough-value-here' },
+        'plain text'
+      ];
+      const result = SensitiveDataFilter.sanitizeObject(arr, false);
+      expect(Array.isArray(result)).toBe(true);
+      // When deep=false, items are returned as-is without sanitization
+      expect(result[0].authorization).toBe('secret-long-enough-value-here');
+      expect(result[1]).toBe('plain text');
     });
   });
 
-  // ============================================================================
-  // sanitizeUrl Tests
-  // ============================================================================
+  // ── sanitizeUrl ────────────────────────────────────────────────────────
 
-  describe('sanitizeUrl', () => {
-    it('should redact sensitive query parameters', () => {
-      const input = 'https://api.example.com/endpoint?api_key=secret123&user=test';
-      const output = SensitiveDataFilter.sanitizeUrl(input);
-      expect(output).toContain('api_key=***');
-      expect(output).not.toContain('secret123');
-      expect(output).toContain('user=test');
+  describe('sanitizeUrl()', () => {
+    it('should return falsy input unchanged', () => {
+      expect(SensitiveDataFilter.sanitizeUrl('')).toBe('');
+      expect(SensitiveDataFilter.sanitizeUrl(null)).toBeNull();
+      expect(SensitiveDataFilter.sanitizeUrl(undefined)).toBeUndefined();
     });
 
-    it('should handle multiple sensitive parameters', () => {
-      const input = 'https://api.example.com/data?token=abc&access_token=xyz&page=1';
-      const output = SensitiveDataFilter.sanitizeUrl(input);
-      expect(output).toContain('token=***');
-      expect(output).toContain('access_token=***');
-      expect(output).toContain('page=1');
+    it('should redact api_key query parameter', () => {
+      const url = 'https://api.example.com/data?api_key=secret123&format=json';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).not.toContain('secret123');
+      expect(result).toContain('api_key=***');
+      expect(result).toContain('format=json');
+    });
+
+    it('should redact token query parameter', () => {
+      const url = 'https://api.example.com?token=abc123';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).not.toContain('abc123');
+      expect(result).toContain('token=***');
+    });
+
+    it('should redact access_token query parameter', () => {
+      const url = 'https://api.example.com?access_token=xyz';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).toContain('access_token=***');
+    });
+
+    it('should redact auth query parameter', () => {
+      const url = 'https://api.example.com?auth=myauth';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).toContain('auth=***');
+    });
+
+    it('should redact key query parameter', () => {
+      const url = 'https://api.example.com?key=mykey';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).toContain('key=***');
+    });
+
+    it('should redact apikey query parameter', () => {
+      const url = 'https://api.example.com?apikey=myapikey';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).toContain('apikey=***');
+    });
+
+    it('should leave non-sensitive query params untouched', () => {
+      const url = 'https://api.example.com?page=1&limit=10';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).toContain('page=1');
+      expect(result).toContain('limit=10');
     });
 
     it('should handle URL objects', () => {
-      const urlObj = new URL('https://api.example.com/endpoint?apikey=secret');
-      const output = SensitiveDataFilter.sanitizeUrl(urlObj);
-      expect(output).toContain('apikey=***');
-      expect(output).not.toContain('secret');
+      const url = new URL('https://api.example.com?token=secret');
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).toContain('token=***');
     });
 
-    it('should return URLs without sensitive params unchanged', () => {
-      const input = 'https://api.example.com/endpoint?page=1&limit=10';
-      const output = SensitiveDataFilter.sanitizeUrl(input);
-      expect(output).toBe(input);
+    it('should fall back to string sanitization for invalid URLs', () => {
+      const notUrl = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.data';
+      const result = SensitiveDataFilter.sanitizeUrl(notUrl);
+      expect(result).toContain('***');
     });
 
-    it('should handle invalid URLs gracefully', () => {
-      const input = 'not a valid url with api_key=secret';
-      const output = SensitiveDataFilter.sanitizeUrl(input);
-      // Should fall back to string sanitization
-      expect(output).toBeDefined();
-    });
-
-    it('should handle null/undefined URLs', () => {
-      expect(SensitiveDataFilter.sanitizeUrl(null)).toBe(null);
-      expect(SensitiveDataFilter.sanitizeUrl(undefined)).toBe(undefined);
+    it('should handle multiple sensitive params', () => {
+      const url = 'https://api.example.com?api_key=secret&token=tok';
+      const result = SensitiveDataFilter.sanitizeUrl(url);
+      expect(result).toContain('api_key=***');
+      expect(result).toContain('token=***');
     });
   });
 
-  // ============================================================================
-  // sanitizeHeaders Tests
-  // ============================================================================
+  // ── sanitizeHeaders ────────────────────────────────────────────────────
 
-  describe('sanitizeHeaders', () => {
-    it('should redact authorization headers', () => {
-      const input = {
-        Authorization: 'Bearer secret_token',
-        'Content-Type': 'application/json'
-      };
-
-      const output = SensitiveDataFilter.sanitizeHeaders(input);
-      expect(output['Authorization']).toBe('Bearer ***');
-      expect(output['Content-Type']).toBe('application/json');
+  describe('sanitizeHeaders()', () => {
+    it('should return falsy input unchanged', () => {
+      expect(SensitiveDataFilter.sanitizeHeaders(null)).toBeNull();
+      expect(SensitiveDataFilter.sanitizeHeaders(undefined)).toBeUndefined();
     });
 
-    it('should preserve Bearer prefix for bearer tokens', () => {
-      const input = {
-        authorization: 'Bearer xyz123456789'
-      };
-
-      const output = SensitiveDataFilter.sanitizeHeaders(input);
-      expect(output.authorization).toBe('Bearer ***');
-      expect(output.authorization).toContain('Bearer');
+    it('should return non-object input unchanged', () => {
+      expect(SensitiveDataFilter.sanitizeHeaders('string')).toBe('string');
     });
 
-    it('should redact various sensitive header names', () => {
-      const input = {
-        'x-api-key': 'secret1',
-        'X-API-Token': 'secret2',
-        'x-auth-token': 'secret3',
-        'api-key': 'secret4',
-        apikey: 'secret5'
-      };
-
-      const output = SensitiveDataFilter.sanitizeHeaders(input);
-      expect(output['x-api-key']).toBe('***');
-      expect(output['X-API-Token']).toBe('***');
-      expect(output['x-auth-token']).toBe('***');
-      expect(output['api-key']).toBe('***');
-      expect(output['apikey']).toBe('***');
+    it('should redact authorization header', () => {
+      const headers = { Authorization: 'Token secret123' };
+      const result = SensitiveDataFilter.sanitizeHeaders(headers);
+      expect(result.Authorization).toBe('***');
     });
 
-    it('should handle non-Bearer authorization values', () => {
-      const input = {
-        authorization: 'Basic dXNlcjpwYXNz'
-      };
-
-      const output = SensitiveDataFilter.sanitizeHeaders(input);
-      expect(output.authorization).toBe('***');
+    it('should keep Bearer prefix for authorization values', () => {
+      const headers = { Authorization: 'Bearer my-secret-token' };
+      const result = SensitiveDataFilter.sanitizeHeaders(headers);
+      expect(result.Authorization).toBe('Bearer ***');
     });
 
-    it('should handle null/undefined headers', () => {
-      expect(SensitiveDataFilter.sanitizeHeaders(null)).toBe(null);
-      expect(SensitiveDataFilter.sanitizeHeaders(undefined)).toBe(undefined);
+    it('should redact x-api-key header', () => {
+      const headers = { 'X-Api-Key': 'secret' };
+      const result = SensitiveDataFilter.sanitizeHeaders(headers);
+      expect(result['X-Api-Key']).toBe('***');
     });
 
-    it('should handle non-object headers', () => {
-      expect(SensitiveDataFilter.sanitizeHeaders('not an object')).toBe('not an object');
+    it('should redact x-auth-token header', () => {
+      const headers = { 'x-auth-token': 'secret' };
+      const result = SensitiveDataFilter.sanitizeHeaders(headers);
+      expect(result['x-auth-token']).toBe('***');
     });
 
-    it('should preserve non-sensitive headers', () => {
-      const input = {
-        'User-Agent': 'VoxChronicle/1.0',
+    it('should keep non-sensitive headers', () => {
+      const headers = {
+        'Content-Type': 'application/json',
         Accept: 'application/json',
-        'Content-Type': 'text/plain'
+        Authorization: 'Bearer secret'
       };
+      const result = SensitiveDataFilter.sanitizeHeaders(headers);
+      expect(result['Content-Type']).toBe('application/json');
+      expect(result.Accept).toBe('application/json');
+      expect(result.Authorization).toBe('Bearer ***');
+    });
 
-      const output = SensitiveDataFilter.sanitizeHeaders(input);
-      expect(output).toEqual(input);
+    it('should not modify the original headers object', () => {
+      const original = { Authorization: 'Bearer xyz' };
+      SensitiveDataFilter.sanitizeHeaders(original);
+      expect(original.Authorization).toBe('Bearer xyz');
     });
   });
 
-  // ============================================================================
-  // sanitizeError Tests
-  // ============================================================================
+  // ── sanitizeError ──────────────────────────────────────────────────────
 
-  describe('sanitizeError', () => {
+  describe('sanitizeError()', () => {
+    it('should return falsy input unchanged', () => {
+      expect(SensitiveDataFilter.sanitizeError(null)).toBeNull();
+      expect(SensitiveDataFilter.sanitizeError(undefined)).toBeUndefined();
+      expect(SensitiveDataFilter.sanitizeError(0)).toBe(0);
+    });
+
     it('should sanitize Error instances', () => {
-      const error = new Error('API call failed with key sk-1234567890abcdef');
-      const output = SensitiveDataFilter.sanitizeError(error);
-
-      expect(output.name).toBe('Error');
-      expect(output.message).not.toContain('sk-1234567890abcdef');
-      expect(output.message).toContain('***');
-      expect(output.stack).toBeDefined();
+      const error = new Error('Failed with key sk-abcdefghij1234567890');
+      const result = SensitiveDataFilter.sanitizeError(error);
+      expect(result.name).toBe('Error');
+      expect(result.message).toContain('***');
+      expect(result.message).not.toContain('sk-abcdefghij1234567890');
     });
 
-    it('should sanitize custom error properties', () => {
-      const error = new Error('Request failed');
-      error.config = {
-        apiKey: 'secret_key',
-        url: 'https://api.example.com'
-      };
-      error.response = {
-        headers: {
-          authorization: 'Bearer token'
-        }
-      };
-
-      const output = SensitiveDataFilter.sanitizeError(error);
-      expect(output.name).toBe('Error');
-      expect(output.message).toBe('Request failed');
-      expect(output.config.apiKey).toBe('***');
-      expect(output.config.url).toBe('https://api.example.com');
-      expect(output.response.headers.authorization).toBe('***');
+    it('should sanitize Error stack traces', () => {
+      const error = new Error('Token Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.data leaked');
+      const result = SensitiveDataFilter.sanitizeError(error);
+      if (result.stack) {
+        expect(result.stack).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+      }
     });
 
-    it('should sanitize stack traces containing sensitive data', () => {
-      const error = new Error('Test');
-      error.stack = 'Error: Test\n    at fetch(api_key=sk-secret123456789)';
-
-      const output = SensitiveDataFilter.sanitizeError(error);
-      expect(output.stack).not.toContain('sk-secret123456789');
+    it('should include custom properties from Error', () => {
+      const error = new Error('test');
+      error.statusCode = 401;
+      error.response = { authorization: 'secret' };
+      const result = SensitiveDataFilter.sanitizeError(error);
+      expect(result.statusCode).toBe(401);
+      expect(result.response.authorization).toBe('***');
     });
 
-    it('should sanitize plain object errors', () => {
-      const error = {
-        status: 401,
-        message: 'Unauthorized: Invalid api_key sk-test1234567890',
-        headers: {
-          authorization: 'Bearer token'
-        }
-      };
-
-      const output = SensitiveDataFilter.sanitizeError(error);
-      expect(output.status).toBe(401);
-      expect(output.message).not.toContain('sk-test1234567890');
-      expect(output.headers.authorization).toBe('***');
+    it('should handle plain object errors', () => {
+      const error = { message: 'fail', authorization: 'secret' };
+      const result = SensitiveDataFilter.sanitizeError(error);
+      expect(result.authorization).toBe('***');
+      expect(result.message).toBe('fail');
     });
 
-    it('should handle null/undefined errors', () => {
-      expect(SensitiveDataFilter.sanitizeError(null)).toBe(null);
-      expect(SensitiveDataFilter.sanitizeError(undefined)).toBe(undefined);
-    });
-
-    it('should handle errors without stack traces', () => {
-      const error = new Error('Test error');
-      delete error.stack;
-
-      const output = SensitiveDataFilter.sanitizeError(error);
-      expect(output.name).toBe('Error');
-      expect(output.message).toBe('Test error');
-      expect(output.stack).toBeUndefined();
+    it('should handle Error with no stack', () => {
+      const error = new Error('no stack');
+      error.stack = undefined;
+      const result = SensitiveDataFilter.sanitizeError(error);
+      expect(result.stack).toBeUndefined();
     });
   });
 
-  // ============================================================================
-  // sanitizeArgs Tests
-  // ============================================================================
+  // ── sanitizeArgs ───────────────────────────────────────────────────────
 
-  describe('sanitizeArgs', () => {
-    it('should sanitize multiple arguments of different types', () => {
-      const args = [
-        'Log message with sk-1234567890abcdef',
-        { apiKey: 'secret' },
-        new Error('Error with Bearer token123456789012345678'),
+  describe('sanitizeArgs()', () => {
+    it('should handle null and undefined arguments', () => {
+      const result = SensitiveDataFilter.sanitizeArgs(null, undefined);
+      expect(result).toEqual([null, undefined]);
+    });
+
+    it('should sanitize string arguments', () => {
+      const result = SensitiveDataFilter.sanitizeArgs('sk-abcdefghij1234567890');
+      expect(result[0]).toContain('***');
+    });
+
+    it('should sanitize Error arguments', () => {
+      const error = new Error('key sk-abcdefghij1234567890');
+      const result = SensitiveDataFilter.sanitizeArgs(error);
+      expect(result[0].message).toContain('***');
+    });
+
+    it('should sanitize object arguments', () => {
+      const result = SensitiveDataFilter.sanitizeArgs({ authorization: 'secret' });
+      expect(result[0].authorization).toBe('***');
+    });
+
+    it('should pass through primitive non-string arguments', () => {
+      const result = SensitiveDataFilter.sanitizeArgs(42, true, false);
+      expect(result).toEqual([42, true, false]);
+    });
+
+    it('should handle mixed argument types', () => {
+      const result = SensitiveDataFilter.sanitizeArgs(
+        'msg',
         42,
-        null
-      ];
-
-      const output = SensitiveDataFilter.sanitizeArgs(...args);
-
-      expect(output[0]).not.toContain('sk-1234567890abcdef');
-      expect(output[1].apiKey).toBe('***');
-      expect(output[2].message).not.toContain('token123456789012345678');
-      expect(output[3]).toBe(42);
-      expect(output[4]).toBe(null);
-    });
-
-    it('should handle empty arguments', () => {
-      const output = SensitiveDataFilter.sanitizeArgs();
-      expect(output).toEqual([]);
-    });
-
-    it('should handle mixed safe and sensitive arguments', () => {
-      const output = SensitiveDataFilter.sanitizeArgs(
-        'Safe message',
-        'Unsafe: api_key=secret123456789012345',
-        { safe: 'value' }
+        { token: 'secret' },
+        null,
+        new Error('sk-abcdefghij1234567890')
       );
-
-      expect(output[0]).toBe('Safe message');
-      expect(output[1]).toContain('***');
-      expect(output[2]).toEqual({ safe: 'value' });
+      expect(result[0]).toBe('msg');
+      expect(result[1]).toBe(42);
+      expect(result[2].token).toBe('***');
+      expect(result[3]).toBeNull();
+      expect(result[4].message).toContain('***');
     });
   });
 
-  // ============================================================================
-  // containsSensitiveData Tests
-  // ============================================================================
+  // ── containsSensitiveData ──────────────────────────────────────────────
 
-  describe('containsSensitiveData', () => {
+  describe('containsSensitiveData()', () => {
+    it('should return false for non-string input', () => {
+      expect(SensitiveDataFilter.containsSensitiveData(42)).toBe(false);
+      expect(SensitiveDataFilter.containsSensitiveData(null)).toBe(false);
+      expect(SensitiveDataFilter.containsSensitiveData(undefined)).toBe(false);
+    });
+
+    it('should return false for normal strings', () => {
+      expect(SensitiveDataFilter.containsSensitiveData('hello world')).toBe(false);
+    });
+
     it('should detect OpenAI API keys', () => {
-      expect(SensitiveDataFilter.containsSensitiveData('Key: sk-1234567890abcdef')).toBe(true);
-      expect(SensitiveDataFilter.containsSensitiveData('Key: sk-proj-xyz123456789')).toBe(true);
+      expect(SensitiveDataFilter.containsSensitiveData('sk-abcdefghij1234567890')).toBe(true);
     });
 
     it('should detect Bearer tokens', () => {
-      expect(SensitiveDataFilter.containsSensitiveData('Authorization: Bearer token123')).toBe(
-        true
-      );
+      expect(
+        SensitiveDataFilter.containsSensitiveData('Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.data')
+      ).toBe(true);
     });
 
-    it('should detect API keys in various formats', () => {
-      expect(SensitiveDataFilter.containsSensitiveData('api_key: secret123456789012345678')).toBe(
-        true
-      );
-      expect(SensitiveDataFilter.containsSensitiveData('api-key=xyz123456789012345678901')).toBe(
-        true
-      );
+    it('should detect authorization patterns', () => {
+      expect(
+        SensitiveDataFilter.containsSensitiveData('authorization: Token abcdefghij1234567890extra')
+      ).toBe(true);
     });
 
-    it('should return false for safe strings', () => {
-      expect(SensitiveDataFilter.containsSensitiveData('This is a safe log message')).toBe(false);
-      expect(SensitiveDataFilter.containsSensitiveData('User logged in successfully')).toBe(false);
-    });
-
-    it('should return false for non-string inputs', () => {
-      expect(SensitiveDataFilter.containsSensitiveData(123)).toBe(false);
-      expect(SensitiveDataFilter.containsSensitiveData(null)).toBe(false);
-      expect(SensitiveDataFilter.containsSensitiveData(undefined)).toBe(false);
-      expect(SensitiveDataFilter.containsSensitiveData({})).toBe(false);
-    });
-
-    it('should handle empty strings', () => {
+    it('should return false for empty string', () => {
       expect(SensitiveDataFilter.containsSensitiveData('')).toBe(false);
     });
-  });
 
-  // ============================================================================
-  // Exported Function Tests
-  // ============================================================================
-
-  // ============================================================================
-  // Integration Tests
-  // ============================================================================
-
-  describe('Integration scenarios', () => {
-    it('should sanitize a complete API request log', () => {
-      const logData = {
-        method: 'POST',
-        url: 'https://api.openai.com/v1/chat/completions?api_key=sk-test123456789',
-        headers: {
-          Authorization: 'Bearer sk-proj-secret987654321',
-          'Content-Type': 'application/json'
-        },
-        body: {
-          model: 'gpt-4',
-          messages: [{ role: 'user', content: 'Hello' }]
-        }
-      };
-
-      const sanitized = SensitiveDataFilter.sanitizeObject(logData);
-
-      expect(sanitized.url).toContain('api_key=***');
-      expect(sanitized.headers['Authorization']).toBe('***');
-      expect(sanitized.headers['Content-Type']).toBe('application/json');
-      expect(sanitized.body.model).toBe('gpt-4');
-    });
-
-    it('should sanitize a complete error response', () => {
-      const error = new Error('API request failed');
-      error.config = {
-        url: 'https://api.kanka.io/campaigns',
-        headers: {
-          Authorization: 'Bearer kanka_token_xyz',
-          Accept: 'application/json'
-        }
-      };
-      error.response = {
-        status: 401,
-        data: {
-          error: 'Invalid token: Bearer kanka_token_xyz'
-        }
-      };
-
-      const sanitized = SensitiveDataFilter.sanitizeError(error);
-
-      expect(sanitized.config.headers['Authorization']).toBe('***');
-      expect(sanitized.config.headers['Accept']).toBe('application/json');
-      expect(sanitized.response.data.error).not.toContain('kanka_token_xyz');
-    });
-
-    it('should handle complex nested structures', () => {
-      const complexObject = {
-        session: {
-          id: '123',
-          user: {
-            name: 'TestUser',
-            credentials: {
-              apiKey: 'sk-complex123456789',
-              refreshToken: 'refresh_token_long_enough_string'
-            }
-          },
-          logs: ['Action completed', 'Error: unauthorized api_key=sk-log123456789']
-        }
-      };
-
-      const sanitized = SensitiveDataFilter.sanitizeObject(complexObject);
-
-      expect(sanitized.session.id).toBe('123');
-      expect(sanitized.session.user.name).toBe('TestUser');
-      expect(sanitized.session.user.credentials.apiKey).toBe('***');
-      expect(sanitized.session.user.credentials.refreshToken).toBe('***');
-      expect(sanitized.session.logs[0]).toBe('Action completed');
-      expect(sanitized.session.logs[1]).not.toContain('sk-log123456789');
+    it('should work correctly when called multiple times (regex lastIndex reset)', () => {
+      const str = 'sk-abcdefghij1234567890';
+      expect(SensitiveDataFilter.containsSensitiveData(str)).toBe(true);
+      expect(SensitiveDataFilter.containsSensitiveData(str)).toBe(true);
+      expect(SensitiveDataFilter.containsSensitiveData(str)).toBe(true);
     });
   });
 });

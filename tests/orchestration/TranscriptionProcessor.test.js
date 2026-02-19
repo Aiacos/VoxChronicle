@@ -1,596 +1,751 @@
 /**
- * TranscriptionProcessor Unit Tests
+ * Tests for TranscriptionProcessor
  *
- * Tests for the TranscriptionProcessor class with service mocking.
- * Covers transcription workflows, fallback logic, and error handling.
+ * Covers exports, constructor validation, processTranscription (happy path,
+ * auto-mode fallback, error handling), getMode, hasFallback, updateConfig,
+ * and private _transcribeWithService indirectly through the public API.
  */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+// ---------------------------------------------------------------------------
+// Hoisted mocks (accessible inside vi.mock factories)
+// ---------------------------------------------------------------------------
 
-// Mock Logger before importing TranscriptionProcessor
+const { MockLocalWhisperServiceClass, MockTranscriptionServiceClass } = vi.hoisted(() => ({
+  MockLocalWhisperServiceClass: vi.fn(),
+  MockTranscriptionServiceClass: vi.fn()
+}));
+
+// ---------------------------------------------------------------------------
+// Mocks
+// ---------------------------------------------------------------------------
+
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
   Logger: {
-    createChild: () => ({
+    createChild: vi.fn(() => ({
       debug: vi.fn(),
       info: vi.fn(),
-      log: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn()
-    }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    log: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  },
-  LogLevel: {
-    DEBUG: 0,
-    INFO: 1,
-    LOG: 2,
-    WARN: 3,
-    ERROR: 4,
-    NONE: 5
+      error: vi.fn(),
+      log: vi.fn()
+    }))
   }
 }));
 
-// Mock MODULE_ID for Logger import chain
-vi.mock('../../scripts/main.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-vi.mock('../../scripts/constants.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-
-// Mock LocalWhisperService
+// We need to mock LocalWhisperService so instanceof checks work
 vi.mock('../../scripts/ai/LocalWhisperService.mjs', () => ({
-  LocalWhisperService: class MockLocalWhisperService {
-    transcribe = vi.fn();
-  }
+  LocalWhisperService: MockLocalWhisperServiceClass
 }));
 
-// Create a mock TranscriptionService that can be controlled
-let mockApiTranscribe = vi.fn();
-
-// Mock TranscriptionService
+// Mock TranscriptionService constructor to track fallback creation
 vi.mock('../../scripts/ai/TranscriptionService.mjs', () => ({
-  TranscriptionService: class MockTranscriptionService {
-    constructor(apiKey) {
-      this.apiKey = apiKey;
-      // Use the controllable mock function
-      this.transcribe = mockApiTranscribe;
-    }
+  TranscriptionService: MockTranscriptionServiceClass
+}));
+
+import { TranscriptionProcessor } from '../../scripts/orchestration/TranscriptionProcessor.mjs';
+
+vi.mock('../../scripts/ai/TranscriptionFactory.mjs', () => ({
+  TranscriptionMode: {
+    API: 'api',
+    LOCAL: 'local',
+    AUTO: 'auto'
   }
 }));
 
-// Import after mocks are set up
-import { TranscriptionProcessor } from '../../scripts/orchestration/TranscriptionProcessor.mjs';
-import { TranscriptionMode } from '../../scripts/ai/TranscriptionFactory.mjs';
-import { LocalWhisperService } from '../../scripts/ai/LocalWhisperService.mjs';
-import { TranscriptionService } from '../../scripts/ai/TranscriptionService.mjs';
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-/**
- * Create mock audio blob for testing
- */
-function createMockAudioBlob(size = 1024) {
-  const data = new Uint8Array(size).fill(0);
-  return new Blob([data], { type: 'audio/webm' });
-}
-
-/**
- * Create mock transcription result
- */
-function createMockTranscriptionResult(options = {}) {
+function createMockTranscriptionService(overrides = {}) {
   return {
-    text: options.text || 'Test transcription text.',
-    segments: options.segments || [
-      {
-        speaker: 'SPEAKER_00',
-        text: 'Hello world',
-        start: 0,
-        end: 2.5
-      },
-      {
-        speaker: 'SPEAKER_01',
-        text: 'Test message',
-        start: 2.5,
-        end: 5.0
-      }
-    ],
-    speakers: options.speakers || [
-      { id: 'SPEAKER_00', name: 'SPEAKER_00', segmentCount: 1, isMapped: false },
-      { id: 'SPEAKER_01', name: 'SPEAKER_01', segmentCount: 1, isMapped: false }
-    ],
-    language: options.language || 'en',
-    duration: options.duration || 5.0
+    transcribe: vi.fn().mockResolvedValue({
+      text: 'Hello world',
+      segments: [{ speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 1 }],
+      language: 'en'
+    }),
+    ...overrides
   };
 }
 
-/**
- * Create mock transcription service (API)
- */
-function createMockTranscriptionService() {
-  const service = new TranscriptionService('test-api-key');
-  service.transcribe = vi.fn().mockResolvedValue(createMockTranscriptionResult());
+function createMockLocalWhisperService(overrides = {}) {
+  const service = {
+    transcribe: vi.fn().mockResolvedValue({
+      text: 'Hello world',
+      segments: [{ speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 1 }],
+      language: 'en'
+    }),
+    ...overrides
+  };
+  // Make instanceof LocalWhisperService work
+  Object.setPrototypeOf(service, MockLocalWhisperServiceClass.prototype);
   return service;
 }
 
-/**
- * Create mock local whisper service
- */
-function createMockLocalWhisperService() {
-  const service = new LocalWhisperService();
-  service.transcribe = vi.fn().mockResolvedValue(createMockTranscriptionResult());
-  return service;
+function createAudioBlob() {
+  return new Blob(['fake audio data'], { type: 'audio/webm' });
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('TranscriptionProcessor', () => {
-  let processor;
   let mockService;
-  let mockAudioBlob;
+  let processor;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockAudioBlob = createMockAudioBlob();
-    // Reset the API transcribe mock to default success behavior
-    mockApiTranscribe = vi.fn().mockResolvedValue(createMockTranscriptionResult());
+    mockService = createMockTranscriptionService();
+    processor = new TranscriptionProcessor({
+      transcriptionService: mockService,
+      config: { mode: 'api', openaiApiKey: 'sk-test' }
+    });
+    // Reset the mock constructor so we can track fallback creation
+    MockTranscriptionServiceClass.mockReset();
+    MockTranscriptionServiceClass.prototype.transcribe = vi.fn().mockResolvedValue({
+      text: 'Fallback result',
+      segments: [{ speaker: 'SPEAKER_00', text: 'Fallback result', start: 0, end: 1 }],
+      language: 'en'
+    });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  // ── Exports ─────────────────────────────────────────────────────────────
+
+  describe('exports', () => {
+    it('should export TranscriptionProcessor class', () => {
+      expect(TranscriptionProcessor).toBeDefined();
+      expect(typeof TranscriptionProcessor).toBe('function');
+    });
+
+    it('should be constructable', () => {
+      const p = new TranscriptionProcessor({ transcriptionService: mockService });
+      expect(p).toBeInstanceOf(TranscriptionProcessor);
+    });
   });
+
+  // ── Constructor ─────────────────────────────────────────────────────────
 
   describe('constructor', () => {
-    it('should create instance with API transcription service', () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
-      });
-
-      expect(processor).toBeInstanceOf(TranscriptionProcessor);
-      expect(processor.getMode()).toBe(TranscriptionMode.API);
+    it('should throw if no transcriptionService is provided', () => {
+      expect(() => new TranscriptionProcessor()).toThrow('requires a transcriptionService');
     });
 
-    it('should create instance with local transcription service', () => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
-      });
-
-      expect(processor).toBeInstanceOf(TranscriptionProcessor);
-      expect(processor.getMode()).toBe(TranscriptionMode.LOCAL);
+    it('should throw if transcriptionService is missing from options', () => {
+      expect(() => new TranscriptionProcessor({})).toThrow('requires a transcriptionService');
     });
 
-    it('should accept custom config', () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
+    it('should throw if transcriptionService is null', () => {
+      expect(() => new TranscriptionProcessor({ transcriptionService: null })).toThrow(
+        'requires a transcriptionService'
+      );
+    });
+
+    it('should accept a valid transcriptionService', () => {
+      const p = new TranscriptionProcessor({ transcriptionService: mockService });
+      expect(p).toBeDefined();
+    });
+
+    it('should use empty config when not provided', () => {
+      const p = new TranscriptionProcessor({ transcriptionService: mockService });
+      expect(p.getMode()).toBe('api'); // defaults to API since not instanceof LocalWhisperService
+    });
+
+    it('should store config when provided', () => {
+      const p = new TranscriptionProcessor({
         transcriptionService: mockService,
-        config: {
-          mode: TranscriptionMode.AUTO,
-          openaiApiKey: 'sk-test-key'
-        }
+        config: { mode: 'local', openaiApiKey: 'sk-test' }
       });
-
-      expect(processor.getMode()).toBe(TranscriptionMode.AUTO);
-      expect(processor.hasFallback()).toBe(false); // API service doesn't need fallback
-    });
-
-    it('should throw error if no transcription service provided', () => {
-      expect(() => {
-        new TranscriptionProcessor({});
-      }).toThrow('TranscriptionProcessor requires a transcriptionService');
-    });
-
-    it('should throw error if transcriptionService is null', () => {
-      expect(() => {
-        new TranscriptionProcessor({ transcriptionService: null });
-      }).toThrow('TranscriptionProcessor requires a transcriptionService');
+      expect(p.getMode()).toBe('local');
     });
   });
 
-  describe('processTranscription with API service', () => {
-    beforeEach(() => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
-      });
-    });
-
-    it('should transcribe audio successfully', async () => {
-      const result = await processor.processTranscription(mockAudioBlob);
-
-      expect(result).toBeDefined();
-      expect(result.text).toBe('Test transcription text.');
-      expect(result.segments).toHaveLength(2);
-      expect(mockService.transcribe).toHaveBeenCalledTimes(1);
-    });
-
-    it('should pass speaker map to transcription service', async () => {
-      const speakerMap = {
-        SPEAKER_00: 'Game Master',
-        SPEAKER_01: 'Player 1'
-      };
-
-      await processor.processTranscription(mockAudioBlob, { speakerMap });
-
-      expect(mockService.transcribe).toHaveBeenCalledWith(
-        mockAudioBlob,
-        expect.objectContaining({ speakerMap })
-      );
-    });
-
-    it('should pass language to transcription service', async () => {
-      await processor.processTranscription(mockAudioBlob, { language: 'it' });
-
-      expect(mockService.transcribe).toHaveBeenCalledWith(
-        mockAudioBlob,
-        expect.objectContaining({ language: 'it' })
-      );
-    });
-
-    it('should invoke progress callback during transcription', async () => {
-      const onProgress = vi.fn();
-
-      // Mock service to trigger progress callback
-      mockService.transcribe = vi.fn(async (blob, options) => {
-        if (options.onProgress) {
-          options.onProgress({ progress: 50, currentChunk: 1, totalChunks: 1 });
-        }
-        return createMockTranscriptionResult();
-      });
-
-      await processor.processTranscription(mockAudioBlob, { onProgress });
-
-      expect(onProgress).toHaveBeenCalledWith(
-        expect.any(Number),
-        expect.stringContaining('transcription')
-      );
-    });
-
-    it('should handle transcription error', async () => {
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('API error'));
-
-      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow('API error');
-    });
-
-    it('should validate audio blob parameter', async () => {
-      await expect(processor.processTranscription(null)).rejects.toThrow(
-        'Invalid audio blob provided for transcription'
-      );
-
-      await expect(processor.processTranscription('not-a-blob')).rejects.toThrow(
-        'Invalid audio blob provided for transcription'
-      );
-    });
-  });
-
-  describe('processTranscription with Local service', () => {
-    beforeEach(() => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService,
-        config: { mode: TranscriptionMode.LOCAL }
-      });
-    });
-
-    it('should transcribe audio successfully with local service', async () => {
-      const result = await processor.processTranscription(mockAudioBlob);
-
-      expect(result).toBeDefined();
-      expect(result.text).toBe('Test transcription text.');
-      expect(result.segments).toHaveLength(2);
-      expect(mockService.transcribe).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle local transcription error in LOCAL mode', async () => {
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local whisper error'));
-
-      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow(
-        'Local whisper error'
-      );
-    });
-
-    it('should not attempt fallback in LOCAL mode', async () => {
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local error'));
-
-      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow('Local error');
-
-      // Should only call local service once, no fallback
-      expect(mockService.transcribe).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('processTranscription with AUTO fallback', () => {
-    beforeEach(() => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService,
-        config: {
-          mode: TranscriptionMode.AUTO,
-          openaiApiKey: 'sk-test-fallback-key'
-        }
-      });
-    });
-
-    it('should succeed with local service when no error occurs', async () => {
-      const result = await processor.processTranscription(mockAudioBlob);
-
-      expect(result).toBeDefined();
-      expect(result.text).toBe('Test transcription text.');
-      expect(mockService.transcribe).toHaveBeenCalledTimes(1);
-    });
-
-    it('should fallback to API when local service fails', async () => {
-      // Make local service fail
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local service unavailable'));
-
-      const onProgress = vi.fn();
-      const result = await processor.processTranscription(mockAudioBlob, { onProgress });
-
-      expect(result).toBeDefined();
-      expect(result.text).toBe('Test transcription text.');
-
-      // Verify progress messages indicate fallback
-      expect(onProgress).toHaveBeenCalledWith(
-        expect.any(Number),
-        expect.stringMatching(/fallback|API/i)
-      );
-    });
-
-    it('should report progress during fallback', async () => {
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local error'));
-
-      const onProgress = vi.fn();
-      await processor.processTranscription(mockAudioBlob, { onProgress });
-
-      // Check for fallback progress messages
-      const progressCalls = onProgress.mock.calls.map((call) => call[1]);
-      expect(progressCalls.some((msg) => msg.includes('fallback'))).toBe(true);
-    });
-
-    it('should fail if no API key configured for fallback', async () => {
-      // Create processor without API key
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService,
-        config: { mode: TranscriptionMode.AUTO }
-      });
-
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local error'));
-
-      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow(
-        /no OpenAI API key configured for fallback/
-      );
-    });
-
-    it('should fail with combined error message when both local and API fail', async () => {
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local service error'));
-
-      // Make the API fallback also fail
-      mockApiTranscribe.mockRejectedValueOnce(new Error('API service error'));
-
-      await expect(processor.processTranscription(mockAudioBlob)).rejects.toThrow(
-        /Both local and API transcription failed/
-      );
-    });
-
-    it('should pass speaker map to fallback API service', async () => {
-      mockService.transcribe = vi.fn().mockRejectedValue(new Error('Local error'));
-
-      const speakerMap = { SPEAKER_00: 'GM' };
-
-      await processor.processTranscription(mockAudioBlob, { speakerMap });
-
-      // Verify the API service transcribe was called with speaker map
-      expect(mockApiTranscribe).toHaveBeenCalledWith(
-        mockAudioBlob,
-        expect.objectContaining({ speakerMap })
-      );
-    });
-  });
+  // ── getMode ─────────────────────────────────────────────────────────────
 
   describe('getMode', () => {
-    it('should return LOCAL for LocalWhisperService without config', () => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
-      });
-
-      expect(processor.getMode()).toBe(TranscriptionMode.LOCAL);
+    it('should return mode from config', () => {
+      expect(processor.getMode()).toBe('api');
     });
 
-    it('should return API for TranscriptionService without config', () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
-      });
-
-      expect(processor.getMode()).toBe(TranscriptionMode.API);
-    });
-
-    it('should return configured mode when specified', () => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
+    it('should return "local" when config mode is local', () => {
+      const p = new TranscriptionProcessor({
         transcriptionService: mockService,
-        config: { mode: TranscriptionMode.AUTO }
+        config: { mode: 'local' }
       });
-
-      expect(processor.getMode()).toBe(TranscriptionMode.AUTO);
+      expect(p.getMode()).toBe('local');
     });
 
-    it('should respect mode override for API service', () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
+    it('should return "auto" when config mode is auto', () => {
+      const p = new TranscriptionProcessor({
         transcriptionService: mockService,
-        config: { mode: TranscriptionMode.LOCAL }
+        config: { mode: 'auto' }
       });
+      expect(p.getMode()).toBe('auto');
+    });
 
-      expect(processor.getMode()).toBe(TranscriptionMode.LOCAL);
+    it('should default to "local" for LocalWhisperService instances without config mode', () => {
+      const localService = createMockLocalWhisperService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: {}
+      });
+      expect(p.getMode()).toBe('local');
+    });
+
+    it('should default to "api" for non-local service without config mode', () => {
+      const p = new TranscriptionProcessor({
+        transcriptionService: mockService,
+        config: {}
+      });
+      expect(p.getMode()).toBe('api');
+    });
+
+    it('should default to "api" when config is undefined', () => {
+      const p = new TranscriptionProcessor({ transcriptionService: mockService });
+      expect(p.getMode()).toBe('api');
     });
   });
+
+  // ── hasFallback ─────────────────────────────────────────────────────────
 
   describe('hasFallback', () => {
-    it('should return true for local service in AUTO mode with API key', () => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService,
-        config: {
-          mode: TranscriptionMode.AUTO,
-          openaiApiKey: 'sk-test-key'
-        }
-      });
-
-      expect(processor.hasFallback()).toBe(true);
-    });
-
-    it('should return false for local service in AUTO mode without API key', () => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService,
-        config: { mode: TranscriptionMode.AUTO }
-      });
-
+    it('should return false for API mode', () => {
       expect(processor.hasFallback()).toBe(false);
     });
 
-    it('should return false for local service in LOCAL mode', () => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
+    it('should return false when service is not LocalWhisperService', () => {
+      const p = new TranscriptionProcessor({
         transcriptionService: mockService,
-        config: {
-          mode: TranscriptionMode.LOCAL,
-          openaiApiKey: 'sk-test-key'
-        }
+        config: { mode: 'auto', openaiApiKey: 'sk-test' }
       });
-
-      expect(processor.hasFallback()).toBe(false);
+      expect(p.hasFallback()).toBe(false);
     });
 
-    it('should return false for API service', () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService,
-        config: {
-          mode: TranscriptionMode.AUTO,
-          openaiApiKey: 'sk-test-key'
-        }
+    it('should return true for local service in auto mode with API key', () => {
+      const localService = createMockLocalWhisperService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'auto', openaiApiKey: 'sk-test' }
       });
+      expect(p.hasFallback()).toBe(true);
+    });
 
-      expect(processor.hasFallback()).toBe(false);
+    it('should return false for local service in auto mode without API key', () => {
+      const localService = createMockLocalWhisperService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'auto' }
+      });
+      expect(p.hasFallback()).toBe(false);
+    });
+
+    it('should return false for local service in local mode with API key', () => {
+      const localService = createMockLocalWhisperService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'local', openaiApiKey: 'sk-test' }
+      });
+      expect(p.hasFallback()).toBe(false);
+    });
+
+    it('should return false when config has empty openaiApiKey', () => {
+      const localService = createMockLocalWhisperService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'auto', openaiApiKey: '' }
+      });
+      expect(p.hasFallback()).toBe(false);
     });
   });
+
+  // ── updateConfig ────────────────────────────────────────────────────────
 
   describe('updateConfig', () => {
-    beforeEach(() => {
-      mockService = createMockLocalWhisperService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService,
-        config: { mode: TranscriptionMode.LOCAL }
+    it('should merge new config with existing config', () => {
+      processor.updateConfig({ mode: 'local' });
+      expect(processor.getMode()).toBe('local');
+    });
+
+    it('should preserve existing config keys', () => {
+      processor.updateConfig({ mode: 'auto' });
+      expect(processor.hasFallback()).toBe(false); // still not local service
+    });
+
+    it('should add new config keys', () => {
+      const localService = createMockLocalWhisperService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'auto' }
       });
+      expect(p.hasFallback()).toBe(false);
+
+      p.updateConfig({ openaiApiKey: 'sk-new' });
+      expect(p.hasFallback()).toBe(true);
     });
 
-    it('should update mode configuration', () => {
-      expect(processor.getMode()).toBe(TranscriptionMode.LOCAL);
-
-      processor.updateConfig({ mode: TranscriptionMode.AUTO });
-
-      expect(processor.getMode()).toBe(TranscriptionMode.AUTO);
-    });
-
-    it('should update API key configuration', () => {
-      expect(processor.hasFallback()).toBe(false);
-
-      processor.updateConfig({
-        mode: TranscriptionMode.AUTO,
-        openaiApiKey: 'sk-new-key'
-      });
-
-      expect(processor.hasFallback()).toBe(true);
-    });
-
-    it('should merge config instead of replacing', () => {
-      processor.updateConfig({
-        mode: TranscriptionMode.AUTO,
-        openaiApiKey: 'sk-test-key'
-      });
-
-      expect(processor.getMode()).toBe(TranscriptionMode.AUTO);
-      expect(processor.hasFallback()).toBe(true);
-
-      // Update only mode, API key should remain
-      processor.updateConfig({ mode: TranscriptionMode.LOCAL });
-
-      expect(processor.getMode()).toBe(TranscriptionMode.LOCAL);
-      // Note: hasFallback will be false because mode is LOCAL now
-    });
-
-    it('should handle empty config update', () => {
-      const originalMode = processor.getMode();
-
-      processor.updateConfig({});
-
-      expect(processor.getMode()).toBe(originalMode);
+    it('should overwrite existing config keys', () => {
+      processor.updateConfig({ openaiApiKey: 'sk-new-key' });
+      // Verify the internal config was updated by checking hasFallback (indirectly)
+      expect(processor.getMode()).toBe('api');
     });
   });
 
-  describe('edge cases and error handling', () => {
-    it('should propagate progress callback errors', async () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
+  // ── processTranscription ────────────────────────────────────────────────
+
+  describe('processTranscription', () => {
+    describe('input validation', () => {
+      it('should throw if audioBlob is null', async () => {
+        await expect(processor.processTranscription(null)).rejects.toThrow(
+          'Invalid audio blob'
+        );
       });
 
-      const onProgress = vi.fn().mockImplementation(() => {
-        throw new Error('Progress callback error');
+      it('should throw if audioBlob is undefined', async () => {
+        await expect(processor.processTranscription(undefined)).rejects.toThrow(
+          'Invalid audio blob'
+        );
       });
 
-      // Progress callback errors should propagate
-      await expect(processor.processTranscription(mockAudioBlob, { onProgress })).rejects.toThrow(
-        'Progress callback error'
-      );
+      it('should throw if audioBlob is not a Blob', async () => {
+        await expect(processor.processTranscription('not a blob')).rejects.toThrow(
+          'Invalid audio blob'
+        );
+      });
+
+      it('should throw if audioBlob is a number', async () => {
+        await expect(processor.processTranscription(42)).rejects.toThrow(
+          'Invalid audio blob'
+        );
+      });
+
+      it('should throw if audioBlob is an object', async () => {
+        await expect(processor.processTranscription({})).rejects.toThrow(
+          'Invalid audio blob'
+        );
+      });
     });
 
-    it('should handle missing options object', async () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
+    describe('happy path', () => {
+      it('should call transcribe on the service', async () => {
+        const blob = createAudioBlob();
+        await processor.processTranscription(blob);
+        expect(mockService.transcribe).toHaveBeenCalledTimes(1);
       });
 
-      const result = await processor.processTranscription(mockAudioBlob);
+      it('should pass audio blob to service', async () => {
+        const blob = createAudioBlob();
+        await processor.processTranscription(blob);
+        expect(mockService.transcribe).toHaveBeenCalledWith(blob, expect.any(Object));
+      });
 
-      expect(result).toBeDefined();
-      expect(mockService.transcribe).toHaveBeenCalled();
+      it('should pass speakerMap to service', async () => {
+        const blob = createAudioBlob();
+        const speakerMap = { SPEAKER_00: 'Game Master' };
+        await processor.processTranscription(blob, { speakerMap });
+
+        expect(mockService.transcribe).toHaveBeenCalledWith(
+          blob,
+          expect.objectContaining({ speakerMap })
+        );
+      });
+
+      it('should pass language to service', async () => {
+        const blob = createAudioBlob();
+        await processor.processTranscription(blob, { language: 'it' });
+
+        expect(mockService.transcribe).toHaveBeenCalledWith(
+          blob,
+          expect.objectContaining({ language: 'it' })
+        );
+      });
+
+      it('should return transcription result', async () => {
+        const blob = createAudioBlob();
+        const result = await processor.processTranscription(blob);
+
+        expect(result).toBeDefined();
+        expect(result.text).toBe('Hello world');
+        expect(result.segments).toHaveLength(1);
+      });
+
+      it('should use default empty speakerMap when not provided', async () => {
+        const blob = createAudioBlob();
+        await processor.processTranscription(blob);
+
+        expect(mockService.transcribe).toHaveBeenCalledWith(
+          blob,
+          expect.objectContaining({ speakerMap: {} })
+        );
+      });
+
+      it('should use default noop onProgress when not provided', async () => {
+        const blob = createAudioBlob();
+        // Should not throw
+        const result = await processor.processTranscription(blob);
+        expect(result).toBeDefined();
+      });
     });
 
-    it('should handle empty speaker map', async () => {
-      mockService = createMockTranscriptionService();
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
+    describe('progress reporting', () => {
+      it('should call onProgress with starting message', async () => {
+        const blob = createAudioBlob();
+        const onProgress = vi.fn();
+        await processor.processTranscription(blob, { onProgress });
+
+        expect(onProgress).toHaveBeenCalledWith(0, expect.stringContaining('Starting transcription'));
       });
 
-      await processor.processTranscription(mockAudioBlob, { speakerMap: {} });
+      it('should call onProgress with completion message', async () => {
+        const blob = createAudioBlob();
+        const onProgress = vi.fn();
+        await processor.processTranscription(blob, { onProgress });
 
-      expect(mockService.transcribe).toHaveBeenCalledWith(
-        mockAudioBlob,
-        expect.objectContaining({ speakerMap: {} })
-      );
+        expect(onProgress).toHaveBeenCalledWith(100, 'Transcription complete');
+      });
+
+      it('should include mode in starting message', async () => {
+        const blob = createAudioBlob();
+        const onProgress = vi.fn();
+        await processor.processTranscription(blob, { onProgress });
+
+        expect(onProgress).toHaveBeenCalledWith(0, expect.stringContaining('api'));
+      });
+
+      it('should relay progress from transcription service', async () => {
+        let capturedOnProgress;
+        const service = createMockTranscriptionService({
+          transcribe: vi.fn().mockImplementation((blob, opts) => {
+            capturedOnProgress = opts.onProgress;
+            // Simulate progress callback
+            opts.onProgress({ currentChunk: 1, totalChunks: 3, progress: 33 });
+            opts.onProgress({ currentChunk: 2, totalChunks: 3, progress: 66 });
+            return Promise.resolve({
+              text: 'Test',
+              segments: [{ speaker: 'S', text: 'Test', start: 0, end: 1 }]
+            });
+          })
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: service,
+          config: { mode: 'api' }
+        });
+
+        const onProgress = vi.fn();
+        await p.processTranscription(createAudioBlob(), { onProgress });
+
+        // Should relay chunk progress
+        expect(onProgress).toHaveBeenCalledWith(33, 'Transcribing chunk 1/3');
+        expect(onProgress).toHaveBeenCalledWith(66, 'Transcribing chunk 2/3');
+      });
+
+      it('should handle missing progress fields with defaults', async () => {
+        const service = createMockTranscriptionService({
+          transcribe: vi.fn().mockImplementation((blob, opts) => {
+            // Progress with missing fields
+            opts.onProgress({});
+            return Promise.resolve({ text: 'Test', segments: [] });
+          })
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: service,
+          config: { mode: 'api' }
+        });
+
+        const onProgress = vi.fn();
+        await p.processTranscription(createAudioBlob(), { onProgress });
+
+        // Defaults: currentChunk=1, totalChunks=1, progress=0
+        expect(onProgress).toHaveBeenCalledWith(0, 'Transcribing chunk 1/1');
+      });
     });
 
-    it('should handle transcription result with no segments', async () => {
-      mockService = createMockTranscriptionService();
-      mockService.transcribe = vi.fn().mockResolvedValue({
-        text: 'Some text',
-        segments: [],
-        speakers: [],
-        language: 'en',
-        duration: 0
+    describe('error handling (non-auto mode)', () => {
+      it('should re-throw transcription errors in API mode', async () => {
+        const service = createMockTranscriptionService({
+          transcribe: vi.fn().mockRejectedValue(new Error('API error'))
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: service,
+          config: { mode: 'api' }
+        });
+
+        await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('API error');
       });
 
-      processor = new TranscriptionProcessor({
-        transcriptionService: mockService
+      it('should re-throw transcription errors in local mode', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local error'))
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'local' }
+        });
+
+        await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('Local error');
       });
 
-      const result = await processor.processTranscription(mockAudioBlob);
+      it('should re-throw for non-local service in auto mode', async () => {
+        const service = createMockTranscriptionService({
+          transcribe: vi.fn().mockRejectedValue(new Error('API error'))
+        });
 
-      expect(result.segments).toHaveLength(0);
+        const p = new TranscriptionProcessor({
+          transcriptionService: service,
+          config: { mode: 'auto' }
+        });
+
+        await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('API error');
+      });
+    });
+
+    describe('auto-mode fallback', () => {
+      it('should attempt fallback when local fails in auto mode', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local failed'))
+        });
+
+        // Set up the TranscriptionService constructor mock to return a working service
+        const fallbackTranscribe = vi.fn().mockResolvedValue({
+          text: 'Fallback text',
+          segments: [{ speaker: 'S', text: 'Fallback text', start: 0, end: 1 }]
+        });
+        MockTranscriptionServiceClass.mockImplementation(() => ({
+          transcribe: fallbackTranscribe
+        }));
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'auto', openaiApiKey: 'sk-test' }
+        });
+
+        const result = await p.processTranscription(createAudioBlob());
+        expect(result.text).toBe('Fallback text');
+        expect(MockTranscriptionServiceClass).toHaveBeenCalledWith('sk-test');
+      });
+
+      it('should throw if local fails and no API key for fallback', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local failed'))
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'auto' }
+        });
+
+        await expect(p.processTranscription(createAudioBlob())).rejects.toThrow(
+          'Local transcription failed and no OpenAI API key'
+        );
+      });
+
+      it('should throw combined error if both local and API fail', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local failed'))
+        });
+
+        MockTranscriptionServiceClass.mockImplementation(() => ({
+          transcribe: vi.fn().mockRejectedValue(new Error('API also failed'))
+        }));
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'auto', openaiApiKey: 'sk-test' }
+        });
+
+        await expect(p.processTranscription(createAudioBlob())).rejects.toThrow(
+          'Both local and API transcription failed'
+        );
+      });
+
+      it('should include both error messages when both fail', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local timeout'))
+        });
+
+        MockTranscriptionServiceClass.mockImplementation(() => ({
+          transcribe: vi.fn().mockRejectedValue(new Error('Rate limited'))
+        }));
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'auto', openaiApiKey: 'sk-test' }
+        });
+
+        await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('Local timeout');
+        // Also check the API error is included
+        try {
+          await p.processTranscription(createAudioBlob());
+        } catch (e) {
+          expect(e.message).toContain('Rate limited');
+        }
+      });
+
+      it('should report fallback progress', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local failed'))
+        });
+
+        MockTranscriptionServiceClass.mockImplementation(() => ({
+          transcribe: vi.fn().mockResolvedValue({
+            text: 'Fallback ok',
+            segments: []
+          })
+        }));
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'auto', openaiApiKey: 'sk-test' }
+        });
+
+        const onProgress = vi.fn();
+        await p.processTranscription(createAudioBlob(), { onProgress });
+
+        expect(onProgress).toHaveBeenCalledWith(0, 'Falling back to API transcription...');
+        expect(onProgress).toHaveBeenCalledWith(100, 'Transcription complete (via API fallback)');
+      });
+
+      it('should pass speakerMap and language to fallback service', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local failed'))
+        });
+
+        const fallbackTranscribe = vi.fn().mockResolvedValue({
+          text: 'Fallback',
+          segments: []
+        });
+        MockTranscriptionServiceClass.mockImplementation(() => ({
+          transcribe: fallbackTranscribe
+        }));
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'auto', openaiApiKey: 'sk-test' }
+        });
+
+        const speakerMap = { SPEAKER_00: 'DM' };
+        await p.processTranscription(createAudioBlob(), {
+          speakerMap,
+          language: 'fr'
+        });
+
+        expect(fallbackTranscribe).toHaveBeenCalledWith(
+          expect.any(Blob),
+          expect.objectContaining({
+            speakerMap,
+            language: 'fr'
+          })
+        );
+      });
+
+      it('should append "(API fallback)" to fallback progress messages', async () => {
+        const localService = createMockLocalWhisperService({
+          transcribe: vi.fn().mockRejectedValue(new Error('Local failed'))
+        });
+
+        MockTranscriptionServiceClass.mockImplementation(() => ({
+          transcribe: vi.fn().mockImplementation((blob, opts) => {
+            opts.onProgress({ currentChunk: 1, totalChunks: 2, progress: 50 });
+            return Promise.resolve({ text: 'ok', segments: [] });
+          })
+        }));
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: localService,
+          config: { mode: 'auto', openaiApiKey: 'sk-test' }
+        });
+
+        const onProgress = vi.fn();
+        await p.processTranscription(createAudioBlob(), { onProgress });
+
+        expect(onProgress).toHaveBeenCalledWith(
+          50,
+          expect.stringContaining('(API fallback)')
+        );
+      });
+    });
+
+    describe('result structure', () => {
+      it('should return result with segments array', async () => {
+        const result = await processor.processTranscription(createAudioBlob());
+        expect(Array.isArray(result.segments)).toBe(true);
+      });
+
+      it('should return result with text property', async () => {
+        const result = await processor.processTranscription(createAudioBlob());
+        expect(typeof result.text).toBe('string');
+      });
+
+      it('should handle result with no segments', async () => {
+        const service = createMockTranscriptionService({
+          transcribe: vi.fn().mockResolvedValue({ text: '', segments: [] })
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: service,
+          config: { mode: 'api' }
+        });
+
+        const result = await p.processTranscription(createAudioBlob());
+        expect(result.segments).toHaveLength(0);
+      });
+
+      it('should handle result with undefined segments', async () => {
+        const service = createMockTranscriptionService({
+          transcribe: vi.fn().mockResolvedValue({ text: 'no segments' })
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: service,
+          config: { mode: 'api' }
+        });
+
+        const result = await p.processTranscription(createAudioBlob());
+        expect(result.text).toBe('no segments');
+      });
+
+      it('should handle multiple segments', async () => {
+        const service = createMockTranscriptionService({
+          transcribe: vi.fn().mockResolvedValue({
+            text: 'Hello there, how are you?',
+            segments: [
+              { speaker: 'SPEAKER_00', text: 'Hello there', start: 0, end: 1 },
+              { speaker: 'SPEAKER_01', text: 'how are you?', start: 1.5, end: 3 }
+            ]
+          })
+        });
+
+        const p = new TranscriptionProcessor({
+          transcriptionService: service,
+          config: { mode: 'api' }
+        });
+
+        const result = await p.processTranscription(createAudioBlob());
+        expect(result.segments).toHaveLength(2);
+        expect(result.segments[0].speaker).toBe('SPEAKER_00');
+        expect(result.segments[1].speaker).toBe('SPEAKER_01');
+      });
+    });
+
+    describe('edge cases', () => {
+      it('should work with empty options object', async () => {
+        const result = await processor.processTranscription(createAudioBlob(), {});
+        expect(result).toBeDefined();
+      });
+
+      it('should work with minimal Blob', async () => {
+        const blob = new Blob([]);
+        const result = await processor.processTranscription(blob);
+        expect(result).toBeDefined();
+      });
+
+      it('should work with large audio blob', async () => {
+        const largeData = new Uint8Array(1024 * 1024); // 1MB
+        const blob = new Blob([largeData], { type: 'audio/webm' });
+        const result = await processor.processTranscription(blob);
+        expect(result).toBeDefined();
+      });
     });
   });
 });

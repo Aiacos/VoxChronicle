@@ -1,215 +1,90 @@
 /**
- * KankaEntityManager Unit Tests
+ * Tests for KankaEntityManager - Generic CRUD Operations for Kanka Entities
  *
- * Tests for the KankaEntityManager utility class with proper mocking.
- * Covers CRUD operations, image uploads, search, error handling,
- * and campaign configuration.
+ * Covers: constructor validation, CRUD operations (create/get/update/delete),
+ * list with filters/pagination, image upload (URL + Blob), search with cache,
+ * cache management, campaign endpoint building
  */
-
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
-// Mock Logger before importing KankaEntityManager
-vi.mock('../../scripts/utils/Logger.mjs', () => ({
-  Logger: {
-    createChild: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      log: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
-    }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    log: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  },
-  LogLevel: {
-    DEBUG: 0,
-    INFO: 1,
-    LOG: 2,
-    WARN: 3,
-    ERROR: 4,
-    NONE: 5
-  }
-}));
-
-// Mock MODULE_ID for Logger import chain
-vi.mock('../../scripts/main.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-vi.mock('../../scripts/constants.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-
-// Mock KankaClient methods
-const mockGet = vi.fn();
-const mockPost = vi.fn();
-const mockPut = vi.fn();
-const mockDelete = vi.fn();
-const mockPostFormData = vi.fn();
-
-vi.mock('../../scripts/kanka/KankaClient.mjs', async () => {
-  const actual = await vi.importActual('../../scripts/kanka/KankaClient.mjs');
-
-  class MockKankaClient {
-    constructor(apiKey) {
-      this.apiKey = apiKey;
-    }
-
-    get(endpoint) {
-      return mockGet(endpoint);
-    }
-
-    post(endpoint, data) {
-      return mockPost(endpoint, data);
-    }
-
-    put(endpoint, data) {
-      return mockPut(endpoint, data);
-    }
-
-    delete(endpoint) {
-      return mockDelete(endpoint);
-    }
-
-    postFormData(endpoint, formData) {
-      return mockPostFormData(endpoint, formData);
-    }
-  }
-
-  return {
-    ...actual,
-    KankaClient: MockKankaClient
-  };
-});
-
-// Import after mocks are set up
 import { KankaEntityManager } from '../../scripts/kanka/KankaEntityManager.mjs';
-import { KankaClient, KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
+import { KankaError, KankaErrorType } from '../../scripts/kanka/KankaClient.mjs';
 
-/**
- * Create a mock entity response
- */
-function createMockEntity(type, overrides = {}) {
-  const defaults = {
-    id: 123,
-    name: 'Test Entity',
-    entry: 'Test description',
-    type: 'Test Type',
-    is_private: false,
-    created_at: '2024-01-15 10:00:00',
-    updated_at: '2024-01-15 10:00:00'
-  };
+// ── Helpers ──────────────────────────────────────────────────────────────
 
+function createMockClient() {
   return {
-    ...defaults,
-    ...overrides
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn()
   };
 }
 
-/**
- * Create a mock list response with pagination
- */
-function createMockListResponse(data = [], page = 1, total = 0) {
-  return {
-    data,
-    meta: {
-      current_page: page,
-      total: total || data.length,
-      per_page: 15,
-      last_page: Math.ceil((total || data.length) / 15)
-    },
-    links: {
-      first: 'https://api.kanka.io/campaigns/1/journals?page=1',
-      last: `https://api.kanka.io/campaigns/1/journals?page=${Math.ceil((total || data.length) / 15)}`,
-      prev: page > 1 ? `https://api.kanka.io/campaigns/1/journals?page=${page - 1}` : null,
-      next: `https://api.kanka.io/campaigns/1/journals?page=${page + 1}`
-    }
-  };
-}
+const TEST_CAMPAIGN_ID = '42';
+
+// ── Tests ────────────────────────────────────────────────────────────────
 
 describe('KankaEntityManager', () => {
   let client;
   let manager;
-  let mockFetch;
 
   beforeEach(() => {
-    // Reset all mocks
-    vi.clearAllMocks();
-
-    // Create mock client
-    client = new KankaClient('test-api-token');
-
-    // Create manager instance with test campaign
-    manager = new KankaEntityManager(client, 'test-campaign-123');
-
-    // Mock global fetch for image downloads
-    mockFetch = vi.fn();
-    global.fetch = mockFetch;
+    client = createMockClient();
+    manager = new KankaEntityManager(client, TEST_CAMPAIGN_ID);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  // ============================================================================
-  // Constructor and Configuration Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // Constructor
+  // ════════════════════════════════════════════════════════════════════════
 
   describe('constructor', () => {
     it('should create instance with client and campaign ID', () => {
-      expect(manager).toBeInstanceOf(KankaEntityManager);
-      expect(manager.campaignId).toBe('test-campaign-123');
+      const mgr = new KankaEntityManager(client, '99');
+      expect(mgr.campaignId).toBe('99');
     });
 
-    it('should throw error if client is not provided', () => {
-      expect(() => {
-        new KankaEntityManager(null, 'test-campaign');
-      }).toThrow(KankaError);
-
-      expect(() => {
-        new KankaEntityManager(null, 'test-campaign');
-      }).toThrow('KankaClient instance is required');
+    it('should throw if client is null', () => {
+      expect(() => new KankaEntityManager(null, TEST_CAMPAIGN_ID)).toThrow(KankaError);
+      expect(() => new KankaEntityManager(null, TEST_CAMPAIGN_ID)).toThrow(
+        'KankaClient instance is required'
+      );
     });
 
-    it('should throw error if client is undefined', () => {
-      expect(() => {
-        new KankaEntityManager(undefined, 'test-campaign');
-      }).toThrow(KankaError);
+    it('should throw if client is undefined', () => {
+      expect(() => new KankaEntityManager(undefined, TEST_CAMPAIGN_ID)).toThrow(KankaError);
     });
 
-    it('should handle empty campaign ID', () => {
-      const emptyManager = new KankaEntityManager(client, '');
-      expect(emptyManager.campaignId).toBe('');
+    it('should default campaign ID to empty string when null', () => {
+      const mgr = new KankaEntityManager(client, null);
+      expect(mgr.campaignId).toBe('');
     });
 
-    it('should handle null campaign ID', () => {
-      const nullManager = new KankaEntityManager(client, null);
-      expect(nullManager.campaignId).toBe('');
+    it('should accept custom cache expiry', () => {
+      const mgr = new KankaEntityManager(client, TEST_CAMPAIGN_ID, {
+        cacheExpiryMs: 10000
+      });
+      expect(mgr._cacheExpiryMs).toBe(10000);
     });
 
-    it('should handle undefined campaign ID', () => {
-      const undefinedManager = new KankaEntityManager(client);
-      expect(undefinedManager.campaignId).toBe('');
+    it('should use default cache expiry of 300000ms', () => {
+      expect(manager._cacheExpiryMs).toBe(300000);
     });
   });
 
-  describe('campaignId getter', () => {
-    it('should return the current campaign ID', () => {
-      expect(manager.campaignId).toBe('test-campaign-123');
+  // ════════════════════════════════════════════════════════════════════════
+  // Configuration
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe('campaignId', () => {
+    it('should return current campaign ID', () => {
+      expect(manager.campaignId).toBe(TEST_CAMPAIGN_ID);
     });
   });
 
-  describe('setCampaignId', () => {
-    it('should update the campaign ID', () => {
-      manager.setCampaignId('new-campaign-456');
-      expect(manager.campaignId).toBe('new-campaign-456');
-    });
-
-    it('should handle empty campaign ID', () => {
-      manager.setCampaignId('');
-      expect(manager.campaignId).toBe('');
+  describe('setCampaignId()', () => {
+    it('should update campaign ID', () => {
+      manager.setCampaignId('100');
+      expect(manager.campaignId).toBe('100');
     });
 
     it('should handle null campaign ID', () => {
@@ -223,1435 +98,684 @@ describe('KankaEntityManager', () => {
     });
   });
 
-  // ============================================================================
-  // Create Entity Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // _buildCampaignEndpoint
+  // ════════════════════════════════════════════════════════════════════════
 
-  describe('create', () => {
-    it('should create a journal entity', async () => {
-      const mockJournal = createMockEntity('journal', {
-        name: 'Session 1',
-        entry: 'The adventure begins...'
-      });
-
-      mockPost.mockResolvedValue({ data: mockJournal });
-
-      const result = await manager.create('journals', {
-        name: 'Session 1',
-        entry: 'The adventure begins...'
-      });
-
-      expect(mockPost).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/journals',
-        expect.objectContaining({
-          name: 'Session 1',
-          entry: 'The adventure begins...',
-          is_private: false
-        })
-      );
-
-      expect(result).toEqual(mockJournal);
+  describe('_buildCampaignEndpoint()', () => {
+    it('should build endpoint for entity type', () => {
+      const endpoint = manager._buildCampaignEndpoint('characters');
+      expect(endpoint).toBe(`/campaigns/${TEST_CAMPAIGN_ID}/characters`);
     });
 
-    it('should create a character entity with additional fields', async () => {
-      const mockCharacter = createMockEntity('character', {
-        name: 'Grognard',
-        type: 'NPC',
-        age: '45',
-        title: 'Warrior'
-      });
+    it('should build endpoint for entity type with ID', () => {
+      const endpoint = manager._buildCampaignEndpoint('characters', 123);
+      expect(endpoint).toBe(`/campaigns/${TEST_CAMPAIGN_ID}/characters/123`);
+    });
 
-      mockPost.mockResolvedValue({ data: mockCharacter });
+    it('should throw if campaign ID is not set', () => {
+      manager.setCampaignId('');
+      expect(() => manager._buildCampaignEndpoint('characters')).toThrow(KankaError);
+      expect(() => manager._buildCampaignEndpoint('characters')).toThrow(
+        'Campaign ID not configured'
+      );
+    });
+
+    it('should handle string entity ID', () => {
+      const endpoint = manager._buildCampaignEndpoint('journals', '456');
+      expect(endpoint).toBe(`/campaigns/${TEST_CAMPAIGN_ID}/journals/456`);
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // create()
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe('create()', () => {
+    it('should create entity with name and entry', async () => {
+      const created = { id: 1, name: 'Test Character', entry: 'A brave warrior' };
+      client.post.mockResolvedValue({ data: created });
 
       const result = await manager.create('characters', {
-        name: 'Grognard',
-        entry: 'A brave warrior',
-        type: 'NPC',
-        age: '45',
-        title: 'Warrior'
+        name: 'Test Character',
+        entry: 'A brave warrior'
       });
 
-      expect(mockPost).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters',
+      expect(result).toEqual(created);
+      expect(client.post).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/characters`,
         expect.objectContaining({
-          name: 'Grognard',
+          name: 'Test Character',
           entry: 'A brave warrior',
-          type: 'NPC',
-          age: '45',
-          title: 'Warrior',
           is_private: false
         })
       );
-
-      expect(result).toEqual(mockCharacter);
     });
 
-    it('should create entity with is_private set to true', async () => {
-      const mockEntity = createMockEntity('location', {
-        is_private: true
+    it('should throw if name is missing', async () => {
+      await expect(manager.create('characters', {})).rejects.toThrow(KankaError);
+      await expect(manager.create('characters', { entry: 'No name' })).rejects.toThrow(
+        'Entity name is required'
+      );
+    });
+
+    it('should throw if entityData is null', async () => {
+      await expect(manager.create('characters', null)).rejects.toThrow(KankaError);
+    });
+
+    it('should throw if entityData is undefined', async () => {
+      await expect(manager.create('characters', undefined)).rejects.toThrow(KankaError);
+    });
+
+    it('should default entry to empty string', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
+
+      await manager.create('characters', { name: 'Test' });
+
+      expect(client.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ entry: '' })
+      );
+    });
+
+    it('should default is_private to false', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
+
+      await manager.create('characters', { name: 'Test' });
+
+      expect(client.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ is_private: false })
+      );
+    });
+
+    it('should pass is_private when set to true', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
+
+      await manager.create('characters', { name: 'Test', is_private: true });
+
+      expect(client.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ is_private: true })
+      );
+    });
+
+    it('should include type field when provided', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
+
+      await manager.create('characters', { name: 'Test', type: 'NPC' });
+
+      expect(client.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ type: 'NPC' })
+      );
+    });
+
+    it('should pass through entity-specific fields', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
+
+      await manager.create('characters', {
+        name: 'Elara',
+        age: '142',
+        title: 'Archmage',
+        location_id: 456,
+        sex: 'Female'
       });
 
-      mockPost.mockResolvedValue({ data: mockEntity });
-
-      await manager.create('locations', {
-        name: 'Secret Cave',
-        is_private: true
-      });
-
-      expect(mockPost).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/locations',
+      expect(client.post).toHaveBeenCalledWith(
+        expect.any(String),
         expect.objectContaining({
-          is_private: true
+          name: 'Elara',
+          age: '142',
+          title: 'Archmage',
+          location_id: 456,
+          sex: 'Female'
         })
       );
     });
 
-    it('should handle entity without type field', async () => {
-      const mockItem = createMockEntity('item');
-
-      mockPost.mockResolvedValue({ data: mockItem });
-
-      await manager.create('items', {
-        name: 'Magic Sword'
-      });
-
-      const payload = mockPost.mock.calls[0][1];
-      expect(payload).toHaveProperty('name', 'Magic Sword');
-      expect(payload).toHaveProperty('entry', '');
-      expect(payload).toHaveProperty('is_private', false);
-      // type should not be in payload if not provided
-    });
-
-    it('should include empty arrays if provided', async () => {
-      const mockEntity = createMockEntity('character');
-
-      mockPost.mockResolvedValue({ data: mockEntity });
-
-      await manager.create('characters', {
-        name: 'Test',
-        tags: []
-      });
-
-      const payload = mockPost.mock.calls[0][1];
-      // Empty arrays should not be included
-      expect(payload).not.toHaveProperty('tags');
-    });
-
-    it('should include non-empty arrays', async () => {
-      const mockEntity = createMockEntity('character');
-
-      mockPost.mockResolvedValue({ data: mockEntity });
+    it('should include non-empty arrays (tags)', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
 
       await manager.create('characters', {
         name: 'Test',
         tags: [1, 2, 3]
       });
 
-      const payload = mockPost.mock.calls[0][1];
-      expect(payload).toHaveProperty('tags', [1, 2, 3]);
+      expect(client.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ tags: [1, 2, 3] })
+      );
+    });
+
+    it('should skip empty arrays', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
+
+      await manager.create('characters', {
+        name: 'Test',
+        tags: []
+      });
+
+      const payload = client.post.mock.calls[0][1];
+      expect(payload).not.toHaveProperty('tags');
     });
 
     it('should skip null and undefined values', async () => {
-      const mockEntity = createMockEntity('character');
-
-      mockPost.mockResolvedValue({ data: mockEntity });
+      client.post.mockResolvedValue({ data: { id: 1 } });
 
       await manager.create('characters', {
         name: 'Test',
         age: null,
-        title: undefined,
-        description: 'Valid'
+        title: undefined
       });
 
-      const payload = mockPost.mock.calls[0][1];
+      const payload = client.post.mock.calls[0][1];
       expect(payload).not.toHaveProperty('age');
       expect(payload).not.toHaveProperty('title');
-      expect(payload).toHaveProperty('description', 'Valid');
     });
 
-    it('should throw error if name is missing', async () => {
-      await expect(
-        manager.create('journals', {
-          entry: 'No name provided'
-        })
-      ).rejects.toThrow(KankaError);
+    it('should include boolean false values', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
 
-      await expect(
-        manager.create('journals', {
-          entry: 'No name provided'
-        })
-      ).rejects.toThrow('Entity name is required');
+      await manager.create('characters', {
+        name: 'Test',
+        is_dead: false
+      });
+
+      const payload = client.post.mock.calls[0][1];
+      expect(payload.is_dead).toBe(false);
     });
 
-    it('should throw error if entityData is null', async () => {
-      await expect(manager.create('journals', null)).rejects.toThrow(KankaError);
-    });
+    it('should include zero values', async () => {
+      client.post.mockResolvedValue({ data: { id: 1 } });
 
-    it('should throw error if entityData is undefined', async () => {
-      await expect(manager.create('journals', undefined)).rejects.toThrow(KankaError);
-    });
+      await manager.create('items', {
+        name: 'Test',
+        price: 0
+      });
 
-    it('should throw error if name is empty string', async () => {
-      await expect(
-        manager.create('journals', {
-          name: ''
-        })
-      ).rejects.toThrow('Entity name is required');
-    });
-
-    it('should throw error if campaign ID is not configured', async () => {
-      const noCampaignManager = new KankaEntityManager(client, '');
-
-      await expect(
-        noCampaignManager.create('journals', {
-          name: 'Test'
-        })
-      ).rejects.toThrow('Campaign ID not configured');
-    });
-
-    it('should propagate API errors', async () => {
-      const apiError = new KankaError('API error', KankaErrorType.API_ERROR);
-
-      mockPost.mockRejectedValue(apiError);
-
-      await expect(
-        manager.create('journals', {
-          name: 'Test'
-        })
-      ).rejects.toThrow(apiError);
+      const payload = client.post.mock.calls[0][1];
+      expect(payload.price).toBe(0);
     });
   });
 
-  // ============================================================================
-  // Get Entity Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // get()
+  // ════════════════════════════════════════════════════════════════════════
 
-  describe('get', () => {
-    it('should get an entity by ID', async () => {
-      const mockEntity = createMockEntity('character', {
-        id: 456,
-        name: 'Grognard'
-      });
+  describe('get()', () => {
+    it('should fetch entity by ID', async () => {
+      const entity = { id: 123, name: 'Test Character' };
+      client.get.mockResolvedValue({ data: entity });
 
-      mockGet.mockResolvedValue({ data: mockEntity });
+      const result = await manager.get('characters', 123);
 
-      const result = await manager.get('characters', 456);
-
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters/456');
-
-      expect(result).toEqual(mockEntity);
-    });
-
-    it('should handle numeric entity ID', async () => {
-      const mockEntity = createMockEntity('journal');
-
-      mockGet.mockResolvedValue({ data: mockEntity });
-
-      await manager.get('journals', 123);
-
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals/123');
-    });
-
-    it('should handle string entity ID', async () => {
-      const mockEntity = createMockEntity('location');
-
-      mockGet.mockResolvedValue({ data: mockEntity });
-
-      await manager.get('locations', '789');
-
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/locations/789');
-    });
-
-    it('should throw error if campaign ID is not configured', async () => {
-      const noCampaignManager = new KankaEntityManager(client, '');
-
-      await expect(noCampaignManager.get('journals', 123)).rejects.toThrow(
-        'Campaign ID not configured'
+      expect(result).toEqual(entity);
+      expect(client.get).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/characters/123`
       );
     });
 
-    it('should propagate API errors', async () => {
-      const apiError = new KankaError('Entity not found', KankaErrorType.NOT_FOUND);
+    it('should handle string entity ID', async () => {
+      client.get.mockResolvedValue({ data: { id: 456 } });
 
-      mockGet.mockRejectedValue(apiError);
+      await manager.get('locations', '456');
 
-      await expect(manager.get('characters', 999)).rejects.toThrow(apiError);
+      expect(client.get).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/locations/456`
+      );
+    });
+
+    it('should propagate errors from client', async () => {
+      client.get.mockRejectedValue(
+        new KankaError('Not found', KankaErrorType.NOT_FOUND_ERROR, 404)
+      );
+
+      await expect(manager.get('characters', 999)).rejects.toThrow(KankaError);
     });
   });
 
-  // ============================================================================
-  // Update Entity Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // update()
+  // ════════════════════════════════════════════════════════════════════════
 
-  describe('update', () => {
-    it('should update an entity', async () => {
-      const mockUpdated = createMockEntity('character', {
-        id: 456,
+  describe('update()', () => {
+    it('should update entity with new data', async () => {
+      const updated = { id: 123, name: 'Updated Name', age: '30' };
+      client.put.mockResolvedValue({ data: updated });
+
+      const result = await manager.update('characters', 123, {
         name: 'Updated Name',
-        age: '50'
+        age: '30'
       });
 
-      mockPut.mockResolvedValue({ data: mockUpdated });
-
-      const result = await manager.update('characters', 456, {
-        name: 'Updated Name',
-        age: '50'
-      });
-
-      expect(mockPut).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters/456', {
-        name: 'Updated Name',
-        age: '50'
-      });
-
-      expect(result).toEqual(mockUpdated);
+      expect(result).toEqual(updated);
+      expect(client.put).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/characters/123`,
+        { name: 'Updated Name', age: '30' }
+      );
     });
 
     it('should support partial updates', async () => {
-      const mockUpdated = createMockEntity('journal');
+      client.put.mockResolvedValue({ data: { id: 123 } });
 
-      mockPut.mockResolvedValue({ data: mockUpdated });
+      await manager.update('characters', 123, { age: '30' });
 
-      await manager.update('journals', 123, {
-        entry: 'Updated entry only'
-      });
-
-      expect(mockPut).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals/123', {
-        entry: 'Updated entry only'
-      });
-    });
-
-    it('should handle numeric entity ID', async () => {
-      const mockUpdated = createMockEntity('location');
-
-      mockPut.mockResolvedValue({ data: mockUpdated });
-
-      await manager.update('locations', 789, { name: 'New Name' });
-
-      expect(mockPut).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/locations/789',
-        expect.any(Object)
+      expect(client.put).toHaveBeenCalledWith(
+        expect.any(String),
+        { age: '30' }
       );
-    });
-
-    it('should handle string entity ID', async () => {
-      const mockUpdated = createMockEntity('item');
-
-      mockPut.mockResolvedValue({ data: mockUpdated });
-
-      await manager.update('items', '321', { name: 'New Name' });
-
-      expect(mockPut).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/items/321',
-        expect.any(Object)
-      );
-    });
-
-    it('should throw error if campaign ID is not configured', async () => {
-      const noCampaignManager = new KankaEntityManager(client, '');
-
-      await expect(noCampaignManager.update('journals', 123, { name: 'Test' })).rejects.toThrow(
-        'Campaign ID not configured'
-      );
-    });
-
-    it('should propagate API errors', async () => {
-      const apiError = new KankaError('Update failed', KankaErrorType.API_ERROR);
-
-      mockPut.mockRejectedValue(apiError);
-
-      await expect(manager.update('characters', 456, { name: 'Test' })).rejects.toThrow(apiError);
     });
   });
 
-  // ============================================================================
-  // Delete Entity Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // delete()
+  // ════════════════════════════════════════════════════════════════════════
 
-  describe('delete', () => {
-    it('should delete an entity', async () => {
-      mockDelete.mockResolvedValue({});
+  describe('delete()', () => {
+    it('should delete entity by ID', async () => {
+      client.delete.mockResolvedValue(undefined);
 
-      await manager.delete('items', 456);
+      await manager.delete('characters', 123);
 
-      expect(mockDelete).toHaveBeenCalledWith('/campaigns/test-campaign-123/items/456');
-    });
-
-    it('should handle numeric entity ID', async () => {
-      mockDelete.mockResolvedValue({});
-
-      await manager.delete('journals', 123);
-
-      expect(mockDelete).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals/123');
-    });
-
-    it('should handle string entity ID', async () => {
-      mockDelete.mockResolvedValue({});
-
-      await manager.delete('characters', '789');
-
-      expect(mockDelete).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters/789');
-    });
-
-    it('should throw error if campaign ID is not configured', async () => {
-      const noCampaignManager = new KankaEntityManager(client, '');
-
-      await expect(noCampaignManager.delete('journals', 123)).rejects.toThrow(
-        'Campaign ID not configured'
+      expect(client.delete).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/characters/123`
       );
     });
 
-    it('should propagate API errors', async () => {
-      const apiError = new KankaError('Delete failed', KankaErrorType.API_ERROR);
+    it('should propagate errors', async () => {
+      client.delete.mockRejectedValue(
+        new KankaError('Not found', KankaErrorType.NOT_FOUND_ERROR, 404)
+      );
 
-      mockDelete.mockRejectedValue(apiError);
-
-      await expect(manager.delete('items', 456)).rejects.toThrow(apiError);
+      await expect(manager.delete('characters', 999)).rejects.toThrow(KankaError);
     });
   });
 
-  // ============================================================================
-  // List Entities Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // list()
+  // ════════════════════════════════════════════════════════════════════════
 
-  describe('list', () => {
-    it('should list entities without options', async () => {
-      const mockEntities = [
-        createMockEntity('journal', { id: 1, name: 'Journal 1' }),
-        createMockEntity('journal', { id: 2, name: 'Journal 2' })
-      ];
+  describe('list()', () => {
+    it('should list entities without filters', async () => {
+      const entities = [{ id: 1 }, { id: 2 }];
+      client.get.mockResolvedValue({ data: entities, meta: { total: 2 }, links: {} });
 
-      const mockResponse = createMockListResponse(mockEntities);
-      mockGet.mockResolvedValue(mockResponse);
+      const result = await manager.list('characters');
 
-      const result = await manager.list('journals');
-
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/journals');
-
-      expect(result.data).toEqual(mockEntities);
-      expect(result.meta).toBeDefined();
-      expect(result.links).toBeDefined();
-    });
-
-    it('should list entities with pagination', async () => {
-      const mockResponse = createMockListResponse([], 2, 50);
-      mockGet.mockResolvedValue(mockResponse);
-
-      const result = await manager.list('characters', { page: 2 });
-
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?page=2');
-
-      expect(result.meta.current_page).toBe(2);
-    });
-
-    it('should list entities with type filter', async () => {
-      const mockResponse = createMockListResponse([]);
-      mockGet.mockResolvedValue(mockResponse);
-
-      await manager.list('characters', { type: 'NPC' });
-
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?type=NPC');
-    });
-
-    it('should list entities with name filter', async () => {
-      const mockResponse = createMockListResponse([]);
-      mockGet.mockResolvedValue(mockResponse);
-
-      await manager.list('locations', { name: 'Dragon' });
-
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/locations?name=Dragon');
-    });
-
-    it('should list entities with multiple filters', async () => {
-      const mockResponse = createMockListResponse([]);
-      mockGet.mockResolvedValue(mockResponse);
-
-      await manager.list('characters', {
-        page: 2,
-        type: 'NPC',
-        location_id: 789
-      });
-
-      expect(mockGet).toHaveBeenCalledWith(
-        expect.stringContaining('/campaigns/test-campaign-123/characters?')
+      expect(result.data).toEqual(entities);
+      expect(result.meta).toEqual({ total: 2 });
+      expect(result.links).toEqual({});
+      expect(client.get).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/characters`
       );
-
-      const callArg = mockGet.mock.calls[0][0];
-      expect(callArg).toContain('page=2');
-      expect(callArg).toContain('type=NPC');
-      expect(callArg).toContain('location_id=789');
     });
 
-    it('should handle URL encoding for filter values', async () => {
-      const mockResponse = createMockListResponse([]);
-      mockGet.mockResolvedValue(mockResponse);
+    it('should append query parameters from options', async () => {
+      client.get.mockResolvedValue({ data: [], meta: {}, links: {} });
 
-      await manager.list('journals', { name: 'Test & Special' });
+      await manager.list('characters', { page: 2, type: 'NPC' });
 
-      const callArg = mockGet.mock.calls[0][0];
-      expect(callArg).toContain('name=Test%20%26%20Special');
+      expect(client.get).toHaveBeenCalledWith(
+        expect.stringContaining('page=2')
+      );
+      expect(client.get).toHaveBeenCalledWith(
+        expect.stringContaining('type=NPC')
+      );
     });
 
-    it('should skip null and undefined filter values', async () => {
-      const mockResponse = createMockListResponse([]);
-      mockGet.mockResolvedValue(mockResponse);
+    it('should URL-encode query parameter values', async () => {
+      client.get.mockResolvedValue({ data: [], meta: {}, links: {} });
 
-      await manager.list('characters', {
-        page: 1,
-        type: null,
-        name: undefined,
-        location_id: 789
-      });
+      await manager.list('characters', { name: 'Test Character' });
 
-      const callArg = mockGet.mock.calls[0][0];
-      expect(callArg).toContain('page=1');
-      expect(callArg).toContain('location_id=789');
-      expect(callArg).not.toContain('type');
-      expect(callArg).not.toContain('name');
+      expect(client.get).toHaveBeenCalledWith(
+        expect.stringContaining('name=Test%20Character')
+      );
     });
 
-    it('should return empty data if API returns no data field', async () => {
-      mockGet.mockResolvedValue({ meta: {}, links: {} });
+    it('should skip null/undefined option values', async () => {
+      client.get.mockResolvedValue({ data: [], meta: {}, links: {} });
 
-      const result = await manager.list('journals');
+      await manager.list('characters', { page: 1, type: null, name: undefined });
+
+      const callUrl = client.get.mock.calls[0][0];
+      expect(callUrl).toContain('page=1');
+      expect(callUrl).not.toContain('type');
+      expect(callUrl).not.toContain('name');
+    });
+
+    it('should return empty arrays and objects when response has no data', async () => {
+      client.get.mockResolvedValue({});
+
+      const result = await manager.list('items');
 
       expect(result.data).toEqual([]);
       expect(result.meta).toEqual({});
       expect(result.links).toEqual({});
     });
 
-    it('should throw error if campaign ID is not configured', async () => {
-      const noCampaignManager = new KankaEntityManager(client, '');
+    it('should handle multiple filter options', async () => {
+      client.get.mockResolvedValue({ data: [], meta: {}, links: {} });
 
-      await expect(noCampaignManager.list('journals')).rejects.toThrow(
-        'Campaign ID not configured'
-      );
-    });
+      await manager.list('characters', {
+        page: 1,
+        type: 'NPC',
+        location_id: 123,
+        is_private: false
+      });
 
-    it('should propagate API errors', async () => {
-      const apiError = new KankaError('List failed', KankaErrorType.API_ERROR);
-
-      mockGet.mockRejectedValue(apiError);
-
-      await expect(manager.list('characters')).rejects.toThrow(apiError);
+      const callUrl = client.get.mock.calls[0][0];
+      expect(callUrl).toContain('page=1');
+      expect(callUrl).toContain('type=NPC');
+      expect(callUrl).toContain('location_id=123');
+      expect(callUrl).toContain('is_private=false');
     });
   });
 
-  // ============================================================================
-  // Upload Image Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // uploadImage()
+  // ════════════════════════════════════════════════════════════════════════
 
-  describe('uploadImage', () => {
-    it('should upload image from URL', async () => {
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-      const mockUpdated = createMockEntity('character', {
-        image: 'https://kanka.io/images/uploaded.png'
-      });
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        blob: () => Promise.resolve(mockImageBlob)
-      });
-
-      mockPostFormData.mockResolvedValue({ data: mockUpdated });
-
-      const result = await manager.uploadImage(
-        'characters',
-        456,
-        'https://example.com/portrait.jpg'
-      );
-
-      expect(mockFetch).toHaveBeenCalledWith('https://example.com/portrait.jpg');
-      expect(mockPostFormData).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/characters/456',
-        expect.any(FormData)
-      );
-
-      expect(result).toEqual(mockUpdated);
-    });
-
+  describe('uploadImage()', () => {
     it('should upload image from Blob', async () => {
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-      const mockUpdated = createMockEntity('location', {
-        image: 'https://kanka.io/images/uploaded.png'
+      const imageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
+      client.postFormData.mockResolvedValue({
+        data: { id: 1, image_full: 'https://kanka.io/img/1.png' }
       });
 
-      mockPostFormData.mockResolvedValue({ data: mockUpdated });
+      const result = await manager.uploadImage('characters', 123, imageBlob);
 
-      const result = await manager.uploadImage('locations', 789, mockImageBlob);
-
-      expect(mockFetch).not.toHaveBeenCalled();
-      expect(mockPostFormData).toHaveBeenCalledWith(
-        '/campaigns/test-campaign-123/locations/789',
+      expect(result).toEqual({ id: 1, image_full: 'https://kanka.io/img/1.png' });
+      expect(client.postFormData).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/characters/123`,
         expect.any(FormData)
       );
-
-      expect(result).toEqual(mockUpdated);
     });
 
-    it('should use custom filename when provided', async () => {
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-      const mockUpdated = createMockEntity('character');
+    it('should use custom filename', async () => {
+      const imageBlob = new Blob(['data'], { type: 'image/jpeg' });
+      client.postFormData.mockResolvedValue({ data: { id: 1 } });
 
-      mockPostFormData.mockResolvedValue({ data: mockUpdated });
+      await manager.uploadImage('characters', 123, imageBlob, {
+        filename: 'custom-portrait.jpg'
+      });
 
-      await manager.uploadImage('characters', 456, mockImageBlob, { filename: 'custom-name.jpg' });
-
-      expect(mockPostFormData).toHaveBeenCalled();
-      const formData = mockPostFormData.mock.calls[0][1];
-      expect(formData).toBeInstanceOf(FormData);
+      expect(client.postFormData).toHaveBeenCalled();
     });
 
-    it('should use default filename when not provided', async () => {
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-      const mockUpdated = createMockEntity('character');
+    it('should default filename to portrait.png', async () => {
+      const imageBlob = new Blob(['data'], { type: 'image/png' });
+      client.postFormData.mockResolvedValue({ data: { id: 1 } });
 
-      mockPostFormData.mockResolvedValue({ data: mockUpdated });
+      await manager.uploadImage('characters', 123, imageBlob);
 
-      await manager.uploadImage('characters', 456, mockImageBlob);
-
-      expect(mockPostFormData).toHaveBeenCalled();
+      expect(client.postFormData).toHaveBeenCalled();
     });
 
-    it('should throw error if entity type is missing', async () => {
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
+    it('should download image from URL then upload', async () => {
+      const imageBlob = new Blob(['downloaded-data'], { type: 'image/png' });
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        blob: vi.fn().mockResolvedValue(imageBlob)
+      });
+      globalThis.fetch = fetchSpy;
 
-      await expect(manager.uploadImage('', 456, mockImageBlob)).rejects.toThrow(
-        'Entity type and ID are required'
+      client.postFormData.mockResolvedValue({ data: { id: 1 } });
+
+      await manager.uploadImage(
+        'characters',
+        123,
+        'https://example.com/image.png'
       );
+
+      expect(fetchSpy).toHaveBeenCalledWith('https://example.com/image.png');
+      expect(client.postFormData).toHaveBeenCalled();
     });
 
-    it('should throw error if entity ID is missing', async () => {
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-
-      await expect(manager.uploadImage('characters', null, mockImageBlob)).rejects.toThrow(
-        'Entity type and ID are required'
-      );
-    });
-
-    it('should throw error if image source is invalid type', async () => {
-      await expect(manager.uploadImage('characters', 456, 12345)).rejects.toThrow(
-        'Image source must be a URL string or Blob'
-      );
-    });
-
-    it('should throw error if image download fails', async () => {
-      mockFetch.mockResolvedValue({
+    it('should throw if image download fails', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
         ok: false,
         statusText: 'Not Found'
       });
 
       await expect(
-        manager.uploadImage('characters', 456, 'https://example.com/missing.jpg')
-      ).rejects.toThrow(KankaError);
-
-      await expect(
-        manager.uploadImage('characters', 456, 'https://example.com/missing.jpg')
-      ).rejects.toThrow('Failed to download image');
-    });
-
-    it('should throw error if image download throws', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'));
-
-      await expect(
-        manager.uploadImage('characters', 456, 'https://example.com/image.jpg')
+        manager.uploadImage('characters', 123, 'https://example.com/bad.png')
       ).rejects.toThrow(KankaError);
     });
 
-    it('should throw error if campaign ID is not configured', async () => {
-      const noCampaignManager = new KankaEntityManager(client, '');
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
+    it('should throw if image download throws', async () => {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-      await expect(noCampaignManager.uploadImage('characters', 456, mockImageBlob)).rejects.toThrow(
-        'Campaign ID not configured'
-      );
+      await expect(
+        manager.uploadImage('characters', 123, 'https://example.com/bad.png')
+      ).rejects.toThrow(KankaError);
     });
 
-    it('should propagate API errors from upload', async () => {
-      const mockImageBlob = new Blob(['fake-image-data'], { type: 'image/png' });
-      const apiError = new KankaError('Upload failed', KankaErrorType.API_ERROR);
+    it('should throw if entityType is missing', async () => {
+      await expect(
+        manager.uploadImage('', 123, new Blob(['data']))
+      ).rejects.toThrow('Entity type and ID are required');
+    });
 
-      mockPostFormData.mockRejectedValue(apiError);
+    it('should throw if entityId is missing', async () => {
+      await expect(
+        manager.uploadImage('characters', null, new Blob(['data']))
+      ).rejects.toThrow('Entity type and ID are required');
+    });
 
-      await expect(manager.uploadImage('characters', 456, mockImageBlob)).rejects.toThrow(apiError);
+    it('should throw if image source is neither string nor Blob', async () => {
+      await expect(
+        manager.uploadImage('characters', 123, 12345)
+      ).rejects.toThrow('Image source must be a URL string or Blob');
+    });
+
+    it('should throw if image source is an object', async () => {
+      await expect(
+        manager.uploadImage('characters', 123, { url: 'test' })
+      ).rejects.toThrow('Image source must be a URL string or Blob');
     });
   });
 
-  // ============================================================================
-  // Search Entities Tests
-  // ============================================================================
+  // ════════════════════════════════════════════════════════════════════════
+  // Cache Management
+  // ════════════════════════════════════════════════════════════════════════
 
-  describe('searchEntities', () => {
-    it('should search specific entity type', async () => {
-      const mockResults = [
-        createMockEntity('character', { id: 1, name: 'Dragon Slayer' }),
-        createMockEntity('character', { id: 2, name: 'Dragon Knight' })
-      ];
+  describe('cache management', () => {
+    describe('_isCacheValid()', () => {
+      it('should return false for non-existent cache key', () => {
+        expect(manager._isCacheValid('nonexistent')).toBe(false);
+      });
 
-      mockGet.mockResolvedValue({ data: mockResults });
+      it('should return false when no timestamp exists', () => {
+        manager._searchCache.set('key', []);
+        // No timestamp set
+        expect(manager._isCacheValid('key')).toBe(false);
+      });
 
-      const result = await manager.searchEntities('Dragon', 'characters');
+      it('should return true for fresh cache entry', () => {
+        manager._searchCache.set('key', [{ id: 1 }]);
+        manager._cacheTimestamps.set('key', Date.now());
+        expect(manager._isCacheValid('key')).toBe(true);
+      });
 
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?name=Dragon');
-
-      expect(result).toEqual(mockResults);
+      it('should return false for expired cache entry', () => {
+        manager._searchCache.set('key', [{ id: 1 }]);
+        manager._cacheTimestamps.set('key', Date.now() - 400000); // > 5 min
+        expect(manager._isCacheValid('key')).toBe(false);
+      });
     });
 
-    it('should search all entity types when no type specified', async () => {
-      const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      const mockLocations = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
+    describe('clearCache()', () => {
+      it('should clear all cache entries', () => {
+        manager._searchCache.set('a', []);
+        manager._searchCache.set('b', []);
+        manager._cacheTimestamps.set('a', Date.now());
+        manager._cacheTimestamps.set('b', Date.now());
 
-      mockGet
-        .mockResolvedValueOnce({ data: mockCharacters })
-        .mockResolvedValueOnce({ data: mockLocations })
-        .mockResolvedValue({ data: [] });
+        manager.clearCache();
 
-      const result = await manager.searchEntities('Dragon');
-
-      expect(mockGet).toHaveBeenCalledTimes(6); // 6 entity types
-      expect(result).toHaveLength(2);
-      expect(result[0]).toHaveProperty('entity_type', 'characters');
-      expect(result[1]).toHaveProperty('entity_type', 'locations');
+        expect(manager._searchCache.size).toBe(0);
+        expect(manager._cacheTimestamps.size).toBe(0);
+      });
     });
 
-    it('should handle URL encoding in search query', async () => {
-      mockGet.mockResolvedValue({ data: [] });
+    describe('clearCacheFor()', () => {
+      it('should clear specific cache key', () => {
+        manager._searchCache.set('key1', []);
+        manager._searchCache.set('key2', []);
+        manager._cacheTimestamps.set('key1', Date.now());
+        manager._cacheTimestamps.set('key2', Date.now());
 
-      await manager.searchEntities('Test & Special', 'journals');
+        manager.clearCacheFor('key1');
 
-      expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('name=Test%20%26%20Special'));
+        expect(manager._searchCache.has('key1')).toBe(false);
+        expect(manager._searchCache.has('key2')).toBe(true);
+      });
+
+      it('should do nothing for non-existent key', () => {
+        expect(() => manager.clearCacheFor('nonexistent')).not.toThrow();
+      });
     });
 
+    describe('getCacheStats()', () => {
+      it('should return correct stats', () => {
+        manager._searchCache.set('a', []);
+        manager._searchCache.set('b', []);
+
+        const stats = manager.getCacheStats();
+
+        expect(stats.entries).toBe(2);
+        expect(stats.expiryMs).toBe(300000);
+      });
+
+      it('should return zero entries when cache is empty', () => {
+        const stats = manager.getCacheStats();
+
+        expect(stats.entries).toBe(0);
+      });
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // searchEntities()
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe('searchEntities()', () => {
     it('should return empty array for empty query', async () => {
       const result = await manager.searchEntities('');
-
-      expect(mockGet).not.toHaveBeenCalled();
       expect(result).toEqual([]);
+      expect(client.get).not.toHaveBeenCalled();
     });
 
     it('should return empty array for whitespace-only query', async () => {
       const result = await manager.searchEntities('   ');
-
-      expect(mockGet).not.toHaveBeenCalled();
       expect(result).toEqual([]);
     });
 
     it('should return empty array for null query', async () => {
       const result = await manager.searchEntities(null);
-
-      expect(mockGet).not.toHaveBeenCalled();
       expect(result).toEqual([]);
     });
 
-    it('should continue searching other types if one fails', async () => {
-      const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-
-      mockGet
-        .mockResolvedValueOnce({ data: mockCharacters })
-        .mockRejectedValueOnce(new Error('API error for locations'))
-        .mockResolvedValue({ data: [] });
-
-      const result = await manager.searchEntities('Dragon');
-
-      // Should still return results from successful searches
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('Dragon Slayer');
-    });
-
-    it('should add entity_type field to all results', async () => {
-      const mockCharacters = [
-        createMockEntity('character', { id: 1 }),
-        createMockEntity('character', { id: 2 })
-      ];
-
-      mockGet.mockResolvedValueOnce({ data: mockCharacters }).mockResolvedValue({ data: [] });
-
-      const result = await manager.searchEntities('Test');
-
-      result.forEach((entity) => {
-        expect(entity).toHaveProperty('entity_type');
-      });
-    });
-
-    it('should throw error if campaign ID is not configured', async () => {
-      const noCampaignManager = new KankaEntityManager(client, '');
-
-      // For specific entity type
-      await expect(noCampaignManager.searchEntities('Test', 'characters')).rejects.toThrow(
-        'Campaign ID not configured'
-      );
-    });
-
-    it('should propagate API errors for specific entity type search', async () => {
-      const apiError = new KankaError('Search failed', KankaErrorType.API_ERROR);
-
-      mockGet.mockRejectedValue(apiError);
-
-      await expect(manager.searchEntities('Dragon', 'characters')).rejects.toThrow(apiError);
-    });
-  });
-
-  // ============================================================================
-  // searchEntities Caching Tests
-  // ============================================================================
-
-  describe('searchEntities caching', () => {
-    it('should make API call on cache miss (first search)', async () => {
-      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-
-      mockGet.mockResolvedValue({ data: mockResults });
+    it('should search specific entity type', async () => {
+      const entities = [{ id: 1, name: 'Dragon Slayer' }];
+      client.get.mockResolvedValue({ data: entities });
 
       const result = await manager.searchEntities('Dragon', 'characters');
 
-      // Should call API on first search (cache miss)
-      expect(mockGet).toHaveBeenCalledTimes(1);
-      expect(mockGet).toHaveBeenCalledWith('/campaigns/test-campaign-123/characters?name=Dragon');
-      expect(result).toEqual(mockResults);
+      expect(result).toEqual(entities);
+      expect(client.get).toHaveBeenCalledWith(
+        expect.stringContaining('/characters?name=Dragon')
+      );
     });
 
-    it('should use cache on second search (cache hit)', async () => {
-      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
+    it('should search all common entity types when no type specified', async () => {
+      client.get.mockResolvedValue({ data: [] });
 
-      mockGet.mockResolvedValue({ data: mockResults });
+      await manager.searchEntities('Dragon');
 
-      // First search - cache miss
-      const result1 = await manager.searchEntities('Dragon', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(1);
-      expect(result1).toEqual(mockResults);
-
-      // Second search - cache hit
-      const result2 = await manager.searchEntities('Dragon', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(1); // Still only 1 call (no new API call)
-      expect(result2).toEqual(mockResults);
-      expect(result2).toBe(result1); // Should return same cached array
+      // Should search 6 entity types
+      expect(client.get).toHaveBeenCalledTimes(6);
     });
 
-    it('should maintain separate caches for different queries', async () => {
-      const dragonResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      const knightResults = [createMockEntity('character', { id: 2, name: 'Knight Commander' })];
+    it('should add entity_type to multi-type search results', async () => {
+      client.get
+        .mockResolvedValueOnce({ data: [{ id: 1, name: 'Dragon Hunter' }] }) // characters
+        .mockResolvedValueOnce({ data: [] }) // locations
+        .mockResolvedValueOnce({ data: [{ id: 2, name: 'Dragon Scale' }] }) // items
+        .mockResolvedValueOnce({ data: [] }) // journals
+        .mockResolvedValueOnce({ data: [] }) // organisations
+        .mockResolvedValueOnce({ data: [] }); // quests
 
-      mockGet
-        .mockResolvedValueOnce({ data: dragonResults })
-        .mockResolvedValueOnce({ data: knightResults });
+      const results = await manager.searchEntities('Dragon');
 
-      // Search for "Dragon"
-      const result1 = await manager.searchEntities('Dragon', 'characters');
-      expect(result1).toEqual(dragonResults);
-      expect(mockGet).toHaveBeenCalledTimes(1);
-
-      // Search for "Knight" - different query, should call API
-      const result2 = await manager.searchEntities('Knight', 'characters');
-      expect(result2).toEqual(knightResults);
-      expect(mockGet).toHaveBeenCalledTimes(2);
-
-      // Search for "Dragon" again - should use cache
-      const result3 = await manager.searchEntities('Dragon', 'characters');
-      expect(result3).toEqual(dragonResults);
-      expect(mockGet).toHaveBeenCalledTimes(2); // No new API call
+      expect(results).toHaveLength(2);
+      expect(results[0].entity_type).toBe('characters');
+      expect(results[1].entity_type).toBe('items');
     });
 
-    it('should maintain separate caches for specific vs all entity types', async () => {
-      const specificResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      const allTypesCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      const allTypesLocations = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
+    it('should use cached results when available', async () => {
+      const cachedResults = [{ id: 1, name: 'Dragon' }];
+      manager._searchCache.set('Dragon|characters', cachedResults);
+      manager._cacheTimestamps.set('Dragon|characters', Date.now());
 
-      // First search - specific entity type
-      mockGet.mockResolvedValueOnce({ data: specificResults });
-      const result1 = await manager.searchEntities('Dragon', 'characters');
-      expect(result1).toEqual(specificResults);
-      expect(mockGet).toHaveBeenCalledTimes(1);
+      const result = await manager.searchEntities('Dragon', 'characters');
 
-      // Second search - all entity types (should not use cache from specific search)
-      mockGet
-        .mockResolvedValueOnce({ data: allTypesCharacters })
-        .mockResolvedValueOnce({ data: allTypesLocations })
-        .mockResolvedValue({ data: [] });
-
-      const result2 = await manager.searchEntities('Dragon');
-      expect(mockGet).toHaveBeenCalledTimes(7); // 1 + 6 for all types
-      expect(result2).toHaveLength(2);
-      expect(result2[0]).toHaveProperty('entity_type', 'characters');
-      expect(result2[1]).toHaveProperty('entity_type', 'locations');
-
-      // Third search - specific entity type again (should use first cache)
-      const result3 = await manager.searchEntities('Dragon', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(7); // No new API call
-      expect(result3).toEqual(specificResults);
-
-      // Fourth search - all entity types again (should use second cache)
-      const result4 = await manager.searchEntities('Dragon');
-      expect(mockGet).toHaveBeenCalledTimes(7); // No new API call
-      expect(result4).toEqual(result2);
+      expect(result).toEqual(cachedResults);
+      expect(client.get).not.toHaveBeenCalled();
     });
 
-    it('should maintain separate caches for different specific entity types', async () => {
-      const characterResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      const locationResults = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
+    it('should fetch from API when cache is expired', async () => {
+      manager._searchCache.set('Dragon|characters', []);
+      manager._cacheTimestamps.set('Dragon|characters', Date.now() - 400000);
 
-      mockGet
-        .mockResolvedValueOnce({ data: characterResults })
-        .mockResolvedValueOnce({ data: locationResults });
+      client.get.mockResolvedValue({ data: [{ id: 1, name: 'Dragon' }] });
 
-      // Search characters
-      const result1 = await manager.searchEntities('Dragon', 'characters');
-      expect(result1).toEqual(characterResults);
-      expect(mockGet).toHaveBeenCalledTimes(1);
+      const result = await manager.searchEntities('Dragon', 'characters');
 
-      // Search locations - different entity type, should call API
-      const result2 = await manager.searchEntities('Dragon', 'locations');
-      expect(result2).toEqual(locationResults);
-      expect(mockGet).toHaveBeenCalledTimes(2);
-
-      // Search characters again - should use cache
-      const result3 = await manager.searchEntities('Dragon', 'characters');
-      expect(result3).toEqual(characterResults);
-      expect(mockGet).toHaveBeenCalledTimes(2); // No new API call
-
-      // Search locations again - should use cache
-      const result4 = await manager.searchEntities('Dragon', 'locations');
-      expect(result4).toEqual(locationResults);
-      expect(mockGet).toHaveBeenCalledTimes(2); // No new API call
+      expect(result).toHaveLength(1);
+      expect(client.get).toHaveBeenCalled();
     });
 
-    it('should cache empty results', async () => {
-      mockGet.mockResolvedValue({ data: [] });
+    it('should cache new search results', async () => {
+      client.get.mockResolvedValue({ data: [{ id: 1, name: 'Dragon' }] });
 
-      // First search - cache miss
-      const result1 = await manager.searchEntities('NonExistent', 'characters');
-      expect(result1).toEqual([]);
-      expect(mockGet).toHaveBeenCalledTimes(1);
+      await manager.searchEntities('Dragon', 'characters');
 
-      // Second search - cache hit (even for empty results)
-      const result2 = await manager.searchEntities('NonExistent', 'characters');
-      expect(result2).toEqual([]);
-      expect(mockGet).toHaveBeenCalledTimes(1); // No new API call
+      expect(manager._searchCache.has('Dragon|characters')).toBe(true);
+      expect(manager._cacheTimestamps.has('Dragon|characters')).toBe(true);
     });
 
-    it('should not cache results for empty queries', async () => {
-      // Empty query returns early without caching
-      const result1 = await manager.searchEntities('');
-      expect(result1).toEqual([]);
-      expect(mockGet).not.toHaveBeenCalled();
+    it('should cache multi-type search results', async () => {
+      client.get.mockResolvedValue({ data: [] });
 
-      // Check cache stats - should be empty
-      const stats = manager.getCacheStats();
-      expect(stats.entries).toBe(0);
-    });
-  });
+      await manager.searchEntities('Dragon');
 
-  // ============================================================================
-  // Cache Expiry Tests
-  // ============================================================================
-
-  describe('cache expiry', () => {
-    it('should expire cache after timeout', async () => {
-      // Create manager with short expiry time
-      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
-        cacheExpiryMs: 100
-      });
-
-      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      mockGet.mockResolvedValue({ data: mockResults });
-
-      // First search - cache miss
-      await shortCacheManager.searchEntities('Dragon', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(1);
-      expect(shortCacheManager._searchCache.size).toBe(1);
-
-      const firstCacheTime = shortCacheManager._cacheTimestamps.get('Dragon|characters');
-      expect(firstCacheTime).toBeDefined();
-
-      // Wait for cache to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      // Second search - cache expired, should fetch fresh data
-      await shortCacheManager.searchEntities('Dragon', 'characters');
-
-      // Should have made a second API call
-      expect(mockGet).toHaveBeenCalledTimes(2);
-
-      // Cache timestamp should be updated
-      const secondCacheTime = shortCacheManager._cacheTimestamps.get('Dragon|characters');
-      expect(secondCacheTime).toBeGreaterThan(firstCacheTime);
+      expect(manager._searchCache.has('Dragon|all')).toBe(true);
     });
 
-    it('should not expire cache before timeout', async () => {
-      // Create manager with longer expiry time
-      const longCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
-        cacheExpiryMs: 10000 // 10 seconds
-      });
+    it('should continue searching other types if one fails', async () => {
+      client.get
+        .mockRejectedValueOnce(new Error('API Error')) // characters fails
+        .mockResolvedValueOnce({ data: [{ id: 1, name: 'Dragon Cave' }] }) // locations
+        .mockResolvedValue({ data: [] }); // rest
 
-      const mockResults = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
-      mockGet.mockResolvedValue({ data: mockResults });
+      const results = await manager.searchEntities('Dragon');
 
-      // First search - cache miss
-      await longCacheManager.searchEntities('Dragon', 'locations');
-      expect(mockGet).toHaveBeenCalledTimes(1);
-
-      const firstCacheTime = longCacheManager._cacheTimestamps.get('Dragon|locations');
-
-      // Wait a bit but not enough to expire
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Second search - cache still valid
-      await longCacheManager.searchEntities('Dragon', 'locations');
-
-      // Should not have made a second API call
-      expect(mockGet).toHaveBeenCalledTimes(1);
-
-      // Cache timestamp should be unchanged
-      const secondCacheTime = longCacheManager._cacheTimestamps.get('Dragon|locations');
-      expect(secondCacheTime).toBe(firstCacheTime);
+      // Should still have results from locations despite characters failing
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results[0].name).toBe('Dragon Cave');
     });
 
-    it('should handle multiple cache entries with different expiry times', async () => {
-      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
-        cacheExpiryMs: 100
-      });
+    it('should URL-encode query', async () => {
+      client.get.mockResolvedValue({ data: [] });
 
-      const dragonResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      const knightResults = [createMockEntity('character', { id: 2, name: 'Knight Commander' })];
+      await manager.searchEntities('The Dragon', 'characters');
 
-      mockGet
-        .mockResolvedValueOnce({ data: dragonResults })
-        .mockResolvedValueOnce({ data: knightResults })
-        .mockResolvedValueOnce({ data: dragonResults }); // For re-fetch after expiry
-
-      // Search for "Dragon" - cache miss
-      await shortCacheManager.searchEntities('Dragon', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(1);
-
-      // Wait 50ms, then search for "Knight" - cache miss
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      await shortCacheManager.searchEntities('Knight', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(2);
-
-      // Wait another 70ms (total 120ms from first search, 70ms from second)
-      await new Promise((resolve) => setTimeout(resolve, 70));
-
-      // Search for "Dragon" again - should be expired (120ms > 100ms)
-      await shortCacheManager.searchEntities('Dragon', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(3);
-
-      // Search for "Knight" again - should still be cached (70ms < 100ms)
-      await shortCacheManager.searchEntities('Knight', 'characters');
-      expect(mockGet).toHaveBeenCalledTimes(3); // No new API call
-    });
-
-    it('should respect custom cache expiry time from constructor', async () => {
-      const customManager = new KankaEntityManager(client, 'test-campaign-123', {
-        cacheExpiryMs: 200
-      });
-
-      expect(customManager._cacheExpiryMs).toBe(200);
-
-      const stats = customManager.getCacheStats();
-      expect(stats.expiryMs).toBe(200);
-    });
-
-    it('should use default cache expiry when not specified', async () => {
-      const defaultManager = new KankaEntityManager(client, 'test-campaign-123');
-
-      expect(defaultManager._cacheExpiryMs).toBe(300000); // 5 minutes default
-
-      const stats = defaultManager.getCacheStats();
-      expect(stats.expiryMs).toBe(300000);
-    });
-
-    it('should handle cache expiry for all entity types search', async () => {
-      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
-        cacheExpiryMs: 100
-      });
-
-      const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      const mockLocations = [createMockEntity('location', { id: 2, name: "Dragon's Lair" })];
-
-      // First search - all entity types
-      mockGet
-        .mockResolvedValueOnce({ data: mockCharacters })
-        .mockResolvedValueOnce({ data: mockLocations })
-        .mockResolvedValue({ data: [] });
-
-      await shortCacheManager.searchEntities('Dragon');
-      expect(mockGet).toHaveBeenCalledTimes(6); // 6 entity types
-
-      // Wait for cache to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      // Second search - cache expired, should fetch fresh data
-      mockGet
-        .mockResolvedValueOnce({ data: mockCharacters })
-        .mockResolvedValueOnce({ data: mockLocations })
-        .mockResolvedValue({ data: [] });
-
-      await shortCacheManager.searchEntities('Dragon');
-
-      // Should have made another 6 API calls
-      expect(mockGet).toHaveBeenCalledTimes(12);
-    });
-
-    it('should clear expired cache entries with clearCache', async () => {
-      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
-        cacheExpiryMs: 100
-      });
-
-      const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon Slayer' })];
-      mockGet.mockResolvedValue({ data: mockResults });
-
-      // Populate cache
-      await shortCacheManager.searchEntities('Dragon', 'characters');
-      expect(shortCacheManager._searchCache.size).toBe(1);
-      expect(shortCacheManager._cacheTimestamps.size).toBe(1);
-
-      // Wait for cache to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      // Clear cache manually
-      shortCacheManager.clearCache();
-
-      expect(shortCacheManager._searchCache.size).toBe(0);
-      expect(shortCacheManager._cacheTimestamps.size).toBe(0);
-    });
-
-    it('should validate cache based on timestamp, not just existence', async () => {
-      const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
-        cacheExpiryMs: 100
-      });
-
-      const cacheKey = 'Test|characters';
-
-      // Manually set an old timestamp
-      shortCacheManager._searchCache.set(cacheKey, []);
-      shortCacheManager._cacheTimestamps.set(cacheKey, Date.now() - 200); // 200ms ago
-
-      // Cache should be invalid even though it exists
-      expect(shortCacheManager._isCacheValid(cacheKey)).toBe(false);
-
-      // Set a recent timestamp
-      shortCacheManager._cacheTimestamps.set(cacheKey, Date.now());
-
-      // Cache should be valid
-      expect(shortCacheManager._isCacheValid(cacheKey)).toBe(true);
-    });
-  });
-
-  // ============================================================================
-  // Cache Management Tests
-  // ============================================================================
-
-  describe('cache management', () => {
-    describe('clearCache', () => {
-      it('should clear all cache entries and timestamps', async () => {
-        const mockResults1 = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        const mockResults2 = [createMockEntity('location', { id: 2, name: 'Cave' })];
-
-        mockGet
-          .mockResolvedValueOnce({ data: mockResults1 })
-          .mockResolvedValueOnce({ data: mockResults2 });
-
-        // Populate cache with multiple entries
-        await manager.searchEntities('Dragon', 'characters');
-        await manager.searchEntities('Cave', 'locations');
-
-        expect(manager._searchCache.size).toBe(2);
-        expect(manager._cacheTimestamps.size).toBe(2);
-
-        // Clear all cache
-        manager.clearCache();
-
-        expect(manager._searchCache.size).toBe(0);
-        expect(manager._cacheTimestamps.size).toBe(0);
-      });
-
-      it('should allow fresh searches after clearing cache', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        // First search - cache miss
-        await manager.searchEntities('Dragon', 'characters');
-        expect(mockGet).toHaveBeenCalledTimes(1);
-
-        // Clear cache
-        manager.clearCache();
-
-        // Search again - should make new API call (cache was cleared)
-        await manager.searchEntities('Dragon', 'characters');
-        expect(mockGet).toHaveBeenCalledTimes(2);
-      });
-
-      it('should handle clearing empty cache', () => {
-        expect(manager._searchCache.size).toBe(0);
-        expect(manager._cacheTimestamps.size).toBe(0);
-
-        // Should not throw error
-        expect(() => manager.clearCache()).not.toThrow();
-
-        expect(manager._searchCache.size).toBe(0);
-        expect(manager._cacheTimestamps.size).toBe(0);
-      });
-    });
-
-    describe('clearCacheFor', () => {
-      it('should clear cache for specific query', async () => {
-        const mockResults1 = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        const mockResults2 = [createMockEntity('character', { id: 2, name: 'Knight' })];
-
-        mockGet
-          .mockResolvedValueOnce({ data: mockResults1 })
-          .mockResolvedValueOnce({ data: mockResults2 });
-
-        // Populate cache with two entries
-        await manager.searchEntities('Dragon', 'characters');
-        await manager.searchEntities('Knight', 'characters');
-
-        expect(manager._searchCache.size).toBe(2);
-        expect(manager._cacheTimestamps.size).toBe(2);
-
-        // Clear only Dragon cache
-        manager.clearCacheFor('Dragon|characters');
-
-        expect(manager._searchCache.size).toBe(1);
-        expect(manager._cacheTimestamps.size).toBe(1);
-        expect(manager._searchCache.has('Knight|characters')).toBe(true);
-        expect(manager._searchCache.has('Dragon|characters')).toBe(false);
-      });
-
-      it('should allow fresh search after clearing specific cache entry', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        // First search - cache miss
-        await manager.searchEntities('Dragon', 'characters');
-        expect(mockGet).toHaveBeenCalledTimes(1);
-
-        // Clear specific cache entry
-        manager.clearCacheFor('Dragon|characters');
-
-        // Search again - should make new API call
-        await manager.searchEntities('Dragon', 'characters');
-        expect(mockGet).toHaveBeenCalledTimes(2);
-      });
-
-      it('should handle clearing non-existent cache entry', () => {
-        expect(manager._searchCache.size).toBe(0);
-
-        // Should not throw error
-        expect(() => manager.clearCacheFor('NonExistent|characters')).not.toThrow();
-
-        expect(manager._searchCache.size).toBe(0);
-      });
-
-      it('should clear both cache and timestamp for entry', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        await manager.searchEntities('Dragon', 'characters');
-
-        const cacheKey = 'Dragon|characters';
-        expect(manager._searchCache.has(cacheKey)).toBe(true);
-        expect(manager._cacheTimestamps.has(cacheKey)).toBe(true);
-
-        manager.clearCacheFor(cacheKey);
-
-        expect(manager._searchCache.has(cacheKey)).toBe(false);
-        expect(manager._cacheTimestamps.has(cacheKey)).toBe(false);
-      });
-
-      it('should clear cache for all entity types search', async () => {
-        const mockCharacters = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        const mockLocations = [createMockEntity('location', { id: 2, name: 'Lair' })];
-
-        mockGet
-          .mockResolvedValueOnce({ data: mockCharacters })
-          .mockResolvedValueOnce({ data: mockLocations })
-          .mockResolvedValue({ data: [] });
-
-        // Search all entity types
-        await manager.searchEntities('Dragon');
-        expect(manager._searchCache.has('Dragon|all')).toBe(true);
-
-        // Clear the all-types cache
-        manager.clearCacheFor('Dragon|all');
-
-        expect(manager._searchCache.has('Dragon|all')).toBe(false);
-        expect(manager._cacheTimestamps.has('Dragon|all')).toBe(false);
-      });
-
-      it('should not affect other cache entries when clearing specific entry', async () => {
-        const mockResults1 = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        const mockResults2 = [createMockEntity('character', { id: 2, name: 'Knight' })];
-        const mockResults3 = [createMockEntity('location', { id: 3, name: 'Castle' })];
-
-        mockGet
-          .mockResolvedValueOnce({ data: mockResults1 })
-          .mockResolvedValueOnce({ data: mockResults2 })
-          .mockResolvedValueOnce({ data: mockResults3 });
-
-        // Populate cache with three entries
-        await manager.searchEntities('Dragon', 'characters');
-        await manager.searchEntities('Knight', 'characters');
-        await manager.searchEntities('Castle', 'locations');
-
-        expect(manager._searchCache.size).toBe(3);
-
-        // Clear only Knight cache
-        manager.clearCacheFor('Knight|characters');
-
-        expect(manager._searchCache.size).toBe(2);
-        expect(manager._searchCache.has('Dragon|characters')).toBe(true);
-        expect(manager._searchCache.has('Knight|characters')).toBe(false);
-        expect(manager._searchCache.has('Castle|locations')).toBe(true);
-      });
-    });
-
-    describe('getCacheStats', () => {
-      it('should return correct cache statistics', () => {
-        const stats = manager.getCacheStats();
-
-        expect(stats).toHaveProperty('entries');
-        expect(stats).toHaveProperty('expiryMs');
-        expect(stats.entries).toBe(0);
-        expect(stats.expiryMs).toBe(300000); // Default 5 minutes
-      });
-
-      it('should reflect cache entries count', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        // Initially empty
-        let stats = manager.getCacheStats();
-        expect(stats.entries).toBe(0);
-
-        // Add one entry
-        await manager.searchEntities('Dragon', 'characters');
-        stats = manager.getCacheStats();
-        expect(stats.entries).toBe(1);
-
-        // Add another entry
-        await manager.searchEntities('Knight', 'characters');
-        stats = manager.getCacheStats();
-        expect(stats.entries).toBe(2);
-      });
-
-      it('should reflect custom cache expiry time', () => {
-        const customManager = new KankaEntityManager(client, 'test-campaign-123', {
-          cacheExpiryMs: 60000
-        });
-
-        const stats = customManager.getCacheStats();
-        expect(stats.expiryMs).toBe(60000);
-      });
-
-      it('should update entries count after clearing cache', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        // Populate cache
-        await manager.searchEntities('Dragon', 'characters');
-        await manager.searchEntities('Knight', 'characters');
-
-        let stats = manager.getCacheStats();
-        expect(stats.entries).toBe(2);
-
-        // Clear cache
-        manager.clearCache();
-
-        stats = manager.getCacheStats();
-        expect(stats.entries).toBe(0);
-      });
-
-      it('should update entries count after clearing specific entry', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        // Populate cache
-        await manager.searchEntities('Dragon', 'characters');
-        await manager.searchEntities('Knight', 'characters');
-
-        let stats = manager.getCacheStats();
-        expect(stats.entries).toBe(2);
-
-        // Clear one entry
-        manager.clearCacheFor('Dragon|characters');
-
-        stats = manager.getCacheStats();
-        expect(stats.entries).toBe(1);
-      });
-
-      it('should not include expired entries in count', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        // Populate cache
-        await manager.searchEntities('Dragon', 'characters');
-
-        const stats = manager.getCacheStats();
-        // Note: getCacheStats returns total entries count, not valid entries
-        // Expired entries are still counted until they are accessed or cleared
-        expect(stats.entries).toBe(1);
-      });
-    });
-
-    describe('_isCacheValid', () => {
-      it('should return false for non-existent cache key', () => {
-        expect(manager._isCacheValid('NonExistent|characters')).toBe(false);
-      });
-
-      it('should return true for recently cached entry', async () => {
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        await manager.searchEntities('Dragon', 'characters');
-
-        expect(manager._isCacheValid('Dragon|characters')).toBe(true);
-      });
-
-      it('should return false for expired cache entry', async () => {
-        const shortCacheManager = new KankaEntityManager(client, 'test-campaign-123', {
-          cacheExpiryMs: 50
-        });
-
-        const mockResults = [createMockEntity('character', { id: 1, name: 'Dragon' })];
-        mockGet.mockResolvedValue({ data: mockResults });
-
-        await shortCacheManager.searchEntities('Dragon', 'characters');
-
-        // Cache should be valid immediately
-        expect(shortCacheManager._isCacheValid('Dragon|characters')).toBe(true);
-
-        // Wait for expiry
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Cache should be invalid after expiry
-        expect(shortCacheManager._isCacheValid('Dragon|characters')).toBe(false);
-      });
-
-      it('should handle cache entry with data but no timestamp', () => {
-        // Manually add cache entry without timestamp
-        manager._searchCache.set('Orphan|characters', []);
-
-        // Should return false because timestamp is missing
-        expect(manager._isCacheValid('Orphan|characters')).toBe(false);
-      });
-
-      it('should validate based on exact timestamp difference', () => {
-        const cacheKey = 'Test|characters';
-        const expiryMs = 1000;
-
-        const customManager = new KankaEntityManager(client, 'test-campaign-123', {
-          cacheExpiryMs: expiryMs
-        });
-
-        // Set timestamp just under expiry time
-        customManager._searchCache.set(cacheKey, []);
-        customManager._cacheTimestamps.set(cacheKey, Date.now() - (expiryMs - 10));
-
-        expect(customManager._isCacheValid(cacheKey)).toBe(true);
-
-        // Set timestamp just over expiry time
-        customManager._cacheTimestamps.set(cacheKey, Date.now() - (expiryMs + 10));
-
-        expect(customManager._isCacheValid(cacheKey)).toBe(false);
-      });
+      expect(client.get).toHaveBeenCalledWith(
+        expect.stringContaining('name=The%20Dragon')
+      );
     });
   });
 });

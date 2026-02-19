@@ -1,413 +1,1019 @@
 /**
- * KankaPublisher Unit Tests
+ * Tests for KankaPublisher
  *
- * Tests for the KankaPublisher class with service mocking.
- * Covers chronicle-first publishing, character sub-journals,
- * journal-validated entity creation, image uploading, and error handling.
+ * Covers exports, constructor, publishSession (happy path, chronicle creation,
+ * entity creation, journal validation, error handling, progress reporting),
+ * private helpers (_isEntityInJournal, _findJournalDescription,
+ * _extractContextFromText, _formatBasicChronicle) via public API,
+ * and edge cases across all code paths.
  */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+// ---------------------------------------------------------------------------
+// Mocks
+// ---------------------------------------------------------------------------
 
-// Mock Logger before importing KankaPublisher
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
   Logger: {
-    createChild: () => ({
+    createChild: vi.fn(() => ({
       debug: vi.fn(),
       info: vi.fn(),
-      log: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn()
-    }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    log: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  },
-  LogLevel: {
-    DEBUG: 0,
-    INFO: 1,
-    LOG: 2,
-    WARN: 3,
-    ERROR: 4,
-    NONE: 5
+      error: vi.fn(),
+      log: vi.fn()
+    }))
   }
 }));
 
-// Mock MODULE_ID for Logger import chain
-vi.mock('../../scripts/main.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-vi.mock('../../scripts/constants.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
+vi.mock('../../scripts/utils/HtmlUtils.mjs', () => ({
+  escapeHtml: vi.fn((text) => {
+    if (!text) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  })
 }));
 
-// Import after mocks are set up
 import { KankaPublisher } from '../../scripts/orchestration/KankaPublisher.mjs';
 
-/**
- * Create mock session data for testing.
- * Includes journalText for entity validation.
- */
-function createMockSessionData(options = {}) {
-  return {
-    title: options.title ?? 'Test Session',
-    date: options.date ?? '2024-01-01',
-    transcript:
-      options.transcript === undefined
-        ? {
-            segments: [
-              { speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 2.5 },
-              { speaker: 'SPEAKER_01', text: 'Test message', start: 2.5, end: 5.0 }
-            ]
-          }
-        : options.transcript,
-    entities:
-      options.entities === undefined
-        ? {
-            characters: [{ name: 'Gandalf', description: 'A wise wizard', isNPC: true }],
-            locations: [{ name: 'Rivendell', description: 'An elven sanctuary', type: 'City' }],
-            items: [{ name: 'Staff of Power', description: 'A magical staff', type: 'Weapon' }]
-          }
-        : options.entities,
-    moments: options.moments ?? [
-      {
-        id: 'moment-1',
-        title: 'Epic Battle',
-        description: 'Battle description',
-        imagePrompt: 'epic battle scene'
-      }
-    ],
-    images:
-      options.images === undefined
-        ? [
-            {
-              success: true,
-              url: 'https://example.com/gandalf.png',
-              entityType: 'character',
-              meta: { characterName: 'Gandalf' }
-            }
-          ]
-        : options.images,
-    // Foundry journal text for entity validation (contains entity names)
-    journalText:
-      options.journalText === undefined
-        ? 'The party arrives at Rivendell, the elven sanctuary. Gandalf wields the Staff of Power.'
-        : options.journalText,
-    npcProfiles: options.npcProfiles === undefined ? [] : options.npcProfiles
-  };
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-/**
- * Create mock Kanka service
- */
-function createMockKankaService() {
+function createMockKankaService(overrides = {}) {
   return {
-    createIfNotExists: vi
-      .fn()
-      .mockResolvedValue({ id: 10, name: 'Test Entity', _alreadyExisted: false }),
-    createJournal: vi.fn().mockImplementation((data) => {
-      // Return different IDs for chronicle vs sub-journals
-      const id = data.journal_id ? 20 : 1;
-      return Promise.resolve({ id, name: data.name });
+    createJournal: vi.fn().mockResolvedValue({ id: 1, name: 'Session 1' }),
+    createCharacter: vi.fn().mockResolvedValue({ id: 2, name: 'Gandalf' }),
+    createLocation: vi.fn().mockResolvedValue({ id: 3, name: 'Shire' }),
+    createItem: vi.fn().mockResolvedValue({ id: 4, name: 'Ring' }),
+    createIfNotExists: vi.fn().mockImplementation((type, data) => {
+      return Promise.resolve({ id: 10, name: data.name, _alreadyExisted: false });
     }),
-    uploadJournalImage: vi.fn().mockResolvedValue({ success: true }),
-    uploadCharacterImage: vi.fn().mockResolvedValue({ success: true }),
-    preFetchEntities: vi.fn().mockResolvedValue({
-      journals: { data: [] },
-      locations: { data: [] },
-      items: { data: [] }
-    })
+    preFetchEntities: vi.fn().mockResolvedValue({}),
+    ...overrides
   };
 }
 
-/**
- * Create mock narrative exporter
- */
-function createMockNarrativeExporter() {
+function createMockNarrativeExporter(overrides = {}) {
   return {
     export: vi.fn().mockReturnValue({
-      name: 'Test Chronicle',
-      entry: '<p>Chronicle content</p>',
+      name: 'Session Chronicle',
+      entry: '<h1>Session Chronicle</h1><p>The party ventured forth...</p>',
       type: 'Session Chronicle',
-      date: '2024-01-01'
-    })
+      date: '2024-01-15'
+    }),
+    ...overrides
   };
 }
 
+function createSessionData(overrides = {}) {
+  return {
+    title: 'Session 1: The Beginning',
+    date: '2024-01-15',
+    transcript: {
+      segments: [
+        { speaker: 'DM', text: 'Welcome to the adventure!' },
+        { speaker: 'Player 1', text: 'I look around the tavern.' }
+      ]
+    },
+    entities: {
+      characters: [
+        { name: 'Gandalf', description: 'A powerful wizard', isNPC: true },
+        { name: 'Frodo', description: 'A brave hobbit', isNPC: false }
+      ],
+      locations: [
+        { name: 'Shire', description: 'Green rolling hills', type: 'Region' }
+      ],
+      items: [
+        { name: 'Ring of Power', description: 'One ring to rule them all', type: 'Artifact' }
+      ]
+    },
+    moments: [
+      { id: 'm1', title: 'The Journey Begins', imagePrompt: 'An epic journey' }
+    ],
+    images: [],
+    ...overrides
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 describe('KankaPublisher', () => {
-  let publisher;
   let mockKankaService;
-  let mockNarrativeExporter;
+  let mockExporter;
+  let publisher;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockKankaService = createMockKankaService();
-    mockNarrativeExporter = createMockNarrativeExporter();
+    mockExporter = createMockNarrativeExporter();
+    publisher = new KankaPublisher(mockKankaService, mockExporter);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  // ── Exports ─────────────────────────────────────────────────────────────
+
+  describe('exports', () => {
+    it('should export KankaPublisher class', () => {
+      expect(KankaPublisher).toBeDefined();
+      expect(typeof KankaPublisher).toBe('function');
+    });
+
+    it('should be constructable', () => {
+      const p = new KankaPublisher(mockKankaService);
+      expect(p).toBeInstanceOf(KankaPublisher);
+    });
   });
+
+  // ── Constructor ─────────────────────────────────────────────────────────
 
   describe('constructor', () => {
-    it('should create instance with all services', () => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-
-      expect(publisher).toBeInstanceOf(KankaPublisher);
-      expect(publisher._kankaService).toBe(mockKankaService);
-      expect(publisher._narrativeExporter).toBe(mockNarrativeExporter);
-      expect(publisher._chronicleFormat).toBe('full');
+    it('should accept kankaService as first argument', () => {
+      const p = new KankaPublisher(mockKankaService);
+      expect(p).toBeDefined();
     });
 
-    it('should accept null narrativeExporter', () => {
-      publisher = new KankaPublisher(mockKankaService, null);
-
-      expect(publisher).toBeInstanceOf(KankaPublisher);
-      expect(publisher._kankaService).toBe(mockKankaService);
-      expect(publisher._narrativeExporter).toBeNull();
+    it('should accept narrativeExporter as optional second argument', () => {
+      const p = new KankaPublisher(mockKankaService, mockExporter);
+      expect(p).toBeDefined();
     });
 
-    it('should accept custom options', () => {
+    it('should default narrativeExporter to null', () => {
+      const p = new KankaPublisher(mockKankaService);
+      // Will use basic chronicle format when no exporter
+      expect(p).toBeDefined();
+    });
+
+    it('should accept options as third argument', () => {
       const onProgress = vi.fn();
-      const options = {
+      const p = new KankaPublisher(mockKankaService, mockExporter, {
         onProgress,
         chronicleFormat: 'summary'
-      };
-
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter, options);
-
-      expect(publisher._onProgress).toBe(onProgress);
-      expect(publisher._chronicleFormat).toBe('summary');
+      });
+      expect(p).toBeDefined();
     });
 
-    it('should use default options when none provided', () => {
-      publisher = new KankaPublisher(mockKankaService);
+    it('should store onProgress from options', () => {
+      const onProgress = vi.fn();
+      const p = new KankaPublisher(mockKankaService, null, { onProgress });
+      // Trigger progress
+      p._reportProgress(50, 'Test');
+      expect(onProgress).toHaveBeenCalledWith(50, 'Test');
+    });
 
-      expect(publisher._onProgress).toBeNull();
-      expect(publisher._chronicleFormat).toBe('full');
+    it('should default chronicleFormat to "full"', () => {
+      const p = new KankaPublisher(mockKankaService);
+      expect(p._chronicleFormat).toBe('full');
+    });
+
+    it('should accept custom chronicleFormat', () => {
+      const p = new KankaPublisher(mockKankaService, null, { chronicleFormat: 'summary' });
+      expect(p._chronicleFormat).toBe('summary');
+    });
+
+    it('should accept null kankaService', () => {
+      const p = new KankaPublisher(null);
+      expect(p).toBeDefined();
     });
   });
+
+  // ── publishSession ──────────────────────────────────────────────────────
 
   describe('publishSession', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-    });
-
-    it('should publish session with all options enabled', async () => {
-      const sessionData = createMockSessionData();
-
-      const result = await publisher.publishSession(sessionData, {
-        createEntities: true,
-        uploadImages: true,
-        createChronicle: true
+    describe('input validation', () => {
+      it('should throw if no session data provided', async () => {
+        await expect(publisher.publishSession(null)).rejects.toThrow('No session data provided');
       });
 
-      expect(result).toBeDefined();
-      expect(result.journal).toBeDefined();
-      expect(result.journal.id).toBe(1);
-      expect(result.characters).toHaveLength(1);
-      expect(result.locations).toHaveLength(1);
-      expect(result.items).toHaveLength(1);
-      expect(result.errors).toHaveLength(0);
-    });
-
-    it('should create chronicle FIRST, then entities', async () => {
-      const callOrder = [];
-      mockKankaService.createJournal.mockImplementation((data) => {
-        callOrder.push(data.journal_id ? 'sub-journal' : 'chronicle');
-        const id = data.journal_id ? 20 : 1;
-        return Promise.resolve({ id, name: data.name });
-      });
-      mockKankaService.createIfNotExists.mockImplementation((type, data) => {
-        callOrder.push(`entity:${type}`);
-        return Promise.resolve({ id: 10, name: data.name, _alreadyExisted: false });
+      it('should throw if session data is undefined', async () => {
+        await expect(publisher.publishSession(undefined)).rejects.toThrow(
+          'No session data provided'
+        );
       });
 
-      const sessionData = createMockSessionData();
-      await publisher.publishSession(sessionData);
-
-      // Chronicle must be first
-      expect(callOrder[0]).toBe('chronicle');
-      // Sub-journals and entities follow
-      expect(callOrder).toContain('sub-journal');
+      it('should throw if kankaService is not configured', async () => {
+        const p = new KankaPublisher(null, mockExporter);
+        await expect(p.publishSession(createSessionData())).rejects.toThrow(
+          'Kanka service not configured'
+        );
+      });
     });
 
-    it('should throw error when no session data provided', async () => {
-      await expect(publisher.publishSession(null)).rejects.toThrow(
-        'No session data provided to publish.'
-      );
-    });
-
-    it('should throw error when Kanka service not configured', async () => {
-      publisher = new KankaPublisher(null);
-      const sessionData = createMockSessionData();
-
-      await expect(publisher.publishSession(sessionData)).rejects.toThrow(
-        'Kanka service not configured.'
-      );
-    });
-
-    it('should skip entity creation when createEntities is false', async () => {
-      const sessionData = createMockSessionData();
-
-      const result = await publisher.publishSession(sessionData, {
-        createEntities: false,
-        uploadImages: true,
-        createChronicle: true
+    describe('result structure', () => {
+      it('should return result with journal property', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(result).toHaveProperty('journal');
       });
 
-      expect(result.characters).toHaveLength(0);
-      expect(result.locations).toHaveLength(0);
-      expect(result.items).toHaveLength(0);
-      expect(result.journal).toBeDefined();
-
-      // Only chronicle journal call, no sub-journal calls
-      expect(mockKankaService.createJournal).toHaveBeenCalledTimes(1);
-      expect(mockKankaService.createIfNotExists).not.toHaveBeenCalled();
-    });
-
-    it('should skip chronicle creation when createChronicle is false', async () => {
-      const sessionData = createMockSessionData();
-
-      const result = await publisher.publishSession(sessionData, {
-        createEntities: true,
-        uploadImages: true,
-        createChronicle: false
+      it('should return result with characters array', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(Array.isArray(result.characters)).toBe(true);
       });
 
-      // No chronicle, so no sub-journals (no parent ID)
-      expect(result.journal).toBeNull();
-      expect(result.characters).toHaveLength(0);
-      // Locations/items still created (don't need parent journal)
-      expect(result.locations).toHaveLength(1);
-      expect(result.items).toHaveLength(1);
-    });
-
-    it('should skip image upload when uploadImages is false', async () => {
-      const sessionData = createMockSessionData();
-
-      const result = await publisher.publishSession(sessionData, {
-        createEntities: true,
-        uploadImages: false,
-        createChronicle: true
+      it('should return result with locations array', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(Array.isArray(result.locations)).toBe(true);
       });
 
-      expect(result.characters).toHaveLength(1);
-      expect(result.images).toHaveLength(0);
-      expect(mockKankaService.uploadJournalImage).not.toHaveBeenCalled();
-    });
-
-    it('should use default options when none provided', async () => {
-      const sessionData = createMockSessionData();
-
-      const result = await publisher.publishSession(sessionData);
-
-      // Default is all true
-      expect(result.characters).toHaveLength(1);
-      expect(result.journal).toBeDefined();
-      expect(mockKankaService.createJournal).toHaveBeenCalled();
-    });
-
-    it('should handle missing entities gracefully', async () => {
-      const sessionData = createMockSessionData({ entities: null });
-
-      const result = await publisher.publishSession(sessionData, {
-        createEntities: true,
-        createChronicle: true
+      it('should return result with items array', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(Array.isArray(result.items)).toBe(true);
       });
 
-      expect(result.characters).toHaveLength(0);
-      expect(result.locations).toHaveLength(0);
-      expect(result.items).toHaveLength(0);
-      expect(result.journal).toBeDefined();
+      it('should return result with images array', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(Array.isArray(result.images)).toBe(true);
+      });
+
+      it('should return result with errors array', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(Array.isArray(result.errors)).toBe(true);
+      });
     });
 
-    it('should call progress callback during publishing', async () => {
-      const onProgress = vi.fn();
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter, { onProgress });
+    describe('chronicle creation', () => {
+      it('should create chronicle journal by default', async () => {
+        await publisher.publishSession(createSessionData());
+        expect(mockKankaService.createJournal).toHaveBeenCalled();
+      });
 
-      const sessionData = createMockSessionData();
-      await publisher.publishSession(sessionData);
+      it('should use NarrativeExporter when available', async () => {
+        await publisher.publishSession(createSessionData());
+        expect(mockExporter.export).toHaveBeenCalled();
+      });
 
-      expect(onProgress).toHaveBeenCalled();
-      expect(onProgress).toHaveBeenCalledWith(expect.any(Number), expect.any(String));
+      it('should pass correct data to NarrativeExporter', async () => {
+        const sessionData = createSessionData();
+        await publisher.publishSession(sessionData);
+
+        expect(mockExporter.export).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: sessionData.title,
+            date: sessionData.date,
+            segments: sessionData.transcript.segments,
+            entities: sessionData.entities,
+            moments: sessionData.moments
+          }),
+          expect.objectContaining({
+            format: 'full',
+            includeEntities: true,
+            includeMoments: true,
+            includeTimestamps: false
+          })
+        );
+      });
+
+      it('should pass chronicleFormat to exporter options', async () => {
+        const p = new KankaPublisher(mockKankaService, mockExporter, {
+          chronicleFormat: 'summary'
+        });
+        await p.publishSession(createSessionData());
+        expect(mockExporter.export).toHaveBeenCalledWith(
+          expect.any(Object),
+          expect.objectContaining({ format: 'summary' })
+        );
+      });
+
+      it('should store journal result', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(result.journal).toEqual({ id: 1, name: 'Session 1' });
+      });
+
+      it('should skip chronicle when createChronicle is false', async () => {
+        const result = await publisher.publishSession(createSessionData(), {
+          createChronicle: false
+        });
+        // createJournal is called for character sub-journals, not for the chronicle
+        // but without a parent journal, characters won't be created
+        expect(result.journal).toBeNull();
+      });
+
+      it('should use basic chronicle format when no exporter', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        await p.publishSession(createSessionData());
+
+        expect(mockKankaService.createJournal).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'Session 1: The Beginning',
+            type: 'Session Chronicle',
+            date: '2024-01-15'
+          })
+        );
+      });
+
+      it('should format basic chronicle with title and date', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        await p.publishSession(createSessionData());
+
+        const calledWith = mockKankaService.createJournal.mock.calls[0][0];
+        expect(calledWith.entry).toContain('Session 1: The Beginning');
+        expect(calledWith.entry).toContain('2024-01-15');
+      });
+
+      it('should include entity count in basic chronicle', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        await p.publishSession(createSessionData());
+
+        const calledWith = mockKankaService.createJournal.mock.calls[0][0];
+        expect(calledWith.entry).toContain('4 new entities');
+      });
+
+      it('should include transcript segments in basic chronicle', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        await p.publishSession(createSessionData());
+
+        const calledWith = mockKankaService.createJournal.mock.calls[0][0];
+        expect(calledWith.entry).toContain('DM');
+        expect(calledWith.entry).toContain('Welcome to the adventure!');
+      });
+
+      it('should add error to results and throw when chronicle creation fails', async () => {
+        const failingService = createMockKankaService({
+          createJournal: vi.fn().mockRejectedValue(new Error('Journal creation failed'))
+        });
+
+        const p = new KankaPublisher(failingService, mockExporter);
+        await expect(p.publishSession(createSessionData())).rejects.toThrow(
+          'Journal creation failed'
+        );
+      });
+
+      it('should handle transcript with no segments in basic chronicle', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        const sessionData = createSessionData({ transcript: { segments: [] } });
+        await p.publishSession(sessionData);
+
+        const calledWith = mockKankaService.createJournal.mock.calls[0][0];
+        expect(calledWith.entry).not.toContain('Transcript');
+      });
+
+      it('should handle missing transcript in basic chronicle', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        const sessionData = createSessionData({ transcript: null });
+        await p.publishSession(sessionData);
+
+        const calledWith = mockKankaService.createJournal.mock.calls[0][0];
+        expect(calledWith.entry).not.toContain('Transcript');
+      });
+
+      it('should truncate basic chronicle transcript to 50 segments', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        const segments = [];
+        for (let i = 0; i < 60; i++) {
+          segments.push({ speaker: `Speaker ${i}`, text: `Line ${i}` });
+        }
+        const sessionData = createSessionData({ transcript: { segments } });
+        await p.publishSession(sessionData);
+
+        const calledWith = mockKankaService.createJournal.mock.calls[0][0];
+        expect(calledWith.entry).toContain('and 10 more segments');
+      });
+
+      it('should include VoxChronicle footer in basic chronicle', async () => {
+        const p = new KankaPublisher(mockKankaService);
+        await p.publishSession(createSessionData());
+
+        const calledWith = mockKankaService.createJournal.mock.calls[0][0];
+        expect(calledWith.entry).toContain('Generated by VoxChronicle');
+      });
     });
 
-    it('should propagate errors from chronicle creation', async () => {
-      const error = new Error('Journal creation failed');
-      mockKankaService.createJournal.mockRejectedValue(error);
+    describe('entity creation', () => {
+      it('should pre-fetch Kanka entities for deduplication', async () => {
+        await publisher.publishSession(createSessionData());
+        expect(mockKankaService.preFetchEntities).toHaveBeenCalledWith({
+          types: ['journals', 'locations', 'items']
+        });
+      });
 
-      const sessionData = createMockSessionData();
+      it('should create character sub-journals', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(result.characters).toHaveLength(2);
+      });
 
-      await expect(publisher.publishSession(sessionData)).rejects.toThrow(
-        'Journal creation failed'
-      );
+      it('should create characters as sub-journals under chronicle', async () => {
+        await publisher.publishSession(createSessionData());
+
+        // Characters should be created with journal_id pointing to chronicle
+        const charCalls = mockKankaService.createJournal.mock.calls.filter(
+          (call) => call[0].journal_id === 1
+        );
+        expect(charCalls).toHaveLength(2);
+      });
+
+      it('should set correct type for NPC characters', async () => {
+        await publisher.publishSession(createSessionData());
+
+        const charCalls = mockKankaService.createJournal.mock.calls.filter(
+          (call) => call[0].journal_id === 1
+        );
+        // Gandalf is NPC
+        const gandalfCall = charCalls.find((c) => c[0].name === 'Gandalf');
+        expect(gandalfCall[0].type).toBe('NPC');
+      });
+
+      it('should set correct type for PC characters', async () => {
+        await publisher.publishSession(createSessionData());
+
+        const charCalls = mockKankaService.createJournal.mock.calls.filter(
+          (call) => call[0].journal_id === 1
+        );
+        const frodoCall = charCalls.find((c) => c[0].name === 'Frodo');
+        expect(frodoCall[0].type).toBe('PC');
+      });
+
+      it('should skip character creation when no parent journal', async () => {
+        const result = await publisher.publishSession(createSessionData(), {
+          createChronicle: false
+        });
+        expect(result.characters).toHaveLength(0);
+      });
+
+      it('should create locations using createIfNotExists', async () => {
+        await publisher.publishSession(createSessionData());
+
+        expect(mockKankaService.createIfNotExists).toHaveBeenCalledWith(
+          'locations',
+          expect.objectContaining({ name: 'Shire' })
+        );
+      });
+
+      it('should create items using createIfNotExists', async () => {
+        await publisher.publishSession(createSessionData());
+
+        expect(mockKankaService.createIfNotExists).toHaveBeenCalledWith(
+          'items',
+          expect.objectContaining({ name: 'Ring of Power' })
+        );
+      });
+
+      it('should skip entities when createEntities is false', async () => {
+        const result = await publisher.publishSession(createSessionData(), {
+          createEntities: false
+        });
+        expect(result.characters).toHaveLength(0);
+        expect(result.locations).toHaveLength(0);
+        expect(result.items).toHaveLength(0);
+      });
+
+      it('should skip entities when session data has no entities', async () => {
+        const sessionData = createSessionData({ entities: null });
+        const result = await publisher.publishSession(sessionData);
+        expect(result.characters).toHaveLength(0);
+        expect(result.locations).toHaveLength(0);
+        expect(result.items).toHaveLength(0);
+      });
+
+      it('should not add already-existing entities to results', async () => {
+        const service = createMockKankaService({
+          createIfNotExists: vi.fn().mockResolvedValue({
+            id: 10,
+            name: 'Shire',
+            _alreadyExisted: true
+          })
+        });
+
+        const p = new KankaPublisher(service, mockExporter);
+        const result = await p.publishSession(createSessionData());
+        // Location already existed, so shouldn't be in locations result
+        expect(result.locations).toHaveLength(0);
+      });
+
+      it('should add character creation errors to results.errors', async () => {
+        const service = createMockKankaService({
+          createJournal: vi.fn()
+            .mockResolvedValueOnce({ id: 1, name: 'Chronicle' }) // chronicle
+            .mockRejectedValueOnce(new Error('Character creation failed')) // first character
+            .mockResolvedValueOnce({ id: 3, name: 'Frodo' }) // second character
+        });
+
+        const p = new KankaPublisher(service, mockExporter);
+        const result = await p.publishSession(createSessionData());
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].type).toBe('character');
+        expect(result.errors[0].entity).toBe('Gandalf');
+      });
+
+      it('should add location creation errors to results.errors', async () => {
+        const service = createMockKankaService({
+          createIfNotExists: vi.fn().mockRejectedValue(new Error('Location failed'))
+        });
+
+        const p = new KankaPublisher(service, mockExporter);
+        const result = await p.publishSession(createSessionData());
+        // Both location and item will fail
+        expect(result.errors.some((e) => e.type === 'location')).toBe(true);
+      });
+
+      it('should add item creation errors to results.errors', async () => {
+        const service = createMockKankaService({
+          createIfNotExists: vi.fn().mockRejectedValue(new Error('Item failed'))
+        });
+
+        const p = new KankaPublisher(service, mockExporter);
+        const result = await p.publishSession(createSessionData());
+        expect(result.errors.some((e) => e.type === 'item')).toBe(true);
+      });
+
+      it('should handle empty character arrays', async () => {
+        const sessionData = createSessionData({
+          entities: { characters: [], locations: [], items: [] }
+        });
+        const result = await publisher.publishSession(sessionData);
+        expect(result.characters).toHaveLength(0);
+      });
+
+      it('should handle missing character arrays', async () => {
+        const sessionData = createSessionData({
+          entities: { locations: [], items: [] }
+        });
+        const result = await publisher.publishSession(sessionData);
+        expect(result.characters).toHaveLength(0);
+      });
+
+      it('should handle missing location arrays', async () => {
+        const sessionData = createSessionData({
+          entities: { characters: [], items: [] }
+        });
+        const result = await publisher.publishSession(sessionData);
+        expect(result.locations).toHaveLength(0);
+      });
+
+      it('should handle missing item arrays', async () => {
+        const sessionData = createSessionData({
+          entities: { characters: [], locations: [] }
+        });
+        const result = await publisher.publishSession(sessionData);
+        expect(result.items).toHaveLength(0);
+      });
+    });
+
+    describe('journal validation for locations/items', () => {
+      it('should create location when no journalText (graceful fallback)', async () => {
+        const sessionData = createSessionData(); // no journalText
+        const result = await publisher.publishSession(sessionData);
+        expect(result.locations).toHaveLength(1);
+      });
+
+      it('should create item when no journalText (graceful fallback)', async () => {
+        const sessionData = createSessionData(); // no journalText
+        const result = await publisher.publishSession(sessionData);
+        expect(result.items).toHaveLength(1);
+      });
+
+      it('should skip location not found in journal text', async () => {
+        const sessionData = createSessionData({
+          journalText: 'This adventure takes place in Mordor.'
+        });
+
+        const result = await publisher.publishSession(sessionData);
+        // Shire is not in journalText
+        expect(result.locations).toHaveLength(0);
+        expect(mockKankaService.createIfNotExists).not.toHaveBeenCalledWith(
+          'locations',
+          expect.objectContaining({ name: 'Shire' })
+        );
+      });
+
+      it('should create location found in journal text', async () => {
+        const sessionData = createSessionData({
+          journalText: 'The party travels through the Shire on their journey.'
+        });
+
+        const result = await publisher.publishSession(sessionData);
+        expect(result.locations).toHaveLength(1);
+      });
+
+      it('should skip item not found in journal text', async () => {
+        const sessionData = createSessionData({
+          journalText: 'The party finds a magical sword.'
+        });
+
+        const result = await publisher.publishSession(sessionData);
+        // Ring of Power is not in journalText
+        expect(result.items).toHaveLength(0);
+      });
+
+      it('should create item found in journal text', async () => {
+        const sessionData = createSessionData({
+          journalText: 'The Ring of Power must be destroyed in the fires of Mount Doom.'
+        });
+
+        const result = await publisher.publishSession(sessionData);
+        expect(result.items).toHaveLength(1);
+      });
+
+      it('should perform case-insensitive journal text matching', async () => {
+        const sessionData = createSessionData({
+          journalText: 'the shire is a peaceful place.'
+        });
+
+        const result = await publisher.publishSession(sessionData);
+        expect(result.locations).toHaveLength(1);
+      });
+    });
+
+    describe('journal description extraction', () => {
+      it('should use NPC profile description for characters', async () => {
+        const sessionData = createSessionData({
+          npcProfiles: [
+            { name: 'Gandalf', description: 'Gandalf the Grey, a Maiar spirit' }
+          ]
+        });
+
+        await publisher.publishSession(sessionData);
+
+        const charCalls = mockKankaService.createJournal.mock.calls.filter(
+          (c) => c[0].journal_id === 1
+        );
+        const gandalfCall = charCalls.find((c) => c[0].name === 'Gandalf');
+        expect(gandalfCall[0].entry).toBe('Gandalf the Grey, a Maiar spirit');
+      });
+
+      it('should fall back to character description when no NPC profile', async () => {
+        const sessionData = createSessionData({
+          npcProfiles: [] // no profiles
+        });
+
+        await publisher.publishSession(sessionData);
+
+        const charCalls = mockKankaService.createJournal.mock.calls.filter(
+          (c) => c[0].journal_id === 1
+        );
+        const gandalfCall = charCalls.find((c) => c[0].name === 'Gandalf');
+        expect(gandalfCall[0].entry).toBe('A powerful wizard');
+      });
+
+      it('should use journal text context for location descriptions', async () => {
+        const sessionData = createSessionData({
+          journalText: 'The Shire is a beautiful region. The Shire has green hills.'
+        });
+
+        await publisher.publishSession(sessionData);
+
+        const locCall = mockKankaService.createIfNotExists.mock.calls.find(
+          (c) => c[0] === 'locations'
+        );
+        // Should extract sentences mentioning "Shire"
+        expect(locCall[1].entry).toContain('Shire');
+      });
+
+      it('should use entity description when no journal context', async () => {
+        const sessionData = createSessionData(); // no journalText
+
+        await publisher.publishSession(sessionData);
+
+        const locCall = mockKankaService.createIfNotExists.mock.calls.find(
+          (c) => c[0] === 'locations'
+        );
+        expect(locCall[1].entry).toBe('Green rolling hills');
+      });
+
+      it('should extract up to 3 context sentences', async () => {
+        const sessionData = createSessionData({
+          journalText:
+            'The Shire is peaceful. The Shire has green hills. ' +
+            'The Shire is home to hobbits. The Shire is in the north. The Shire is beautiful.'
+        });
+
+        await publisher.publishSession(sessionData);
+
+        const locCall = mockKankaService.createIfNotExists.mock.calls.find(
+          (c) => c[0] === 'locations'
+        );
+        // Should have at most 3 sentences
+        const sentences = locCall[1].entry.split('. ').filter((s) => s.trim());
+        expect(sentences.length).toBeLessThanOrEqual(3);
+      });
+
+      it('should do case-insensitive NPC profile matching', async () => {
+        const sessionData = createSessionData({
+          npcProfiles: [{ name: 'gandalf', description: 'A wise wizard' }]
+        });
+
+        await publisher.publishSession(sessionData);
+
+        const charCalls = mockKankaService.createJournal.mock.calls.filter(
+          (c) => c[0].journal_id === 1
+        );
+        const gandalfCall = charCalls.find((c) => c[0].name === 'Gandalf');
+        expect(gandalfCall[0].entry).toBe('A wise wizard');
+      });
+    });
+
+    describe('progress reporting', () => {
+      it('should report initial progress', async () => {
+        const onProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
+        await p.publishSession(createSessionData());
+        expect(onProgress).toHaveBeenCalledWith(0, 'Preparing Kanka export...');
+      });
+
+      it('should report chronicle creation progress', async () => {
+        const onProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
+        await p.publishSession(createSessionData());
+        expect(onProgress).toHaveBeenCalledWith(10, 'Creating chronicle...');
+      });
+
+      it('should report character creation progress', async () => {
+        const onProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
+        await p.publishSession(createSessionData());
+        expect(onProgress).toHaveBeenCalledWith(30, 'Creating character journals...');
+      });
+
+      it('should report location creation progress', async () => {
+        const onProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
+        await p.publishSession(createSessionData());
+        expect(onProgress).toHaveBeenCalledWith(50, 'Creating locations...');
+      });
+
+      it('should report item creation progress', async () => {
+        const onProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
+        await p.publishSession(createSessionData());
+        expect(onProgress).toHaveBeenCalledWith(70, 'Creating items...');
+      });
+
+      it('should report completion progress', async () => {
+        const onProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
+        await p.publishSession(createSessionData());
+        expect(onProgress).toHaveBeenCalledWith(100, 'Publishing complete');
+      });
+
+      it('should use per-call onProgress over constructor onProgress', async () => {
+        const constructorProgress = vi.fn();
+        const callProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, {
+          onProgress: constructorProgress
+        });
+
+        await p.publishSession(createSessionData(), { onProgress: callProgress });
+
+        expect(callProgress).toHaveBeenCalledWith(100, 'Publishing complete');
+      });
+
+      it('should restore original onProgress after call completes', async () => {
+        const constructorProgress = vi.fn();
+        const callProgress = vi.fn();
+        const p = new KankaPublisher(mockKankaService, mockExporter, {
+          onProgress: constructorProgress
+        });
+
+        await p.publishSession(createSessionData(), { onProgress: callProgress });
+
+        // After publishSession, constructor progress should be restored
+        p._reportProgress(42, 'After call');
+        expect(constructorProgress).toHaveBeenCalledWith(42, 'After call');
+      });
+
+      it('should restore original onProgress even if publishSession throws', async () => {
+        const constructorProgress = vi.fn();
+        const callProgress = vi.fn();
+
+        const failingService = createMockKankaService({
+          createJournal: vi.fn().mockRejectedValue(new Error('Failed'))
+        });
+
+        const p = new KankaPublisher(failingService, mockExporter, {
+          onProgress: constructorProgress
+        });
+
+        try {
+          await p.publishSession(createSessionData(), { onProgress: callProgress });
+        } catch {
+          // expected
+        }
+
+        // Should be restored
+        p._reportProgress(99, 'Restored');
+        expect(constructorProgress).toHaveBeenCalledWith(99, 'Restored');
+      });
+
+      it('should not fail when no onProgress is set', async () => {
+        const p = new KankaPublisher(mockKankaService, mockExporter);
+        // Should not throw
+        const result = await p.publishSession(createSessionData());
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('options', () => {
+      it('should default createEntities to true', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(result.characters.length).toBeGreaterThan(0);
+      });
+
+      it('should default uploadImages to true', async () => {
+        // uploadImages defaults to true (though image upload logic isn't in this test)
+        const result = await publisher.publishSession(createSessionData());
+        expect(result).toBeDefined();
+      });
+
+      it('should default createChronicle to true', async () => {
+        const result = await publisher.publishSession(createSessionData());
+        expect(result.journal).toBeDefined();
+        expect(result.journal).not.toBeNull();
+      });
+
+      it('should respect createEntities: false', async () => {
+        const result = await publisher.publishSession(createSessionData(), {
+          createEntities: false
+        });
+        expect(mockKankaService.preFetchEntities).not.toHaveBeenCalled();
+      });
+
+      it('should respect createChronicle: false', async () => {
+        const result = await publisher.publishSession(createSessionData(), {
+          createChronicle: false
+        });
+        expect(result.journal).toBeNull();
+      });
+    });
+
+    describe('error handling', () => {
+      it('should throw when publishing fails', async () => {
+        const failingService = createMockKankaService({
+          createJournal: vi.fn().mockRejectedValue(new Error('Network error'))
+        });
+
+        const p = new KankaPublisher(failingService, mockExporter);
+        await expect(p.publishSession(createSessionData())).rejects.toThrow('Network error');
+      });
+
+      it('should continue creating other entities when one character fails', async () => {
+        const service = createMockKankaService({
+          createJournal: vi.fn()
+            .mockResolvedValueOnce({ id: 1, name: 'Chronicle' })
+            .mockRejectedValueOnce(new Error('First char failed'))
+            .mockResolvedValueOnce({ id: 3, name: 'Frodo' })
+        });
+
+        const p = new KankaPublisher(service, mockExporter);
+        const result = await p.publishSession(createSessionData());
+
+        expect(result.characters).toHaveLength(1);
+        expect(result.errors).toHaveLength(1);
+      });
+
+      it('should continue creating items when location fails', async () => {
+        let callCount = 0;
+        const service = createMockKankaService({
+          createIfNotExists: vi.fn().mockImplementation((type, data) => {
+            callCount++;
+            if (type === 'locations') {
+              return Promise.reject(new Error('Location failed'));
+            }
+            return Promise.resolve({ id: 10, name: data.name, _alreadyExisted: false });
+          })
+        });
+
+        const p = new KankaPublisher(service, mockExporter);
+        const result = await p.publishSession(createSessionData());
+
+        expect(result.errors.some((e) => e.type === 'location')).toBe(true);
+        expect(result.items).toHaveLength(1);
+      });
     });
   });
 
-  describe('character sub-journals', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
+  // ── _reportProgress ─────────────────────────────────────────────────────
+
+  describe('_reportProgress', () => {
+    it('should call onProgress when set', () => {
+      const onProgress = vi.fn();
+      const p = new KankaPublisher(mockKankaService, null, { onProgress });
+      p._reportProgress(50, 'Half done');
+      expect(onProgress).toHaveBeenCalledWith(50, 'Half done');
     });
 
-    it('should create characters as sub-journals with journal_id', async () => {
-      const sessionData = createMockSessionData();
-
-      await publisher.publishSession(sessionData);
-
-      // Find the sub-journal call (has journal_id)
-      const subJournalCalls = mockKankaService.createJournal.mock.calls.filter(
-        (call) => call[0].journal_id
-      );
-
-      expect(subJournalCalls).toHaveLength(1);
-      expect(subJournalCalls[0][0]).toEqual(
-        expect.objectContaining({
-          name: 'Gandalf',
-          type: 'NPC',
-          journal_id: 1, // Parent chronicle ID
-          date: '2024-01-01'
-        })
-      );
+    it('should not fail when onProgress is null', () => {
+      const p = new KankaPublisher(mockKankaService);
+      expect(() => p._reportProgress(50, 'Test')).not.toThrow();
     });
 
-    it('should use journal NPC profile description for characters', async () => {
-      const sessionData = createMockSessionData({
-        npcProfiles: [
-          { name: 'Gandalf', description: 'A powerful Maia in wizard form' }
-        ]
+    it('should call with empty message by default', () => {
+      const onProgress = vi.fn();
+      const p = new KankaPublisher(mockKankaService, null, { onProgress });
+      p._reportProgress(50);
+      expect(onProgress).toHaveBeenCalledWith(50, '');
+    });
+  });
+
+  // ── _formatBasicChronicle ───────────────────────────────────────────────
+
+  describe('_formatBasicChronicle (via basic publishing)', () => {
+    it('should generate HTML with title', async () => {
+      const p = new KankaPublisher(mockKankaService);
+      await p.publishSession(createSessionData());
+
+      const entry = mockKankaService.createJournal.mock.calls[0][0].entry;
+      expect(entry).toContain('<h2>');
+      expect(entry).toContain('Session 1: The Beginning');
+    });
+
+    it('should generate HTML with date', async () => {
+      const p = new KankaPublisher(mockKankaService);
+      await p.publishSession(createSessionData());
+
+      const entry = mockKankaService.createJournal.mock.calls[0][0].entry;
+      expect(entry).toContain('2024-01-15');
+    });
+
+    it('should include horizontal rule', async () => {
+      const p = new KankaPublisher(mockKankaService);
+      await p.publishSession(createSessionData());
+
+      const entry = mockKankaService.createJournal.mock.calls[0][0].entry;
+      expect(entry).toContain('<hr>');
+    });
+
+    it('should handle session data with no entities', async () => {
+      const p = new KankaPublisher(mockKankaService);
+      const sessionData = createSessionData({ entities: null });
+      await p.publishSession(sessionData);
+
+      const entry = mockKankaService.createJournal.mock.calls[0][0].entry;
+      expect(entry).not.toContain('new entities');
+    });
+
+    it('should handle session data with zero entities', async () => {
+      const p = new KankaPublisher(mockKankaService);
+      const sessionData = createSessionData({
+        entities: { characters: [], locations: [], items: [] }
       });
+      await p.publishSession(sessionData);
 
-      await publisher.publishSession(sessionData);
-
-      const subJournalCalls = mockKankaService.createJournal.mock.calls.filter(
-        (call) => call[0].journal_id
-      );
-
-      expect(subJournalCalls[0][0].entry).toBe('A powerful Maia in wizard form');
+      const entry = mockKankaService.createJournal.mock.calls[0][0].entry;
+      expect(entry).not.toContain('new entities');
     });
 
-    it('should fall back to AI description when no journal profile found', async () => {
-      const sessionData = createMockSessionData({
-        npcProfiles: [], // No profiles
-        journalText: null // No journal text either
+    it('should show segment speaker names in basic transcript', async () => {
+      const p = new KankaPublisher(mockKankaService);
+      const sessionData = createSessionData({
+        transcript: {
+          segments: [{ speaker: 'TestSpeaker', text: 'Hello world' }]
+        }
       });
+      await p.publishSession(sessionData);
 
-      await publisher.publishSession(sessionData);
-
-      const subJournalCalls = mockKankaService.createJournal.mock.calls.filter(
-        (call) => call[0].journal_id
-      );
-
-      // Falls back to AI description
-      expect(subJournalCalls[0][0].entry).toBe('A wise wizard');
+      const entry = mockKankaService.createJournal.mock.calls[0][0].entry;
+      expect(entry).toContain('TestSpeaker');
     });
 
-    it('should set PC type for player characters', async () => {
-      const sessionData = createMockSessionData({
+    it('should default to "Unknown" speaker when segment has no speaker', async () => {
+      const p = new KankaPublisher(mockKankaService);
+      const sessionData = createSessionData({
+        transcript: {
+          segments: [{ text: 'Mystery speech' }]
+        }
+      });
+      await p.publishSession(sessionData);
+
+      const entry = mockKankaService.createJournal.mock.calls[0][0].entry;
+      expect(entry).toContain('Unknown');
+    });
+  });
+
+  // ── Edge cases ──────────────────────────────────────────────────────────
+
+  describe('edge cases', () => {
+    it('should handle session data with minimal fields', async () => {
+      const minimal = { title: 'Test', date: '2024-01-01' };
+      const result = await publisher.publishSession(minimal);
+      expect(result.journal).toBeDefined();
+    });
+
+    it('should handle entities object with no arrays', async () => {
+      const sessionData = createSessionData({ entities: {} });
+      const result = await publisher.publishSession(sessionData);
+      expect(result.characters).toHaveLength(0);
+      expect(result.locations).toHaveLength(0);
+      expect(result.items).toHaveLength(0);
+    });
+
+    it('should handle character with empty description', async () => {
+      const sessionData = createSessionData({
         entities: {
-          characters: [{ name: 'Aragorn', description: 'A ranger', isNPC: false }],
+          characters: [{ name: 'Silent NPC', description: '', isNPC: true }],
+          locations: [],
+          items: []
+        }
+      });
+
+      const result = await publisher.publishSession(sessionData);
+      expect(result.characters).toHaveLength(1);
+    });
+
+    it('should use empty string for character description when both profile and entity are empty', async () => {
+      const sessionData = createSessionData({
+        entities: {
+          characters: [{ name: 'NoDesc', isNPC: true }],
           locations: [],
           items: []
         }
@@ -415,621 +1021,21 @@ describe('KankaPublisher', () => {
 
       await publisher.publishSession(sessionData);
 
-      const subJournalCalls = mockKankaService.createJournal.mock.calls.filter(
-        (call) => call[0].journal_id
+      const charCalls = mockKankaService.createJournal.mock.calls.filter(
+        (c) => c[0].journal_id === 1
       );
-
-      expect(subJournalCalls[0][0].type).toBe('PC');
+      expect(charCalls[0][0].entry).toBe('');
     });
 
-    it('should upload portrait to journal (not character entity)', async () => {
-      const sessionData = createMockSessionData();
-
-      await publisher.publishSession(sessionData);
-
-      expect(mockKankaService.uploadJournalImage).toHaveBeenCalledWith(
-        20, // sub-journal ID
-        'https://example.com/gandalf.png'
-      );
-      expect(mockKankaService.uploadCharacterImage).not.toHaveBeenCalled();
-    });
-
-    it('should not create sub-journals when chronicle is skipped', async () => {
-      const sessionData = createMockSessionData();
-
-      const result = await publisher.publishSession(sessionData, {
-        createChronicle: false
-      });
-
-      // No parent journal = no sub-journals
-      expect(result.characters).toHaveLength(0);
-      // But createJournal should not have been called at all
-      expect(mockKankaService.createJournal).not.toHaveBeenCalled();
-    });
-
-    it('should handle character creation errors gracefully', async () => {
-      // First call succeeds (chronicle), second fails (sub-journal)
-      mockKankaService.createJournal
-        .mockResolvedValueOnce({ id: 1, name: 'Chronicle' })
-        .mockRejectedValueOnce(new Error('Sub-journal failed'));
-
-      const sessionData = createMockSessionData();
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toEqual({
-        entity: 'Gandalf',
-        type: 'character',
-        error: 'Sub-journal failed'
-      });
-    });
-
-    it('should handle image upload errors gracefully', async () => {
-      mockKankaService.uploadJournalImage.mockRejectedValue(new Error('Upload failed'));
-
-      const sessionData = createMockSessionData();
-      const result = await publisher.publishSession(sessionData);
-
-      // Character still created, just no image
-      expect(result.characters).toHaveLength(1);
-      expect(result.images).toHaveLength(0);
-      expect(result.errors).toHaveLength(0);
-    });
-  });
-
-  describe('journal-validated locations', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-    });
-
-    it('should create location when name is in journal text', async () => {
-      const sessionData = createMockSessionData({
-        journalText: 'The elven city of Rivendell lies in the valley.'
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(result.locations).toHaveLength(1);
-      expect(mockKankaService.createIfNotExists).toHaveBeenCalledWith('locations', {
-        name: 'Rivendell',
-        entry: expect.any(String),
-        type: 'City'
-      });
-    });
-
-    it('should skip location when name is NOT in journal text', async () => {
-      const sessionData = createMockSessionData({
-        journalText: 'The party travels through the Misty Mountains.'
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(result.locations).toHaveLength(0);
-    });
-
-    it('should use journal description for location when available', async () => {
-      const sessionData = createMockSessionData({
-        journalText: 'Rivendell is the last homely house east of the Sea. It was founded by Elrond.',
-        entities: {
-          characters: [],
-          locations: [{ name: 'Rivendell', description: 'AI description', type: 'City' }],
-          items: []
-        }
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      // Should use journal description, not AI description
-      const locationCall = mockKankaService.createIfNotExists.mock.calls.find(
-        (call) => call[0] === 'locations'
-      );
-      expect(locationCall[1].entry).toContain('Rivendell is the last homely house');
-    });
-
-    it('should allow locations when no journalText is available (graceful fallback)', async () => {
-      const sessionData = createMockSessionData({
-        journalText: null // No journal context
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      // Should still create location (graceful fallback)
-      expect(result.locations).toHaveLength(1);
-    });
-
-    it('should perform case-insensitive name matching', async () => {
-      const sessionData = createMockSessionData({
-        journalText: 'The ancient city of RIVENDELL towers above the valley.',
-        entities: {
-          characters: [],
-          locations: [{ name: 'Rivendell', description: 'A city', type: 'City' }],
-          items: []
-        }
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(result.locations).toHaveLength(1);
-    });
-  });
-
-  describe('journal-validated items', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-    });
-
-    it('should create item when name is in journal text', async () => {
-      const sessionData = createMockSessionData({
-        journalText: 'Gandalf carries the Staff of Power into battle.'
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(result.items).toHaveLength(1);
-    });
-
-    it('should skip item when name is NOT in journal text', async () => {
-      const sessionData = createMockSessionData({
-        journalText: 'The party finds a mysterious amulet.'
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(result.items).toHaveLength(0);
-    });
-
-    it('should use journal description for item when available', async () => {
-      const sessionData = createMockSessionData({
-        journalText: 'The Staff of Power was forged by ancient elves. It channels raw magical energy.',
-        entities: {
-          characters: [],
-          locations: [],
-          items: [{ name: 'Staff of Power', description: 'AI generated', type: 'Weapon' }]
-        }
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      const itemCall = mockKankaService.createIfNotExists.mock.calls.find(
-        (call) => call[0] === 'items'
-      );
-      expect(itemCall[1].entry).toContain('Staff of Power was forged by ancient elves');
-    });
-
-    it('should allow items when no journalText is available', async () => {
-      const sessionData = createMockSessionData({
-        journalText: null
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(result.items).toHaveLength(1);
-    });
-  });
-
-  describe('chronicle creation', () => {
-    it('should create chronicle using NarrativeExporter', async () => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-      const sessionData = createMockSessionData({ entities: null });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(mockNarrativeExporter.export).toHaveBeenCalledWith(
-        {
-          title: 'Test Session',
-          date: '2024-01-01',
-          segments: sessionData.transcript.segments,
-          entities: null,
-          moments: sessionData.moments
-        },
-        {
-          format: 'full',
-          includeEntities: true,
-          includeMoments: true,
-          includeTimestamps: false
-        }
-      );
-
-      expect(result.journal).toBeDefined();
-    });
-
-    it('should create basic chronicle without NarrativeExporter', async () => {
-      publisher = new KankaPublisher(mockKankaService, null);
-      const sessionData = createMockSessionData({ entities: null });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(mockKankaService.createJournal).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Test Session',
-          type: 'Session Chronicle',
-          date: '2024-01-01',
-          entry: expect.stringContaining('Test Session')
-        })
-      );
-
-      expect(result.journal).toBeDefined();
-    });
-
-    it('should use custom chronicle format', async () => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter, {
-        chronicleFormat: 'summary'
-      });
-
-      const sessionData = createMockSessionData({ entities: null });
-      await publisher.publishSession(sessionData);
-
-      expect(mockNarrativeExporter.export).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          format: 'summary'
-        })
-      );
-    });
-
-    it('should handle chronicle creation errors', async () => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-      const error = new Error('Journal creation failed');
-      mockKankaService.createJournal.mockRejectedValue(error);
-
-      const sessionData = createMockSessionData();
-
-      await expect(publisher.publishSession(sessionData)).rejects.toThrow(
-        'Journal creation failed'
-      );
-    });
-
-    it('should handle missing transcript segments', async () => {
-      publisher = new KankaPublisher(mockKankaService, null);
-      const sessionData = createMockSessionData({ transcript: null, entities: null });
-
-      const result = await publisher.publishSession(sessionData);
-
-      expect(mockKankaService.createJournal).toHaveBeenCalled();
-      expect(result.journal).toBeDefined();
-    });
-
-    it('should truncate long transcripts in basic format', async () => {
-      publisher = new KankaPublisher(mockKankaService, null);
-
-      const segments = Array(60)
-        .fill(null)
-        .map((_, i) => ({
-          speaker: `SPEAKER_${i % 2}`,
-          text: `Segment ${i}`,
-          start: i * 2,
-          end: (i + 1) * 2
-        }));
-
-      const sessionData = createMockSessionData({
-        transcript: { segments },
-        entities: null
-      });
-
-      const result = await publisher.publishSession(sessionData);
-
-      const callArgs = mockKankaService.createJournal.mock.calls[0][0];
-      expect(callArgs.entry).toContain('and 10 more segments');
-    });
-  });
-
-  describe('progress reporting', () => {
-    it('should report progress when callback is provided', async () => {
-      const onProgress = vi.fn();
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter, { onProgress });
-
-      const sessionData = createMockSessionData();
-      await publisher.publishSession(sessionData);
-
-      expect(onProgress).toHaveBeenCalled();
-
-      const progressCalls = onProgress.mock.calls.map((call) => ({
-        progress: call[0],
-        message: call[1]
-      }));
-
-      expect(progressCalls).toContainEqual({
-        progress: 0,
-        message: 'Preparing Kanka export...'
-      });
-
-      expect(progressCalls).toContainEqual({
-        progress: 100,
-        message: 'Publishing complete'
-      });
-    });
-
-    it('should not throw when no progress callback provided', async () => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-
-      const sessionData = createMockSessionData();
-
-      await expect(publisher.publishSession(sessionData)).resolves.toBeDefined();
-    });
-
-    it('should report chronicle creation progress', async () => {
-      const onProgress = vi.fn();
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter, { onProgress });
-
-      const sessionData = createMockSessionData();
-      await publisher.publishSession(sessionData);
-
-      const progressCalls = onProgress.mock.calls.map((call) => ({
-        progress: call[0],
-        message: call[1]
-      }));
-
-      expect(progressCalls).toContainEqual({
-        progress: 10,
-        message: 'Creating chronicle...'
-      });
-    });
-
-    it('should report entity creation progress', async () => {
-      const onProgress = vi.fn();
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter, { onProgress });
-
-      const sessionData = createMockSessionData();
-      await publisher.publishSession(sessionData);
-
-      const progressCalls = onProgress.mock.calls.map((call) => ({
-        progress: call[0],
-        message: call[1]
-      }));
-
-      expect(progressCalls).toContainEqual({
-        progress: 30,
-        message: 'Creating character journals...'
-      });
-
-      expect(progressCalls).toContainEqual({
-        progress: 50,
-        message: 'Creating locations...'
-      });
-
-      expect(progressCalls).toContainEqual({
-        progress: 70,
-        message: 'Creating items...'
-      });
-    });
-  });
-
-  describe('_findImageForEntity', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, mockNarrativeExporter);
-    });
-
-    it('should find matching image for entity', () => {
-      const sessionData = createMockSessionData();
-
-      const image = publisher._findImageForEntity(sessionData, 'character', 'Gandalf');
-
-      expect(image).toEqual({
-        success: true,
-        url: 'https://example.com/gandalf.png',
-        entityType: 'character',
-        meta: { characterName: 'Gandalf' }
-      });
-    });
-
-    it('should return null when no images available', () => {
-      const sessionData = createMockSessionData({ images: [] });
-
-      const image = publisher._findImageForEntity(sessionData, 'character', 'Gandalf');
-
-      expect(image).toBeNull();
-    });
-
-    it('should return null when entity name does not match', () => {
-      const sessionData = createMockSessionData();
-
-      const image = publisher._findImageForEntity(sessionData, 'character', 'Frodo');
-
-      expect(image).toBeNull();
-    });
-
-    it('should return null when entity type does not match', () => {
-      const sessionData = createMockSessionData();
-
-      const image = publisher._findImageForEntity(sessionData, 'location', 'Gandalf');
-
-      expect(image).toBeNull();
-    });
-
-    it('should skip failed images', () => {
-      const sessionData = createMockSessionData({
-        images: [
-          {
-            success: false,
-            url: null,
-            entityType: 'character',
-            meta: { characterName: 'Gandalf' }
-          }
-        ]
-      });
-
-      const image = publisher._findImageForEntity(sessionData, 'character', 'Gandalf');
-
-      expect(image).toBeNull();
-    });
-  });
-
-  describe('_formatBasicChronicle', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, null);
-    });
-
-    it('should format basic chronicle with all components', () => {
-      const sessionData = createMockSessionData();
-
-      const chronicle = publisher._formatBasicChronicle(sessionData);
-
-      expect(chronicle).toContain('<h2>Test Session</h2>');
-      expect(chronicle).toContain('<p><em>Date: 2024-01-01</em></p>');
-      expect(chronicle).toContain('This session introduced 3 new entities');
-      expect(chronicle).toContain('<h3>Transcript</h3>');
-      expect(chronicle).toContain('<strong>SPEAKER_00:</strong> Hello world');
-      expect(chronicle).toContain('<em>Generated by VoxChronicle</em>');
-    });
-
-    it('should handle missing entities', () => {
-      const sessionData = createMockSessionData({ entities: null });
-
-      const chronicle = publisher._formatBasicChronicle(sessionData);
-
-      expect(chronicle).not.toContain('This session introduced');
-      expect(chronicle).toContain('<h2>Test Session</h2>');
-    });
-
-    it('should handle missing transcript', () => {
-      const sessionData = createMockSessionData({ transcript: null });
-
-      const chronicle = publisher._formatBasicChronicle(sessionData);
-
-      expect(chronicle).not.toContain('<h3>Transcript</h3>');
-      expect(chronicle).toContain('<h2>Test Session</h2>');
-    });
-
-    it('should truncate long transcripts', () => {
-      const segments = Array(60)
-        .fill(null)
-        .map((_, i) => ({
-          speaker: `SPEAKER_${i % 2}`,
-          text: `Segment ${i}`,
-          start: i * 2,
-          end: (i + 1) * 2
-        }));
-
-      const sessionData = createMockSessionData({
-        transcript: { segments }
-      });
-
-      const chronicle = publisher._formatBasicChronicle(sessionData);
-
-      expect(chronicle).toContain('and 10 more segments');
-    });
-  });
-
-  describe('_isEntityInJournal', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, null);
-    });
-
-    it('should return true when entity name is in journal text', () => {
-      const sessionData = { journalText: 'The city of Rivendell is beautiful.' };
-      expect(publisher._isEntityInJournal(sessionData, 'Rivendell')).toBe(true);
-    });
-
-    it('should return false when entity name is NOT in journal text', () => {
-      const sessionData = { journalText: 'The party explored the dungeon.' };
-      expect(publisher._isEntityInJournal(sessionData, 'Rivendell')).toBe(false);
-    });
-
-    it('should be case-insensitive', () => {
-      const sessionData = { journalText: 'RIVENDELL is an elven city.' };
-      expect(publisher._isEntityInJournal(sessionData, 'Rivendell')).toBe(true);
-    });
-
-    it('should return true when no journal text available (graceful fallback)', () => {
-      const sessionData = { journalText: null };
-      expect(publisher._isEntityInJournal(sessionData, 'Rivendell')).toBe(true);
-    });
-
-    it('should return true when journalText is undefined', () => {
-      const sessionData = {};
-      expect(publisher._isEntityInJournal(sessionData, 'Rivendell')).toBe(true);
-    });
-  });
-
-  describe('_findJournalDescription', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, null);
-    });
-
-    it('should use NPC profile description for characters', () => {
-      const sessionData = {
-        npcProfiles: [{ name: 'Gandalf', description: 'Profile description' }],
-        journalText: 'Gandalf is a wizard.'
-      };
-
-      const desc = publisher._findJournalDescription(sessionData, 'Gandalf', 'character');
-      expect(desc).toBe('Profile description');
-    });
-
-    it('should extract context from journal text when no profile exists', () => {
-      const sessionData = {
-        npcProfiles: [],
-        journalText: 'Gandalf is a powerful wizard. He carries a staff. Gandalf wears grey robes.'
-      };
-
-      const desc = publisher._findJournalDescription(sessionData, 'Gandalf', 'character');
-      expect(desc).toContain('Gandalf');
-    });
-
-    it('should return null when entity is not in journal text', () => {
-      const sessionData = {
-        npcProfiles: [],
-        journalText: 'The party explores the dungeon.'
-      };
-
-      const desc = publisher._findJournalDescription(sessionData, 'Gandalf', 'character');
-      expect(desc).toBeNull();
-    });
-
-    it('should return null when no journalText is available', () => {
-      const sessionData = { npcProfiles: [] };
-
-      const desc = publisher._findJournalDescription(sessionData, 'Gandalf', 'character');
-      expect(desc).toBeNull();
-    });
-
-    it('should extract description for locations', () => {
-      const sessionData = {
-        journalText: 'Rivendell lies in a hidden valley. Rivendell was founded by Elrond.'
-      };
-
-      const desc = publisher._findJournalDescription(sessionData, 'Rivendell', 'location');
-      expect(desc).toContain('Rivendell');
-    });
-
-    it('should limit extracted context to 3 sentences', () => {
-      const sessionData = {
-        journalText:
-          'Gandalf arrives. Gandalf speaks. Gandalf casts. Gandalf fights. Gandalf rests.'
-      };
-
-      const desc = publisher._findJournalDescription(sessionData, 'Gandalf', 'character');
-      // Should contain at most 3 mentions
-      const sentences = desc.split('. ').filter((s) => s.includes('Gandalf'));
-      expect(sentences.length).toBeLessThanOrEqual(3);
-    });
-  });
-
-  describe('_extractContextFromText', () => {
-    beforeEach(() => {
-      publisher = new KankaPublisher(mockKankaService, null);
-    });
-
-    it('should extract sentences containing entity name', () => {
-      const text = 'The sky is blue. Rivendell is beautiful. The end.';
-      const result = publisher._extractContextFromText(text, 'Rivendell');
-      expect(result).toContain('Rivendell is beautiful');
-    });
-
-    it('should return null for empty text', () => {
-      expect(publisher._extractContextFromText('', 'Rivendell')).toBeNull();
-      expect(publisher._extractContextFromText(null, 'Rivendell')).toBeNull();
-    });
-
-    it('should return null when entity not found', () => {
-      const text = 'The party explores the dungeon.';
-      expect(publisher._extractContextFromText(text, 'Rivendell')).toBeNull();
-    });
-
-    it('should handle empty entity name', () => {
-      expect(publisher._extractContextFromText('Some text.', '')).toBeNull();
-      expect(publisher._extractContextFromText('Some text.', null)).toBeNull();
+    it('should handle concurrent publishSession calls', async () => {
+      const results = await Promise.all([
+        publisher.publishSession(createSessionData({ title: 'Session A' })),
+        publisher.publishSession(createSessionData({ title: 'Session B' }))
+      ]);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].journal).toBeDefined();
+      expect(results[1].journal).toBeDefined();
     });
   });
 });

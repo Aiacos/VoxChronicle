@@ -1,0 +1,345 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { CacheManager } from '../../scripts/utils/CacheManager.mjs';
+
+describe('CacheManager', () => {
+  let cache;
+
+  beforeEach(() => {
+    cache = new CacheManager({ name: 'test-cache', maxSize: 5 });
+  });
+
+  // ── Helper ─────────────────────────────────────────────────────────────
+
+  function futureDate(ms = 60000) {
+    return new Date(Date.now() + ms);
+  }
+
+  function pastDate(ms = 60000) {
+    return new Date(Date.now() - ms);
+  }
+
+  // ── Constructor ────────────────────────────────────────────────────────
+
+  describe('constructor', () => {
+    it('should use provided name', () => {
+      expect(cache._name).toBe('test-cache');
+    });
+
+    it('should default name to "cache"', () => {
+      const c = new CacheManager();
+      expect(c._name).toBe('cache');
+    });
+
+    it('should use provided maxSize', () => {
+      expect(cache._maxSize).toBe(5);
+    });
+
+    it('should default maxSize to 100', () => {
+      const c = new CacheManager();
+      expect(c._maxSize).toBe(100);
+    });
+
+    it('should start with empty cache', () => {
+      expect(cache.size()).toBe(0);
+    });
+  });
+
+  // ── set / get ──────────────────────────────────────────────────────────
+
+  describe('set() and get()', () => {
+    it('should store and retrieve a value', () => {
+      cache.set('key1', 'value1', futureDate());
+      expect(cache.get('key1')).toBe('value1');
+    });
+
+    it('should store complex objects', () => {
+      const obj = { name: 'test', data: [1, 2, 3] };
+      cache.set('obj', obj, futureDate());
+      expect(cache.get('obj')).toBe(obj);
+    });
+
+    it('should overwrite existing entries', () => {
+      cache.set('k', 'old', futureDate());
+      cache.set('k', 'new', futureDate());
+      expect(cache.get('k')).toBe('new');
+    });
+
+    it('should return null for missing keys', () => {
+      expect(cache.get('nonexistent')).toBeNull();
+    });
+
+    it('should return null for expired entries', () => {
+      cache.set('expired', 'data', pastDate());
+      expect(cache.get('expired')).toBeNull();
+    });
+
+    it('should delete expired entries on get()', () => {
+      cache.set('expired', 'data', pastDate());
+      cache.get('expired');
+      expect(cache.has('expired')).toBe(false);
+    });
+
+    it('should return expired value when checkExpiration is false', () => {
+      cache.set('expired', 'data', pastDate());
+      expect(cache.get('expired', false)).toBe('data');
+    });
+
+    it('should store metadata with entry', () => {
+      cache.set('meta', 'val', futureDate(), { tag: 'important' });
+      const entry = cache.getEntry('meta');
+      expect(entry.metadata).toEqual({ tag: 'important' });
+    });
+  });
+
+  // ── getEntry ───────────────────────────────────────────────────────────
+
+  describe('getEntry()', () => {
+    it('should return full cache entry', () => {
+      const expires = futureDate();
+      cache.set('k', 'v', expires, { source: 'test' });
+      const entry = cache.getEntry('k');
+      expect(entry.value).toBe('v');
+      expect(entry.expiresAt).toBe(expires);
+      expect(entry.createdAt).toBeInstanceOf(Date);
+      expect(entry.metadata).toEqual({ source: 'test' });
+    });
+
+    it('should return null for missing key', () => {
+      expect(cache.getEntry('missing')).toBeNull();
+    });
+  });
+
+  // ── getAll ─────────────────────────────────────────────────────────────
+
+  describe('getAll()', () => {
+    it('should return all values including expired', () => {
+      cache.set('a', 1, futureDate());
+      cache.set('b', 2, pastDate());
+      const all = cache.getAll();
+      expect(all).toHaveLength(2);
+      expect(all).toContain(1);
+      expect(all).toContain(2);
+    });
+
+    it('should return empty array for empty cache', () => {
+      expect(cache.getAll()).toEqual([]);
+    });
+  });
+
+  // ── getAllEntries ──────────────────────────────────────────────────────
+
+  describe('getAllEntries()', () => {
+    it('should return all entries with metadata', () => {
+      cache.set('a', 1, futureDate());
+      cache.set('b', 2, pastDate());
+      const entries = cache.getAllEntries();
+      expect(entries).toHaveLength(2);
+      expect(entries[0]).toHaveProperty('value');
+      expect(entries[0]).toHaveProperty('createdAt');
+      expect(entries[0]).toHaveProperty('expiresAt');
+    });
+  });
+
+  // ── getValid ───────────────────────────────────────────────────────────
+
+  describe('getValid()', () => {
+    it('should return only non-expired values', () => {
+      cache.set('valid', 'yes', futureDate());
+      cache.set('expired', 'no', pastDate());
+      const valid = cache.getValid();
+      expect(valid).toEqual(['yes']);
+    });
+
+    it('should return empty array when all are expired', () => {
+      cache.set('a', 1, pastDate());
+      cache.set('b', 2, pastDate());
+      expect(cache.getValid()).toEqual([]);
+    });
+  });
+
+  // ── getValidEntries ────────────────────────────────────────────────────
+
+  describe('getValidEntries()', () => {
+    it('should return only non-expired entries', () => {
+      cache.set('valid', 'yes', futureDate());
+      cache.set('expired', 'no', pastDate());
+      const entries = cache.getValidEntries();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].value).toBe('yes');
+    });
+  });
+
+  // ── clearExpired ───────────────────────────────────────────────────────
+
+  describe('clearExpired()', () => {
+    it('should remove expired entries and return count', () => {
+      cache.set('a', 1, pastDate());
+      cache.set('b', 2, pastDate());
+      cache.set('c', 3, futureDate());
+      const removed = cache.clearExpired();
+      expect(removed).toBe(2);
+      expect(cache.size()).toBe(1);
+      expect(cache.get('c')).toBe(3);
+    });
+
+    it('should return 0 when nothing is expired', () => {
+      cache.set('a', 1, futureDate());
+      expect(cache.clearExpired()).toBe(0);
+    });
+
+    it('should return 0 for empty cache', () => {
+      expect(cache.clearExpired()).toBe(0);
+    });
+  });
+
+  // ── clear ──────────────────────────────────────────────────────────────
+
+  describe('clear()', () => {
+    it('should empty the cache', () => {
+      cache.set('a', 1, futureDate());
+      cache.set('b', 2, futureDate());
+      cache.clear();
+      expect(cache.size()).toBe(0);
+    });
+  });
+
+  // ── size ───────────────────────────────────────────────────────────────
+
+  describe('size()', () => {
+    it('should return 0 for empty cache', () => {
+      expect(cache.size()).toBe(0);
+    });
+
+    it('should return correct count after inserts', () => {
+      cache.set('a', 1, futureDate());
+      cache.set('b', 2, futureDate());
+      expect(cache.size()).toBe(2);
+    });
+  });
+
+  // ── has ────────────────────────────────────────────────────────────────
+
+  describe('has()', () => {
+    it('should return true for existing key', () => {
+      cache.set('exists', 'val', futureDate());
+      expect(cache.has('exists')).toBe(true);
+    });
+
+    it('should return false for missing key', () => {
+      expect(cache.has('nope')).toBe(false);
+    });
+
+    it('should return true even for expired entries (no expiry check)', () => {
+      cache.set('expired', 'val', pastDate());
+      expect(cache.has('expired')).toBe(true);
+    });
+  });
+
+  // ── delete ─────────────────────────────────────────────────────────────
+
+  describe('delete()', () => {
+    it('should remove an existing entry and return true', () => {
+      cache.set('del', 'val', futureDate());
+      expect(cache.delete('del')).toBe(true);
+      expect(cache.has('del')).toBe(false);
+    });
+
+    it('should return false for non-existing key', () => {
+      expect(cache.delete('nope')).toBe(false);
+    });
+  });
+
+  // ── _trim (LRU) ───────────────────────────────────────────────────────
+
+  describe('_trim()', () => {
+    it('should trim oldest entries when maxSize is exceeded', () => {
+      // maxSize is 5; add 6 entries
+      for (let i = 0; i < 6; i++) {
+        cache.set(`key${i}`, `val${i}`, futureDate());
+      }
+      expect(cache.size()).toBe(5);
+      // The first entry (oldest by createdAt) should have been removed
+      expect(cache.has('key0')).toBe(false);
+      expect(cache.has('key5')).toBe(true);
+    });
+
+    it('should not trim when within maxSize', () => {
+      cache.set('a', 1, futureDate());
+      cache.set('b', 2, futureDate());
+      expect(cache.size()).toBe(2);
+    });
+
+    it('should trim multiple entries when many are added at once', () => {
+      const bigCache = new CacheManager({ maxSize: 3 });
+      for (let i = 0; i < 10; i++) {
+        bigCache.set(`k${i}`, i, futureDate());
+      }
+      expect(bigCache.size()).toBe(3);
+    });
+  });
+
+  // ── static generateCacheKey ────────────────────────────────────────────
+
+  describe('generateCacheKey()', () => {
+    it('should produce deterministic keys for same input', () => {
+      const key1 = CacheManager.generateCacheKey('hello');
+      const key2 = CacheManager.generateCacheKey('hello');
+      expect(key1).toBe(key2);
+    });
+
+    it('should produce different keys for different inputs', () => {
+      const key1 = CacheManager.generateCacheKey('hello');
+      const key2 = CacheManager.generateCacheKey('world');
+      expect(key1).not.toBe(key2);
+    });
+
+    it('should use default prefix "cache"', () => {
+      const key = CacheManager.generateCacheKey('test');
+      expect(key).toMatch(/^cache_/);
+    });
+
+    it('should use custom prefix', () => {
+      const key = CacheManager.generateCacheKey('test', 'image');
+      expect(key).toMatch(/^image_/);
+    });
+
+    it('should produce a hex hash suffix', () => {
+      const key = CacheManager.generateCacheKey('test');
+      const suffix = key.split('_')[1];
+      expect(suffix).toMatch(/^[0-9a-f]+$/);
+    });
+
+    it('should handle empty string input', () => {
+      const key = CacheManager.generateCacheKey('');
+      expect(key).toMatch(/^cache_/);
+    });
+  });
+
+  // ── static blobToBase64 ────────────────────────────────────────────────
+
+  describe('blobToBase64()', () => {
+    it('should convert a blob to base64 string', async () => {
+      const blob = new Blob(['hello world'], { type: 'text/plain' });
+      const result = await CacheManager.blobToBase64(blob);
+      // The data URL prefix should be stripped — only the base64 part remains
+      expect(typeof result).toBe('string');
+      expect(result).not.toContain('data:');
+    });
+
+    it('should return valid base64 content', async () => {
+      const blob = new Blob(['test'], { type: 'text/plain' });
+      const base64 = await CacheManager.blobToBase64(blob);
+      // Decode it back to verify
+      const decoded = atob(base64);
+      expect(decoded).toBe('test');
+    });
+
+    it('should handle binary blob data', async () => {
+      const bytes = new Uint8Array([0, 1, 2, 3, 255]);
+      const blob = new Blob([bytes], { type: 'application/octet-stream' });
+      const base64 = await CacheManager.blobToBase64(blob);
+      expect(typeof base64).toBe('string');
+      expect(base64.length).toBeGreaterThan(0);
+    });
+  });
+});

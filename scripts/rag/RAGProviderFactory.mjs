@@ -10,6 +10,7 @@
 
 import { Logger } from '../utils/Logger.mjs';
 import { OpenAIFileSearchProvider } from './OpenAIFileSearchProvider.mjs';
+import { RAGFlowProvider } from './RAGFlowProvider.mjs';
 
 const logger = Logger.createChild('RAGProviderFactory');
 
@@ -24,7 +25,8 @@ const DEFAULT_PROVIDER = 'openai-file-search';
  * @type {Map<string, typeof import('./RAGProvider.mjs').RAGProvider>}
  */
 const providerRegistry = new Map([
-  ['openai-file-search', OpenAIFileSearchProvider]
+  ['openai-file-search', OpenAIFileSearchProvider],
+  ['ragflow', RAGFlowProvider]
 ]);
 
 export class RAGProviderFactory {

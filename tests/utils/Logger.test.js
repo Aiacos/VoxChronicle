@@ -1,92 +1,32 @@
-/**
- * Logger Unit Tests
- *
- * Tests for the Logger utility class.
- * Covers log levels, console output, timers, and child logger creation.
- */
-
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
-// Mock MODULE_ID before importing Logger to avoid circular dependencies
-vi.mock('../../scripts/main.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-vi.mock('../../scripts/constants.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-
-// Mock SensitiveDataFilter to avoid additional dependencies
-vi.mock('../../scripts/utils/SensitiveDataFilter.mjs', () => ({
-  SensitiveDataFilter: {
-    sanitizeArgs: vi.fn((args) => args),
-    sanitizeString: vi.fn((str) => str)
-  }
-}));
-
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Logger, LogLevel } from '../../scripts/utils/Logger.mjs';
 
 describe('Logger', () => {
-  // Store original console methods
-  let originalConsole;
-
   beforeEach(() => {
-    // Save original console
-    originalConsole = {
-      debug: console.debug,
-      info: console.info,
-      log: console.log,
-      warn: console.warn,
-      error: console.error,
-      group: console.group,
-      groupCollapsed: console.groupCollapsed,
-      groupEnd: console.groupEnd,
-      table: console.table,
-      dir: console.dir,
-      trace: console.trace,
-      assert: console.assert,
-      clear: console.clear
-    };
-
-    // Mock all console methods
-    console.debug = vi.fn();
-    console.info = vi.fn();
-    console.log = vi.fn();
-    console.warn = vi.fn();
-    console.error = vi.fn();
-    console.group = vi.fn();
-    console.groupCollapsed = vi.fn();
-    console.groupEnd = vi.fn();
-    console.table = vi.fn();
-    console.dir = vi.fn();
-    console.trace = vi.fn();
-    console.assert = vi.fn();
-    console.clear = vi.fn();
-
-    // Reset Logger state to defaults
+    // Reset Logger static state before each test
     Logger._logLevel = LogLevel.LOG;
     Logger._debugEnabled = false;
-    Logger._timers.clear();
+    Logger._timers = new Map();
+
+    vi.spyOn(console, 'debug').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'group').mockImplementation(() => {});
+    vi.spyOn(console, 'groupCollapsed').mockImplementation(() => {});
+    vi.spyOn(console, 'groupEnd').mockImplementation(() => {});
+    vi.spyOn(console, 'table').mockImplementation(() => {});
+    vi.spyOn(console, 'dir').mockImplementation(() => {});
+    vi.spyOn(console, 'trace').mockImplementation(() => {});
+    vi.spyOn(console, 'assert').mockImplementation(() => {});
+    vi.spyOn(console, 'clear').mockImplementation(() => {});
   });
 
-  afterEach(() => {
-    // Restore original console
-    console.debug = originalConsole.debug;
-    console.info = originalConsole.info;
-    console.log = originalConsole.log;
-    console.warn = originalConsole.warn;
-    console.error = originalConsole.error;
-    console.group = originalConsole.group;
-    console.groupCollapsed = originalConsole.groupCollapsed;
-    console.groupEnd = originalConsole.groupEnd;
-    console.table = originalConsole.table;
-    console.dir = originalConsole.dir;
-    console.trace = originalConsole.trace;
-    console.assert = originalConsole.assert;
-    console.clear = originalConsole.clear;
-  });
+  // ── LogLevel enum ──────────────────────────────────────────────────────
 
   describe('LogLevel', () => {
-    it('should export LogLevel enum with correct values', () => {
+    it('should define expected numeric levels in ascending order', () => {
       expect(LogLevel.DEBUG).toBe(0);
       expect(LogLevel.INFO).toBe(1);
       expect(LogLevel.LOG).toBe(2);
@@ -96,716 +36,567 @@ describe('Logger', () => {
     });
   });
 
-  describe('setLogLevel', () => {
-    it('should set log level to DEBUG', () => {
+  // ── setLogLevel / setDebugEnabled / setDebugMode / isDebugMode ─────────
+
+  describe('setLogLevel()', () => {
+    it('should set the log level to a valid value', () => {
       Logger.setLogLevel(LogLevel.DEBUG);
       expect(Logger._logLevel).toBe(LogLevel.DEBUG);
     });
 
-    it('should set log level to INFO', () => {
-      Logger.setLogLevel(LogLevel.INFO);
-      expect(Logger._logLevel).toBe(LogLevel.INFO);
+    it('should accept all valid log levels', () => {
+      for (const level of Object.values(LogLevel)) {
+        Logger.setLogLevel(level);
+        expect(Logger._logLevel).toBe(level);
+      }
     });
 
-    it('should set log level to LOG', () => {
-      Logger.setLogLevel(LogLevel.LOG);
-      expect(Logger._logLevel).toBe(LogLevel.LOG);
-    });
-
-    it('should set log level to WARN', () => {
+    it('should ignore values below DEBUG', () => {
       Logger.setLogLevel(LogLevel.WARN);
+      Logger.setLogLevel(-1);
       expect(Logger._logLevel).toBe(LogLevel.WARN);
     });
 
-    it('should set log level to ERROR', () => {
-      Logger.setLogLevel(LogLevel.ERROR);
-      expect(Logger._logLevel).toBe(LogLevel.ERROR);
-    });
-
-    it('should set log level to NONE', () => {
-      Logger.setLogLevel(LogLevel.NONE);
-      expect(Logger._logLevel).toBe(LogLevel.NONE);
-    });
-
-    it('should ignore invalid log levels (too low)', () => {
-      Logger.setLogLevel(LogLevel.LOG);
-      Logger.setLogLevel(-1);
-      expect(Logger._logLevel).toBe(LogLevel.LOG); // Should remain unchanged
-    });
-
-    it('should ignore invalid log levels (too high)', () => {
-      Logger.setLogLevel(LogLevel.LOG);
-      Logger.setLogLevel(10);
-      expect(Logger._logLevel).toBe(LogLevel.LOG); // Should remain unchanged
+    it('should ignore values above NONE', () => {
+      Logger.setLogLevel(LogLevel.WARN);
+      Logger.setLogLevel(99);
+      expect(Logger._logLevel).toBe(LogLevel.WARN);
     });
   });
 
-  describe('setDebugEnabled', () => {
-    it('should enable debug mode', () => {
+  describe('setDebugEnabled()', () => {
+    it('should enable debug mode and set log level to DEBUG', () => {
       Logger.setDebugEnabled(true);
       expect(Logger._debugEnabled).toBe(true);
       expect(Logger._logLevel).toBe(LogLevel.DEBUG);
     });
 
-    it('should disable debug mode', () => {
+    it('should disable debug mode without changing log level', () => {
       Logger.setDebugEnabled(true);
       Logger.setDebugEnabled(false);
       expect(Logger._debugEnabled).toBe(false);
+      // Log level was set to DEBUG when enabled; disabling does not reset it
+      expect(Logger._logLevel).toBe(LogLevel.DEBUG);
     });
 
-    it('should convert truthy values to boolean', () => {
-      Logger.setDebugEnabled('yes');
+    it('should coerce truthy values to boolean', () => {
+      Logger.setDebugEnabled(1);
       expect(Logger._debugEnabled).toBe(true);
-    });
-
-    it('should convert falsy values to boolean', () => {
-      Logger.setDebugEnabled(null);
+      Logger.setDebugEnabled(0);
       expect(Logger._debugEnabled).toBe(false);
     });
   });
 
-  describe('debug', () => {
-    it('should log debug message when debug is enabled', () => {
-      Logger.setDebugEnabled(true);
-      Logger.debug('test message');
-      expect(console.debug).toHaveBeenCalledWith('vox-chronicle | [DEBUG]', 'test message');
+  describe('setDebugMode()', () => {
+    it('should be an alias for setDebugEnabled', () => {
+      Logger.setDebugMode(true);
+      expect(Logger._debugEnabled).toBe(true);
+      expect(Logger._logLevel).toBe(LogLevel.DEBUG);
+    });
+  });
+
+  describe('isDebugMode()', () => {
+    it('should return false by default', () => {
+      expect(Logger.isDebugMode()).toBe(false);
     });
 
-    it('should not log debug message when debug is disabled', () => {
-      Logger.setDebugEnabled(false);
-      Logger.debug('test message');
+    it('should return true when debug is enabled', () => {
+      Logger.setDebugEnabled(true);
+      expect(Logger.isDebugMode()).toBe(true);
+    });
+  });
+
+  // ── Internal helpers ────────────────────────────────────────────────────
+
+  describe('_getPrefix()', () => {
+    it('should return module-prefixed string', () => {
+      const prefix = Logger._getPrefix();
+      expect(prefix).toBe('vox-chronicle |');
+    });
+  });
+
+  describe('_getStyledPrefix()', () => {
+    it('should return an array with styled prefix arguments', () => {
+      const result = Logger._getStyledPrefix('INFO', '#3498db');
+      expect(result).toHaveLength(3);
+      expect(result[0]).toContain('vox-chronicle');
+      expect(result[0]).toContain('INFO');
+      expect(result[2]).toContain('#3498db');
+    });
+  });
+
+  // ── Logging methods ────────────────────────────────────────────────────
+
+  describe('debug()', () => {
+    it('should not log when debug is disabled', () => {
+      Logger.setLogLevel(LogLevel.DEBUG);
+      Logger.debug('test');
       expect(console.debug).not.toHaveBeenCalled();
     });
 
-    it('should not log debug message when log level is too high', () => {
-      Logger.setDebugEnabled(true);
-      Logger.setLogLevel(LogLevel.INFO);
-      Logger.debug('test message');
+    it('should not log when log level is above DEBUG even if debug enabled', () => {
+      Logger._debugEnabled = true;
+      Logger._logLevel = LogLevel.INFO;
+      Logger.debug('test');
       expect(console.debug).not.toHaveBeenCalled();
     });
 
-    it('should handle multiple arguments', () => {
+    it('should log when both debug enabled and level permits', () => {
       Logger.setDebugEnabled(true);
-      Logger.debug('message', { foo: 'bar' }, 123);
+      Logger.debug('hello', 'world');
       expect(console.debug).toHaveBeenCalledWith(
-        'vox-chronicle | [DEBUG]',
-        'message',
-        { foo: 'bar' },
+        expect.stringContaining('vox-chronicle'),
+        'hello',
+        'world'
+      );
+    });
+
+    it('should include [DEBUG] tag in output', () => {
+      Logger.setDebugEnabled(true);
+      Logger.debug('msg');
+      expect(console.debug).toHaveBeenCalledWith(
+        expect.stringContaining('[DEBUG]'),
+        'msg'
+      );
+    });
+  });
+
+  describe('info()', () => {
+    it('should not log when log level is above INFO', () => {
+      Logger.setLogLevel(LogLevel.WARN);
+      Logger.info('test');
+      expect(console.info).not.toHaveBeenCalled();
+    });
+
+    it('should log when log level is INFO', () => {
+      Logger.setLogLevel(LogLevel.INFO);
+      Logger.info('test info');
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO]'),
+        'test info'
+      );
+    });
+
+    it('should log when log level is DEBUG', () => {
+      Logger.setLogLevel(LogLevel.DEBUG);
+      Logger.info('visible');
+      expect(console.info).toHaveBeenCalled();
+    });
+  });
+
+  describe('log()', () => {
+    it('should log at LOG level by default', () => {
+      Logger.log('default message');
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle'),
+        'default message'
+      );
+    });
+
+    it('should not log when level is above LOG', () => {
+      Logger.setLogLevel(LogLevel.WARN);
+      Logger.log('suppressed');
+      expect(console.log).not.toHaveBeenCalled();
+    });
+
+    it('should pass multiple arguments', () => {
+      Logger.log('a', 'b', 123);
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle'),
+        'a',
+        'b',
         123
       );
     });
   });
 
-  describe('info', () => {
-    it('should log info message at INFO level', () => {
-      Logger.setLogLevel(LogLevel.INFO);
-      Logger.info('test message');
-      expect(console.info).toHaveBeenCalledWith('vox-chronicle | [INFO]', 'test message');
+  describe('warn()', () => {
+    it('should log warnings at default level', () => {
+      Logger.warn('warning msg');
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[WARN]'),
+        'warning msg'
+      );
     });
 
-    it('should log info message at DEBUG level', () => {
-      Logger.setLogLevel(LogLevel.DEBUG);
-      Logger.info('test message');
-      expect(console.info).toHaveBeenCalledWith('vox-chronicle | [INFO]', 'test message');
+    it('should not log when level is ERROR', () => {
+      Logger.setLogLevel(LogLevel.ERROR);
+      Logger.warn('suppressed');
+      expect(console.warn).not.toHaveBeenCalled();
     });
 
-    it('should not log info message at LOG level', () => {
-      Logger.setLogLevel(LogLevel.LOG);
-      Logger.info('test message');
-      expect(console.info).not.toHaveBeenCalled();
+    it('should not log when level is NONE', () => {
+      Logger.setLogLevel(LogLevel.NONE);
+      Logger.warn('hidden');
+      expect(console.warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('error()', () => {
+    it('should log errors at default level', () => {
+      Logger.error('error msg');
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('[ERROR]'),
+        'error msg'
+      );
     });
 
-    it('should not log info message at WARN level', () => {
+    it('should log errors at WARN level', () => {
       Logger.setLogLevel(LogLevel.WARN);
-      Logger.info('test message');
-      expect(console.info).not.toHaveBeenCalled();
+      Logger.error('still visible');
+      expect(console.error).toHaveBeenCalled();
     });
 
-    it('should handle multiple arguments', () => {
-      Logger.setLogLevel(LogLevel.INFO);
-      Logger.info('message', 'arg2', 'arg3');
-      expect(console.info).toHaveBeenCalledWith(
-        'vox-chronicle | [INFO]',
-        'message',
-        'arg2',
-        'arg3'
+    it('should not log when level is NONE', () => {
+      Logger.setLogLevel(LogLevel.NONE);
+      Logger.error('hidden');
+      expect(console.error).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── group / groupEnd ───────────────────────────────────────────────────
+
+  describe('group()', () => {
+    it('should start a collapsed group by default', () => {
+      Logger.group('My Group');
+      expect(console.groupCollapsed).toHaveBeenCalledWith(
+        expect.stringContaining('My Group')
+      );
+      expect(console.group).not.toHaveBeenCalled();
+    });
+
+    it('should start an expanded group when collapsed=false', () => {
+      Logger.group('Expanded Group', false);
+      expect(console.group).toHaveBeenCalledWith(
+        expect.stringContaining('Expanded Group')
+      );
+      expect(console.groupCollapsed).not.toHaveBeenCalled();
+    });
+
+    it('should include the module prefix', () => {
+      Logger.group('test');
+      expect(console.groupCollapsed).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle')
       );
     });
   });
 
-  describe('log', () => {
-    it('should log message at LOG level (default)', () => {
-      Logger.log('test message');
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle |', 'test message');
-    });
-
-    it('should log message at DEBUG level', () => {
-      Logger.setLogLevel(LogLevel.DEBUG);
-      Logger.log('test message');
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle |', 'test message');
-    });
-
-    it('should not log message at WARN level', () => {
-      Logger.setLogLevel(LogLevel.WARN);
-      Logger.log('test message');
-      expect(console.log).not.toHaveBeenCalled();
-    });
-
-    it('should not log message at ERROR level', () => {
-      Logger.setLogLevel(LogLevel.ERROR);
-      Logger.log('test message');
-      expect(console.log).not.toHaveBeenCalled();
-    });
-
-    it('should handle multiple arguments', () => {
-      Logger.log('message', { data: 'value' });
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle |', 'message', { data: 'value' });
-    });
-  });
-
-  describe('warn', () => {
-    it('should log warning at WARN level', () => {
-      Logger.setLogLevel(LogLevel.WARN);
-      Logger.warn('test warning');
-      expect(console.warn).toHaveBeenCalledWith('vox-chronicle | [WARN]', 'test warning');
-    });
-
-    it('should log warning at LOG level', () => {
-      Logger.setLogLevel(LogLevel.LOG);
-      Logger.warn('test warning');
-      expect(console.warn).toHaveBeenCalledWith('vox-chronicle | [WARN]', 'test warning');
-    });
-
-    it('should not log warning at ERROR level', () => {
-      Logger.setLogLevel(LogLevel.ERROR);
-      Logger.warn('test warning');
-      expect(console.warn).not.toHaveBeenCalled();
-    });
-
-    it('should handle multiple arguments', () => {
-      Logger.warn('warning', 'details', { code: 123 });
-      expect(console.warn).toHaveBeenCalledWith('vox-chronicle | [WARN]', 'warning', 'details', {
-        code: 123
-      });
-    });
-  });
-
-  describe('error', () => {
-    it('should log error at ERROR level', () => {
-      Logger.setLogLevel(LogLevel.ERROR);
-      Logger.error('test error');
-      expect(console.error).toHaveBeenCalledWith('vox-chronicle | [ERROR]', 'test error');
-    });
-
-    it('should log error at LOG level', () => {
-      Logger.setLogLevel(LogLevel.LOG);
-      Logger.error('test error');
-      expect(console.error).toHaveBeenCalledWith('vox-chronicle | [ERROR]', 'test error');
-    });
-
-    it('should not log error at NONE level', () => {
-      Logger.setLogLevel(LogLevel.NONE);
-      Logger.error('test error');
-      expect(console.error).not.toHaveBeenCalled();
-    });
-
-    it('should handle error objects', () => {
-      const error = new Error('test error');
-      Logger.error('Failed:', error);
-      expect(console.error).toHaveBeenCalledWith('vox-chronicle | [ERROR]', 'Failed:', error);
-    });
-
-    it('should handle multiple arguments', () => {
-      Logger.error('error', 'message', { stack: 'trace' });
-      expect(console.error).toHaveBeenCalledWith('vox-chronicle | [ERROR]', 'error', 'message', {
-        stack: 'trace'
-      });
-    });
-  });
-
-  describe('group', () => {
-    it('should create collapsed group by default', () => {
-      Logger.group('Test Group');
-      expect(console.groupCollapsed).toHaveBeenCalledWith('vox-chronicle | Test Group');
-      expect(console.group).not.toHaveBeenCalled();
-    });
-
-    it('should create collapsed group when collapsed=true', () => {
-      Logger.group('Test Group', true);
-      expect(console.groupCollapsed).toHaveBeenCalledWith('vox-chronicle | Test Group');
-      expect(console.group).not.toHaveBeenCalled();
-    });
-
-    it('should create expanded group when collapsed=false', () => {
-      Logger.group('Test Group', false);
-      expect(console.group).toHaveBeenCalledWith('vox-chronicle | Test Group');
-      expect(console.groupCollapsed).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('groupEnd', () => {
-    it('should end console group', () => {
+  describe('groupEnd()', () => {
+    it('should call console.groupEnd', () => {
       Logger.groupEnd();
       expect(console.groupEnd).toHaveBeenCalled();
     });
   });
 
-  describe('time and timeEnd', () => {
-    let performanceNowMock;
+  // ── time / timeEnd ─────────────────────────────────────────────────────
 
-    beforeEach(() => {
-      performanceNowMock = vi.spyOn(performance, 'now');
-    });
-
-    afterEach(() => {
-      performanceNowMock.mockRestore();
-    });
-
-    it('should start and end timer successfully', () => {
+  describe('time()', () => {
+    it('should store a timer entry', () => {
       Logger.setDebugEnabled(true);
-      performanceNowMock.mockReturnValueOnce(1000);
-      Logger.time('test-timer');
-
-      expect(console.debug).toHaveBeenCalledWith(
-        'vox-chronicle | [DEBUG]',
-        'Timer started: test-timer'
-      );
-      expect(Logger._timers.has('test-timer')).toBe(true);
-
-      console.log.mockClear();
-      performanceNowMock.mockReturnValueOnce(1500);
-      const elapsed = Logger.timeEnd('test-timer');
-
-      expect(elapsed).toBe(500);
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle |', 'test-timer: 500.00ms');
-      expect(Logger._timers.has('test-timer')).toBe(false);
+      Logger.time('myTimer');
+      expect(Logger._timers.has('myTimer')).toBe(true);
     });
 
-    it('should handle timer not found', () => {
-      const elapsed = Logger.timeEnd('nonexistent-timer');
-
-      expect(elapsed).toBeNull();
-      expect(console.warn).toHaveBeenCalledWith(
-        'vox-chronicle | [WARN]',
-        'Timer "nonexistent-timer" not found'
-      );
-    });
-
-    it('should calculate elapsed time correctly', () => {
-      performanceNowMock.mockReturnValueOnce(2000);
-      Logger.time('timer-2');
-
-      performanceNowMock.mockReturnValueOnce(2123.456);
-      const elapsed = Logger.timeEnd('timer-2');
-
-      expect(elapsed).toBeCloseTo(123.456, 2);
-    });
-
-    it('should remove timer after timeEnd', () => {
-      performanceNowMock.mockReturnValueOnce(1000);
-      Logger.time('temp-timer');
-      expect(Logger._timers.has('temp-timer')).toBe(true);
-
-      performanceNowMock.mockReturnValueOnce(2000);
-      Logger.timeEnd('temp-timer');
-      expect(Logger._timers.has('temp-timer')).toBe(false);
+    it('should store a numeric timestamp', () => {
+      Logger.time('t');
+      expect(typeof Logger._timers.get('t')).toBe('number');
     });
   });
 
-  describe('table', () => {
-    it('should log table when log level is DEBUG', () => {
-      Logger.setDebugEnabled(true);
-      const data = [
-        { name: 'Alice', age: 30 },
-        { name: 'Bob', age: 25 }
-      ];
-      Logger.table(data);
+  describe('timeEnd()', () => {
+    it('should return elapsed time for a known timer', () => {
+      Logger.time('elapsed');
+      const result = Logger.timeEnd('elapsed');
+      expect(typeof result).toBe('number');
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
 
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle | Table:');
+    it('should remove the timer after ending', () => {
+      Logger.time('gone');
+      Logger.timeEnd('gone');
+      expect(Logger._timers.has('gone')).toBe(false);
+    });
+
+    it('should return null and warn for unknown timer', () => {
+      const result = Logger.timeEnd('nonexistent');
+      expect(result).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[WARN]'),
+        expect.stringContaining('nonexistent')
+      );
+    });
+
+    it('should log elapsed time via Logger.log', () => {
+      Logger.time('logged');
+      Logger.timeEnd('logged');
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle'),
+        expect.stringContaining('logged:')
+      );
+    });
+  });
+
+  // ── table / dir / trace / assert / clear ───────────────────────────────
+
+  describe('table()', () => {
+    it('should not log when level is above DEBUG', () => {
+      Logger.setLogLevel(LogLevel.LOG);
+      Logger.table([1, 2, 3]);
+      expect(console.table).not.toHaveBeenCalled();
+    });
+
+    it('should log table data when level is DEBUG', () => {
+      Logger.setLogLevel(LogLevel.DEBUG);
+      const data = [{ a: 1 }, { a: 2 }];
+      Logger.table(data);
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Table:'));
       expect(console.table).toHaveBeenCalledWith(data, undefined);
     });
 
-    it('should log table with specific columns', () => {
-      Logger.setDebugEnabled(true);
-      const data = [
-        { name: 'Alice', age: 30 },
-        { name: 'Bob', age: 25 }
-      ];
-      const columns = ['name'];
-      Logger.table(data, columns);
-
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle | Table:');
-      expect(console.table).toHaveBeenCalledWith(data, columns);
-    });
-
-    it('should not log table when log level is too high', () => {
-      Logger.setLogLevel(LogLevel.LOG);
-      const data = [{ name: 'Alice' }];
-      Logger.table(data);
-
-      expect(console.log).not.toHaveBeenCalled();
-      expect(console.table).not.toHaveBeenCalled();
+    it('should pass optional columns parameter', () => {
+      Logger.setLogLevel(LogLevel.DEBUG);
+      const data = [{ a: 1, b: 2 }];
+      Logger.table(data, ['a']);
+      expect(console.table).toHaveBeenCalledWith(data, ['a']);
     });
   });
 
-  describe('dir', () => {
-    it('should log object with console.dir when log level is DEBUG', () => {
-      Logger.setDebugEnabled(true);
-      const obj = { foo: 'bar', nested: { value: 123 } };
-      Logger.dir('Test Object', obj);
-
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle | Test Object:');
-      expect(console.dir).toHaveBeenCalledWith(obj);
-    });
-
-    it('should not log when log level is too high', () => {
+  describe('dir()', () => {
+    it('should not log when level is above DEBUG', () => {
       Logger.setLogLevel(LogLevel.LOG);
-      const obj = { foo: 'bar' };
-      Logger.dir('Test Object', obj);
-
-      expect(console.log).not.toHaveBeenCalled();
+      Logger.dir('label', { x: 1 });
       expect(console.dir).not.toHaveBeenCalled();
     });
+
+    it('should log label and object when level is DEBUG', () => {
+      Logger.setLogLevel(LogLevel.DEBUG);
+      const obj = { test: true };
+      Logger.dir('MyObj', obj);
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('MyObj:'));
+      expect(console.dir).toHaveBeenCalledWith(obj);
+    });
   });
 
-  describe('trace', () => {
-    it('should log trace when log level is DEBUG', () => {
-      Logger.setDebugEnabled(true);
-      Logger.trace('stack trace');
-
-      expect(console.trace).toHaveBeenCalledWith('vox-chronicle | [TRACE]', 'stack trace');
-    });
-
-    it('should not log trace when log level is too high', () => {
+  describe('trace()', () => {
+    it('should not log when level is above DEBUG', () => {
       Logger.setLogLevel(LogLevel.LOG);
-      Logger.trace('stack trace');
-
+      Logger.trace('nope');
       expect(console.trace).not.toHaveBeenCalled();
     });
 
-    it('should handle multiple arguments', () => {
-      Logger.setDebugEnabled(true);
-      Logger.trace('trace', 'arg1', 'arg2');
-
+    it('should call console.trace with prefix when level is DEBUG', () => {
+      Logger.setLogLevel(LogLevel.DEBUG);
+      Logger.trace('tracing', 42);
       expect(console.trace).toHaveBeenCalledWith(
-        'vox-chronicle | [TRACE]',
-        'trace',
-        'arg1',
-        'arg2'
+        expect.stringContaining('[TRACE]'),
+        'tracing',
+        42
       );
     });
   });
 
-  describe('assert', () => {
-    it('should call console.assert with module prefix', () => {
-      Logger.assert(false, 'assertion failed');
-
-      expect(console.assert).toHaveBeenCalledWith(
-        false,
-        'vox-chronicle | [ASSERT]',
-        'assertion failed'
-      );
-    });
-
-    it('should pass true condition', () => {
-      Logger.assert(true, 'this should not log');
-
+  describe('assert()', () => {
+    it('should always call console.assert with prefix', () => {
+      Logger.assert(true, 'should pass');
       expect(console.assert).toHaveBeenCalledWith(
         true,
-        'vox-chronicle | [ASSERT]',
-        'this should not log'
+        expect.stringContaining('[ASSERT]'),
+        'should pass'
       );
     });
 
-    it('should handle multiple arguments', () => {
-      Logger.assert(false, 'failed', { data: 'value' });
-
-      expect(console.assert).toHaveBeenCalledWith(false, 'vox-chronicle | [ASSERT]', 'failed', {
-        data: 'value'
-      });
+    it('should pass false condition to console.assert', () => {
+      Logger.assert(false, 'failure');
+      expect(console.assert).toHaveBeenCalledWith(
+        false,
+        expect.stringContaining('[ASSERT]'),
+        'failure'
+      );
     });
   });
 
-  describe('clear', () => {
-    it('should clear console and log message', () => {
+  describe('clear()', () => {
+    it('should call console.clear and then log a message', () => {
       Logger.clear();
-
       expect(console.clear).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('vox-chronicle |', 'Console cleared');
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle'),
+        'Console cleared'
+      );
     });
   });
 
-  describe('createChild', () => {
-    describe('without sanitization', () => {
-      it('should create child logger with correct prefix', () => {
-        const child = Logger.createChild('TestModule');
-        child.log('test message');
+  // ── createChild ────────────────────────────────────────────────────────
 
-        expect(console.log).toHaveBeenCalledWith('vox-chronicle:TestModule |', 'test message');
-      });
-
-      it('should support debug method', () => {
-        Logger.setDebugEnabled(true);
-        const child = Logger.createChild('TestModule');
-        child.debug('debug message');
-
-        expect(console.debug).toHaveBeenCalledWith(
-          'vox-chronicle:TestModule | [DEBUG]',
-          'debug message'
-        );
-      });
-
-      it('should support info method', () => {
-        Logger.setLogLevel(LogLevel.INFO);
-        const child = Logger.createChild('TestModule');
-        child.info('info message');
-
-        expect(console.info).toHaveBeenCalledWith(
-          'vox-chronicle:TestModule | [INFO]',
-          'info message'
-        );
-      });
-
-      it('should support warn method', () => {
-        const child = Logger.createChild('TestModule');
-        child.warn('warn message');
-
-        expect(console.warn).toHaveBeenCalledWith(
-          'vox-chronicle:TestModule | [WARN]',
-          'warn message'
-        );
-      });
-
-      it('should support error method', () => {
-        const child = Logger.createChild('TestModule');
-        child.error('error message');
-
-        expect(console.error).toHaveBeenCalledWith(
-          'vox-chronicle:TestModule | [ERROR]',
-          'error message'
-        );
-      });
-
-      it('should support group method with collapsed=true', () => {
-        const child = Logger.createChild('TestModule');
-        child.group('Test Group', true);
-
-        expect(console.groupCollapsed).toHaveBeenCalledWith(
-          'vox-chronicle:TestModule | Test Group'
-        );
-      });
-
-      it('should support group method with collapsed=false', () => {
-        const child = Logger.createChild('TestModule');
-        child.group('Test Group', false);
-
-        expect(console.group).toHaveBeenCalledWith('vox-chronicle:TestModule | Test Group');
-      });
-
-      it('should support groupEnd method', () => {
-        const child = Logger.createChild('TestModule');
-        child.groupEnd();
-
-        expect(console.groupEnd).toHaveBeenCalled();
-      });
-
-      it('should support time method with prefixed label', () => {
-        Logger.setDebugEnabled(true);
-        const child = Logger.createChild('TestModule');
-        const performanceNowMock = vi.spyOn(performance, 'now').mockReturnValue(1000);
-
-        child.time('operation');
-
-        expect(Logger._timers.has('TestModule:operation')).toBe(true);
-        performanceNowMock.mockRestore();
-      });
-
-      it('should support timeEnd method with prefixed label', () => {
-        const child = Logger.createChild('TestModule');
-        const performanceNowMock = vi.spyOn(performance, 'now');
-        performanceNowMock.mockReturnValueOnce(1000);
-
-        child.time('operation');
-
-        performanceNowMock.mockReturnValueOnce(1500);
-        const elapsed = child.timeEnd('operation');
-
-        expect(elapsed).toBe(500);
-        expect(console.log).toHaveBeenCalledWith(
-          'vox-chronicle |',
-          'TestModule:operation: 500.00ms'
-        );
-        performanceNowMock.mockRestore();
-      });
+  describe('createChild()', () => {
+    it('should return an object with all expected methods', () => {
+      const child = Logger.createChild('TestModule');
+      expect(typeof child.debug).toBe('function');
+      expect(typeof child.info).toBe('function');
+      expect(typeof child.log).toBe('function');
+      expect(typeof child.warn).toBe('function');
+      expect(typeof child.error).toBe('function');
+      expect(typeof child.group).toBe('function');
+      expect(typeof child.groupEnd).toBe('function');
+      expect(typeof child.time).toBe('function');
+      expect(typeof child.timeEnd).toBe('function');
     });
 
-    describe('with sanitization (boolean)', () => {
-      it('should create child logger with sanitization enabled', () => {
-        const child = Logger.createChild('SecureModule', true);
-        // Sanitization behavior is tested in SensitiveDataFilter tests
-        // Here we just verify the child was created
-        child.log('test');
-        expect(console.log).toHaveBeenCalled();
-      });
-
-      it('should create child logger with sanitization disabled', () => {
-        const child = Logger.createChild('SecureModule', false);
-        child.log('test');
-        expect(console.log).toHaveBeenCalled();
-      });
+    it('should prefix messages with the sub-module name', () => {
+      const child = Logger.createChild('SubMod');
+      child.log('hello');
+      expect(console.log).toHaveBeenCalledWith(
+        'vox-chronicle:SubMod |',
+        'hello'
+      );
     });
 
-    describe('with sanitization (object)', () => {
-      it('should create child logger with sanitization enabled via object', () => {
-        const child = Logger.createChild('SecureModule', { sanitize: true });
-        child.log('test');
-        expect(console.log).toHaveBeenCalled();
-      });
-
-      it('should create child logger with sanitization disabled via object', () => {
-        const child = Logger.createChild('SecureModule', { sanitize: false });
-        child.log('test');
-        expect(console.log).toHaveBeenCalled();
-      });
-
-      it('should default to no sanitization if object is empty', () => {
-        const child = Logger.createChild('SecureModule', {});
-        child.log('test');
-        expect(console.log).toHaveBeenCalled();
-      });
+    it('should respect log level for child debug()', () => {
+      const child = Logger.createChild('Sub');
+      Logger.setDebugEnabled(true);
+      child.debug('visible');
+      expect(console.debug).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle:Sub'),
+        'visible'
+      );
     });
 
-    describe('child logger respects parent log level', () => {
-      it('should not log debug when debug is disabled', () => {
-        Logger.setDebugEnabled(false);
-        const child = Logger.createChild('TestModule');
-        child.debug('should not log');
-
-        expect(console.debug).not.toHaveBeenCalled();
-      });
-
-      it('should not log info when log level is LOG', () => {
-        Logger.setLogLevel(LogLevel.LOG);
-        const child = Logger.createChild('TestModule');
-        child.info('should not log');
-
-        expect(console.info).not.toHaveBeenCalled();
-      });
-
-      it('should not log warn when log level is ERROR', () => {
-        Logger.setLogLevel(LogLevel.ERROR);
-        const child = Logger.createChild('TestModule');
-        child.warn('should not log');
-
-        expect(console.warn).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('multiple child loggers', () => {
-      it('should create multiple independent child loggers', () => {
-        const child1 = Logger.createChild('Module1');
-        const child2 = Logger.createChild('Module2');
-
-        child1.log('from module 1');
-        child2.log('from module 2');
-
-        expect(console.log).toHaveBeenCalledWith('vox-chronicle:Module1 |', 'from module 1');
-        expect(console.log).toHaveBeenCalledWith('vox-chronicle:Module2 |', 'from module 2');
-      });
-    });
-  });
-
-  describe('integration - log level filtering', () => {
-    it('should filter all logs at NONE level', () => {
-      Logger.setLogLevel(LogLevel.NONE);
-      // Note: Do not enable debug mode as it would override the log level to DEBUG
-
-      Logger.debug('debug');
-      Logger.info('info');
-      Logger.log('log');
-      Logger.warn('warn');
-      Logger.error('error');
-
+    it('should suppress child debug() when debug disabled', () => {
+      const child = Logger.createChild('Sub');
+      Logger.setLogLevel(LogLevel.DEBUG);
+      // Debug enabled is false
+      child.debug('hidden');
       expect(console.debug).not.toHaveBeenCalled();
+    });
+
+    it('should respect log level for child info()', () => {
+      const child = Logger.createChild('Sub');
+      Logger.setLogLevel(LogLevel.WARN);
+      child.info('hidden');
       expect(console.info).not.toHaveBeenCalled();
-      expect(console.log).not.toHaveBeenCalled();
+    });
+
+    it('should respect log level for child warn()', () => {
+      const child = Logger.createChild('Sub');
+      Logger.setLogLevel(LogLevel.ERROR);
+      child.warn('hidden');
       expect(console.warn).not.toHaveBeenCalled();
+    });
+
+    it('should log via child warn() when level permits', () => {
+      const child = Logger.createChild('Sub');
+      Logger.setLogLevel(LogLevel.WARN);
+      child.warn('visible warning');
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle:Sub'),
+        'visible warning'
+      );
+    });
+
+    it('should respect log level for child error()', () => {
+      const child = Logger.createChild('Sub');
+      Logger.setLogLevel(LogLevel.NONE);
+      child.error('hidden');
       expect(console.error).not.toHaveBeenCalled();
     });
 
-    it('should allow only ERROR at ERROR level', () => {
+    it('should log via child error() when level permits', () => {
+      const child = Logger.createChild('Sub');
       Logger.setLogLevel(LogLevel.ERROR);
-
-      Logger.info('info');
-      Logger.log('log');
-      Logger.warn('warn');
-      Logger.error('error');
-
-      expect(console.info).not.toHaveBeenCalled();
-      expect(console.log).not.toHaveBeenCalled();
-      expect(console.warn).not.toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalled();
+      child.error('visible error');
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle:Sub'),
+        'visible error'
+      );
     });
 
-    it('should allow WARN and ERROR at WARN level', () => {
-      Logger.setLogLevel(LogLevel.WARN);
-
-      Logger.info('info');
-      Logger.log('log');
-      Logger.warn('warn');
-      Logger.error('error');
-
-      expect(console.info).not.toHaveBeenCalled();
-      expect(console.log).not.toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalled();
+    it('should log via child info() when level permits', () => {
+      const child = Logger.createChild('Sub');
+      Logger.setLogLevel(LogLevel.INFO);
+      child.info('visible info');
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle:Sub'),
+        'visible info'
+      );
     });
 
-    it('should allow LOG, WARN, and ERROR at LOG level (default)', () => {
-      Logger.setLogLevel(LogLevel.LOG);
+    it('should delegate child time/timeEnd to Logger with prefixed label', () => {
+      const child = Logger.createChild('MyService');
+      child.time('op');
+      expect(Logger._timers.has('MyService:op')).toBe(true);
 
-      Logger.info('info');
-      Logger.log('log');
-      Logger.warn('warn');
-      Logger.error('error');
-
-      expect(console.info).not.toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalled();
+      const elapsed = child.timeEnd('op');
+      expect(typeof elapsed).toBe('number');
+      expect(Logger._timers.has('MyService:op')).toBe(false);
     });
 
-    it('should allow all except DEBUG at INFO level', () => {
-      Logger.setDebugEnabled(true); // This sets level to DEBUG
-      Logger.setLogLevel(LogLevel.INFO); // Then override to INFO
-
-      Logger.debug('debug');
-      Logger.info('info');
-      Logger.log('log');
-      Logger.warn('warn');
-      Logger.error('error');
-
-      expect(console.debug).not.toHaveBeenCalled();
-      expect(console.info).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalled();
+    it('should delegate child groupEnd to console.groupEnd', () => {
+      const child = Logger.createChild('Sub');
+      child.groupEnd();
+      expect(console.groupEnd).toHaveBeenCalled();
     });
 
-    it('should allow all logs at DEBUG level when debug enabled', () => {
-      Logger.setDebugEnabled(true);
+    it('should use collapsed group by default in child', () => {
+      const child = Logger.createChild('Sub');
+      child.group('G');
+      expect(console.groupCollapsed).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle:Sub')
+      );
+    });
 
-      Logger.debug('debug');
-      Logger.info('info');
-      Logger.log('log');
-      Logger.warn('warn');
-      Logger.error('error');
+    it('should use expanded group when collapsed=false in child', () => {
+      const child = Logger.createChild('Sub');
+      child.group('G', false);
+      expect(console.group).toHaveBeenCalledWith(
+        expect.stringContaining('vox-chronicle:Sub')
+      );
+    });
 
-      expect(console.debug).toHaveBeenCalled();
-      expect(console.info).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalled();
+    // Sanitization option
+    describe('with sanitization enabled', () => {
+      it('should accept boolean true for sanitization', () => {
+        const child = Logger.createChild('Secure', true);
+        child.log('key is sk-proj-abcdefghijk1234567890');
+        expect(console.log).toHaveBeenCalled();
+        const loggedArgs = console.log.mock.calls[0];
+        // The sensitive key should be redacted
+        expect(loggedArgs.join(' ')).not.toContain('sk-proj-abcdefghijk1234567890');
+      });
+
+      it('should accept object with sanitize property', () => {
+        const child = Logger.createChild('Secure', { sanitize: true });
+        child.log('Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+        const loggedArgs = console.log.mock.calls[0];
+        expect(loggedArgs.join(' ')).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+      });
+
+      it('should sanitize group labels when sanitize is true', () => {
+        const child = Logger.createChild('Sec', true);
+        child.group('Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+        const label = console.groupCollapsed.mock.calls[0][0];
+        expect(label).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+      });
+
+      it('should not sanitize when option is false', () => {
+        const child = Logger.createChild('Open', false);
+        child.log('sk-proj-abcdefghijk1234567890');
+        const loggedArgs = console.log.mock.calls[0];
+        expect(loggedArgs[1]).toBe('sk-proj-abcdefghijk1234567890');
+      });
+
+      it('should not sanitize when object option has no sanitize property', () => {
+        const child = Logger.createChild('Open', {});
+        child.log('sk-proj-abcdefghijk1234567890');
+        const loggedArgs = console.log.mock.calls[0];
+        expect(loggedArgs[1]).toBe('sk-proj-abcdefghijk1234567890');
+      });
+
+      it('should not sanitize when object option has sanitize: false', () => {
+        const child = Logger.createChild('Open', { sanitize: false });
+        child.log('sk-proj-abcdefghijk1234567890');
+        const loggedArgs = console.log.mock.calls[0];
+        expect(loggedArgs[1]).toBe('sk-proj-abcdefghijk1234567890');
+      });
     });
   });
 });

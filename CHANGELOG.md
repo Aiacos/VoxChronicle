@@ -5,7 +5,7 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v3.0.0 (Planned)
+## [3.0.0] - 2026-02-19
 
 ### Changed
 - **RAG: Modular provider architecture** — Custom RAG stack (EmbeddingService + RAGVectorStore + RAGRetriever) replaced with modular `RAGProvider` interface. Default implementation uses OpenAI Responses API + File Search for managed vector storage, auto-chunking, and built-in reranking.
@@ -13,19 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **UI: CSS-only tab switching in MainPanel** — Tab switching no longer triggers full `render()` call; uses `hidden` attribute toggling instead.
 - **Simplified workflow** — Default image generation reduced to 2-3 session scene images (no entity portraits). Focus on RAG-powered DM assistance + session summary + Kanka journal publishing.
 - **RelationshipGraph: CDN script loading fixed** — vis-network script loaded once on first render with `if (!window.vis)` guard, not on every render.
+- **Complete test rewrite** — All 3600+ legacy tests deleted and rewritten from scratch. 46 test files with 3742 tests achieving 95%+ statement/line coverage, 89%+ branch coverage, 97%+ function coverage.
 
 ### Added
 - `scripts/rag/RAGProvider.mjs` — Abstract base class for RAG providers
 - `scripts/rag/OpenAIFileSearchProvider.mjs` — OpenAI File Search implementation
 - `scripts/rag/RAGProviderFactory.mjs` — Factory for creating RAG providers
+- `scripts/rag/RAGFlowProvider.mjs` — Self-hosted RAGFlow provider for local RAG instances
+- **RAGFlow support** — Full integration with self-hosted RAGFlow API including dataset management, document upload/parsing, and OpenAI-compatible chat completions
+- New RAG settings: `ragProvider` (openai-file-search/ragflow), `ragVectorStoreId`, `ragMaxResults`, `ragAutoIndex`
+- New RAGFlow settings: `ragflowBaseUrl`, `ragflowApiKey`, `ragflowModelName`, `ragflowDatasetId`, `ragflowChatId`
+- RAGFlow i18n strings in all 8 language files
 - Memory leak regression tests for all UI components
-- New RAG settings: `ragProvider`, `ragVectorStoreId`, `ragMaxResults`, `ragAutoIndex`
+- Vitest v8 coverage with enforced thresholds (90/85/90/90)
 
 ### Removed
 - `scripts/ai/EmbeddingService.mjs` — Replaced by File Search managed embeddings
 - `scripts/ai/RAGVectorStore.mjs` — Replaced by File Search hosted vector store
 - `scripts/narrator/RAGRetriever.mjs` — Replaced by RAGProvider interface
 - Old RAG settings: `embeddingDimensions`, `ragChunkSize`, `ragChunkOverlap`, `ragSimilarityThreshold`, `ragMaxStorageMB`
+- ~7,080 lines of dead code (unused CSS, files, and exports)
 
 ### Fixed
 - **Memory leak in MainPanel** — Tab click listeners accumulated on every render
@@ -34,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Memory leak in RelationshipGraph** — vis-network CDN script reloaded on every render, Network instance never destroyed
 - **Memory leak in VocabularyManager** — Keypress and tab listeners accumulated on every render
 - **XSS vulnerability in VocabularyManager** — Dialog HTML content now escaped with HtmlUtils.escapeHtml()
+- **Recording duration timer** — Timer now correctly runs in live mode
+- **EntityPreview progress bar** — Fixed progress bar rendering
+- **MainPanel encapsulation** — Improved singleton encapsulation
 
 ## [2.3.7] - 2026-02-19
 
@@ -562,7 +572,8 @@ For flexibility with automatic fallback:
 
 ---
 
-[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.7...HEAD
+[Unreleased]: https://github.com/Aiacos/VoxChronicle/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.7...v3.0.0
 [2.3.7]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.6...v2.3.7
 [2.3.6]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.5...v2.3.6
 [2.3.5]: https://github.com/Aiacos/VoxChronicle/compare/v2.3.4...v2.3.5

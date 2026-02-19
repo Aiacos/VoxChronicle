@@ -4,3 +4,4 @@ tests/utils/ApiKeyValidator.test.js:generic-api-key:141
 tests/utils/SensitiveDataFilter.test.js:generic-api-key:471
 tests/utils/SensitiveDataFilter.test.js:generic-api-key:474
 tests/kanka/KankaService.cache.test.js:generic-api-key:111
+tests/utils/SensitiveDataFilter.test.js:generic-api-key:9

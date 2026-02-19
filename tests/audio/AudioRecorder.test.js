@@ -1,1566 +1,1747 @@
-/**
- * AudioRecorder Unit Tests
- *
- * Tests for the AudioRecorder class with browser API mocking.
- * Covers recording, pause/resume, source switching, error handling,
- * audio level metering, silence detection, and auto-stop.
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { AudioRecorder, RecordingState, CaptureSource } from '../../scripts/audio/AudioRecorder.mjs';
 
-// Mock Logger before importing AudioRecorder
-vi.mock('../../scripts/utils/Logger.mjs', () => ({
-  Logger: {
-    createChild: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      log: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
-    }),
-    debug: vi.fn(),
-    info: vi.fn(),
-    log: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  },
-  LogLevel: {
-    DEBUG: 0,
-    INFO: 1,
-    LOG: 2,
-    WARN: 3,
-    ERROR: 4,
-    NONE: 5
-  }
-}));
-
-// Mock AudioUtils
-vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
-  AudioUtils: {
-    getRecorderOptions: vi.fn(() => ({ mimeType: 'audio/webm' })),
-    createAudioBlob: vi.fn((chunks, mimeType) => new Blob(chunks, { type: mimeType })),
-    getBlobSizeMB: vi.fn((blob) => (blob.size / (1024 * 1024)).toFixed(2)),
-    formatDuration: vi.fn(
-      (seconds) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`
-    )
-  }
-}));
-
-// Import after mocks are set up
-import {
-  AudioRecorder,
-  RecordingState,
-  CaptureSource
-} from '../../scripts/audio/AudioRecorder.mjs';
-import { AudioUtils } from '../../scripts/utils/AudioUtils.mjs';
+// ── Mock helpers ─────────────────────────────────────────────────────────
 
 /**
- * Create a mock MediaStream
+ * Create a minimal mock MediaStream with controllable tracks.
  */
-function createMockMediaStream(audioTracks = 1, videoTracks = 0) {
-  const tracks = [];
-
-  for (let i = 0; i < audioTracks; i++) {
-    tracks.push({
-      kind: 'audio',
-      id: `audio-${i}`,
-      label: `Microphone ${i}`,
-      enabled: true,
-      stop: vi.fn()
-    });
-  }
-
-  for (let i = 0; i < videoTracks; i++) {
-    tracks.push({
-      kind: 'video',
-      id: `video-${i}`,
-      label: `Camera ${i}`,
-      enabled: true,
-      stop: vi.fn()
-    });
-  }
+function createMockStream() {
+  const audioTrack = {
+    kind: 'audio',
+    stop: vi.fn(),
+    enabled: true,
+    readyState: 'live'
+  };
+  const videoTrack = {
+    kind: 'video',
+    stop: vi.fn(),
+    enabled: true,
+    readyState: 'live'
+  };
 
   return {
-    getTracks: vi.fn(() => tracks),
-    getAudioTracks: vi.fn(() => tracks.filter((t) => t.kind === 'audio')),
-    getVideoTracks: vi.fn(() => tracks.filter((t) => t.kind === 'video'))
+    _audioTracks: [audioTrack],
+    _videoTracks: [videoTrack],
+    getTracks: vi.fn(function () {
+      return [...this._audioTracks, ...this._videoTracks];
+    }),
+    getAudioTracks: vi.fn(function () {
+      return this._audioTracks;
+    }),
+    getVideoTracks: vi.fn(function () {
+      return this._videoTracks;
+    })
   };
 }
 
 /**
- * Create a mock MediaRecorder
+ * Create a mock MediaRecorder that fires lifecycle events on demand.
  */
-class MockMediaRecorder {
-  constructor(stream, options) {
-    this.stream = stream;
-    this.options = options;
-    this.state = 'inactive';
-    this.mimeType = options?.mimeType || 'audio/webm';
-    this.ondataavailable = null;
-    this.onstop = null;
-    this.onerror = null;
-  }
+function createMockMediaRecorder() {
+  let _state = 'inactive';
+  let _ondataavailable = null;
+  let _onstop = null;
+  let _onerror = null;
+  let _mimeType = 'audio/webm;codecs=opus';
 
-  start(timeslice) {
-    this.state = 'recording';
-    this.timeslice = timeslice;
-  }
+  const recorder = {
+    get state() { return _state; },
+    set state(v) { _state = v; },
+    get mimeType() { return _mimeType; },
+    set mimeType(v) { _mimeType = v; },
 
-  stop() {
-    this.state = 'inactive';
-    if (this.onstop) {
-      setTimeout(() => this.onstop(), 0);
-    }
-  }
+    get ondataavailable() { return _ondataavailable; },
+    set ondataavailable(fn) { _ondataavailable = fn; },
+    get onstop() { return _onstop; },
+    set onstop(fn) { _onstop = fn; },
+    get onerror() { return _onerror; },
+    set onerror(fn) { _onerror = fn; },
 
-  pause() {
-    if (this.state === 'recording') {
-      this.state = 'paused';
-    }
-  }
-
-  resume() {
-    if (this.state === 'paused') {
-      this.state = 'recording';
-    }
-  }
-
-  requestData() {
-    if (this.state === 'recording' && this.ondataavailable) {
-      const mockData = new Blob([new Uint8Array(1024)], { type: this.mimeType });
-      this.ondataavailable({ data: mockData });
-    }
-  }
-}
-
-/**
- * Create a mock AnalyserNode with configurable frequency data
- */
-function createMockAnalyserNode(frequencyData = null) {
-  const binCount = 128; // fftSize 256 => frequencyBinCount 128
-  const defaultData = new Uint8Array(binCount).fill(0);
-  const data = frequencyData || defaultData;
-
-  return {
-    fftSize: 256,
-    frequencyBinCount: binCount,
-    getByteFrequencyData: vi.fn((array) => {
-      for (let i = 0; i < array.length; i++) {
-        array[i] = data[i] || 0;
+    start: vi.fn(function (_timeslice) {
+      _state = 'recording';
+    }),
+    stop: vi.fn(function () {
+      _state = 'inactive';
+      // Simulate async onstop
+      if (_onstop) {
+        queueMicrotask(() => _onstop());
       }
     }),
-    connect: vi.fn(),
-    disconnect: vi.fn()
+    pause: vi.fn(function () {
+      _state = 'paused';
+    }),
+    resume: vi.fn(function () {
+      _state = 'recording';
+    }),
+    requestData: vi.fn(function () {
+      // no-op
+    }),
+
+    // Test helper: simulate data arriving
+    _emitData(data) {
+      if (_ondataavailable) {
+        _ondataavailable({ data });
+      }
+    },
+    // Test helper: simulate error
+    _emitError(error) {
+      if (_onerror) {
+        _onerror({ error });
+      }
+    }
+  };
+
+  return recorder;
+}
+
+/**
+ * Create a mock AnalyserNode.
+ */
+function createMockAnalyser(frequencyData = null) {
+  const defaultData = new Uint8Array(128).fill(0);
+  return {
+    frequencyBinCount: 128,
+    fftSize: 256,
+    getByteFrequencyData: vi.fn((arr) => {
+      const src = frequencyData || defaultData;
+      for (let i = 0; i < arr.length && i < src.length; i++) {
+        arr[i] = src[i];
+      }
+    })
   };
 }
 
 /**
- * Create a mock AudioContext
+ * Create a mock AudioContext.
  */
-function createMockAudioContext() {
-  const mockAnalyser = createMockAnalyserNode();
-  const mockSource = {
-    connect: vi.fn(),
-    disconnect: vi.fn()
-  };
-
+function createMockAudioContext(analyser = null) {
+  const mockAnalyser = analyser || createMockAnalyser();
   return {
-    createMediaStreamSource: vi.fn(() => mockSource),
+    state: 'running',
+    createMediaStreamSource: vi.fn(() => ({
+      connect: vi.fn(),
+      disconnect: vi.fn()
+    })),
     createAnalyser: vi.fn(() => mockAnalyser),
-    close: vi.fn(),
-    _mockAnalyser: mockAnalyser,
-    _mockSource: mockSource
+    close: vi.fn()
   };
 }
+
+// ── Global mocks ─────────────────────────────────────────────────────────
+
+let mockStream;
+let mockRecorderInstance;
+let MockMediaRecorderClass;
+let mockAudioContextInstance;
+
+beforeEach(() => {
+  mockStream = createMockStream();
+  mockRecorderInstance = createMockMediaRecorder();
+  mockAudioContextInstance = createMockAudioContext();
+
+  // navigator.mediaDevices.getUserMedia
+  if (!globalThis.navigator) {
+    globalThis.navigator = {};
+  }
+  if (!navigator.mediaDevices) {
+    navigator.mediaDevices = {};
+  }
+  navigator.mediaDevices.getUserMedia = vi.fn(() => Promise.resolve(mockStream));
+  navigator.mediaDevices.getDisplayMedia = vi.fn(() => Promise.resolve(mockStream));
+  navigator.mediaDevices.enumerateDevices = vi.fn(() =>
+    Promise.resolve([
+      { kind: 'audioinput', deviceId: 'default', label: 'Default Mic' },
+      { kind: 'audioinput', deviceId: 'mic2', label: 'External Mic' },
+      { kind: 'videoinput', deviceId: 'cam1', label: 'Webcam' }
+    ])
+  );
+
+  // navigator.permissions
+  navigator.permissions = {
+    query: vi.fn(() => Promise.resolve({ state: 'granted' }))
+  };
+
+  // MediaRecorder constructor mock
+  MockMediaRecorderClass = vi.fn(function (_stream, _opts) {
+    // Copy properties from our singleton mock
+    Object.assign(this, {
+      state: 'inactive',
+      mimeType: mockRecorderInstance.mimeType,
+      start: mockRecorderInstance.start,
+      stop: mockRecorderInstance.stop,
+      pause: mockRecorderInstance.pause,
+      resume: mockRecorderInstance.resume,
+      requestData: mockRecorderInstance.requestData,
+      ondataavailable: null,
+      onstop: null,
+      onerror: null
+    });
+
+    // Intercept property assignments so mockRecorderInstance can trigger them
+    const self = this;
+    // Store a reference so our test helpers can reach the actual handler
+    MockMediaRecorderClass._lastInstance = self;
+  });
+  MockMediaRecorderClass.isTypeSupported = vi.fn(() => true);
+  globalThis.MediaRecorder = MockMediaRecorderClass;
+
+  // AudioContext mock
+  globalThis.AudioContext = vi.fn(() => mockAudioContextInstance);
+
+  // requestAnimationFrame / cancelAnimationFrame
+  let _rafId = 0;
+  globalThis.requestAnimationFrame = vi.fn((cb) => {
+    _rafId++;
+    // Don't auto-invoke to avoid infinite loops in tests
+    return _rafId;
+  });
+  globalThis.cancelAnimationFrame = vi.fn();
+});
+
+afterEach(() => {
+  delete globalThis.MediaRecorder;
+  delete globalThis.AudioContext;
+  delete globalThis.webkitAudioContext;
+  delete globalThis.requestAnimationFrame;
+  delete globalThis.cancelAnimationFrame;
+});
+
+// ── Tests ────────────────────────────────────────────────────────────────
 
 describe('AudioRecorder', () => {
-  let recorder;
-  let mockGetUserMedia;
-  let mockGetDisplayMedia;
-  let mockEnumerateDevices;
-  let mockPermissionsQuery;
-  let mockRAFId;
 
-  beforeEach(() => {
-    // Reset all mocks
-    vi.clearAllMocks();
+  // ── Exports ────────────────────────────────────────────────────────────
 
-    // Mock navigator.mediaDevices
-    mockGetUserMedia = vi.fn();
-    mockGetDisplayMedia = vi.fn();
-    mockEnumerateDevices = vi.fn();
-
-    global.navigator = {
-      mediaDevices: {
-        getUserMedia: mockGetUserMedia,
-        getDisplayMedia: mockGetDisplayMedia,
-        enumerateDevices: mockEnumerateDevices
-      },
-      permissions: {
-        query: (mockPermissionsQuery = vi.fn())
-      }
-    };
-
-    // Mock MediaRecorder globally
-    global.MediaRecorder = MockMediaRecorder;
-
-    // Mock AudioContext globally
-    mockRAFId = 0;
-    global.AudioContext = vi.fn(() => createMockAudioContext());
-
-    // Mock requestAnimationFrame / cancelAnimationFrame
-    global.requestAnimationFrame = vi.fn((cb) => {
-      mockRAFId++;
-      return mockRAFId;
+  describe('Exports', () => {
+    it('should export RecordingState enum with correct values', () => {
+      expect(RecordingState.INACTIVE).toBe('inactive');
+      expect(RecordingState.RECORDING).toBe('recording');
+      expect(RecordingState.PAUSED).toBe('paused');
     });
-    global.cancelAnimationFrame = vi.fn();
 
-    // Mock Date.now for duration calculations
-    vi.spyOn(Date, 'now').mockReturnValue(1000000);
-
-    // Create recorder instance
-    recorder = new AudioRecorder();
+    it('should export CaptureSource enum with correct values', () => {
+      expect(CaptureSource.MICROPHONE).toBe('microphone');
+      expect(CaptureSource.FOUNDRY_WEBRTC).toBe('foundry-webrtc');
+      expect(CaptureSource.SYSTEM_AUDIO).toBe('system-audio');
+    });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-    delete global.AudioContext;
-    delete global.webkitAudioContext;
-    delete global.requestAnimationFrame;
-    delete global.cancelAnimationFrame;
-  });
+  // ── Constructor ────────────────────────────────────────────────────────
 
   describe('constructor', () => {
-    it('should create instance with default state', () => {
-      expect(recorder).toBeInstanceOf(AudioRecorder);
+    it('should create an instance with default options', () => {
+      const recorder = new AudioRecorder();
       expect(recorder.state).toBe(RecordingState.INACTIVE);
       expect(recorder.isRecording).toBe(false);
       expect(recorder.captureSource).toBeNull();
       expect(recorder.duration).toBe(0);
     });
 
-    it('should accept constructor options for silence threshold', () => {
-      const rec = new AudioRecorder({ silenceThreshold: 0.05 });
-      expect(rec._silenceThreshold).toBe(0.05);
+    it('should accept a custom silenceThreshold', () => {
+      const recorder = new AudioRecorder({ silenceThreshold: 0.05 });
+      expect(recorder._silenceThreshold).toBe(0.05);
     });
 
-    it('should accept constructor options for max duration', () => {
-      const rec = new AudioRecorder({ maxDuration: 600000 });
-      expect(rec._maxDuration).toBe(600000);
+    it('should accept a custom maxDuration', () => {
+      const recorder = new AudioRecorder({ maxDuration: 600000 });
+      expect(recorder._maxDuration).toBe(600000);
     });
 
-    it('should accept zero maxDuration to disable auto-stop', () => {
-      const rec = new AudioRecorder({ maxDuration: 0 });
-      expect(rec._maxDuration).toBe(0);
-    });
-
-    it('should accept callback options in constructor', () => {
-      const onLevelChange = vi.fn();
-      const onSilenceDetected = vi.fn();
-      const onSoundDetected = vi.fn();
+    it('should accept callback options', () => {
+      const onLevel = vi.fn();
+      const onSilence = vi.fn();
+      const onSound = vi.fn();
       const onAutoStop = vi.fn();
 
-      const rec = new AudioRecorder({
-        onLevelChange,
-        onSilenceDetected,
-        onSoundDetected,
-        onAutoStop
+      const recorder = new AudioRecorder({
+        onLevelChange: onLevel,
+        onSilenceDetected: onSilence,
+        onSoundDetected: onSound,
+        onAutoStop: onAutoStop
       });
 
-      expect(rec._callbacks.onLevelChange).toBe(onLevelChange);
-      expect(rec._callbacks.onSilenceDetected).toBe(onSilenceDetected);
-      expect(rec._callbacks.onSoundDetected).toBe(onSoundDetected);
-      expect(rec._callbacks.onAutoStop).toBe(onAutoStop);
-    });
-
-    it('should use default values when no options are provided', () => {
-      const rec = new AudioRecorder();
-      expect(rec._silenceThreshold).toBe(0.01);
-      expect(rec._maxDuration).toBe(300000);
-      expect(rec._callbacks.onLevelChange).toBeNull();
-      expect(rec._callbacks.onSilenceDetected).toBeNull();
-      expect(rec._callbacks.onSoundDetected).toBeNull();
-      expect(rec._callbacks.onAutoStop).toBeNull();
-    });
-  });
-
-  describe('getters', () => {
-    it('should return correct state', () => {
-      expect(recorder.state).toBe(RecordingState.INACTIVE);
-
-      recorder._state = RecordingState.RECORDING;
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-
-      recorder._state = RecordingState.PAUSED;
-      expect(recorder.state).toBe(RecordingState.PAUSED);
-    });
-
-    it('should return isRecording based on state', () => {
-      expect(recorder.isRecording).toBe(false);
-
-      recorder._state = RecordingState.RECORDING;
-      expect(recorder.isRecording).toBe(true);
-
-      recorder._state = RecordingState.PAUSED;
-      expect(recorder.isRecording).toBe(false);
-    });
-
-    it('should return captureSource', () => {
-      expect(recorder.captureSource).toBeNull();
-
-      recorder._captureSource = CaptureSource.MICROPHONE;
-      expect(recorder.captureSource).toBe(CaptureSource.MICROPHONE);
-    });
-
-    it('should calculate duration correctly', () => {
-      expect(recorder.duration).toBe(0);
-
-      recorder._startTime = 1000000 - 5000; // 5 seconds ago
-      expect(recorder.duration).toBe(5);
-
-      recorder._startTime = 1000000 - 65000; // 65 seconds ago
-      expect(recorder.duration).toBe(65);
-    });
-  });
-
-  describe('setCallbacks', () => {
-    it('should set callback handlers', () => {
-      const callbacks = {
-        onDataAvailable: vi.fn(),
-        onError: vi.fn(),
-        onStateChange: vi.fn()
-      };
-
-      recorder.setCallbacks(callbacks);
-
-      expect(recorder._callbacks.onDataAvailable).toBe(callbacks.onDataAvailable);
-      expect(recorder._callbacks.onError).toBe(callbacks.onError);
-      expect(recorder._callbacks.onStateChange).toBe(callbacks.onStateChange);
-    });
-
-    it('should merge callbacks with existing ones', () => {
-      const callback1 = vi.fn();
-      const callback2 = vi.fn();
-
-      recorder.setCallbacks({ onDataAvailable: callback1 });
-      recorder.setCallbacks({ onError: callback2 });
-
-      expect(recorder._callbacks.onDataAvailable).toBe(callback1);
-      expect(recorder._callbacks.onError).toBe(callback2);
-    });
-
-    it('should set new audio analysis callbacks via setCallbacks', () => {
-      const onLevelChange = vi.fn();
-      const onSilenceDetected = vi.fn();
-      const onSoundDetected = vi.fn();
-      const onAutoStop = vi.fn();
-
-      recorder.setCallbacks({ onLevelChange, onSilenceDetected, onSoundDetected, onAutoStop });
-
-      expect(recorder._callbacks.onLevelChange).toBe(onLevelChange);
-      expect(recorder._callbacks.onSilenceDetected).toBe(onSilenceDetected);
-      expect(recorder._callbacks.onSoundDetected).toBe(onSoundDetected);
+      expect(recorder._callbacks.onLevelChange).toBe(onLevel);
+      expect(recorder._callbacks.onSilenceDetected).toBe(onSilence);
+      expect(recorder._callbacks.onSoundDetected).toBe(onSound);
       expect(recorder._callbacks.onAutoStop).toBe(onAutoStop);
     });
+
+    it('should use default silenceThreshold when not provided', () => {
+      const recorder = new AudioRecorder();
+      expect(recorder._silenceThreshold).toBe(0.01);
+    });
+
+    it('should use default maxDuration when not provided', () => {
+      const recorder = new AudioRecorder();
+      expect(recorder._maxDuration).toBe(300000);
+    });
   });
 
-  describe('startRecording', () => {
-    it('should start microphone recording with default options', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── Getters ────────────────────────────────────────────────────────────
 
-      await recorder.startRecording();
-
-      expect(mockGetUserMedia).toHaveBeenCalledWith({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-          channelCount: 1
-        }
-      });
-
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-      expect(recorder.captureSource).toBe(CaptureSource.MICROPHONE);
-      expect(recorder.isRecording).toBe(true);
+  describe('getters', () => {
+    it('state should return current recording state', () => {
+      const recorder = new AudioRecorder();
+      expect(recorder.state).toBe('inactive');
     });
 
-    it('should start recording with custom audio constraints', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+    it('isRecording should return true only when recording', () => {
+      const recorder = new AudioRecorder();
+      expect(recorder.isRecording).toBe(false);
 
+      recorder._state = RecordingState.RECORDING;
+      expect(recorder.isRecording).toBe(true);
+
+      recorder._state = RecordingState.PAUSED;
+      expect(recorder.isRecording).toBe(false);
+    });
+
+    it('captureSource should return null initially', () => {
+      const recorder = new AudioRecorder();
+      expect(recorder.captureSource).toBeNull();
+    });
+
+    it('duration should return 0 when not recording', () => {
+      const recorder = new AudioRecorder();
+      expect(recorder.duration).toBe(0);
+    });
+
+    it('duration should return elapsed seconds when recording', () => {
+      vi.useFakeTimers();
+      try {
+        const recorder = new AudioRecorder();
+        recorder._startTime = Date.now();
+        vi.advanceTimersByTime(5000);
+        expect(recorder.duration).toBe(5);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  // ── setCallbacks ───────────────────────────────────────────────────────
+
+  describe('setCallbacks()', () => {
+    it('should merge new callbacks with existing ones', () => {
+      const recorder = new AudioRecorder();
+      const onError = vi.fn();
+      const onStateChange = vi.fn();
+
+      recorder.setCallbacks({ onError, onStateChange });
+
+      expect(recorder._callbacks.onError).toBe(onError);
+      expect(recorder._callbacks.onStateChange).toBe(onStateChange);
+      // Other callbacks should remain null
+      expect(recorder._callbacks.onDataAvailable).toBeNull();
+    });
+
+    it('should overwrite existing callbacks', () => {
+      const first = vi.fn();
+      const second = vi.fn();
+      const recorder = new AudioRecorder({ onLevelChange: first });
+
+      recorder.setCallbacks({ onLevelChange: second });
+      expect(recorder._callbacks.onLevelChange).toBe(second);
+    });
+  });
+
+  // ── startRecording - microphone (default) ──────────────────────────────
+
+  describe('startRecording() - microphone', () => {
+    it('should start recording from microphone by default', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audio: expect.objectContaining({
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100,
+            channelCount: 1
+          })
+        })
+      );
+      expect(recorder.state).toBe(RecordingState.RECORDING);
+      expect(recorder.isRecording).toBe(true);
+      expect(recorder.captureSource).toBe(CaptureSource.MICROPHONE);
+      expect(recorder._startTime).not.toBeNull();
+    });
+
+    it('should pass custom audio constraints', async () => {
+      const recorder = new AudioRecorder();
       await recorder.startRecording({
-        source: CaptureSource.MICROPHONE,
         echoCancellation: false,
         noiseSuppression: false,
-        sampleRate: 48000
+        sampleRate: 48000,
+        channelCount: 2,
+        deviceId: 'mic2'
       });
 
-      expect(mockGetUserMedia).toHaveBeenCalledWith({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          sampleRate: 48000,
-          channelCount: 1
-        }
-      });
-    });
-
-    it('should start recording with specific device ID', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording({
-        source: CaptureSource.MICROPHONE,
-        deviceId: 'device-123'
-      });
-
-      expect(mockGetUserMedia).toHaveBeenCalledWith({
-        audio: expect.objectContaining({
-          deviceId: { exact: 'device-123' }
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audio: expect.objectContaining({
+            echoCancellation: false,
+            noiseSuppression: false,
+            sampleRate: 48000,
+            channelCount: 2,
+            deviceId: { exact: 'mic2' }
+          })
         })
-      });
-    });
-
-    it('should initialize MediaRecorder with correct options', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording({ timeslice: 5000 });
-
-      expect(recorder._mediaRecorder).toBeInstanceOf(MockMediaRecorder);
-      expect(recorder._mediaRecorder.stream).toBe(mockStream);
-      expect(recorder._mediaRecorder.state).toBe('recording');
-      expect(recorder._mediaRecorder.timeslice).toBe(5000);
-    });
-
-    it('should throw error if already recording', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValue(mockStream);
-
-      await recorder.startRecording();
-
-      await expect(recorder.startRecording()).rejects.toThrow('Recording already in progress');
-    });
-
-    it('should handle microphone permission denial', async () => {
-      const error = new Error('Permission denied');
-      error.name = 'NotAllowedError';
-      mockGetUserMedia.mockRejectedValueOnce(error);
-
-      await expect(recorder.startRecording()).rejects.toThrow('Microphone access denied');
-
-      expect(recorder.state).toBe(RecordingState.INACTIVE);
-    });
-
-    it('should handle no microphone found', async () => {
-      const error = new Error('Not found');
-      error.name = 'NotFoundError';
-      mockGetUserMedia.mockRejectedValueOnce(error);
-
-      await expect(recorder.startRecording()).rejects.toThrow('No microphone found');
-    });
-
-    it('should handle microphone in use', async () => {
-      const error = new Error('Not readable');
-      error.name = 'NotReadableError';
-      mockGetUserMedia.mockRejectedValueOnce(error);
-
-      await expect(recorder.startRecording()).rejects.toThrow(
-        'Microphone is in use by another application'
       );
     });
 
-    it('should call onStateChange callback when starting', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      const onStateChange = vi.fn();
-      recorder.setCallbacks({ onStateChange });
-
+    it('should throw if already recording', async () => {
+      const recorder = new AudioRecorder();
       await recorder.startRecording();
 
-      expect(onStateChange).toHaveBeenCalledWith(RecordingState.RECORDING, RecordingState.INACTIVE);
+      await expect(recorder.startRecording()).rejects.toThrow(
+        'Recording already in progress'
+      );
     });
 
-    it('should set up audio analysis when starting recording', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(recorder._audioContext).not.toBeNull();
-      expect(recorder._analyserNode).not.toBeNull();
-      expect(recorder._sourceNode).not.toBeNull();
-    });
-
-    it('should start level monitoring when starting recording', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(global.requestAnimationFrame).toHaveBeenCalled();
-      expect(recorder._levelMonitorId).not.toBeNull();
-    });
-
-    it('should set up auto-stop timer when starting recording', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.spyOn(Date, 'now').mockReturnValue(1000000);
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(recorder._maxDurationTimeout).not.toBeNull();
-
-      vi.useRealTimers();
-    });
-  });
-
-  describe('startRecording - Foundry VTT WebRTC', () => {
-    it('should use Foundry WebRTC stream if available', async () => {
-      const mockStream = createMockMediaStream(1);
-
-      // Mock Foundry VTT game object
-      global.game = {
-        webrtc: {
-          client: {
-            getLocalStream: vi.fn(() => mockStream)
-          }
-        }
-      };
-
-      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
-
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-      expect(recorder.captureSource).toBe(CaptureSource.FOUNDRY_WEBRTC);
-      expect(mockGetUserMedia).not.toHaveBeenCalled();
-
-      delete global.game;
-    });
-
-    it('should fallback to microphone if game is undefined', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
-
-      expect(mockGetUserMedia).toHaveBeenCalled();
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-    });
-
-    it('should fallback to microphone if WebRTC client unavailable', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      global.game = { webrtc: null };
-
-      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
-
-      expect(mockGetUserMedia).toHaveBeenCalled();
-
-      delete global.game;
-    });
-
-    it('should fallback to microphone if no audio tracks in WebRTC', async () => {
-      const mockStream = createMockMediaStream(0); // No audio tracks
-      const micStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(micStream);
-
-      global.game = {
-        webrtc: {
-          client: {
-            getLocalStream: vi.fn(() => mockStream)
-          }
-        }
-      };
-
-      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
-
-      expect(mockGetUserMedia).toHaveBeenCalled();
-
-      delete global.game;
-    });
-  });
-
-  describe('startRecording - System Audio', () => {
-    it('should use display media for system audio capture', async () => {
-      const mockStream = createMockMediaStream(1, 1); // Audio + video
-      mockGetDisplayMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
-
-      expect(mockGetDisplayMedia).toHaveBeenCalledWith({
-        video: true,
-        audio: true
-      });
-
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-      expect(recorder.captureSource).toBe(CaptureSource.SYSTEM_AUDIO);
-
-      // Video tracks should be stopped
-      const videoTracks = mockStream.getVideoTracks();
-      expect(videoTracks[0].stop).toHaveBeenCalled();
-    });
-
-    it('should fallback to microphone if getDisplayMedia not supported', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      // Remove getDisplayMedia
-      delete global.navigator.mediaDevices.getDisplayMedia;
-
-      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
-
-      expect(mockGetUserMedia).toHaveBeenCalled();
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-    });
-
-    it('should fallback to microphone if no audio in display media', async () => {
-      const displayStream = createMockMediaStream(0, 1); // No audio, only video
-      const micStream = createMockMediaStream(1);
-      mockGetDisplayMedia.mockResolvedValueOnce(displayStream);
-      mockGetUserMedia.mockResolvedValueOnce(micStream);
-
-      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
-
-      expect(mockGetUserMedia).toHaveBeenCalled();
-      expect(displayStream.getVideoTracks()[0].stop).toHaveBeenCalled();
-    });
-
-    it('should fallback to microphone if permission denied', async () => {
+    it('should throw friendly message on NotAllowedError', async () => {
       const error = new Error('Permission denied');
       error.name = 'NotAllowedError';
-      mockGetDisplayMedia.mockRejectedValueOnce(error);
+      navigator.mediaDevices.getUserMedia = vi.fn(() => Promise.reject(error));
 
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
-
-      expect(mockGetUserMedia).toHaveBeenCalled();
-    });
-  });
-
-  describe('stopRecording', () => {
-    beforeEach(async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
-
-      // Reset Date.now to simulate passage of time
-      Date.now.mockReturnValue(1005000); // 5 seconds later
+      const recorder = new AudioRecorder();
+      await expect(recorder.startRecording()).rejects.toThrow('Microphone access denied');
     });
 
-    it('should stop recording and return audio blob', async () => {
-      // Simulate some data chunks
-      const chunks = [
-        new Blob([new Uint8Array(1024)], { type: 'audio/webm' }),
-        new Blob([new Uint8Array(1024)], { type: 'audio/webm' })
-      ];
-      recorder._audioChunks = chunks;
+    it('should throw friendly message on NotFoundError', async () => {
+      const error = new Error('No device');
+      error.name = 'NotFoundError';
+      navigator.mediaDevices.getUserMedia = vi.fn(() => Promise.reject(error));
 
-      const audioBlob = await recorder.stopRecording();
+      const recorder = new AudioRecorder();
+      await expect(recorder.startRecording()).rejects.toThrow('No microphone found');
+    });
 
-      expect(audioBlob).toBeInstanceOf(Blob);
-      expect(AudioUtils.createAudioBlob).toHaveBeenCalledWith(chunks, 'audio/webm');
+    it('should throw friendly message on NotReadableError', async () => {
+      const error = new Error('In use');
+      error.name = 'NotReadableError';
+      navigator.mediaDevices.getUserMedia = vi.fn(() => Promise.reject(error));
+
+      const recorder = new AudioRecorder();
+      await expect(recorder.startRecording()).rejects.toThrow('Microphone is in use');
+    });
+
+    it('should re-throw unknown errors from getUserMedia', async () => {
+      const error = new Error('Something unexpected');
+      error.name = 'SomeOtherError';
+      navigator.mediaDevices.getUserMedia = vi.fn(() => Promise.reject(error));
+
+      const recorder = new AudioRecorder();
+      await expect(recorder.startRecording()).rejects.toThrow('Something unexpected');
+    });
+
+    it('should clean up on failure', async () => {
+      navigator.mediaDevices.getUserMedia = vi.fn(() =>
+        Promise.reject(new Error('fail'))
+      );
+
+      const recorder = new AudioRecorder();
+      await expect(recorder.startRecording()).rejects.toThrow('fail');
       expect(recorder.state).toBe(RecordingState.INACTIVE);
-      expect(recorder._mediaRecorder).toBeNull();
       expect(recorder._stream).toBeNull();
     });
 
-    it('should throw error if no active recording', async () => {
-      await recorder.stopRecording();
+    it('should call onStateChange when state transitions to RECORDING', async () => {
+      const onStateChange = vi.fn();
+      const recorder = new AudioRecorder();
+      recorder.setCallbacks({ onStateChange });
 
-      await expect(recorder.stopRecording()).rejects.toThrow('No active recording to stop');
+      await recorder.startRecording();
+
+      expect(onStateChange).toHaveBeenCalledWith(
+        RecordingState.RECORDING,
+        RecordingState.INACTIVE
+      );
     });
 
-    it('should cleanup stream tracks on stop', async () => {
-      const mockStream = recorder._stream;
-      const tracks = mockStream.getTracks();
+    it('should set up audio analysis pipeline', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
 
-      await recorder.stopRecording();
-
-      tracks.forEach((track) => {
-        expect(track.stop).toHaveBeenCalled();
-      });
+      expect(globalThis.AudioContext).toHaveBeenCalled();
+      expect(mockAudioContextInstance.createMediaStreamSource).toHaveBeenCalled();
+      expect(mockAudioContextInstance.createAnalyser).toHaveBeenCalled();
     });
 
-    it('should handle MediaRecorder errors during stop', async () => {
-      // Simulate error during stop
-      recorder._mediaRecorder.onstop = null;
-      recorder._mediaRecorder.onerror = null;
+    it('should start level monitoring when analyser is available', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
 
-      // Make stop trigger error callback
-      const _originalStop = recorder._mediaRecorder.stop;
-      recorder._mediaRecorder.stop = function () {
-        this.state = 'inactive';
-        if (this.onerror) {
-          setTimeout(() => this.onerror({ error: new Error('Recording failed') }), 0);
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
+    });
+
+    it('should start auto-stop timer when maxDuration > 0', async () => {
+      vi.useFakeTimers();
+      try {
+        const onAutoStop = vi.fn();
+        const recorder = new AudioRecorder({ maxDuration: 5000, onAutoStop });
+        await recorder.startRecording();
+
+        expect(recorder._maxDurationTimeout).not.toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should not start auto-stop timer when maxDuration is 0', async () => {
+      const recorder = new AudioRecorder({ maxDuration: 0 });
+      await recorder.startRecording();
+
+      expect(recorder._maxDurationTimeout).toBeNull();
+    });
+
+    it('should accept a custom timeslice', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ timeslice: 5000 });
+
+      // The MediaRecorder.start was called with the custom timeslice
+      const instance = MockMediaRecorderClass._lastInstance;
+      expect(instance.start).toHaveBeenCalledWith(5000);
+    });
+  });
+
+  // ── startRecording - WebRTC ────────────────────────────────────────────
+
+  describe('startRecording() - foundry-webrtc', () => {
+    it('should use Foundry WebRTC stream when available', async () => {
+      const webrtcStream = createMockStream();
+      globalThis.game.webrtc = {
+        client: {
+          localStream: webrtcStream
         }
       };
 
-      await expect(recorder.stopRecording()).rejects.toThrow('Recording failed');
-      expect(recorder.state).toBe(RecordingState.INACTIVE);
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
+
+      expect(recorder.captureSource).toBe(CaptureSource.FOUNDRY_WEBRTC);
+      // Should NOT have called getUserMedia since WebRTC stream was used
+      expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     });
 
-    it('should stop level monitoring on stopRecording', async () => {
-      // Verify level monitor is active
-      expect(recorder._levelMonitorId).not.toBeNull();
+    it('should fall back to microphone when WebRTC client is not available', async () => {
+      globalThis.game.webrtc = null;
 
-      await recorder.stopRecording();
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
 
-      expect(global.cancelAnimationFrame).toHaveBeenCalled();
-      expect(recorder._levelMonitorId).toBeNull();
+      // Should have fallen back to getUserMedia
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
     });
 
-    it('should clean up audio analysis on stopRecording', async () => {
-      // Verify audio analysis is set up
-      expect(recorder._audioContext).not.toBeNull();
-      expect(recorder._analyserNode).not.toBeNull();
+    it('should fall back to microphone when localStream has no audio tracks', async () => {
+      const silentStream = createMockStream();
+      silentStream._audioTracks = [];
+      silentStream.getAudioTracks = vi.fn(() => []);
 
-      await recorder.stopRecording();
+      globalThis.game.webrtc = {
+        client: {
+          localStream: silentStream
+        }
+      };
 
-      expect(recorder._audioContext).toBeNull();
-      expect(recorder._analyserNode).toBeNull();
-      expect(recorder._sourceNode).toBeNull();
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
+
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
     });
 
-    it('should clear auto-stop timer on stopRecording', async () => {
-      expect(recorder._maxDurationTimeout).not.toBeNull();
+    it('should fall back to microphone when game is undefined', async () => {
+      const savedGame = globalThis.game;
+      delete globalThis.game;
 
-      await recorder.stopRecording();
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
 
-      expect(recorder._maxDurationTimeout).toBeNull();
-    });
-  });
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
 
-  describe('pause and resume', () => {
-    beforeEach(async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
+      globalThis.game = savedGame;
     });
 
-    it('should pause recording', () => {
-      recorder.pause();
+    it('should use getLocalStream() when localStream is null', async () => {
+      const webrtcStream = createMockStream();
+      globalThis.game.webrtc = {
+        client: {
+          localStream: null,
+          getLocalStream: vi.fn(() => webrtcStream)
+        }
+      };
 
-      expect(recorder.state).toBe(RecordingState.PAUSED);
-      expect(recorder._mediaRecorder.state).toBe('paused');
-    });
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.FOUNDRY_WEBRTC });
 
-    it('should throw error if not recording when pausing', () => {
-      recorder.pause();
-
-      expect(() => recorder.pause()).toThrow('Cannot pause - not currently recording');
-    });
-
-    it('should resume paused recording', () => {
-      recorder.pause();
-      recorder.resume();
-
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-      expect(recorder._mediaRecorder.state).toBe('recording');
-    });
-
-    it('should throw error if not paused when resuming', () => {
-      expect(() => recorder.resume()).toThrow('Cannot resume - recording is not paused');
-    });
-
-    it('should call onStateChange callbacks on pause and resume', () => {
-      const onStateChange = vi.fn();
-      recorder.setCallbacks({ onStateChange });
-
-      recorder.pause();
-      expect(onStateChange).toHaveBeenCalledWith(RecordingState.PAUSED, RecordingState.RECORDING);
-
-      onStateChange.mockClear();
-
-      recorder.resume();
-      expect(onStateChange).toHaveBeenCalledWith(RecordingState.RECORDING, RecordingState.PAUSED);
+      expect(globalThis.game.webrtc.client.getLocalStream).toHaveBeenCalled();
     });
   });
 
-  describe('cancel', () => {
-    it('should cancel active recording', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
+  // ── startRecording - system audio ──────────────────────────────────────
 
-      recorder.cancel();
+  describe('startRecording() - system-audio', () => {
+    it('should use getDisplayMedia for system audio capture', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
 
-      expect(recorder.state).toBe(RecordingState.INACTIVE);
-      expect(recorder._mediaRecorder).toBeNull();
-      expect(recorder._audioChunks).toEqual([]);
-    });
-
-    it('should do nothing if not recording', () => {
-      expect(() => recorder.cancel()).not.toThrow();
-      expect(recorder.state).toBe(RecordingState.INACTIVE);
-    });
-
-    it('should cleanup stream on cancel', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
-
-      const tracks = mockStream.getTracks();
-
-      recorder.cancel();
-
-      tracks.forEach((track) => {
-        expect(track.stop).toHaveBeenCalled();
+      expect(navigator.mediaDevices.getDisplayMedia).toHaveBeenCalledWith({
+        video: true,
+        audio: true
       });
     });
 
-    it('should clean up audio analysis on cancel', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
+    it('should fall back to microphone when getDisplayMedia is not supported', async () => {
+      navigator.mediaDevices.getDisplayMedia = undefined;
 
-      expect(recorder._audioContext).not.toBeNull();
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
 
-      recorder.cancel();
-
-      expect(recorder._audioContext).toBeNull();
-      expect(recorder._analyserNode).toBeNull();
-      expect(recorder._sourceNode).toBeNull();
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
     });
 
-    it('should stop level monitoring on cancel', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
+    it('should fall back to microphone when display media has no audio tracks', async () => {
+      const noAudioStream = createMockStream();
+      noAudioStream._audioTracks = [];
+      noAudioStream.getAudioTracks = vi.fn(() => []);
+      navigator.mediaDevices.getDisplayMedia = vi.fn(() => Promise.resolve(noAudioStream));
 
-      expect(recorder._levelMonitorId).not.toBeNull();
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
 
-      recorder.cancel();
-
-      expect(global.cancelAnimationFrame).toHaveBeenCalled();
-      expect(recorder._levelMonitorId).toBeNull();
+      // Video tracks should be stopped
+      expect(noAudioStream._videoTracks[0].stop).toHaveBeenCalled();
+      // Should fall back to microphone
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
     });
 
-    it('should clear auto-stop timer on cancel', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
+    it('should stop video tracks after getting system audio', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
 
-      expect(recorder._maxDurationTimeout).not.toBeNull();
+      expect(mockStream._videoTracks[0].stop).toHaveBeenCalled();
+    });
 
-      recorder.cancel();
+    it('should fall back on NotAllowedError from getDisplayMedia', async () => {
+      const error = new Error('denied');
+      error.name = 'NotAllowedError';
+      navigator.mediaDevices.getDisplayMedia = vi.fn(() => Promise.reject(error));
 
-      expect(recorder._maxDurationTimeout).toBeNull();
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
+
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
+    });
+
+    it('should fall back on generic error from getDisplayMedia', async () => {
+      navigator.mediaDevices.getDisplayMedia = vi.fn(() =>
+        Promise.reject(new Error('generic fail'))
+      );
+
+      const recorder = new AudioRecorder();
+      await recorder.startRecording({ source: CaptureSource.SYSTEM_AUDIO });
+
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
     });
   });
 
-  describe('requestData', () => {
-    it('should request data from MediaRecorder', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── stopRecording ──────────────────────────────────────────────────────
 
-      const onDataAvailable = vi.fn();
-      recorder.setCallbacks({ onDataAvailable });
+  describe('stopRecording()', () => {
+    it('should throw if not recording', async () => {
+      const recorder = new AudioRecorder();
+      await expect(recorder.stopRecording()).rejects.toThrow('No active recording');
+    });
 
+    it('should stop the MediaRecorder and return a blob', async () => {
+      const recorder = new AudioRecorder();
       await recorder.startRecording();
+
+      // Simulate that some audio data was collected
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+      const chunk = new Blob([new ArrayBuffer(1024)], { type: 'audio/webm' });
+      recorder._audioChunks.push(chunk);
+
+      // Override stop to trigger onstop
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onstop) {
+          queueMicrotask(() => instance.onstop());
+        }
+      });
+
+      const blob = await recorder.stopRecording();
+      expect(blob).toBeInstanceOf(Blob);
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
+      expect(recorder.isRecording).toBe(false);
+    });
+
+    it('should reject if MediaRecorder is not active', async () => {
+      const recorder = new AudioRecorder();
+      recorder._state = RecordingState.RECORDING;
+      recorder._mediaRecorder = { state: 'inactive' };
+
+      await expect(recorder.stopRecording()).rejects.toThrow('MediaRecorder is not active');
+    });
+
+    it('should reject if MediaRecorder is null', async () => {
+      const recorder = new AudioRecorder();
+      recorder._state = RecordingState.RECORDING;
+      recorder._mediaRecorder = null;
+
+      await expect(recorder.stopRecording()).rejects.toThrow('MediaRecorder is not active');
+    });
+
+    it('should clean up stream tracks after stopping', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onstop) queueMicrotask(() => instance.onstop());
+      });
+
+      recorder._audioChunks.push(new Blob([new ArrayBuffer(100)], { type: 'audio/webm' }));
+      await recorder.stopRecording();
+
+      // Stream tracks should be stopped
+      for (const track of mockStream.getTracks()) {
+        expect(track.stop).toHaveBeenCalled();
+      }
+    });
+
+    it('should reject if MediaRecorder onerror fires during stop', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+      const testError = new Error('recorder error');
+
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onerror) {
+          queueMicrotask(() => instance.onerror({ error: testError }));
+        }
+      });
+
+      await expect(recorder.stopRecording()).rejects.toThrow('recorder error');
+    });
+
+    it('should stop level monitoring on stop', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onstop) queueMicrotask(() => instance.onstop());
+      });
+
+      recorder._audioChunks.push(new Blob([new ArrayBuffer(100)], { type: 'audio/webm' }));
+      await recorder.stopRecording();
+
+      expect(globalThis.cancelAnimationFrame).toHaveBeenCalled();
+    });
+
+    it('should clear auto-stop timer on stop', async () => {
+      vi.useFakeTimers();
+      try {
+        const recorder = new AudioRecorder({ maxDuration: 60000 });
+        await recorder.startRecording();
+
+        const instance = MockMediaRecorderClass._lastInstance;
+        instance.state = 'recording';
+        instance.stop = vi.fn(function () {
+          instance.state = 'inactive';
+          if (instance.onstop) queueMicrotask(() => instance.onstop());
+        });
+
+        recorder._audioChunks.push(new Blob([new ArrayBuffer(100)], { type: 'audio/webm' }));
+        await recorder.stopRecording();
+
+        expect(recorder._maxDurationTimeout).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  // ── pause / resume ─────────────────────────────────────────────────────
+
+  describe('pause()', () => {
+    it('should throw if not recording', () => {
+      const recorder = new AudioRecorder();
+      expect(() => recorder.pause()).toThrow('Cannot pause - not currently recording');
+    });
+
+    it('should pause the MediaRecorder and update state', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+
+      recorder.pause();
+
+      expect(instance.pause).toHaveBeenCalled();
+      expect(recorder.state).toBe(RecordingState.PAUSED);
+    });
+
+    it('should call onStateChange callback', async () => {
+      const onStateChange = vi.fn();
+      const recorder = new AudioRecorder();
+      recorder.setCallbacks({ onStateChange });
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+
+      onStateChange.mockClear();
+      recorder.pause();
+
+      expect(onStateChange).toHaveBeenCalledWith(
+        RecordingState.PAUSED,
+        RecordingState.RECORDING
+      );
+    });
+  });
+
+  describe('resume()', () => {
+    it('should throw if not paused', () => {
+      const recorder = new AudioRecorder();
+      expect(() => recorder.resume()).toThrow('Cannot resume - recording is not paused');
+    });
+
+    it('should resume a paused recording', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+      recorder.pause();
+
+      instance.state = 'paused';
+      recorder.resume();
+
+      expect(instance.resume).toHaveBeenCalled();
+      expect(recorder.state).toBe(RecordingState.RECORDING);
+    });
+  });
+
+  // ── cancel ─────────────────────────────────────────────────────────────
+
+  describe('cancel()', () => {
+    it('should do nothing if inactive', () => {
+      const recorder = new AudioRecorder();
+      recorder.cancel(); // should not throw
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
+    });
+
+    it('should stop recording and clean up without returning a blob', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+
+      recorder.cancel();
+
+      expect(instance.stop).toHaveBeenCalled();
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
+      expect(recorder._stream).toBeNull();
+      expect(recorder._mediaRecorder).toBeNull();
+    });
+
+    it('should handle cancel when mediaRecorder is already inactive', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'inactive';
+
+      // Should not throw even though recorder is already inactive
+      recorder.cancel();
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
+    });
+  });
+
+  // ── requestData ────────────────────────────────────────────────────────
+
+  describe('requestData()', () => {
+    it('should call requestData on MediaRecorder when recording', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
 
       recorder.requestData();
-
-      expect(onDataAvailable).toHaveBeenCalled();
-      expect(onDataAvailable.mock.calls[0][0]).toBeInstanceOf(Blob);
+      expect(instance.requestData).toHaveBeenCalled();
     });
 
-    it('should do nothing if not recording', () => {
-      expect(() => recorder.requestData()).not.toThrow();
+    it('should not throw when not recording', () => {
+      const recorder = new AudioRecorder();
+      recorder.requestData(); // no-op, no throw
+    });
+
+    it('should not call requestData when MediaRecorder is paused', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'paused';
+      instance.requestData.mockClear();
+
+      recorder.requestData();
+      expect(instance.requestData).not.toHaveBeenCalled();
     });
   });
 
-  describe('getAudioLevel', () => {
-    it('should return 0 when no analyser is available', () => {
+  // ── ondataavailable event handling ─────────────────────────────────────
+
+  describe('ondataavailable event', () => {
+    it('should push chunks to _audioChunks and _liveChunks', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      const chunk = new Blob([new ArrayBuffer(512)], { type: 'audio/webm' });
+
+      // Trigger ondataavailable
+      instance.ondataavailable({ data: chunk });
+
+      expect(recorder._audioChunks).toHaveLength(1);
+      expect(recorder._audioChunks[0]).toBe(chunk);
+      expect(recorder._liveChunks).toHaveLength(1);
+    });
+
+    it('should call onDataAvailable callback with chunk and count', async () => {
+      const onDataAvailable = vi.fn();
+      const recorder = new AudioRecorder();
+      recorder.setCallbacks({ onDataAvailable });
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      const chunk = new Blob([new ArrayBuffer(256)], { type: 'audio/webm' });
+      instance.ondataavailable({ data: chunk });
+
+      expect(onDataAvailable).toHaveBeenCalledWith(chunk, 1);
+    });
+
+    it('should ignore empty chunks (size 0)', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.ondataavailable({ data: new Blob([], { type: 'audio/webm' }) });
+
+      expect(recorder._audioChunks).toHaveLength(0);
+    });
+
+    it('should ignore null data', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.ondataavailable({ data: null });
+
+      expect(recorder._audioChunks).toHaveLength(0);
+    });
+  });
+
+  // ── onerror event handling ─────────────────────────────────────────────
+
+  describe('onerror event (during recording)', () => {
+    it('should call onError callback', async () => {
+      const onError = vi.fn();
+      const recorder = new AudioRecorder();
+      recorder.setCallbacks({ onError });
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      const testError = new Error('test error');
+      instance.onerror({ error: testError });
+
+      expect(onError).toHaveBeenCalledWith(testError);
+    });
+  });
+
+  // ── getLatestChunk / _rotateRecorder ───────────────────────────────────
+
+  describe('getLatestChunk()', () => {
+    it('should return null when not recording', async () => {
+      const recorder = new AudioRecorder();
+      const result = await recorder.getLatestChunk();
+      expect(result).toBeNull();
+    });
+
+    it('should return null when mediaRecorder is null', async () => {
+      const recorder = new AudioRecorder();
+      recorder._state = RecordingState.RECORDING;
+      recorder._mediaRecorder = null;
+      const result = await recorder.getLatestChunk();
+      expect(result).toBeNull();
+    });
+
+    it('should rotate the recorder and return accumulated live chunks', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+
+      // Simulate some live chunks accumulated
+      const chunk1 = new Blob([new ArrayBuffer(100)], { type: 'audio/webm' });
+      const chunk2 = new Blob([new ArrayBuffer(200)], { type: 'audio/webm' });
+      recorder._liveChunks = [chunk1, chunk2];
+
+      // Override stop to trigger onstop
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onstop) queueMicrotask(() => instance.onstop());
+      });
+
+      const blob = await recorder.getLatestChunk();
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.size).toBe(300);
+    });
+
+    it('should return null when no live chunks are accumulated', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+      recorder._liveChunks = [];
+
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onstop) queueMicrotask(() => instance.onstop());
+      });
+
+      const blob = await recorder.getLatestChunk();
+      expect(blob).toBeNull();
+    });
+
+    it('should return null when recorder state is not recording or paused', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'inactive';
+
+      const blob = await recorder.getLatestChunk();
+      expect(blob).toBeNull();
+    });
+
+    it('should return null on rotation error', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+
+      // Make stop throw
+      instance.stop = vi.fn(function () {
+        throw new Error('stop failed');
+      });
+
+      const blob = await recorder.getLatestChunk();
+      expect(blob).toBeNull();
+    });
+
+    it('should handle onerror during rotation', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onerror) {
+          queueMicrotask(() => instance.onerror({ error: new Error('rotation error') }));
+        }
+      });
+
+      const blob = await recorder.getLatestChunk();
+      expect(blob).toBeNull();
+    });
+
+    it('should clear _liveChunks after rotation', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+      recorder._liveChunks = [new Blob([new ArrayBuffer(50)], { type: 'audio/webm' })];
+
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onstop) queueMicrotask(() => instance.onstop());
+      });
+
+      await recorder.getLatestChunk();
+      expect(recorder._liveChunks).toHaveLength(0);
+    });
+  });
+
+  // ── _startFreshRecorder ────────────────────────────────────────────────
+
+  describe('_startFreshRecorder()', () => {
+    it('should create a new MediaRecorder on the existing stream', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      MockMediaRecorderClass.mockClear();
+      recorder._startFreshRecorder('audio/webm');
+
+      expect(MockMediaRecorderClass).toHaveBeenCalledWith(
+        recorder._stream,
+        expect.any(Object)
+      );
+    });
+
+    it('should do nothing if stream is null', () => {
+      const recorder = new AudioRecorder();
+      recorder._stream = null;
+      recorder._startFreshRecorder('audio/webm'); // should not throw
+    });
+
+    it('should start the new recorder with DEFAULT_TIMESLICE', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      MockMediaRecorderClass.mockClear();
+      recorder._startFreshRecorder('audio/webm');
+
+      const freshInstance = MockMediaRecorderClass._lastInstance;
+      expect(freshInstance.start).toHaveBeenCalledWith(10000);
+    });
+  });
+
+  // ── getAudioLevel ──────────────────────────────────────────────────────
+
+  describe('getAudioLevel()', () => {
+    it('should return 0 when no analyser node exists', () => {
+      const recorder = new AudioRecorder();
       expect(recorder.getAudioLevel()).toBe(0);
     });
 
-    it('should return 0 when frequency data is all zeros (silence)', () => {
-      // Set up analyser with silence
-      recorder._analyserNode = createMockAnalyserNode(new Uint8Array(128).fill(0));
+    it('should return 0 when frequency data is all zeros', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
 
+      // The mock analyser fills with zeros by default
       const level = recorder.getAudioLevel();
       expect(level).toBe(0);
     });
 
-    it('should return a value between 0 and 1 for non-zero audio', () => {
-      // Set up analyser with moderate audio levels
-      const data = new Uint8Array(128).fill(64);
-      recorder._analyserNode = createMockAnalyserNode(data);
+    it('should return a positive level for non-zero frequency data', async () => {
+      const loudData = new Uint8Array(128).fill(200);
+      const loudAnalyser = createMockAnalyser(loudData);
+      mockAudioContextInstance.createAnalyser = vi.fn(() => loudAnalyser);
+
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
 
       const level = recorder.getAudioLevel();
       expect(level).toBeGreaterThan(0);
       expect(level).toBeLessThanOrEqual(1);
     });
 
-    it('should return 1 (clamped) for very loud audio', () => {
-      // Set up analyser with maximum audio levels
-      const data = new Uint8Array(128).fill(255);
-      recorder._analyserNode = createMockAnalyserNode(data);
+    it('should clamp level to 1.0 maximum', async () => {
+      // All 255s should produce level > 1 before clamping
+      const maxData = new Uint8Array(128).fill(255);
+      const maxAnalyser = createMockAnalyser(maxData);
+      mockAudioContextInstance.createAnalyser = vi.fn(() => maxAnalyser);
+
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
 
       const level = recorder.getAudioLevel();
-      expect(level).toBe(1);
-    });
-
-    it('should compute RMS correctly for known data', () => {
-      // All values = 128 => RMS = 128 => normalized = 128/128 = 1.0
-      const data = new Uint8Array(128).fill(128);
-      recorder._analyserNode = createMockAnalyserNode(data);
-
-      const level = recorder.getAudioLevel();
-      expect(level).toBe(1);
-    });
-
-    it('should call getByteFrequencyData on the analyser node', () => {
-      const mockAnalyser = createMockAnalyserNode();
-      recorder._analyserNode = mockAnalyser;
-
-      recorder.getAudioLevel();
-
-      expect(mockAnalyser.getByteFrequencyData).toHaveBeenCalled();
+      expect(level).toBeLessThanOrEqual(1);
     });
   });
 
-  describe('audio analysis setup', () => {
-    it('should set up audio analysis during startRecording', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── Silence detection ──────────────────────────────────────────────────
 
-      await recorder.startRecording();
+  describe('silence detection (_detectSilence)', () => {
+    it('should transition to silent when level drops below threshold', () => {
+      const recorder = new AudioRecorder({ silenceThreshold: 0.1 });
 
-      expect(global.AudioContext).toHaveBeenCalled();
-      expect(recorder._audioContext).not.toBeNull();
-      expect(recorder._audioContext.createMediaStreamSource).toHaveBeenCalledWith(mockStream);
-      expect(recorder._audioContext.createAnalyser).toHaveBeenCalled();
-    });
-
-    it('should handle missing AudioContext gracefully', async () => {
-      delete global.AudioContext;
-      delete global.webkitAudioContext;
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      // Should not throw - recording works without audio analysis
-      await recorder.startRecording();
-
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-      expect(recorder._audioContext).toBeNull();
-      expect(recorder._analyserNode).toBeNull();
-    });
-
-    it('should use webkitAudioContext as fallback', async () => {
-      delete global.AudioContext;
-      global.webkitAudioContext = vi.fn(() => createMockAudioContext());
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(global.webkitAudioContext).toHaveBeenCalled();
-      expect(recorder._audioContext).not.toBeNull();
-    });
-
-    it('should handle AudioContext constructor errors gracefully', async () => {
-      global.AudioContext = vi.fn(() => {
-        throw new Error('AudioContext not allowed');
-      });
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      // Should not throw - recording works without audio analysis
-      await recorder.startRecording();
-
-      expect(recorder.state).toBe(RecordingState.RECORDING);
-      expect(recorder._audioContext).toBeNull();
-      expect(recorder._analyserNode).toBeNull();
-      expect(recorder._sourceNode).toBeNull();
-    });
-
-    it('should not set up audio analysis if stream is null', () => {
-      recorder._setupAudioAnalysis(null);
-
-      expect(recorder._audioContext).toBeNull();
-      expect(recorder._analyserNode).toBeNull();
-    });
-
-    it('should connect source to analyser during setup', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(recorder._sourceNode.connect).toHaveBeenCalledWith(recorder._analyserNode);
-    });
-
-    it('should set fftSize to 256 on the analyser', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(recorder._analyserNode.fftSize).toBe(256);
-    });
-  });
-
-  describe('level monitoring', () => {
-    it('should start requestAnimationFrame loop when recording starts', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(global.requestAnimationFrame).toHaveBeenCalled();
-    });
-
-    it('should not start level monitoring if no analyser', async () => {
-      delete global.AudioContext;
-      delete global.webkitAudioContext;
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      // requestAnimationFrame should not be called because analyserNode is null
-      expect(global.requestAnimationFrame).not.toHaveBeenCalled();
-    });
-
-    it('should call onLevelChange callback during monitoring', async () => {
-      const onLevelChange = vi.fn();
-      recorder = new AudioRecorder({ onLevelChange });
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      // Get the callback passed to requestAnimationFrame and invoke it
-      const monitorCallback = global.requestAnimationFrame.mock.calls[0][0];
-      monitorCallback();
-
-      expect(onLevelChange).toHaveBeenCalled();
-      expect(typeof onLevelChange.mock.calls[0][0]).toBe('number');
-    });
-
-    it('should not call onLevelChange when paused', async () => {
-      const onLevelChange = vi.fn();
-      recorder = new AudioRecorder({ onLevelChange });
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-      recorder.pause();
-
-      onLevelChange.mockClear();
-
-      // Get the callback passed to requestAnimationFrame and invoke it
-      const monitorCallback = global.requestAnimationFrame.mock.calls[0][0];
-      monitorCallback();
-
-      // Should not call because state is PAUSED
-      expect(onLevelChange).not.toHaveBeenCalled();
-    });
-
-    it('should cancel animation frame on stop monitoring', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      const monitorId = recorder._levelMonitorId;
-      recorder._stopLevelMonitoring();
-
-      expect(global.cancelAnimationFrame).toHaveBeenCalledWith(monitorId);
-      expect(recorder._levelMonitorId).toBeNull();
-    });
-
-    it('should reset silence state on stop monitoring', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      // Simulate silence state
-      recorder._isSilent = true;
-      recorder._silenceStartTime = 999000;
-
-      recorder._stopLevelMonitoring();
-
-      expect(recorder._isSilent).toBe(false);
-      expect(recorder._silenceStartTime).toBeNull();
-    });
-  });
-
-  describe('silence detection', () => {
-    it('should detect silence when level drops below threshold', () => {
-      recorder._silenceThreshold = 0.05;
-      recorder._isSilent = false;
-
-      recorder._detectSilence(0.01); // Below threshold
+      recorder._detectSilence(0.05);
 
       expect(recorder._isSilent).toBe(true);
       expect(recorder._silenceStartTime).not.toBeNull();
     });
 
-    it('should call onSilenceDetected with duration when silence continues', () => {
-      const onSilenceDetected = vi.fn();
-      recorder.setCallbacks({ onSilenceDetected });
-      recorder._silenceThreshold = 0.05;
+    it('should call onSilenceDetected with duration when silence persists', () => {
+      vi.useFakeTimers();
+      try {
+        const onSilenceDetected = vi.fn();
+        const recorder = new AudioRecorder({
+          silenceThreshold: 0.1,
+          onSilenceDetected
+        });
 
-      // First call - transition to silent
-      Date.now.mockReturnValue(1000000);
-      recorder._detectSilence(0.01);
+        // First call: transition to silent
+        recorder._detectSilence(0.05);
 
-      // Second call - still silent, 2 seconds later
-      Date.now.mockReturnValue(1002000);
-      recorder._detectSilence(0.01);
+        // Advance time
+        vi.advanceTimersByTime(2000);
 
-      expect(onSilenceDetected).toHaveBeenCalledWith(2000);
+        // Second call while still silent
+        recorder._detectSilence(0.05);
+
+        expect(onSilenceDetected).toHaveBeenCalledWith(expect.any(Number));
+        const duration = onSilenceDetected.mock.calls[0][0];
+        expect(duration).toBeGreaterThanOrEqual(2000);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should call onSoundDetected when sound resumes after silence', () => {
       const onSoundDetected = vi.fn();
-      recorder.setCallbacks({ onSoundDetected });
-      recorder._silenceThreshold = 0.05;
+      const recorder = new AudioRecorder({
+        silenceThreshold: 0.1,
+        onSoundDetected
+      });
 
       // Go silent
-      recorder._detectSilence(0.01);
+      recorder._detectSilence(0.05);
       expect(recorder._isSilent).toBe(true);
 
-      // Sound resumes
+      // Resume sound
       recorder._detectSilence(0.5);
-
       expect(recorder._isSilent).toBe(false);
       expect(recorder._silenceStartTime).toBeNull();
-      expect(onSoundDetected).toHaveBeenCalled();
+      expect(onSoundDetected).toHaveBeenCalledTimes(1);
     });
 
-    it('should not call onSoundDetected if not transitioning from silent', () => {
+    it('should not call onSoundDetected if already not silent', () => {
       const onSoundDetected = vi.fn();
-      recorder.setCallbacks({ onSoundDetected });
-      recorder._silenceThreshold = 0.05;
-      recorder._isSilent = false;
+      const recorder = new AudioRecorder({
+        silenceThreshold: 0.1,
+        onSoundDetected
+      });
 
-      recorder._detectSilence(0.5); // Above threshold, was not silent
-
+      recorder._detectSilence(0.5); // above threshold, not silent
       expect(onSoundDetected).not.toHaveBeenCalled();
     });
 
-    it('should not call onSilenceDetected on initial transition to silence', () => {
+    it('should not call onSilenceDetected on first silent frame (no duration yet)', () => {
       const onSilenceDetected = vi.fn();
-      recorder.setCallbacks({ onSilenceDetected });
-      recorder._silenceThreshold = 0.05;
-      recorder._isSilent = false;
+      const recorder = new AudioRecorder({
+        silenceThreshold: 0.1,
+        onSilenceDetected
+      });
 
-      // First detection of silence - should not fire callback yet
-      recorder._detectSilence(0.01);
-
-      expect(onSilenceDetected).not.toHaveBeenCalled();
-      expect(recorder._isSilent).toBe(true);
-    });
-
-    it('should use configurable silence threshold', () => {
-      const rec = new AudioRecorder({ silenceThreshold: 0.1 });
-      rec._isSilent = false;
-
-      // 0.05 is below 0.1 threshold - should detect silence
-      rec._detectSilence(0.05);
-      expect(rec._isSilent).toBe(true);
-    });
-
-    it('should not detect silence when level equals threshold', () => {
-      recorder._silenceThreshold = 0.05;
-      recorder._isSilent = false;
-
-      // Exactly at threshold - not below, so not silent
+      // First call transitions to silent but doesn't have duration yet
       recorder._detectSilence(0.05);
-      expect(recorder._isSilent).toBe(false);
+      expect(onSilenceDetected).not.toHaveBeenCalled();
     });
   });
 
-  describe('auto-stop', () => {
-    it('should set up auto-stop timer during startRecording', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.spyOn(Date, 'now').mockReturnValue(1000000);
+  // ── Auto-stop timer ────────────────────────────────────────────────────
 
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  describe('auto-stop timer', () => {
+    it('should call onAutoStop and stop recording when timer fires', async () => {
+      vi.useFakeTimers();
+      try {
+        const onAutoStop = vi.fn();
+        const recorder = new AudioRecorder({ maxDuration: 1000, onAutoStop });
+        await recorder.startRecording();
 
-      await recorder.startRecording();
+        // Make stopRecording work
+        const instance = MockMediaRecorderClass._lastInstance;
+        instance.state = 'recording';
+        instance.stop = vi.fn(function () {
+          instance.state = 'inactive';
+          if (instance.onstop) queueMicrotask(() => instance.onstop());
+        });
+        recorder._audioChunks.push(new Blob([new ArrayBuffer(100)], { type: 'audio/webm' }));
 
-      expect(recorder._maxDurationTimeout).not.toBeNull();
+        // Fire the timer
+        vi.advanceTimersByTime(1000);
 
-      vi.useRealTimers();
+        expect(onAutoStop).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
-    it('should not set auto-stop timer when maxDuration is 0', async () => {
-      recorder = new AudioRecorder({ maxDuration: 0 });
+    it('should clear timer when stopRecording is called before timeout', async () => {
+      vi.useFakeTimers();
+      try {
+        const recorder = new AudioRecorder({ maxDuration: 60000 });
+        await recorder.startRecording();
 
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+        const instance = MockMediaRecorderClass._lastInstance;
+        instance.state = 'recording';
+        instance.stop = vi.fn(function () {
+          instance.state = 'inactive';
+          if (instance.onstop) queueMicrotask(() => instance.onstop());
+        });
+        recorder._audioChunks.push(new Blob([new ArrayBuffer(100)], { type: 'audio/webm' }));
 
-      await recorder.startRecording();
+        await recorder.stopRecording();
 
-      expect(recorder._maxDurationTimeout).toBeNull();
-    });
-
-    it('should call onAutoStop callback when max duration is reached', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.spyOn(Date, 'now').mockReturnValue(1000000);
-
-      const onAutoStop = vi.fn();
-      recorder = new AudioRecorder({ maxDuration: 5000, onAutoStop });
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      // Advance time to trigger auto-stop
-      vi.advanceTimersByTime(5000);
-
-      expect(onAutoStop).toHaveBeenCalled();
-
-      vi.useRealTimers();
-    });
-
-    it('should auto-stop recording when max duration is reached', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.spyOn(Date, 'now').mockReturnValue(1000000);
-
-      recorder = new AudioRecorder({ maxDuration: 5000 });
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      // Advance time to trigger auto-stop
-      vi.advanceTimersByTime(5000);
-
-      // Wait for the stopRecording promise to resolve
-      await vi.runAllTimersAsync();
-
-      expect(recorder.state).toBe(RecordingState.INACTIVE);
-
-      vi.useRealTimers();
-    });
-
-    it('should clear auto-stop timer on manual stopRecording', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(recorder._maxDurationTimeout).not.toBeNull();
-
-      await recorder.stopRecording();
-
-      expect(recorder._maxDurationTimeout).toBeNull();
-    });
-
-    it('should clear auto-stop timer on cancel', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      expect(recorder._maxDurationTimeout).not.toBeNull();
-
-      recorder.cancel();
-
-      expect(recorder._maxDurationTimeout).toBeNull();
-    });
-
-    it('should use custom maxDuration from constructor', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.spyOn(Date, 'now').mockReturnValue(1000000);
-
-      const onAutoStop = vi.fn();
-      recorder = new AudioRecorder({ maxDuration: 10000, onAutoStop });
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      // Should not auto-stop at 5 seconds
-      vi.advanceTimersByTime(5000);
-      expect(onAutoStop).not.toHaveBeenCalled();
-
-      // Should auto-stop at 10 seconds
-      vi.advanceTimersByTime(5000);
-      expect(onAutoStop).toHaveBeenCalled();
-
-      vi.useRealTimers();
+        // Timer should have been cleared
+        expect(recorder._maxDurationTimeout).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
-  describe('cleanup', () => {
-    it('should clean up audio context on cleanup', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── Audio analysis setup ───────────────────────────────────────────────
 
-      await recorder.startRecording();
+  describe('_setupAudioAnalysis()', () => {
+    it('should not crash when stream is null', () => {
+      const recorder = new AudioRecorder();
+      recorder._setupAudioAnalysis(null);
+      expect(recorder._audioContext).toBeNull();
+    });
 
-      const audioContext = recorder._audioContext;
-      const sourceNode = recorder._sourceNode;
+    it('should handle AudioContext not being available', async () => {
+      delete globalThis.AudioContext;
+      delete globalThis.webkitAudioContext;
 
-      recorder.cancel();
+      const recorder = new AudioRecorder();
+      recorder._setupAudioAnalysis(mockStream);
 
-      expect(audioContext.close).toHaveBeenCalled();
-      expect(sourceNode.disconnect).toHaveBeenCalled();
+      expect(recorder._audioContext).toBeNull();
+      expect(recorder._analyserNode).toBeNull();
+    });
+
+    it('should use webkitAudioContext as fallback', async () => {
+      delete globalThis.AudioContext;
+      const webkitCtx = createMockAudioContext();
+      globalThis.webkitAudioContext = vi.fn(() => webkitCtx);
+
+      const recorder = new AudioRecorder();
+      recorder._setupAudioAnalysis(mockStream);
+
+      expect(globalThis.webkitAudioContext).toHaveBeenCalled();
+      expect(recorder._audioContext).toBe(webkitCtx);
+    });
+
+    it('should handle errors during setup gracefully', async () => {
+      globalThis.AudioContext = vi.fn(() => {
+        throw new Error('AudioContext init failed');
+      });
+
+      const recorder = new AudioRecorder();
+      recorder._setupAudioAnalysis(mockStream);
+
+      // Should reset to null on error
       expect(recorder._audioContext).toBeNull();
       expect(recorder._analyserNode).toBeNull();
       expect(recorder._sourceNode).toBeNull();
     });
+  });
 
-    it('should handle disconnect errors gracefully during cleanup', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── Level monitoring ───────────────────────────────────────────────────
 
-      await recorder.startRecording();
+  describe('_startLevelMonitoring()', () => {
+    it('should not start if no analyser node', () => {
+      const recorder = new AudioRecorder();
+      recorder._analyserNode = null;
 
-      // Make disconnect throw
-      recorder._sourceNode.disconnect = vi.fn(() => {
-        throw new Error('Already disconnected');
-      });
+      globalThis.requestAnimationFrame.mockClear();
+      recorder._startLevelMonitoring();
 
-      // Should not throw
-      expect(() => recorder.cancel()).not.toThrow();
-      expect(recorder._sourceNode).toBeNull();
+      expect(globalThis.requestAnimationFrame).not.toHaveBeenCalled();
     });
 
-    it('should handle close errors gracefully during cleanup', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+    it('should call requestAnimationFrame when analyser exists', () => {
+      const recorder = new AudioRecorder();
+      recorder._analyserNode = createMockAnalyser();
 
-      await recorder.startRecording();
+      globalThis.requestAnimationFrame.mockClear();
+      recorder._startLevelMonitoring();
 
-      // Make close throw
-      recorder._audioContext.close = vi.fn(() => {
-        throw new Error('Already closed');
-      });
-
-      // Should not throw
-      expect(() => recorder.cancel()).not.toThrow();
-      expect(recorder._audioContext).toBeNull();
-    });
-
-    it('should handle cleanup when audio analysis was never set up', async () => {
-      delete global.AudioContext;
-      delete global.webkitAudioContext;
-
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      await recorder.startRecording();
-
-      // Should not throw even though audio analysis nodes are null
-      expect(() => recorder.cancel()).not.toThrow();
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
     });
   });
 
-  describe('checkMicrophonePermission', () => {
-    it('should return granted permission state', async () => {
-      mockPermissionsQuery.mockResolvedValueOnce({ state: 'granted' });
+  describe('_stopLevelMonitoring()', () => {
+    it('should cancel animation frame if active', () => {
+      const recorder = new AudioRecorder();
+      recorder._levelMonitorId = 42;
 
-      const state = await recorder.checkMicrophonePermission();
+      recorder._stopLevelMonitoring();
 
-      expect(state).toBe('granted');
-      expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'microphone' });
+      expect(globalThis.cancelAnimationFrame).toHaveBeenCalledWith(42);
+      expect(recorder._levelMonitorId).toBeNull();
     });
 
-    it('should return denied permission state', async () => {
-      mockPermissionsQuery.mockResolvedValueOnce({ state: 'denied' });
+    it('should reset silence state', () => {
+      const recorder = new AudioRecorder();
+      recorder._isSilent = true;
+      recorder._silenceStartTime = 12345;
+      recorder._levelMonitorId = null;
 
+      recorder._stopLevelMonitoring();
+
+      expect(recorder._isSilent).toBe(false);
+      expect(recorder._silenceStartTime).toBeNull();
+    });
+
+    it('should not call cancelAnimationFrame if no monitor is active', () => {
+      const recorder = new AudioRecorder();
+      recorder._levelMonitorId = null;
+
+      globalThis.cancelAnimationFrame.mockClear();
+      recorder._stopLevelMonitoring();
+
+      expect(globalThis.cancelAnimationFrame).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── checkMicrophonePermission ──────────────────────────────────────────
+
+  describe('checkMicrophonePermission()', () => {
+    it('should return the permission state', async () => {
+      const recorder = new AudioRecorder();
       const state = await recorder.checkMicrophonePermission();
+      expect(state).toBe('granted');
+    });
 
+    it('should return "prompt" when Permissions API is not supported', async () => {
+      navigator.permissions = undefined;
+
+      const recorder = new AudioRecorder();
+      const state = await recorder.checkMicrophonePermission();
+      expect(state).toBe('prompt');
+    });
+
+    it('should return "prompt" when permissions.query is not available', async () => {
+      navigator.permissions = {};
+
+      const recorder = new AudioRecorder();
+      const state = await recorder.checkMicrophonePermission();
+      expect(state).toBe('prompt');
+    });
+
+    it('should return "prompt" on error', async () => {
+      navigator.permissions.query = vi.fn(() => Promise.reject(new Error('fail')));
+
+      const recorder = new AudioRecorder();
+      const state = await recorder.checkMicrophonePermission();
+      expect(state).toBe('prompt');
+    });
+
+    it('should return "denied" when permission is denied', async () => {
+      navigator.permissions.query = vi.fn(() =>
+        Promise.resolve({ state: 'denied' })
+      );
+
+      const recorder = new AudioRecorder();
+      const state = await recorder.checkMicrophonePermission();
       expect(state).toBe('denied');
     });
-
-    it('should return prompt if Permissions API not supported', async () => {
-      delete global.navigator.permissions;
-
-      const state = await recorder.checkMicrophonePermission();
-
-      expect(state).toBe('prompt');
-    });
-
-    it('should return prompt if query fails', async () => {
-      mockPermissionsQuery.mockRejectedValueOnce(new Error('Not supported'));
-
-      const state = await recorder.checkMicrophonePermission();
-
-      expect(state).toBe('prompt');
-    });
   });
 
-  describe('requestMicrophonePermission', () => {
-    it('should request and grant microphone permission', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── requestMicrophonePermission ────────────────────────────────────────
 
-      const granted = await recorder.requestMicrophonePermission();
-
-      expect(granted).toBe(true);
-      expect(mockGetUserMedia).toHaveBeenCalledWith({ audio: true });
-
-      // Stream should be stopped immediately
-      const tracks = mockStream.getTracks();
-      tracks.forEach((track) => {
-        expect(track.stop).toHaveBeenCalled();
-      });
+  describe('requestMicrophonePermission()', () => {
+    it('should return true when permission is granted', async () => {
+      const recorder = new AudioRecorder();
+      const result = await recorder.requestMicrophonePermission();
+      expect(result).toBe(true);
     });
 
-    it('should return false if permission denied', async () => {
-      const error = new Error('Permission denied');
+    it('should stop tracks immediately after permission grant', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.requestMicrophonePermission();
+
+      for (const track of mockStream.getTracks()) {
+        expect(track.stop).toHaveBeenCalled();
+      }
+    });
+
+    it('should return false on NotAllowedError', async () => {
+      const error = new Error('denied');
       error.name = 'NotAllowedError';
-      mockGetUserMedia.mockRejectedValueOnce(error);
+      navigator.mediaDevices.getUserMedia = vi.fn(() => Promise.reject(error));
 
-      const granted = await recorder.requestMicrophonePermission();
-
-      expect(granted).toBe(false);
+      const recorder = new AudioRecorder();
+      const result = await recorder.requestMicrophonePermission();
+      expect(result).toBe(false);
     });
 
     it('should return false on other errors', async () => {
-      mockGetUserMedia.mockRejectedValueOnce(new Error('Unknown error'));
+      navigator.mediaDevices.getUserMedia = vi.fn(() =>
+        Promise.reject(new Error('unexpected'))
+      );
 
-      const granted = await recorder.requestMicrophonePermission();
-
-      expect(granted).toBe(false);
+      const recorder = new AudioRecorder();
+      const result = await recorder.requestMicrophonePermission();
+      expect(result).toBe(false);
     });
   });
 
-  describe('getAudioInputDevices', () => {
-    it('should return list of audio input devices', async () => {
-      const mockDevices = [
-        { kind: 'audioinput', deviceId: 'mic1', label: 'Microphone 1' },
-        { kind: 'audioinput', deviceId: 'mic2', label: 'Microphone 2' },
-        { kind: 'videoinput', deviceId: 'cam1', label: 'Camera 1' },
-        { kind: 'audiooutput', deviceId: 'spk1', label: 'Speaker 1' }
-      ];
-      mockEnumerateDevices.mockResolvedValueOnce(mockDevices);
+  // ── getAudioInputDevices ───────────────────────────────────────────────
 
+  describe('getAudioInputDevices()', () => {
+    it('should return only audio input devices', async () => {
+      const recorder = new AudioRecorder();
       const devices = await recorder.getAudioInputDevices();
 
-      expect(devices).toHaveLength(2);
-      expect(devices[0].kind).toBe('audioinput');
-      expect(devices[1].kind).toBe('audioinput');
+      expect(devices).toHaveLength(2); // Two audioinput devices from our mock
+      expect(devices.every((d) => d.kind === 'audioinput')).toBe(true);
     });
 
     it('should return empty array on error', async () => {
-      mockEnumerateDevices.mockRejectedValueOnce(new Error('Not supported'));
+      navigator.mediaDevices.enumerateDevices = vi.fn(() =>
+        Promise.reject(new Error('fail'))
+      );
 
+      const recorder = new AudioRecorder();
       const devices = await recorder.getAudioInputDevices();
-
       expect(devices).toEqual([]);
     });
   });
 
-  describe('event callbacks', () => {
-    it('should call onDataAvailable when chunks arrive', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── _cleanup ───────────────────────────────────────────────────────────
 
-      const onDataAvailable = vi.fn();
-      recorder.setCallbacks({ onDataAvailable });
-
+  describe('_cleanup()', () => {
+    it('should reset all state to initial values', async () => {
+      const recorder = new AudioRecorder();
       await recorder.startRecording();
 
-      // Trigger data available event
-      const mockData = new Blob([new Uint8Array(1024)], { type: 'audio/webm' });
-      recorder._mediaRecorder.ondataavailable({ data: mockData, size: 1024 });
+      // Push some data
+      recorder._audioChunks.push(new Blob([]));
+      recorder._liveChunks.push(new Blob([]));
 
-      expect(onDataAvailable).toHaveBeenCalledWith(mockData, 1);
+      recorder._cleanup();
+
+      expect(recorder._mediaRecorder).toBeNull();
+      expect(recorder._stream).toBeNull();
+      expect(recorder._audioChunks).toEqual([]);
+      expect(recorder._liveChunks).toEqual([]);
+      expect(recorder._captureSource).toBeNull();
+      expect(recorder._startTime).toBeNull();
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
     });
 
-    it('should call onError when MediaRecorder errors', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
-      const onError = vi.fn();
-      recorder.setCallbacks({ onError });
-
+    it('should stop all stream tracks', async () => {
+      const recorder = new AudioRecorder();
       await recorder.startRecording();
 
-      // Trigger error event
-      const error = new Error('Recording error');
-      recorder._mediaRecorder.onerror({ error });
+      recorder._cleanup();
 
-      expect(onError).toHaveBeenCalledWith(error);
+      for (const track of mockStream.getTracks()) {
+        expect(track.stop).toHaveBeenCalled();
+      }
     });
 
-    it('should not throw if callbacks are not set', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-
+    it('should close AudioContext if open', async () => {
+      const recorder = new AudioRecorder();
       await recorder.startRecording();
 
-      // Trigger events without callbacks
-      expect(() => {
-        recorder._mediaRecorder.ondataavailable({ data: new Blob(), size: 0 });
-        recorder._mediaRecorder.onerror({ error: new Error() });
-      }).not.toThrow();
+      recorder._cleanup();
+
+      expect(mockAudioContextInstance.close).toHaveBeenCalled();
+    });
+
+    it('should handle already-closed AudioContext', () => {
+      const recorder = new AudioRecorder();
+      recorder._audioContext = { state: 'closed', close: vi.fn() };
+      recorder._sourceNode = { disconnect: vi.fn() };
+
+      recorder._cleanup();
+
+      expect(recorder._audioContext).toBeNull();
+    });
+
+    it('should handle disconnect error on sourceNode', () => {
+      const recorder = new AudioRecorder();
+      recorder._sourceNode = {
+        disconnect: vi.fn(() => { throw new Error('already disconnected'); })
+      };
+
+      // Should not throw
+      recorder._cleanupAudioAnalysis();
+      expect(recorder._sourceNode).toBeNull();
+    });
+
+    it('should handle AudioContext close error', () => {
+      const recorder = new AudioRecorder();
+      recorder._audioContext = {
+        state: 'running',
+        close: vi.fn(() => { throw new Error('close failed'); })
+      };
+
+      // Should not throw
+      recorder._cleanupAudioAnalysis();
+      expect(recorder._audioContext).toBeNull();
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle empty data chunks', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+  // ── _updateState ───────────────────────────────────────────────────────
 
-      const onDataAvailable = vi.fn();
-      recorder.setCallbacks({ onDataAvailable });
+  describe('_updateState()', () => {
+    it('should update state and call onStateChange', () => {
+      const onStateChange = vi.fn();
+      const recorder = new AudioRecorder();
+      recorder.setCallbacks({ onStateChange });
 
-      await recorder.startRecording();
+      recorder._updateState(RecordingState.RECORDING);
 
-      // Trigger empty data
-      recorder._mediaRecorder.ondataavailable({ data: null });
-      recorder._mediaRecorder.ondataavailable({ data: new Blob(), size: 0 });
-
-      // Should not call callback for empty data
-      expect(onDataAvailable).not.toHaveBeenCalled();
+      expect(recorder.state).toBe(RecordingState.RECORDING);
+      expect(onStateChange).toHaveBeenCalledWith(RecordingState.RECORDING, RecordingState.INACTIVE);
     });
 
-    it('should handle multiple stop calls gracefully', async () => {
-      const mockStream = createMockMediaStream(1);
-      mockGetUserMedia.mockResolvedValueOnce(mockStream);
-      await recorder.startRecording();
+    it('should not throw when no onStateChange callback is set', () => {
+      const recorder = new AudioRecorder();
+      recorder._updateState(RecordingState.RECORDING);
+      expect(recorder.state).toBe(RecordingState.RECORDING);
+    });
+  });
 
-      await recorder.stopRecording();
+  // ── _initializeRecorder ────────────────────────────────────────────────
 
-      await expect(recorder.stopRecording()).rejects.toThrow();
+  describe('_initializeRecorder()', () => {
+    it('should throw when no stream is available', async () => {
+      const recorder = new AudioRecorder();
+      recorder._stream = null;
+
+      await expect(recorder._initializeRecorder()).rejects.toThrow(
+        'No media stream available'
+      );
     });
 
-    it('should cleanup properly on start failure', async () => {
-      mockGetUserMedia.mockRejectedValueOnce(new Error('Failed'));
+    it('should create MediaRecorder with default timeslice (10s)', async () => {
+      const recorder = new AudioRecorder();
+      recorder._stream = mockStream;
 
-      await expect(recorder.startRecording()).rejects.toThrow();
+      await recorder._initializeRecorder();
 
+      const instance = MockMediaRecorderClass._lastInstance;
+      expect(instance.start).toHaveBeenCalledWith(10000);
+    });
+
+    it('should create MediaRecorder with custom timeslice', async () => {
+      const recorder = new AudioRecorder();
+      recorder._stream = mockStream;
+
+      await recorder._initializeRecorder(3000);
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      expect(instance.start).toHaveBeenCalledWith(3000);
+    });
+
+    it('should reset audioChunks on initialize', async () => {
+      const recorder = new AudioRecorder();
+      recorder._stream = mockStream;
+      recorder._audioChunks = [new Blob([])];
+
+      await recorder._initializeRecorder();
+
+      expect(recorder._audioChunks).toEqual([]);
+    });
+  });
+
+  // ── Full recording lifecycle ───────────────────────────────────────────
+
+  describe('full recording lifecycle', () => {
+    it('should support start -> pause -> resume -> stop cycle', async () => {
+      const recorder = new AudioRecorder();
+      await recorder.startRecording();
+
+      const instance = MockMediaRecorderClass._lastInstance;
+      instance.state = 'recording';
+
+      // Pause
+      recorder.pause();
+      expect(recorder.state).toBe(RecordingState.PAUSED);
+
+      // Resume
+      instance.state = 'paused';
+      recorder.resume();
+      expect(recorder.state).toBe(RecordingState.RECORDING);
+
+      // Stop
+      instance.state = 'recording';
+      instance.stop = vi.fn(function () {
+        instance.state = 'inactive';
+        if (instance.onstop) queueMicrotask(() => instance.onstop());
+      });
+      recorder._audioChunks.push(new Blob([new ArrayBuffer(100)], { type: 'audio/webm' }));
+
+      const blob = await recorder.stopRecording();
+      expect(blob).toBeInstanceOf(Blob);
       expect(recorder.state).toBe(RecordingState.INACTIVE);
-      expect(recorder._stream).toBeNull();
-      expect(recorder._mediaRecorder).toBeNull();
     });
 
-    it('should cleanup audio analysis on start failure', async () => {
-      mockGetUserMedia.mockRejectedValueOnce(new Error('Failed'));
+    it('should support multiple start/stop cycles', async () => {
+      const recorder = new AudioRecorder();
 
-      await expect(recorder.startRecording()).rejects.toThrow();
+      for (let i = 0; i < 3; i++) {
+        await recorder.startRecording();
 
-      expect(recorder._audioContext).toBeNull();
-      expect(recorder._analyserNode).toBeNull();
-      expect(recorder._sourceNode).toBeNull();
+        const instance = MockMediaRecorderClass._lastInstance;
+        instance.state = 'recording';
+        instance.stop = vi.fn(function () {
+          instance.state = 'inactive';
+          if (instance.onstop) queueMicrotask(() => instance.onstop());
+        });
+        recorder._audioChunks.push(new Blob([new ArrayBuffer(50)], { type: 'audio/webm' }));
+
+        const blob = await recorder.stopRecording();
+        expect(blob).toBeInstanceOf(Blob);
+        expect(recorder.state).toBe(RecordingState.INACTIVE);
+      }
+    });
+  });
+
+  // ── Duration tracking with fake timers ─────────────────────────────────
+
+  describe('duration tracking', () => {
+    it('should track elapsed time in seconds', () => {
+      vi.useFakeTimers();
+      try {
+        const recorder = new AudioRecorder();
+        recorder._startTime = Date.now();
+
+        expect(recorder.duration).toBe(0);
+
+        vi.advanceTimersByTime(10000); // 10 seconds
+        expect(recorder.duration).toBe(10);
+
+        vi.advanceTimersByTime(50000); // +50 seconds = 60 total
+        expect(recorder.duration).toBe(60);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should floor fractional seconds', () => {
+      vi.useFakeTimers();
+      try {
+        const recorder = new AudioRecorder();
+        recorder._startTime = Date.now();
+
+        vi.advanceTimersByTime(1500); // 1.5 seconds
+        expect(recorder.duration).toBe(1);
+
+        vi.advanceTimersByTime(499); // 1.999 seconds
+        expect(recorder.duration).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

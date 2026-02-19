@@ -1,441 +1,291 @@
 /**
  * VoxChronicle Unit Tests
  *
- * Tests for the VoxChronicle singleton class with mocked Foundry and service dependencies.
- * Covers initialization, service management, and Kanka token expiration.
+ * Comprehensive tests for the main VoxChronicle singleton class that
+ * orchestrates all module services: audio recording, transcription,
+ * image generation, entity extraction, Kanka publishing, narrator
+ * services, and RAG (Retrieval-Augmented Generation).
+ *
+ * @module tests/core/VoxChronicle.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createMockSettings, createMockI18n } from '../helpers/foundry-mock.js';
+// ── Hoisted mock variables (must be declared before vi.mock factories) ──
 
-// Mock MODULE_ID first
-vi.mock('../../scripts/main.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-vi.mock('../../scripts/constants.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-
-// Mock Logger before importing VoxChronicle
-// Logger mock routes all log methods to both their native console method AND console.log
-// This ensures tests checking for either will pass
-vi.mock('../../scripts/utils/Logger.mjs', () => ({
-  Logger: {
-    createChild: () => ({
-      debug: (...args) => globalThis.console.log?.(...args),
-      info: (...args) => {
-        globalThis.console.info?.(...args);
-        globalThis.console.log?.(...args);
-      },
-      log: (...args) => globalThis.console.log?.(...args),
-      warn: (...args) => {
-        globalThis.console.warn?.(...args);
-        globalThis.console.log?.(...args);
-      },
-      error: (...args) => {
-        globalThis.console.error?.(...args);
-        globalThis.console.log?.(...args);
-      }
-    }),
-    setDebugMode: vi.fn(),
-    debug: (...args) => globalThis.console.log?.(...args),
-    info: (...args) => {
-      globalThis.console.info?.(...args);
-      globalThis.console.log?.(...args);
-    },
-    log: (...args) => globalThis.console.log?.(...args),
-    warn: (...args) => {
-      globalThis.console.warn?.(...args);
-      globalThis.console.log?.(...args);
-    },
-    error: (...args) => {
-      globalThis.console.error?.(...args);
-      globalThis.console.log?.(...args);
-    }
-  },
-  LogLevel: {
-    DEBUG: 0,
-    INFO: 1,
-    LOG: 2,
-    WARN: 3,
-    ERROR: 4,
-    NONE: 5
-  }
-}));
-
-// Mock all service dependencies
-vi.mock('../../scripts/orchestration/SessionOrchestrator.mjs', () => {
-  class MockSessionOrchestrator {
-    constructor(services) {
-      this.services = services;
-      this.setTranscriptionConfig = vi.fn();
-      this.setNarratorServices = vi.fn();
-    }
-  }
-
-  return {
-    SessionOrchestrator: MockSessionOrchestrator
+const {
+  mockAudioRecorder,
+  mockTranscriptionFactoryCreate,
+  mockImageGenerationService,
+  mockKankaService,
+  mockEntityExtractor,
+  mockNarrativeExporter,
+  mockSessionOrchestratorInstance,
+  mockSessionOrchestrator,
+  mockVocabularyDictionary,
+  mockJournalParser,
+  mockCompendiumParser,
+  mockChapterTracker,
+  mockSceneDetector,
+  mockAIAssistantInstance,
+  mockAIAssistant,
+  mockRulesReference,
+  mockSessionAnalytics,
+  mockOpenAIClient,
+  mockLoggerChild,
+  mockSetDebugMode,
+  mockRAGProviderInstance,
+  mockRAGProviderFactoryCreate,
+  mockSilenceDetector,
+  mockSettingsModule
+} = vi.hoisted(() => {
+  const mockAudioRecorder = vi.fn().mockImplementation(() => ({}));
+  const mockTranscriptionFactoryCreate = vi.fn().mockResolvedValue({ type: 'cloud' });
+  const mockImageGenerationService = vi.fn().mockImplementation(() => ({}));
+  const mockKankaService = vi.fn().mockImplementation(() => ({}));
+  const mockEntityExtractor = vi.fn().mockImplementation(() => ({}));
+  const mockNarrativeExporter = vi.fn().mockImplementation(() => ({
+    setOpenAIClient: vi.fn()
+  }));
+  const mockSessionOrchestratorInstance = {
+    setTranscriptionConfig: vi.fn(),
+    setNarratorServices: vi.fn()
   };
-});
-
-vi.mock('../../scripts/audio/AudioRecorder.mjs', () => {
-  class MockAudioRecorder {
-    constructor() {
-      this.startRecording = vi.fn();
-      this.stopRecording = vi.fn();
-    }
-  }
-
-  return {
-    AudioRecorder: MockAudioRecorder
+  const mockSessionOrchestrator = vi.fn().mockImplementation(() => mockSessionOrchestratorInstance);
+  const mockVocabularyDictionary = vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined)
+  }));
+  const mockJournalParser = vi.fn().mockImplementation(() => ({}));
+  const mockCompendiumParser = vi.fn().mockImplementation(() => ({}));
+  const mockChapterTracker = vi.fn().mockImplementation(() => ({}));
+  const mockSceneDetector = vi.fn().mockImplementation(() => ({}));
+  const mockAIAssistantInstance = {
+    setRAGProvider: vi.fn(),
+    setSilenceDetector: vi.fn()
   };
-});
-
-vi.mock('../../scripts/ai/TranscriptionFactory.mjs', () => ({
-  TranscriptionFactory: {
-    create: vi.fn().mockResolvedValue({
-      transcribe: vi.fn(),
-      validateApiKey: vi.fn()
-    })
-  }
-}));
-
-vi.mock('../../scripts/ai/ImageGenerationService.mjs', () => {
-  class MockImageGenerationService {
-    constructor() {
-      this.generateImage = vi.fn();
-    }
-  }
-
-  return {
-    ImageGenerationService: MockImageGenerationService
-  };
-});
-
-vi.mock('../../scripts/kanka/KankaService.mjs', () => {
-  class MockKankaService {
-    constructor() {
-      this.createJournal = vi.fn();
-      this.validateApiToken = vi.fn();
-    }
-  }
-
-  return {
-    KankaService: MockKankaService
-  };
-});
-
-vi.mock('../../scripts/ai/EntityExtractor.mjs', () => {
-  class MockEntityExtractor {
-    constructor() {
-      this.extractEntities = vi.fn();
-    }
-  }
-
-  return {
-    EntityExtractor: MockEntityExtractor
-  };
-});
-
-vi.mock('../../scripts/ai/OpenAIClient.mjs', () => {
-  class MockOpenAIClient {
-    constructor(apiKey) {
-      this.apiKey = apiKey;
-    }
-  }
-
-  return {
-    OpenAIClient: MockOpenAIClient
-  };
-});
-
-vi.mock('../../scripts/kanka/NarrativeExporter.mjs', () => {
-  class MockNarrativeExporter {
-    constructor() {
-      this.export = vi.fn();
-      this.setOpenAIClient = vi.fn();
-    }
-  }
-
-  return {
-    NarrativeExporter: MockNarrativeExporter
-  };
-});
-
-vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => {
-  class MockVocabularyDictionary {
-    constructor() {
-      this.initialize = vi.fn().mockResolvedValue(undefined);
-    }
-  }
-
-  return {
-    VocabularyDictionary: MockVocabularyDictionary
-  };
-});
-
-vi.mock('../../scripts/narrator/JournalParser.mjs', () => {
-  class MockJournalParser {
-    constructor() {
-      this.parseJournal = vi.fn();
-      this.clearCache = vi.fn();
-    }
-  }
-  return { JournalParser: MockJournalParser };
-});
-
-vi.mock('../../scripts/narrator/CompendiumParser.mjs', () => {
-  class MockCompendiumParser {
-    constructor() {
-      this.parseCompendium = vi.fn();
-    }
-  }
-  return { CompendiumParser: MockCompendiumParser };
-});
-
-vi.mock('../../scripts/narrator/ChapterTracker.mjs', () => {
-  class MockChapterTracker {
-    constructor({ journalParser } = {}) {
-      this.journalParser = journalParser;
-      this.updateFromScene = vi.fn();
-    }
-  }
-  return { ChapterTracker: MockChapterTracker };
-});
-
-vi.mock('../../scripts/narrator/SceneDetector.mjs', () => {
-  class MockSceneDetector {
-    constructor() {
-      this.detectTransition = vi.fn();
-    }
-  }
-  return { SceneDetector: MockSceneDetector };
-});
-
-vi.mock('../../scripts/narrator/AIAssistant.mjs', () => {
-  class MockAIAssistant {
-    constructor({ openaiClient, primaryLanguage } = {}) {
-      this.openaiClient = openaiClient;
-      this.primaryLanguage = primaryLanguage;
-      this.generateSuggestion = vi.fn();
-      this.setRAGRetriever = vi.fn();
-      this.setSilenceDetector = vi.fn();
-    }
-  }
-  return { AIAssistant: MockAIAssistant };
-});
-
-vi.mock('../../scripts/narrator/RulesReference.mjs', () => {
-  class MockRulesReference {
-    constructor({ language } = {}) {
-      this.language = language;
-      this.lookupRule = vi.fn();
-    }
-  }
-  return { RulesReference: MockRulesReference };
-});
-
-vi.mock('../../scripts/narrator/SessionAnalytics.mjs', () => {
-  class MockSessionAnalytics {
-    constructor() {
-      this.addSegment = vi.fn();
-    }
-  }
-  return { SessionAnalytics: MockSessionAnalytics };
-});
-
-// Mock RAG services
-vi.mock('../../scripts/ai/OpenAIClient.mjs', () => {
-  class MockOpenAIClient {
-    constructor(apiKey) {
-      this.apiKey = apiKey;
-      this.isConfigured = !!apiKey;
-      this.post = vi.fn().mockResolvedValue({ data: [{ embedding: [0.1, 0.2, 0.3] }] });
-    }
-  }
-  return { OpenAIClient: MockOpenAIClient };
-});
-
-vi.mock('../../scripts/ai/EmbeddingService.mjs', () => {
-  class MockEmbeddingService {
-    constructor(options) {
-      this.options = options;
-      this.embed = vi.fn().mockResolvedValue([0.1, 0.2, 0.3]);
-      this.isConfigured = vi.fn().mockReturnValue(true);
-    }
-  }
-  return { EmbeddingService: MockEmbeddingService };
-});
-
-vi.mock('../../scripts/ai/RAGVectorStore.mjs', () => {
-  class MockRAGVectorStore {
-    constructor(options) {
-      this.options = options;
-      this.initialize = vi.fn().mockResolvedValue(undefined);
-      this.isConfigured = vi.fn().mockReturnValue(true);
-      this.search = vi.fn().mockResolvedValue([]);
-      this.add = vi.fn().mockResolvedValue('test-id');
-    }
-  }
-  return { RAGVectorStore: MockRAGVectorStore };
-});
-
-vi.mock('../../scripts/narrator/RAGRetriever.mjs', () => {
-  class MockRAGRetriever {
-    constructor(options) {
-      this.options = options;
-      this.retrieve = vi.fn().mockResolvedValue([]);
-      this.buildIndex = vi.fn().mockResolvedValue({ journalChunks: 0, compendiumChunks: 0 });
-      this.isConfigured = vi.fn().mockReturnValue(true);
-    }
-  }
-  return { RAGRetriever: MockRAGRetriever };
-});
-
-vi.mock('../../scripts/narrator/SilenceDetector.mjs', () => {
-  class MockSilenceDetector {
-    constructor(options) {
-      this.options = options;
-      this.start = vi.fn();
-      this.stop = vi.fn();
-      this.recordActivity = vi.fn();
-      this.setThreshold = vi.fn();
-    }
-  }
-  return { SilenceDetector: MockSilenceDetector };
-});
-
-vi.mock('../../scripts/core/Settings.mjs', () => ({
-  Settings: {
-    getRAGSettings: vi.fn().mockReturnValue({
-      enabled: true,
-      embeddingModel: 'text-embedding-3-small',
-      embeddingDimensions: 512,
-      chunkSize: 500,
-      chunkOverlap: 100,
-      similarityThreshold: 0.7,
-      maxResults: 5,
-      storageLimitMB: 100,
-      silenceThresholdMs: 30000,
-      autoIndex: true
-    })
-  }
-}));
-
-// Import after mocks are set up
-import { VoxChronicle } from '../../scripts/core/VoxChronicle.mjs';
-import { TranscriptionFactory } from '../../scripts/ai/TranscriptionFactory.mjs';
-
-/**
- * Setup global game object with mocked Foundry VTT API
- */
-function setupFoundryMocks(settingsData = {}) {
-  const defaultSettings = {
-    'vox-chronicle.openaiApiKey': 'test-openai-key',
-    'vox-chronicle.kankaApiToken': 'test-kanka-token',
-    'vox-chronicle.kankaCampaignId': '12345',
-    'vox-chronicle.echoCancellation': true,
-    'vox-chronicle.noiseSuppression': true,
-    'vox-chronicle.transcriptionMode': 'auto',
-    'vox-chronicle.whisperBackendUrl': 'http://localhost:8080',
-    'vox-chronicle.speakerLabels': {},
-    'vox-chronicle.transcriptionLanguage': '',
-    'vox-chronicle.rulesDetection': true,
-    'vox-chronicle.debugMode': false,
-    ...settingsData
-  };
-
-  globalThis.game = {
-    settings: createMockSettings(defaultSettings),
-    i18n: createMockI18n({
-      'VOXCHRONICLE.Kanka.TokenExpiringCritical': 'Kanka API token expires in {days} days!',
-      'VOXCHRONICLE.Kanka.TokenExpiringUrgent': 'Kanka API token expires in {days} days.',
-      'VOXCHRONICLE.Kanka.TokenExpiring': 'Kanka API token expires in {days} days.'
-    }),
-    ready: true
-  };
-
-  globalThis.ui = {
-    notifications: {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
-    }
-  };
-
-  globalThis.console = {
-    log: vi.fn(),
+  const mockAIAssistant = vi.fn().mockImplementation(() => mockAIAssistantInstance);
+  const mockRulesReference = vi.fn().mockImplementation(() => ({}));
+  const mockSessionAnalytics = vi.fn().mockImplementation(() => ({}));
+  const mockOpenAIClient = vi.fn().mockImplementation(() => ({}));
+  const mockLoggerChild = {
+    info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-    info: vi.fn()
+    debug: vi.fn()
   };
+  const mockSetDebugMode = vi.fn();
+  const mockRAGProviderInstance = {
+    initialize: vi.fn().mockResolvedValue(undefined),
+    getVectorStoreId: vi.fn().mockReturnValue('vs-test-123')
+  };
+  const mockRAGProviderFactoryCreate = vi.fn().mockReturnValue(mockRAGProviderInstance);
+  const mockSilenceDetector = vi.fn().mockImplementation(() => ({}));
+  const mockSettingsModule = {
+    getRAGSettings: vi.fn().mockReturnValue({
+      enabled: false,
+      provider: 'openai-file-search',
+      maxResults: 5,
+      autoIndex: true,
+      silenceThresholdMs: 3000,
+      vectorStoreId: null,
+      campaignId: 'test-campaign'
+    }),
+    setRAGVectorStoreId: vi.fn().mockResolvedValue(undefined)
+  };
+  return {
+    mockAudioRecorder, mockTranscriptionFactoryCreate, mockImageGenerationService,
+    mockKankaService, mockEntityExtractor, mockNarrativeExporter,
+    mockSessionOrchestratorInstance, mockSessionOrchestrator, mockVocabularyDictionary,
+    mockJournalParser, mockCompendiumParser, mockChapterTracker, mockSceneDetector,
+    mockAIAssistantInstance, mockAIAssistant, mockRulesReference, mockSessionAnalytics,
+    mockOpenAIClient, mockLoggerChild, mockSetDebugMode,
+    mockRAGProviderInstance, mockRAGProviderFactoryCreate, mockSilenceDetector,
+    mockSettingsModule
+  };
+});
+
+// ── Mock all imported dependencies ──────────────────────────────────────
+
+vi.mock('../../scripts/audio/AudioRecorder.mjs', () => ({
+  AudioRecorder: mockAudioRecorder
+}));
+vi.mock('../../scripts/ai/TranscriptionFactory.mjs', () => ({
+  TranscriptionFactory: { create: mockTranscriptionFactoryCreate }
+}));
+vi.mock('../../scripts/ai/ImageGenerationService.mjs', () => ({
+  ImageGenerationService: mockImageGenerationService
+}));
+vi.mock('../../scripts/kanka/KankaService.mjs', () => ({
+  KankaService: mockKankaService
+}));
+vi.mock('../../scripts/ai/EntityExtractor.mjs', () => ({
+  EntityExtractor: mockEntityExtractor
+}));
+vi.mock('../../scripts/kanka/NarrativeExporter.mjs', () => ({
+  NarrativeExporter: mockNarrativeExporter
+}));
+vi.mock('../../scripts/orchestration/SessionOrchestrator.mjs', () => ({
+  SessionOrchestrator: mockSessionOrchestrator
+}));
+vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({
+  VocabularyDictionary: mockVocabularyDictionary
+}));
+vi.mock('../../scripts/narrator/JournalParser.mjs', () => ({
+  JournalParser: mockJournalParser
+}));
+vi.mock('../../scripts/narrator/CompendiumParser.mjs', () => ({
+  CompendiumParser: mockCompendiumParser
+}));
+vi.mock('../../scripts/narrator/ChapterTracker.mjs', () => ({
+  ChapterTracker: mockChapterTracker
+}));
+vi.mock('../../scripts/narrator/SceneDetector.mjs', () => ({
+  SceneDetector: mockSceneDetector
+}));
+vi.mock('../../scripts/narrator/AIAssistant.mjs', () => ({
+  AIAssistant: mockAIAssistant
+}));
+vi.mock('../../scripts/narrator/RulesReference.mjs', () => ({
+  RulesReference: mockRulesReference
+}));
+vi.mock('../../scripts/narrator/SessionAnalytics.mjs', () => ({
+  SessionAnalytics: mockSessionAnalytics
+}));
+vi.mock('../../scripts/ai/OpenAIClient.mjs', () => ({
+  OpenAIClient: mockOpenAIClient
+}));
+vi.mock('../../scripts/utils/Logger.mjs', () => ({
+  Logger: {
+    createChild: vi.fn(() => mockLoggerChild),
+    setDebugMode: mockSetDebugMode
+  }
+}));
+vi.mock('../../scripts/rag/RAGProviderFactory.mjs', () => ({
+  RAGProviderFactory: { create: mockRAGProviderFactoryCreate }
+}));
+vi.mock('../../scripts/narrator/SilenceDetector.mjs', () => ({
+  SilenceDetector: mockSilenceDetector
+}));
+vi.mock('../../scripts/core/Settings.mjs', () => ({
+  Settings: mockSettingsModule
+}));
+
+// ── Import the class under test (after all vi.mock calls) ───────────────
+import { VoxChronicle } from '../../scripts/core/VoxChronicle.mjs';
+
+const MODULE_ID = 'vox-chronicle';
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Configure game.settings.get to return specific values for known keys.
+ * Keys not in the map return undefined (the foundry-mock default).
+ */
+function configureSettings(settingsMap) {
+  game.settings.get.mockImplementation((module, key) => {
+    const fullKey = `${module}.${key}`;
+    if (settingsMap.hasOwnProperty(key)) {
+      return settingsMap[key];
+    }
+    if (settingsMap.hasOwnProperty(fullKey)) {
+      return settingsMap[fullKey];
+    }
+    return undefined;
+  });
 }
 
 /**
- * Cleanup global mocks
+ * Returns a full settings map with reasonable defaults for a complete initialization.
  */
-function cleanupFoundryMocks() {
-  delete globalThis.game;
-  delete globalThis.ui;
-  globalThis.console = console;
+function fullSettings(overrides = {}) {
+  return {
+    openaiApiKey: 'sk-test-key-123',
+    kankaApiToken: 'kanka-token-abc',
+    kankaCampaignId: 'camp-456',
+    echoCancellation: true,
+    noiseSuppression: true,
+    transcriptionMode: 'cloud',
+    whisperBackendUrl: '',
+    transcriptionLanguage: 'en',
+    kankaApiTokenCreatedAt: null,
+    rulesDetection: true,
+    debugMode: false,
+    ragEnabled: false,
+    ...overrides
+  };
 }
+
+// ── Test Suite ───────────────────────────────────────────────────────────
 
 describe('VoxChronicle', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset singleton state between tests
     VoxChronicle.resetInstance();
-    setupFoundryMocks();
+
+    // Clear all mock call records
+    vi.clearAllMocks();
+
+    // Re-establish mock implementations (vi.restoreAllMocks in afterEach clears them)
+    mockAudioRecorder.mockImplementation(() => ({}));
+    mockTranscriptionFactoryCreate.mockResolvedValue({ type: 'cloud' });
+    mockImageGenerationService.mockImplementation(() => ({}));
+    mockKankaService.mockImplementation(() => ({}));
+    mockEntityExtractor.mockImplementation(() => ({}));
+    mockNarrativeExporter.mockImplementation(() => ({ setOpenAIClient: vi.fn() }));
+    mockSessionOrchestratorInstance.setTranscriptionConfig = vi.fn();
+    mockSessionOrchestratorInstance.setNarratorServices = vi.fn();
+    mockSessionOrchestrator.mockImplementation(() => mockSessionOrchestratorInstance);
+    mockVocabularyDictionary.mockImplementation(() => ({
+      initialize: vi.fn().mockResolvedValue(undefined)
+    }));
+    mockJournalParser.mockImplementation(() => ({}));
+    mockCompendiumParser.mockImplementation(() => ({}));
+    mockChapterTracker.mockImplementation(() => ({}));
+    mockSceneDetector.mockImplementation(() => ({}));
+    mockAIAssistantInstance.setRAGProvider = vi.fn();
+    mockAIAssistantInstance.setSilenceDetector = vi.fn();
+    mockAIAssistant.mockImplementation(() => mockAIAssistantInstance);
+    mockRulesReference.mockImplementation(() => ({}));
+    mockSessionAnalytics.mockImplementation(() => ({}));
+    mockOpenAIClient.mockImplementation(() => ({}));
+    mockLoggerChild.info = vi.fn();
+    mockLoggerChild.warn = vi.fn();
+    mockLoggerChild.error = vi.fn();
+    mockLoggerChild.debug = vi.fn();
+    mockSetDebugMode.mockReset();
+    mockRAGProviderInstance.initialize = vi.fn().mockResolvedValue(undefined);
+    mockRAGProviderInstance.getVectorStoreId = vi.fn().mockReturnValue('vs-test-123');
+    mockRAGProviderFactoryCreate.mockReturnValue(mockRAGProviderInstance);
+    mockSilenceDetector.mockImplementation(() => ({}));
+    mockSettingsModule.getRAGSettings.mockReturnValue({
+      enabled: false, provider: 'openai-file-search', maxResults: 5,
+      autoIndex: true, silenceThresholdMs: 3000, vectorStoreId: null,
+      campaignId: 'test-campaign'
+    });
+    mockSettingsModule.setRAGVectorStoreId = vi.fn().mockResolvedValue(undefined);
+
+    // Configure default settings that return null for everything (simulates unconfigured)
+    configureSettings({});
   });
 
-  afterEach(() => {
-    cleanupFoundryMocks();
-    VoxChronicle.resetInstance();
-    vi.restoreAllMocks();
-  });
+  // ====================================================================
+  // Singleton Pattern
+  // ====================================================================
 
   describe('Singleton Pattern', () => {
-    it('should create new instance on first call', () => {
-      const instance = VoxChronicle.getInstance();
-
-      expect(instance).toBeInstanceOf(VoxChronicle);
-      expect(instance.isInitialized).toBe(false);
-    });
-
-    it('should return same instance on subsequent calls', () => {
+    it('should return the same instance on multiple getInstance() calls', () => {
       const instance1 = VoxChronicle.getInstance();
       const instance2 = VoxChronicle.getInstance();
-
       expect(instance1).toBe(instance2);
     });
 
-    it('should reset instance when resetInstance is called', () => {
-      const instance1 = VoxChronicle.getInstance();
-      instance1.isInitialized = true;
-
-      VoxChronicle.resetInstance();
-
+    it('should create a new instance if none exists', () => {
       expect(VoxChronicle.instance).toBeNull();
-
-      const instance2 = VoxChronicle.getInstance();
-      expect(instance2).not.toBe(instance1);
-      expect(instance2.isInitialized).toBe(false);
+      const instance = VoxChronicle.getInstance();
+      expect(instance).toBeInstanceOf(VoxChronicle);
+      expect(VoxChronicle.instance).toBe(instance);
     });
 
-    it('should properly reset state when resetInstance is called on existing instance', () => {
+    it('should have all service properties set to null initially', () => {
       const instance = VoxChronicle.getInstance();
-      instance.isInitialized = true;
-
-      VoxChronicle.resetInstance();
-
-      // Instance should be nullified
-      expect(VoxChronicle.instance).toBeNull();
-    });
-  });
-
-  describe('Constructor', () => {
-    it('should initialize with null services', () => {
-      const instance = VoxChronicle.getInstance();
-
       expect(instance.audioRecorder).toBeNull();
       expect(instance.transcriptionService).toBeNull();
       expect(instance.imageGenerationService).toBeNull();
@@ -450,516 +300,1107 @@ describe('VoxChronicle', () => {
       expect(instance.aiAssistant).toBeNull();
       expect(instance.rulesReference).toBeNull();
       expect(instance.sessionAnalytics).toBeNull();
+      expect(instance.ragProvider).toBeNull();
+      expect(instance.silenceDetector).toBeNull();
     });
 
-    it('should initialize with default state', () => {
+    it('should not be initialized initially', () => {
       const instance = VoxChronicle.getInstance();
-
       expect(instance.isInitialized).toBe(false);
     });
   });
 
-  describe('Service Initialization', () => {
-    it('should initialize all services with proper settings', async () => {
+  // ====================================================================
+  // resetInstance
+  // ====================================================================
+
+  describe('resetInstance', () => {
+    it('should set the static instance to null', () => {
+      VoxChronicle.getInstance();
+      expect(VoxChronicle.instance).not.toBeNull();
+
+      VoxChronicle.resetInstance();
+      expect(VoxChronicle.instance).toBeNull();
+    });
+
+    it('should set isInitialized to false on the existing instance before nullifying', () => {
       const instance = VoxChronicle.getInstance();
+      instance.isInitialized = true;
+
+      VoxChronicle.resetInstance();
+      // The old instance should have been set to not initialized
+      expect(instance.isInitialized).toBe(false);
+      expect(VoxChronicle.instance).toBeNull();
+    });
+
+    it('should allow creating a fresh instance after reset', () => {
+      const instance1 = VoxChronicle.getInstance();
+      VoxChronicle.resetInstance();
+      const instance2 = VoxChronicle.getInstance();
+
+      expect(instance1).not.toBe(instance2);
+    });
+
+    it('should handle reset when no instance exists', () => {
+      // Should not throw
+      expect(() => VoxChronicle.resetInstance()).not.toThrow();
+      expect(VoxChronicle.instance).toBeNull();
+    });
+  });
+
+  // ====================================================================
+  // _getSetting
+  // ====================================================================
+
+  describe('_getSetting', () => {
+    it('should return a setting value from game.settings', () => {
+      configureSettings({ openaiApiKey: 'my-key' });
+      const instance = VoxChronicle.getInstance();
+
+      const result = instance._getSetting('openaiApiKey');
+      expect(result).toBe('my-key');
+      expect(game.settings.get).toHaveBeenCalledWith(MODULE_ID, 'openaiApiKey');
+    });
+
+    it('should return null when the setting does not exist', () => {
+      game.settings.get.mockImplementation(() => {
+        throw new Error('Setting not registered');
+      });
+
+      const instance = VoxChronicle.getInstance();
+      const result = instance._getSetting('nonexistentKey');
+      expect(result).toBeNull();
+    });
+
+    it('should return null when game.settings.get throws', () => {
+      game.settings.get.mockImplementation(() => {
+        throw new TypeError('Cannot read properties');
+      });
+
+      const instance = VoxChronicle.getInstance();
+      expect(instance._getSetting('anything')).toBeNull();
+    });
+
+    it('should return falsy values correctly (not treat them as errors)', () => {
+      configureSettings({ debugMode: false });
+      const instance = VoxChronicle.getInstance();
+
+      expect(instance._getSetting('debugMode')).toBe(false);
+    });
+
+    it('should return 0 correctly', () => {
+      configureSettings({ maxImagesPerSession: 0 });
+      const instance = VoxChronicle.getInstance();
+
+      expect(instance._getSetting('maxImagesPerSession')).toBe(0);
+    });
+
+    it('should return empty string correctly', () => {
+      configureSettings({ openaiApiKey: '' });
+      const instance = VoxChronicle.getInstance();
+
+      expect(instance._getSetting('openaiApiKey')).toBe('');
+    });
+  });
+
+  // ====================================================================
+  // initialize()
+  // ====================================================================
+
+  describe('initialize', () => {
+    it('should skip if already initialized', async () => {
+      const instance = VoxChronicle.getInstance();
+      instance.isInitialized = true;
+
       await instance.initialize();
 
+      expect(mockAudioRecorder).not.toHaveBeenCalled();
+      expect(mockLoggerChild.warn).toHaveBeenCalledWith('VoxChronicle already initialized');
+    });
+
+    it('should initialize all services with full configuration', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      // Audio recorder always created
+      expect(mockAudioRecorder).toHaveBeenCalledWith({
+        echoCancellation: true,
+        noiseSuppression: true
+      });
+
+      // Transcription factory called
+      expect(mockTranscriptionFactoryCreate).toHaveBeenCalledWith({
+        mode: 'cloud',
+        openaiApiKey: 'sk-test-key-123',
+        whisperBackendUrl: ''
+      });
+
+      // OpenAI-dependent services created
+      expect(mockImageGenerationService).toHaveBeenCalledWith('sk-test-key-123');
+      expect(mockEntityExtractor).toHaveBeenCalledWith('sk-test-key-123');
+
+      // Kanka services created
+      expect(mockKankaService).toHaveBeenCalledWith('kanka-token-abc', 'camp-456');
+      expect(mockNarrativeExporter).toHaveBeenCalled();
+
+      // Orchestrator created and configured
+      expect(mockSessionOrchestrator).toHaveBeenCalledWith({
+        audioRecorder: expect.any(Object),
+        transcriptionService: expect.any(Object),
+        entityExtractor: expect.any(Object),
+        imageGenerationService: expect.any(Object),
+        kankaService: expect.any(Object),
+        narrativeExporter: expect.any(Object)
+      });
+      expect(mockSessionOrchestratorInstance.setTranscriptionConfig).toHaveBeenCalledWith({
+        mode: 'cloud',
+        openaiApiKey: 'sk-test-key-123',
+        whisperBackendUrl: ''
+      });
+
+      // Narrator services created
+      expect(mockJournalParser).toHaveBeenCalled();
+      expect(mockCompendiumParser).toHaveBeenCalled();
+      expect(mockChapterTracker).toHaveBeenCalled();
+      expect(mockSceneDetector).toHaveBeenCalled();
+      expect(mockSessionAnalytics).toHaveBeenCalled();
+
+      // AI Assistant created with OpenAI key
+      expect(mockAIAssistant).toHaveBeenCalledWith({
+        openaiClient: expect.any(Object),
+        primaryLanguage: 'en'
+      });
+
+      // Rules reference created
+      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'en' });
+
+      // Narrator services connected to orchestrator
+      expect(mockSessionOrchestratorInstance.setNarratorServices).toHaveBeenCalledWith({
+        aiAssistant: expect.any(Object),
+        chapterTracker: expect.any(Object),
+        sceneDetector: expect.any(Object),
+        sessionAnalytics: expect.any(Object),
+        journalParser: expect.any(Object)
+      });
+
+      // Module marked as initialized
       expect(instance.isInitialized).toBe(true);
-      expect(instance.audioRecorder).toBeTruthy();
-      // Transcription service may or may not initialize depending on factory mock
-      expect(instance.imageGenerationService).toBeTruthy();
-      expect(instance.entityExtractor).toBeTruthy();
-      expect(instance.kankaService).toBeTruthy();
-      expect(instance.narrativeExporter).toBeTruthy();
-      expect(instance.sessionOrchestrator).toBeTruthy();
-
-      expect(TranscriptionFactory.create).toHaveBeenCalledWith({
-        mode: 'auto',
-        openaiApiKey: 'test-openai-key',
-        whisperBackendUrl: 'http://localhost:8080'
-      });
     });
 
-    it('should prevent double initialization', async () => {
+    it('should initialize without OpenAI API key', async () => {
+      configureSettings(fullSettings({
+        openaiApiKey: null
+      }));
       const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      // Clear mocks and save references
-      const firstAudioRecorder = instance.audioRecorder;
-      const firstTranscriptionService = instance.transcriptionService;
-
-      vi.clearAllMocks();
 
       await instance.initialize();
 
-      // Services should not be re-created
-      expect(instance.audioRecorder).toBe(firstAudioRecorder);
-      expect(instance.transcriptionService).toBe(firstTranscriptionService);
-      expect(TranscriptionFactory.create).not.toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('already initialized'));
-    });
+      // Warn about missing key
+      expect(mockLoggerChild.warn).toHaveBeenCalledWith('OpenAI API key not configured');
 
-    it('should initialize audio recorder regardless of API keys', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.openaiApiKey': '',
-        'vox-chronicle.kankaApiToken': ''
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      expect(instance.audioRecorder).toBeTruthy();
-    });
-
-    it('should handle missing OpenAI API key gracefully', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.openaiApiKey': ''
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      expect(instance.isInitialized).toBe(true);
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('OpenAI API key not configured')
-      );
-    });
-
-    it('should not initialize OpenAI services if API key missing', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.openaiApiKey': ''
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
+      // OpenAI-dependent services not created
+      expect(mockImageGenerationService).not.toHaveBeenCalled();
+      expect(mockEntityExtractor).not.toHaveBeenCalled();
+      expect(mockAIAssistant).not.toHaveBeenCalled();
 
       expect(instance.imageGenerationService).toBeNull();
       expect(instance.entityExtractor).toBeNull();
-    });
+      expect(instance.aiAssistant).toBeNull();
 
-    it('should handle missing Kanka settings gracefully', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiToken': '',
-        'vox-chronicle.kankaCampaignId': ''
-      });
+      // Audio recorder still created
+      expect(mockAudioRecorder).toHaveBeenCalled();
 
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
+      // Narrator services that don't need API key still created
+      expect(mockJournalParser).toHaveBeenCalled();
+      expect(mockSceneDetector).toHaveBeenCalled();
 
+      // Still marked as initialized
       expect(instance.isInitialized).toBe(true);
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Kanka API settings not configured')
-      );
     });
 
-    it('should not initialize Kanka services if settings missing', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiToken': '',
-        'vox-chronicle.kankaCampaignId': ''
-      });
-
+    it('should not warn about missing OpenAI key when transcriptionMode is local', async () => {
+      configureSettings(fullSettings({
+        openaiApiKey: null,
+        transcriptionMode: 'local'
+      }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
+      // Should NOT have the "OpenAI API key not configured" warning
+      const warnCalls = mockLoggerChild.warn.mock.calls.map(c => c[0]);
+      expect(warnCalls).not.toContain('OpenAI API key not configured');
+    });
+
+    it('should warn about missing OpenAI key when transcriptionMode is cloud', async () => {
+      configureSettings(fullSettings({
+        openaiApiKey: null,
+        transcriptionMode: 'cloud'
+      }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockLoggerChild.warn).toHaveBeenCalledWith('OpenAI API key not configured');
+    });
+
+    it('should initialize without Kanka settings', async () => {
+      configureSettings(fullSettings({
+        kankaApiToken: null,
+        kankaCampaignId: null
+      }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockLoggerChild.warn).toHaveBeenCalledWith('Kanka API settings not configured');
+      expect(mockKankaService).not.toHaveBeenCalled();
+      expect(mockNarrativeExporter).not.toHaveBeenCalled();
       expect(instance.kankaService).toBeNull();
       expect(instance.narrativeExporter).toBeNull();
     });
 
-    it('should initialize transcription service with factory', async () => {
+    it('should not create Kanka service when only token is present but no campaign ID', async () => {
+      configureSettings(fullSettings({
+        kankaApiToken: 'token',
+        kankaCampaignId: null
+      }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
-      // Verify factory was called with correct parameters
-      expect(TranscriptionFactory.create).toHaveBeenCalledWith({
-        mode: 'auto',
-        openaiApiKey: 'test-openai-key',
-        whisperBackendUrl: 'http://localhost:8080'
-      });
-
-      // Service may or may not be set depending on if factory succeeded
-      // The important thing is that it was called
+      expect(mockKankaService).not.toHaveBeenCalled();
     });
 
-    it('should handle transcription service creation failure', async () => {
-      TranscriptionFactory.create.mockRejectedValueOnce(new Error('Factory failed'));
-
+    it('should not create Kanka service when only campaign ID is present but no token', async () => {
+      configureSettings(fullSettings({
+        kankaApiToken: null,
+        kankaCampaignId: 'camp-123'
+      }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
-      expect(instance.transcriptionService).toBeNull();
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(mockKankaService).not.toHaveBeenCalled();
+    });
+
+    it('should set OpenAI client on narrative exporter when transcription service exists', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      // NarrativeExporter.setOpenAIClient should have been called
+      const exporterInstance = mockNarrativeExporter.mock.results[0].value;
+      expect(exporterInstance.setOpenAIClient).toHaveBeenCalledWith('sk-test-key-123');
+    });
+
+    it('should not set OpenAI client on narrative exporter when transcription service fails', async () => {
+      mockTranscriptionFactoryCreate.mockRejectedValueOnce(new Error('No backend'));
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      // Narrative exporter still created but setOpenAIClient not called
+      const exporterInstance = mockNarrativeExporter.mock.results[0].value;
+      expect(exporterInstance.setOpenAIClient).not.toHaveBeenCalled();
+    });
+
+    it('should handle TranscriptionFactory.create failure gracefully', async () => {
+      mockTranscriptionFactoryCreate.mockRejectedValueOnce(new Error('Backend unreachable'));
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      // Should log the warning and continue
+      expect(mockLoggerChild.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to create transcription service')
       );
-      // Should still complete initialization
+      expect(instance.transcriptionService).toBeNull();
+      // Other services should still initialize
       expect(instance.isInitialized).toBe(true);
     });
 
-    it('should set OpenAI client on narrative exporter if transcription service exists', async () => {
+    it('should use default transcriptionMode "auto" when not configured', async () => {
+      configureSettings(fullSettings({ transcriptionMode: null }));
       const instance = VoxChronicle.getInstance();
-
-      // Ensure transcription service is set
-      instance.transcriptionService = {
-        transcribe: vi.fn(),
-        validateApiKey: vi.fn()
-      };
 
       await instance.initialize();
 
-      // If transcription service exists and Kanka is configured, setOpenAIClient should be called
-      if (instance.narrativeExporter && instance.transcriptionService) {
-        expect(instance.narrativeExporter.setOpenAIClient).toHaveBeenCalledWith('test-openai-key');
-      }
+      expect(mockTranscriptionFactoryCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'auto' })
+      );
     });
 
-    it('should create session orchestrator with all available services', async () => {
+    it('should use default echoCancellation and noiseSuppression when not configured', async () => {
+      configureSettings(fullSettings({
+        echoCancellation: null,
+        noiseSuppression: null
+      }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
-      expect(instance.sessionOrchestrator).toBeTruthy();
-      expect(instance.sessionOrchestrator.services).toEqual({
-        audioRecorder: instance.audioRecorder,
-        transcriptionService: instance.transcriptionService,
-        entityExtractor: instance.entityExtractor,
-        imageGenerationService: instance.imageGenerationService,
-        kankaService: instance.kankaService,
-        narrativeExporter: instance.narrativeExporter
+      expect(mockAudioRecorder).toHaveBeenCalledWith({
+        echoCancellation: true,
+        noiseSuppression: true
       });
     });
 
-    it('should set transcription config on session orchestrator', async () => {
+    it('should not create rules reference when rulesDetection is false', async () => {
+      configureSettings(fullSettings({ rulesDetection: false }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
-      expect(instance.sessionOrchestrator.setTranscriptionConfig).toHaveBeenCalledWith({
-        mode: 'auto',
-        openaiApiKey: 'test-openai-key',
-        whisperBackendUrl: 'http://localhost:8080'
-      });
-    });
-
-    it('should initialize vocabulary dictionary', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      // VocabularyDictionary is created and initialized during VoxChronicle.initialize()
-      // We can't easily verify this without exposing the dictionary instance,
-      // but we can verify that initialization completes successfully
-      expect(instance.isInitialized).toBe(true);
-    });
-
-    it('should throw error if initialization fails critically', async () => {
-      // Mock console.log to throw during initialization
-      console.log = vi.fn().mockImplementation((msg) => {
-        if (msg && msg.includes('Initializing VoxChronicle services')) {
-          throw new Error('Critical initialization error');
-        }
-      });
-
-      const instance = VoxChronicle.getInstance();
-
-      // Should reject with the error
-      await expect(instance.initialize()).rejects.toThrow('Critical initialization error');
-
-      // Should not mark as initialized
-      expect(instance.isInitialized).toBe(false);
-    });
-  });
-
-  describe('Narrator Master Service Initialization', () => {
-    it('should initialize all narrator services', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      expect(instance.journalParser).toBeTruthy();
-      expect(instance.compendiumParser).toBeTruthy();
-      expect(instance.chapterTracker).toBeTruthy();
-      expect(instance.sceneDetector).toBeTruthy();
-      expect(instance.sessionAnalytics).toBeTruthy();
-    });
-
-    it('should initialize AIAssistant when OpenAI is configured', async () => {
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      expect(instance.aiAssistant).toBeTruthy();
-    });
-
-    it('should not initialize AIAssistant when OpenAI is missing', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.openaiApiKey': ''
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      expect(instance.aiAssistant).toBeNull();
-    });
-
-    it('should initialize RulesReference when rulesDetection is enabled', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.rulesDetection': true
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      expect(instance.rulesReference).toBeTruthy();
-    });
-
-    it('should not initialize RulesReference when rulesDetection is disabled', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.rulesDetection': false
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
+      expect(mockRulesReference).not.toHaveBeenCalled();
       expect(instance.rulesReference).toBeNull();
     });
 
-    it('should pass JournalParser to ChapterTracker', async () => {
+    it('should create rules reference when rulesDetection is true', async () => {
+      configureSettings(fullSettings({ rulesDetection: true }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
-      expect(instance.chapterTracker.journalParser).toBe(instance.journalParser);
+      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'en' });
     });
 
-    it('should pass language to RulesReference', async () => {
+    it('should create rules reference when rulesDetection is undefined (not explicitly false)', async () => {
+      configureSettings(fullSettings({ rulesDetection: undefined }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
-      expect(instance.rulesReference.language).toBe('en');
+      expect(mockRulesReference).toHaveBeenCalled();
     });
 
-    it('should include narrator services in getServicesStatus', async () => {
+    it('should enable debug mode when debugMode setting is true', async () => {
+      configureSettings(fullSettings({ debugMode: true }));
       const instance = VoxChronicle.getInstance();
+
       await instance.initialize();
 
-      const status = instance.getServicesStatus();
+      expect(mockSetDebugMode).toHaveBeenCalledWith(true);
+    });
 
-      expect(status.services.journalParser).toBe(true);
-      expect(status.services.compendiumParser).toBe(true);
-      expect(status.services.chapterTracker).toBe(true);
-      expect(status.services.sceneDetector).toBe(true);
-      expect(status.services.sessionAnalytics).toBe(true);
-      expect(status.services.aiAssistant).toBe(true);
-      expect(status.services.rulesReference).toBe(true);
+    it('should not enable debug mode when debugMode setting is false', async () => {
+      configureSettings(fullSettings({ debugMode: false }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockSetDebugMode).not.toHaveBeenCalled();
+    });
+
+    it('should pass transcriptionLanguage to AIAssistant', async () => {
+      configureSettings(fullSettings({ transcriptionLanguage: 'it' }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockAIAssistant).toHaveBeenCalledWith(
+        expect.objectContaining({ primaryLanguage: 'it' })
+      );
+    });
+
+    it('should default AIAssistant language to "en" when transcriptionLanguage not set', async () => {
+      configureSettings(fullSettings({ transcriptionLanguage: null }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockAIAssistant).toHaveBeenCalledWith(
+        expect.objectContaining({ primaryLanguage: 'en' })
+      );
+    });
+
+    it('should pass aiAssistant as null to narrator services when no OpenAI key', async () => {
+      configureSettings(fullSettings({ openaiApiKey: null }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockSessionOrchestratorInstance.setNarratorServices).toHaveBeenCalledWith(
+        expect.objectContaining({ aiAssistant: null })
+      );
+    });
+
+    it('should throw and log error when initialization fails catastrophically', async () => {
+      // Simulate an error that can't be caught internally (e.g. in orchestrator constructor)
+      mockSessionOrchestrator.mockImplementationOnce(() => {
+        throw new Error('Catastrophic failure');
+      });
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      await expect(instance.initialize()).rejects.toThrow('Catastrophic failure');
+      expect(mockLoggerChild.error).toHaveBeenCalledWith(
+        'Failed to initialize services:',
+        expect.any(Error)
+      );
+      expect(instance.isInitialized).toBe(false);
+    });
+
+    it('should initialize vocabulary dictionary', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockVocabularyDictionary).toHaveBeenCalled();
+      const vocabInstance = mockVocabularyDictionary.mock.results[0].value;
+      expect(vocabInstance.initialize).toHaveBeenCalled();
+    });
+
+    it('should pass ChapterTracker the journalParser dependency', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockChapterTracker).toHaveBeenCalledWith({
+        journalParser: expect.any(Object)
+      });
     });
   });
 
-  describe('Settings Handling', () => {
-    it('should safely get existing settings', () => {
-      const instance = VoxChronicle.getInstance();
-      const value = instance._getSetting('openaiApiKey');
+  // ====================================================================
+  // _checkKankaTokenExpiration
+  // ====================================================================
 
-      expect(value).toBe('test-openai-key');
+  describe('_checkKankaTokenExpiration', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
     });
 
-    it('should return null for non-existent settings', () => {
-      const instance = VoxChronicle.getInstance();
-      const value = instance._getSetting('nonExistentSetting');
-
-      // Settings not in the initial setup return undefined from the mock
-      expect(value).toBeUndefined();
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
-    it('should handle settings errors gracefully', () => {
-      game.settings.get.mockImplementationOnce(() => {
-        throw new Error('Setting not found');
-      });
-
+    it('should return early when no Kanka API token is configured', async () => {
+      configureSettings({ kankaApiToken: null });
       const instance = VoxChronicle.getInstance();
-      const value = instance._getSetting('someSetting');
 
-      expect(value).toBeNull();
-    });
-  });
+      await instance._checkKankaTokenExpiration();
 
-  describe('Kanka Token Expiration Check', () => {
-    it('should not check if no token configured', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiToken': ''
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      // Should not show any notifications
+      // Should not call set or show any notifications
+      expect(game.settings.set).not.toHaveBeenCalled();
       expect(ui.notifications.error).not.toHaveBeenCalled();
       expect(ui.notifications.warn).not.toHaveBeenCalled();
       expect(ui.notifications.info).not.toHaveBeenCalled();
     });
 
-    it('should set timestamp on first run (migration)', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiTokenCreatedAt': null
+    it('should migrate token timestamp when token exists but no created-at date', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: null
       });
-
       const instance = VoxChronicle.getInstance();
-      const beforeTime = Date.now();
-      await instance.initialize();
-      const afterTime = Date.now();
 
+      await instance._checkKankaTokenExpiration();
+
+      // Should set the timestamp to now
       expect(game.settings.set).toHaveBeenCalledWith(
-        'vox-chronicle',
+        MODULE_ID,
         'kankaApiTokenCreatedAt',
-        expect.any(Number)
+        now
+      );
+      expect(mockLoggerChild.info).toHaveBeenCalledWith(
+        'Kanka API token timestamp initialized (migration)'
       );
 
-      const timestamp = game.settings.set.mock.calls[0][2];
-      expect(timestamp).toBeGreaterThanOrEqual(beforeTime);
-      expect(timestamp).toBeLessThanOrEqual(afterTime);
+      // Should NOT show any expiration warning on first migration
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+      expect(ui.notifications.info).not.toHaveBeenCalled();
+    });
 
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('token timestamp initialized (migration)')
+    it('should show CRITICAL error when token expires in 30 days or less', async () => {
+      // Token created 340 days ago -> 24 days remaining
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (340 * 24 * 60 * 60 * 1000);
+
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
+      });
+      const instance = VoxChronicle.getInstance();
+
+      await instance._checkKankaTokenExpiration();
+
+      expect(ui.notifications.error).toHaveBeenCalledWith(
+        expect.any(String),
+        { permanent: true }
+      );
+      expect(game.i18n.format).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Kanka.TokenExpiringCritical',
+        { days: 24 }
       );
     });
 
-    it('should show critical warning when token expires in 30 days or less', async () => {
-      const daysAgo = 364 - 25; // 25 days remaining
-      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
+    it('should show CRITICAL error when token expires in exactly 30 days', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (334 * 24 * 60 * 60 * 1000); // 364 - 334 = 30 days remaining
 
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiTokenCreatedAt': timestamp
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
       });
-
       const instance = VoxChronicle.getInstance();
-      await instance.initialize();
 
-      // Due to timing/rounding, accept 24 or 25 days
-      expect(ui.notifications.error).toHaveBeenCalled();
-      const errorCall = ui.notifications.error.mock.calls[0];
-      expect(errorCall[0]).toMatch(/2[45] days/);
-      expect(errorCall[1]).toEqual({ permanent: true });
-      expect(console.warn).toHaveBeenCalled();
+      await instance._checkKankaTokenExpiration();
+
+      expect(ui.notifications.error).toHaveBeenCalledWith(
+        expect.any(String),
+        { permanent: true }
+      );
     });
 
-    it('should show urgent warning when token expires in 31-60 days', async () => {
-      const daysAgo = 364 - 45; // 45 days remaining (approximately)
-      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
+    it('should show CRITICAL error when token has already expired (negative days)', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (400 * 24 * 60 * 60 * 1000); // 364 - 400 = -36 days
 
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiTokenCreatedAt': timestamp
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
       });
-
       const instance = VoxChronicle.getInstance();
-      await instance.initialize();
 
-      // Accept 44 or 45 days due to fractional day calculations
-      expect(ui.notifications.warn).toHaveBeenCalledWith(expect.stringMatching(/4[45] days/), {
-        permanent: true
-      });
-      expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/4[45] days \(URGENT\)/));
+      await instance._checkKankaTokenExpiration();
+
+      expect(ui.notifications.error).toHaveBeenCalledWith(
+        expect.any(String),
+        { permanent: true }
+      );
+      expect(game.i18n.format).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Kanka.TokenExpiringCritical',
+        { days: expect.any(Number) }
+      );
     });
 
-    it('should show info notification when token expires in 61-90 days', async () => {
-      const daysAgo = 364 - 75; // 75 days remaining
-      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
+    it('should show URGENT warning when token expires in 31-60 days', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (320 * 24 * 60 * 60 * 1000); // 364 - 320 = 44 days remaining
 
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiTokenCreatedAt': timestamp
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
       });
-
       const instance = VoxChronicle.getInstance();
-      await instance.initialize();
 
-      // Due to timing/rounding, accept 74 or 75 days
-      expect(ui.notifications.info).toHaveBeenCalled();
-      const infoCall = ui.notifications.info.mock.calls[0][0];
-      expect(infoCall).toMatch(/7[45] days/);
-      expect(console.info).toHaveBeenCalled();
+      await instance._checkKankaTokenExpiration();
+
+      expect(ui.notifications.warn).toHaveBeenCalledWith(
+        expect.any(String),
+        { permanent: true }
+      );
+      expect(game.i18n.format).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Kanka.TokenExpiringUrgent',
+        { days: 44 }
+      );
+      // Should NOT show error
+      expect(ui.notifications.error).not.toHaveBeenCalled();
     });
 
-    it('should not show warning when token has 91+ days remaining', async () => {
-      const daysAgo = 364 - 100; // 100 days remaining
-      const timestamp = Date.now() - daysAgo * 24 * 60 * 60 * 1000;
+    it('should show URGENT warning when token expires in exactly 60 days', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (304 * 24 * 60 * 60 * 1000); // 364 - 304 = 60
 
-      setupFoundryMocks({
-        'vox-chronicle.kankaApiTokenCreatedAt': timestamp
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
       });
-
       const instance = VoxChronicle.getInstance();
-      await instance.initialize();
+
+      await instance._checkKankaTokenExpiration();
+
+      expect(ui.notifications.warn).toHaveBeenCalledWith(
+        expect.any(String),
+        { permanent: true }
+      );
+    });
+
+    it('should show INFO notification when token expires in 61-90 days', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (290 * 24 * 60 * 60 * 1000); // 364 - 290 = 74 days remaining
+
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
+      });
+      const instance = VoxChronicle.getInstance();
+
+      await instance._checkKankaTokenExpiration();
+
+      expect(ui.notifications.info).toHaveBeenCalledWith(expect.any(String));
+      expect(game.i18n.format).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Kanka.TokenExpiring',
+        { days: 74 }
+      );
+      // Should NOT show error or warn
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+    });
+
+    it('should show INFO notification when token expires in exactly 90 days', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (274 * 24 * 60 * 60 * 1000); // 364 - 274 = 90
+
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
+      });
+      const instance = VoxChronicle.getInstance();
+
+      await instance._checkKankaTokenExpiration();
+
+      expect(ui.notifications.info).toHaveBeenCalledWith(expect.any(String));
+    });
+
+    it('should show no notification when token has more than 90 days remaining', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (100 * 24 * 60 * 60 * 1000); // 364 - 100 = 264 days remaining
+
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
+      });
+      const instance = VoxChronicle.getInstance();
+
+      await instance._checkKankaTokenExpiration();
 
       expect(ui.notifications.error).not.toHaveBeenCalled();
       expect(ui.notifications.warn).not.toHaveBeenCalled();
       expect(ui.notifications.info).not.toHaveBeenCalled();
     });
 
-    it('should handle errors in expiration check gracefully', async () => {
-      // Mock settings.set to throw error when trying to set token timestamp
-      const originalGet = game.settings.get;
-      const _originalSet = game.settings.set;
+    it('should show no notification when token was just created', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (1 * 24 * 60 * 60 * 1000); // 1 day ago -> 363 remaining
 
-      game.settings.get = vi.fn((module, key) => {
-        if (key === 'kankaApiToken') return 'test-token';
-        if (key === 'kankaApiTokenCreatedAt') return null; // Trigger migration path
-        return originalGet.call(game.settings, module, key);
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
       });
-
-      game.settings.set = vi.fn(() => {
-        throw new Error('Settings error');
-      });
-
       const instance = VoxChronicle.getInstance();
 
-      // Should not throw - error should be caught and logged
-      await expect(instance.initialize()).resolves.not.toThrow();
+      await instance._checkKankaTokenExpiration();
 
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to check Kanka token expiration'),
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+      expect(ui.notifications.info).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully without throwing', async () => {
+      // _getSetting catches its own errors, so to trigger the outer catch block
+      // we need an error in the logic after _getSetting succeeds.
+      // Make settings return valid token but have i18n.format throw.
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: Date.now() - (340 * 24 * 60 * 60 * 1000) // 24 days remaining
+      });
+      game.i18n.format.mockImplementation(() => {
+        throw new Error('i18n system broken');
+      });
+      const instance = VoxChronicle.getInstance();
+
+      // Should not throw
+      await expect(instance._checkKankaTokenExpiration()).resolves.toBeUndefined();
+      expect(mockLoggerChild.error).toHaveBeenCalledWith(
+        'Failed to check Kanka token expiration:',
         expect.any(Error)
       );
     });
-  });
 
-  describe('Service Status', () => {
-    it('should return correct services status when not initialized', () => {
-      const instance = VoxChronicle.getInstance();
-      const status = instance.getServicesStatus();
+    it('should correctly compute boundary: 31 days remaining should be URGENT not CRITICAL', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (333 * 24 * 60 * 60 * 1000); // 364 - 333 = 31
 
-      expect(status).toEqual({
-        initialized: false,
-        services: {
-          audioRecorder: false,
-          transcription: false,
-          imageGeneration: false,
-          kanka: false,
-          entityExtractor: false,
-          narrativeExporter: false,
-          sessionOrchestrator: false,
-          journalParser: false,
-          compendiumParser: false,
-          chapterTracker: false,
-          sceneDetector: false,
-          aiAssistant: false,
-          rulesReference: false,
-          sessionAnalytics: false,
-          // RAG services
-          embeddingService: false,
-          ragVectorStore: false,
-          ragRetriever: false,
-          silenceDetector: false
-        },
-        settings: {
-          openaiConfigured: true,
-          kankaConfigured: true,
-          ragEnabled: false
-        }
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
       });
+      const instance = VoxChronicle.getInstance();
+
+      await instance._checkKankaTokenExpiration();
+
+      // 31 > 30, so it should be URGENT, not CRITICAL
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+      expect(ui.notifications.warn).toHaveBeenCalled();
     });
 
-    it('should return correct services status when initialized', async () => {
+    it('should correctly compute boundary: 61 days remaining should be INFO not URGENT', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (303 * 24 * 60 * 60 * 1000); // 364 - 303 = 61
+
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
+      });
+      const instance = VoxChronicle.getInstance();
+
+      await instance._checkKankaTokenExpiration();
+
+      // 61 > 60, so it should be INFO, not URGENT
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+      expect(ui.notifications.info).toHaveBeenCalled();
+    });
+
+    it('should correctly compute boundary: 91 days remaining should show nothing', async () => {
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+      const tokenCreatedAt = now - (273 * 24 * 60 * 60 * 1000); // 364 - 273 = 91
+
+      configureSettings({
+        kankaApiToken: 'valid-token',
+        kankaApiTokenCreatedAt: tokenCreatedAt
+      });
+      const instance = VoxChronicle.getInstance();
+
+      await instance._checkKankaTokenExpiration();
+
+      // 91 > 90, so no notification at all
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+      expect(ui.notifications.info).not.toHaveBeenCalled();
+    });
+  });
+
+  // ====================================================================
+  // _initializeRAGServices
+  // ====================================================================
+
+  describe('_initializeRAGServices', () => {
+    it('should skip when RAG is disabled in settings', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: false,
+        provider: 'openai-file-search'
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockLoggerChild.info).toHaveBeenCalledWith('RAG services disabled in settings');
+      expect(mockRAGProviderFactoryCreate).not.toHaveBeenCalled();
+      expect(instance.ragProvider).toBeNull();
+      expect(instance.silenceDetector).toBeNull();
+    });
+
+    it('should skip when no OpenAI API key is provided', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search'
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices(null);
+
+      expect(mockLoggerChild.warn).toHaveBeenCalledWith(
+        'RAG services require OpenAI API key - skipping initialization'
+      );
+      expect(instance.ragProvider).toBeNull();
+    });
+
+    it('should skip when OpenAI API key is empty string', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search'
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('');
+
+      expect(mockLoggerChild.warn).toHaveBeenCalledWith(
+        'RAG services require OpenAI API key - skipping initialization'
+      );
+    });
+
+    it('should initialize RAG provider successfully', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: 'vs-existing-123',
+        campaignId: 'my-campaign',
+        silenceThresholdMs: 5000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      // RAG provider factory called
+      expect(mockRAGProviderFactoryCreate).toHaveBeenCalledWith('openai-file-search');
+
+      // Provider initialized with client and vector store
+      expect(mockRAGProviderInstance.initialize).toHaveBeenCalledWith({
+        client: expect.any(Object),
+        vectorStoreId: 'vs-existing-123',
+        storeName: 'vox-chronicle-my-campaign'
+      });
+
+      // OpenAI client created for RAG
+      expect(mockOpenAIClient).toHaveBeenCalledWith('sk-test-key');
+
+      // Vector store ID persisted
+      expect(mockSettingsModule.setRAGVectorStoreId).toHaveBeenCalledWith('vs-test-123');
+
+      // Silence detector created
+      expect(mockSilenceDetector).toHaveBeenCalledWith({
+        thresholdMs: 5000,
+        autoRestart: true
+      });
+
+      // RAG provider assigned to instance
+      expect(instance.ragProvider).toBe(mockRAGProviderInstance);
+    });
+
+    it('should use default provider when none specified in settings', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: null,
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockRAGProviderFactoryCreate).toHaveBeenCalledWith('openai-file-search');
+    });
+
+    it('should use default campaign name when campaignId is null', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockRAGProviderInstance.initialize).toHaveBeenCalledWith(
+        expect.objectContaining({
+          storeName: 'vox-chronicle-default'
+        })
+      );
+    });
+
+    it('should connect RAG provider to AIAssistant when available', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      // Simulate aiAssistant already being set
+      instance.aiAssistant = mockAIAssistantInstance;
+
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockAIAssistantInstance.setRAGProvider).toHaveBeenCalledWith(mockRAGProviderInstance);
+      expect(mockAIAssistantInstance.setSilenceDetector).toHaveBeenCalled();
+    });
+
+    it('should not connect RAG provider to AIAssistant when not available', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      instance.aiAssistant = null;
+
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockAIAssistantInstance.setRAGProvider).not.toHaveBeenCalled();
+    });
+
+    it('should not persist vector store ID when provider has no getVectorStoreId method', async () => {
+      const providerWithoutVSID = {
+        initialize: vi.fn().mockResolvedValue(undefined),
+        getVectorStoreId: undefined
+      };
+      mockRAGProviderFactoryCreate.mockReturnValueOnce(providerWithoutVSID);
+
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockSettingsModule.setRAGVectorStoreId).not.toHaveBeenCalled();
+    });
+
+    it('should not persist vector store ID when it returns null', async () => {
+      const providerWithNullVSID = {
+        initialize: vi.fn().mockResolvedValue(undefined),
+        getVectorStoreId: vi.fn().mockReturnValue(null)
+      };
+      mockRAGProviderFactoryCreate.mockReturnValueOnce(providerWithNullVSID);
+
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockSettingsModule.setRAGVectorStoreId).not.toHaveBeenCalled();
+    });
+
+    it('should handle RAG initialization errors gracefully', async () => {
+      mockRAGProviderFactoryCreate.mockImplementationOnce(() => {
+        throw new Error('RAG factory broken');
+      });
+
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search'
+      });
+
+      const instance = VoxChronicle.getInstance();
+      // Should not throw
+      await expect(instance._initializeRAGServices('sk-test-key')).resolves.toBeUndefined();
+
+      expect(mockLoggerChild.error).toHaveBeenCalledWith(
+        'Failed to initialize RAG services:',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle RAG provider.initialize() rejection gracefully', async () => {
+      const failingProvider = {
+        initialize: vi.fn().mockRejectedValue(new Error('Vector store creation failed')),
+        getVectorStoreId: vi.fn()
+      };
+      mockRAGProviderFactoryCreate.mockReturnValueOnce(failingProvider);
+
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await expect(instance._initializeRAGServices('sk-test-key')).resolves.toBeUndefined();
+
+      expect(mockLoggerChild.error).toHaveBeenCalledWith(
+        'Failed to initialize RAG services:',
+        expect.any(Error)
+      );
+    });
+
+    it('should log success with vector store ID information', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(mockLoggerChild.info).toHaveBeenCalledWith(
+        'RAG services initialized successfully',
+        expect.objectContaining({
+          provider: 'openai-file-search',
+          vectorStoreId: 'vs-test-123'
+        })
+      );
+    });
+  });
+
+  // ====================================================================
+  // getServicesStatus
+  // ====================================================================
+
+  describe('getServicesStatus', () => {
+    it('should return all-false status when not initialized', () => {
+      configureSettings({});
+      const instance = VoxChronicle.getInstance();
+
+      const status = instance.getServicesStatus();
+
+      expect(status.initialized).toBe(false);
+      expect(status.services.audioRecorder).toBe(false);
+      expect(status.services.transcription).toBe(false);
+      expect(status.services.imageGeneration).toBe(false);
+      expect(status.services.kanka).toBe(false);
+      expect(status.services.entityExtractor).toBe(false);
+      expect(status.services.narrativeExporter).toBe(false);
+      expect(status.services.sessionOrchestrator).toBe(false);
+      expect(status.services.journalParser).toBe(false);
+      expect(status.services.compendiumParser).toBe(false);
+      expect(status.services.chapterTracker).toBe(false);
+      expect(status.services.sceneDetector).toBe(false);
+      expect(status.services.aiAssistant).toBe(false);
+      expect(status.services.rulesReference).toBe(false);
+      expect(status.services.sessionAnalytics).toBe(false);
+      expect(status.services.ragProvider).toBe(false);
+      expect(status.services.silenceDetector).toBe(false);
+    });
+
+    it('should return correct status after full initialization', async () => {
+      configureSettings(fullSettings({
+        ragEnabled: true
+      }));
+      // Ensure RAG gets initialized too
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+
       const instance = VoxChronicle.getInstance();
       await instance.initialize();
 
       const status = instance.getServicesStatus();
 
-      // Verify core properties
       expect(status.initialized).toBe(true);
-
-      // Verify services are initialized (except transcription which depends on factory mock)
       expect(status.services.audioRecorder).toBe(true);
+      expect(status.services.transcription).toBe(true);
       expect(status.services.imageGeneration).toBe(true);
       expect(status.services.kanka).toBe(true);
       expect(status.services.entityExtractor).toBe(true);
@@ -972,245 +1413,189 @@ describe('VoxChronicle', () => {
       expect(status.services.aiAssistant).toBe(true);
       expect(status.services.rulesReference).toBe(true);
       expect(status.services.sessionAnalytics).toBe(true);
-
-      // Verify settings
-      expect(status.settings.openaiConfigured).toBe(true);
-      expect(status.settings.kankaConfigured).toBe(true);
-    });
-
-    it('should return correct settings status when API keys missing', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.openaiApiKey': '',
-        'vox-chronicle.kankaApiToken': ''
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      const status = instance.getServicesStatus();
-
-      expect(status.settings).toEqual({
-        openaiConfigured: false,
-        kankaConfigured: false,
-        ragEnabled: false
-      });
-    });
-
-    it('should return partial configuration status', async () => {
-      setupFoundryMocks({
-        'vox-chronicle.openaiApiKey': 'test-key',
-        'vox-chronicle.kankaApiToken': '',
-        'vox-chronicle.kankaCampaignId': '12345'
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      const status = instance.getServicesStatus();
-
-      expect(status.settings).toEqual({
-        openaiConfigured: true,
-        kankaConfigured: false,
-        ragEnabled: false
-      });
-    });
-  });
-
-  describe('Integration', () => {
-    it('should handle full initialization and status check', async () => {
-      const instance = VoxChronicle.getInstance();
-
-      // Initialize
-      await instance.initialize();
-      expect(instance.isInitialized).toBe(true);
-
-      // Check status after initialization
-      const status = instance.getServicesStatus();
-      expect(status.initialized).toBe(true);
-      expect(status.services.audioRecorder).toBe(true);
-      expect(status.services.sessionOrchestrator).toBe(true);
-    });
-
-    it('should maintain singleton across multiple operations', async () => {
-      const instance1 = VoxChronicle.getInstance();
-      await instance1.initialize();
-
-      const instance2 = VoxChronicle.getInstance();
-      expect(instance2).toBe(instance1);
-      expect(instance2.isInitialized).toBe(true);
-    });
-  });
-
-  describe('RAG Services Initialization', () => {
-    it('should initialize RAG services when enabled and OpenAI configured', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      // Configure RAG as enabled
-      Settings.getRAGSettings.mockReturnValue({
-        enabled: true,
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 512,
-        chunkSize: 500,
-        chunkOverlap: 100,
-        similarityThreshold: 0.7,
-        maxResults: 5,
-        storageLimitMB: 100,
-        silenceThresholdMs: 30000,
-        autoIndex: true
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      // Verify RAG services are initialized
-      expect(instance.ragOpenAIClient).not.toBeNull();
-      expect(instance.embeddingService).not.toBeNull();
-      expect(instance.ragVectorStore).not.toBeNull();
-      expect(instance.ragRetriever).not.toBeNull();
-      expect(instance.silenceDetector).not.toBeNull();
-    });
-
-    it('should not initialize RAG services when disabled in settings', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      // Configure RAG as disabled
-      Settings.getRAGSettings.mockReturnValue({
-        enabled: false,
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 512,
-        chunkSize: 500,
-        chunkOverlap: 100,
-        similarityThreshold: 0.7,
-        maxResults: 5,
-        storageLimitMB: 100,
-        silenceThresholdMs: 30000,
-        autoIndex: true
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      // Verify RAG services are NOT initialized
-      expect(instance.ragOpenAIClient).toBeNull();
-      expect(instance.embeddingService).toBeNull();
-      expect(instance.ragVectorStore).toBeNull();
-      expect(instance.ragRetriever).toBeNull();
-      expect(instance.silenceDetector).toBeNull();
-    });
-
-    it('should not initialize RAG services when OpenAI API key missing', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      // Configure RAG as enabled
-      Settings.getRAGSettings.mockReturnValue({
-        enabled: true,
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 512,
-        chunkSize: 500,
-        chunkOverlap: 100,
-        similarityThreshold: 0.7,
-        maxResults: 5,
-        storageLimitMB: 100,
-        silenceThresholdMs: 30000,
-        autoIndex: true
-      });
-
-      // Remove OpenAI API key
-      setupFoundryMocks({
-        'vox-chronicle.openaiApiKey': ''
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      // Verify RAG services are NOT initialized (no API key)
-      expect(instance.ragOpenAIClient).toBeNull();
-      expect(instance.embeddingService).toBeNull();
-      expect(instance.ragVectorStore).toBeNull();
-      expect(instance.ragRetriever).toBeNull();
-      expect(instance.silenceDetector).toBeNull();
-    });
-
-    it('should connect RAG services to AIAssistant', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      // Configure RAG as enabled
-      Settings.getRAGSettings.mockReturnValue({
-        enabled: true,
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 512,
-        chunkSize: 500,
-        chunkOverlap: 100,
-        similarityThreshold: 0.7,
-        maxResults: 5,
-        storageLimitMB: 100,
-        silenceThresholdMs: 30000,
-        autoIndex: true
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      // Verify AIAssistant has RAG services connected
-      expect(instance.aiAssistant.setRAGRetriever).toHaveBeenCalled();
-      expect(instance.aiAssistant.setSilenceDetector).toHaveBeenCalled();
-    });
-
-    it('should include RAG services in getServicesStatus when initialized', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      // Configure RAG as enabled
-      Settings.getRAGSettings.mockReturnValue({
-        enabled: true,
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 512,
-        chunkSize: 500,
-        chunkOverlap: 100,
-        similarityThreshold: 0.7,
-        maxResults: 5,
-        storageLimitMB: 100,
-        silenceThresholdMs: 30000,
-        autoIndex: true
-      });
-
-      const instance = VoxChronicle.getInstance();
-      await instance.initialize();
-
-      const status = instance.getServicesStatus();
-
-      // Verify RAG services are in status
-      expect(status.services.embeddingService).toBe(true);
-      expect(status.services.ragVectorStore).toBe(true);
-      expect(status.services.ragRetriever).toBe(true);
+      expect(status.services.ragProvider).toBe(true);
       expect(status.services.silenceDetector).toBe(true);
     });
 
-    it('should use RAG settings for service configuration', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should report correct settings status', () => {
+      configureSettings({
+        openaiApiKey: 'sk-key',
+        kankaApiToken: 'kanka-token',
+        kankaCampaignId: 'camp-123',
+        ragEnabled: true
+      });
+      const instance = VoxChronicle.getInstance();
 
-      // Configure RAG with specific settings
-      const ragSettings = {
-        enabled: true,
-        embeddingModel: 'text-embedding-3-large',
-        embeddingDimensions: 1536,
-        chunkSize: 1000,
-        chunkOverlap: 200,
-        similarityThreshold: 0.8,
-        maxResults: 10,
-        storageLimitMB: 200,
-        silenceThresholdMs: 60000,
-        autoIndex: true
-      };
-      Settings.getRAGSettings.mockReturnValue(ragSettings);
+      const status = instance.getServicesStatus();
 
+      expect(status.settings.openaiConfigured).toBe(true);
+      expect(status.settings.kankaConfigured).toBe(true);
+      expect(status.settings.ragEnabled).toBe(true);
+    });
+
+    it('should report openaiConfigured as false when no key', () => {
+      configureSettings({ openaiApiKey: null });
+      const instance = VoxChronicle.getInstance();
+
+      const status = instance.getServicesStatus();
+      expect(status.settings.openaiConfigured).toBe(false);
+    });
+
+    it('should report kankaConfigured as false when token missing', () => {
+      configureSettings({
+        kankaApiToken: null,
+        kankaCampaignId: 'camp-123'
+      });
+      const instance = VoxChronicle.getInstance();
+
+      const status = instance.getServicesStatus();
+      expect(status.settings.kankaConfigured).toBe(false);
+    });
+
+    it('should report kankaConfigured as false when campaign ID missing', () => {
+      configureSettings({
+        kankaApiToken: 'token',
+        kankaCampaignId: null
+      });
+      const instance = VoxChronicle.getInstance();
+
+      const status = instance.getServicesStatus();
+      expect(status.settings.kankaConfigured).toBe(false);
+    });
+
+    it('should report ragEnabled as false when setting is falsy', () => {
+      configureSettings({ ragEnabled: false });
+      const instance = VoxChronicle.getInstance();
+
+      const status = instance.getServicesStatus();
+      expect(status.settings.ragEnabled).toBe(false);
+    });
+
+    it('should handle _getSetting errors in status check gracefully', () => {
+      game.settings.get.mockImplementation(() => {
+        throw new Error('boom');
+      });
+      const instance = VoxChronicle.getInstance();
+
+      const status = instance.getServicesStatus();
+
+      // All settings should show as false/unconfigured
+      expect(status.settings.openaiConfigured).toBe(false);
+      expect(status.settings.kankaConfigured).toBe(false);
+      expect(status.settings.ragEnabled).toBe(false);
+    });
+
+    it('should show partial service status after partial initialization', async () => {
+      configureSettings(fullSettings({
+        openaiApiKey: null,
+        kankaApiToken: null,
+        kankaCampaignId: null,
+        rulesDetection: false
+      }));
       const instance = VoxChronicle.getInstance();
       await instance.initialize();
 
-      // Services should be initialized with the settings
-      expect(instance.embeddingService).not.toBeNull();
-      expect(instance.ragVectorStore).not.toBeNull();
-      expect(instance.ragRetriever).not.toBeNull();
-      expect(instance.silenceDetector).not.toBeNull();
+      const status = instance.getServicesStatus();
+
+      expect(status.initialized).toBe(true);
+      expect(status.services.audioRecorder).toBe(true);
+      expect(status.services.sessionOrchestrator).toBe(true);
+      expect(status.services.journalParser).toBe(true);
+      expect(status.services.compendiumParser).toBe(true);
+      expect(status.services.chapterTracker).toBe(true);
+      expect(status.services.sceneDetector).toBe(true);
+      expect(status.services.sessionAnalytics).toBe(true);
+
+      // These should be false without OpenAI/Kanka config
+      expect(status.services.imageGeneration).toBe(false);
+      expect(status.services.kanka).toBe(false);
+      expect(status.services.entityExtractor).toBe(false);
+      expect(status.services.narrativeExporter).toBe(false);
+      expect(status.services.aiAssistant).toBe(false);
+      expect(status.services.rulesReference).toBe(false);
+    });
+  });
+
+  // ====================================================================
+  // Integration-style tests: full initialization flow
+  // ====================================================================
+
+  describe('Full initialization flow', () => {
+    it('should handle re-initialization after reset', async () => {
+      configureSettings(fullSettings());
+      const instance1 = VoxChronicle.getInstance();
+      await instance1.initialize();
+      expect(instance1.isInitialized).toBe(true);
+
+      VoxChronicle.resetInstance();
+
+      const instance2 = VoxChronicle.getInstance();
+      expect(instance2.isInitialized).toBe(false);
+
+      await instance2.initialize();
+      expect(instance2.isInitialized).toBe(true);
+    });
+
+    it('should call _checkKankaTokenExpiration during initialization', async () => {
+      vi.useFakeTimers();
+      const now = new Date('2025-06-15T12:00:00Z').getTime();
+      vi.setSystemTime(now);
+
+      const tokenCreatedAt = now - (350 * 24 * 60 * 60 * 1000); // 14 days remaining
+
+      configureSettings(fullSettings({
+        kankaApiTokenCreatedAt: tokenCreatedAt
+      }));
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Should have triggered the CRITICAL notification
+      expect(ui.notifications.error).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('should call _initializeRAGServices during initialization', async () => {
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search',
+        vectorStoreId: null,
+        campaignId: null,
+        silenceThresholdMs: 3000
+      });
+      configureSettings(fullSettings({ ragEnabled: true }));
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      expect(mockRAGProviderFactoryCreate).toHaveBeenCalled();
+      expect(instance.ragProvider).not.toBeNull();
+    });
+
+    it('should work with minimal configuration (all settings null)', async () => {
+      configureSettings({});
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      // Should still initialize without throwing
+      expect(instance.isInitialized).toBe(true);
+      expect(instance.audioRecorder).not.toBeNull();
+      expect(instance.sessionOrchestrator).not.toBeNull();
+    });
+
+    it('should set echoCancellation false and noiseSuppression false when explicitly set', async () => {
+      configureSettings(fullSettings({
+        echoCancellation: false,
+        noiseSuppression: false
+      }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockAudioRecorder).toHaveBeenCalledWith({
+        echoCancellation: false,
+        noiseSuppression: false
+      });
     });
   });
 });

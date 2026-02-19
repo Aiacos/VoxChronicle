@@ -7,445 +7,662 @@
  * @module tests/core/Settings.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createMockSettings, createMockI18n } from '../helpers/foundry-mock.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Settings } from '../../scripts/core/Settings.mjs';
 
-// Mock the MODULE_ID before importing Settings
 const MODULE_ID = 'vox-chronicle';
-
-// Setup global mocks
-let mockSettings;
-let mockI18n;
-let mockNotifications;
-let consoleLogSpy;
-
-// Mock main.mjs to provide MODULE_ID export and prevent Hooks initialization
-vi.mock('../../scripts/main.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-vi.mock('../../scripts/constants.mjs', () => ({
-  MODULE_ID: 'vox-chronicle'
-}));
-
-// Mock Logger before importing Settings
-// Logger mock routes all log methods to console.log for test compatibility
-// Tests expect consoleLogSpy (console.log) to be called
-vi.mock('../../scripts/utils/Logger.mjs', () => ({
-  Logger: {
-    createChild: () => ({
-      debug: (...args) => console.log(...args),
-      info: (...args) => console.log(...args),
-      log: (...args) => console.log(...args),
-      warn: (...args) => {
-        console.warn(...args);
-        console.log(...args);
-      },
-      error: (...args) => {
-        console.error(...args);
-        console.log(...args);
-      }
-    }),
-    setDebugMode: vi.fn(),
-    debug: (...args) => console.log(...args),
-    info: (...args) => console.log(...args),
-    log: (...args) => console.log(...args),
-    warn: (...args) => {
-      console.warn(...args);
-      console.log(...args);
-    },
-    error: (...args) => {
-      console.error(...args);
-      console.log(...args);
-    }
-  },
-  LogLevel: {
-    DEBUG: 0,
-    INFO: 1,
-    LOG: 2,
-    WARN: 3,
-    ERROR: 4,
-    NONE: 5
-  }
-}));
-
-beforeEach(() => {
-  // Reset module cache to ensure fresh imports with mocks
-  vi.resetModules();
-  // Mock Foundry Hooks
-  globalThis.Hooks = {
-    once: vi.fn(),
-    on: vi.fn(),
-    call: vi.fn()
-  };
-
-  // Create mock settings
-  mockSettings = createMockSettings();
-
-  // Create mock i18n
-  mockI18n = createMockI18n({
-    'VOXCHRONICLE.Validation.OpenAIKeyNotConfigured': 'OpenAI API key not configured',
-    'VOXCHRONICLE.Validation.KankaTokenNotConfigured': 'Kanka API token not configured',
-    'VOXCHRONICLE.Validation.ValidatingOpenAI': 'Validating OpenAI API key...',
-    'VOXCHRONICLE.Validation.ValidatingKanka': 'Validating Kanka API token...',
-    'VOXCHRONICLE.Validation.OpenAIKeyValid': 'OpenAI API key is valid',
-    'VOXCHRONICLE.Validation.OpenAIKeyInvalid': 'OpenAI API key is invalid',
-    'VOXCHRONICLE.Validation.KankaTokenValid': 'Kanka API token is valid',
-    'VOXCHRONICLE.Validation.KankaTokenInvalid': 'Kanka API token is invalid',
-    'VOXCHRONICLE.Validation.OpenAIValidationError': 'OpenAI validation error: {error}',
-    'VOXCHRONICLE.Validation.KankaValidationError': 'Kanka validation error: {error}'
-  });
-
-  // Create mock notifications
-  mockNotifications = {
-    info: vi.fn((_msg, _options) => {
-      const notif = { remove: vi.fn() };
-      return notif;
-    }),
-    error: vi.fn(),
-    warn: vi.fn()
-  };
-
-  // Mock the global game object
-  globalThis.game = {
-    settings: mockSettings,
-    i18n: mockI18n,
-    ready: true
-  };
-
-  // Mock ui.notifications
-  globalThis.ui = {
-    notifications: mockNotifications
-  };
-
-  // Spy on console.log
-  consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-  vi.spyOn(console, 'error').mockImplementation(() => {});
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-  delete globalThis.game;
-  delete globalThis.ui;
-  delete globalThis.Hooks;
-});
 
 describe('Settings', () => {
   describe('registerSettings', () => {
-    it('should register all module settings', async () => {
-      // Import Settings dynamically after mocks are set up
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should call game.settings.register for every setting', () => {
       Settings.registerSettings();
 
-      // Verify settings.register was called for each setting
-      expect(mockSettings.register).toHaveBeenCalled();
+      // Count total registrations - there are 35 settings in the current source
+      const registerCalls = game.settings.register.mock.calls;
+      expect(registerCalls.length).toBeGreaterThanOrEqual(35);
 
-      // Verify specific settings were registered
-      const registerCalls = mockSettings.register.mock.calls;
+      // Every call should use the correct module ID
+      for (const call of registerCalls) {
+        expect(call[0]).toBe(MODULE_ID);
+      }
+    });
 
-      // API Keys
-      expect(registerCalls.some((call) => call[1] === 'openaiApiKey')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'kankaApiToken')).toBe(true);
+    it('should register all expected setting keys', () => {
+      Settings.registerSettings();
 
-      // Campaign Settings
-      expect(registerCalls.some((call) => call[1] === 'kankaCampaignId')).toBe(true);
+      const registeredKeys = game.settings.register.mock.calls.map((call) => call[1]);
 
-      // Transcription Settings
-      expect(registerCalls.some((call) => call[1] === 'transcriptionLanguage')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'transcriptionMode')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'whisperBackendUrl')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'showTranscriptionModeIndicator')).toBe(true);
+      const expectedKeys = [
+        // API Keys
+        'openaiApiKey',
+        'kankaApiToken',
+        // Campaign
+        'kankaCampaignId',
+        // Transcription
+        'transcriptionLanguage',
+        'transcriptionMode',
+        'whisperBackendUrl',
+        'showTranscriptionModeIndicator',
+        // Vocabulary
+        'customVocabularyDictionary',
+        // Audio
+        'audioCaptureSource',
+        'echoCancellation',
+        'noiseSuppression',
+        // Image
+        'imageQuality',
+        'maxImagesPerSession',
+        // Entity
+        'autoExtractEntities',
+        'confirmEntityCreation',
+        // Relationships
+        'autoExtractRelationships',
+        'relationshipConfidenceThreshold',
+        'maxRelationshipsPerSession',
+        // Speaker
+        'speakerLabels',
+        // Session storage
+        'pendingSessions',
+        'knownSpeakers',
+        'kankaApiTokenCreatedAt',
+        // Narrator
+        'multiLanguageMode',
+        'transcriptionBatchDuration',
+        'offTrackSensitivity',
+        'rulesDetection',
+        'rulesSource',
+        'debugMode',
+        // RAG
+        'ragEnabled',
+        'ragProvider',
+        'ragMaxResults',
+        'ragAutoIndex',
+        'ragSilenceThresholdMs',
+        'ragVectorStoreId',
+        // Retry
+        'apiRetryEnabled',
+        'apiRetryMaxAttempts',
+        'apiRetryBaseDelay',
+        'apiRetryMaxDelay',
+        'apiQueueMaxSize',
+        // Hidden internal
+        'imageGallery',
+        'panelPosition'
+      ];
 
-      // Vocabulary Dictionary
-      expect(registerCalls.some((call) => call[1] === 'customVocabularyDictionary')).toBe(true);
+      for (const key of expectedKeys) {
+        expect(registeredKeys).toContain(key);
+      }
+    });
 
-      // Audio Settings
-      expect(registerCalls.some((call) => call[1] === 'audioCaptureSource')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'echoCancellation')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'noiseSuppression')).toBe(true);
+    it('should register openaiApiKey as client-scoped string with empty default', () => {
+      Settings.registerSettings();
 
-      // Image Generation Settings
-      expect(registerCalls.some((call) => call[1] === 'imageQuality')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'maxImagesPerSession')).toBe(true);
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'openaiApiKey');
+      expect(call).toBeDefined();
+      expect(call[2].scope).toBe('client');
+      expect(call[2].config).toBe(true);
+      expect(call[2].type).toBe(String);
+      expect(call[2].default).toBe('');
+      expect(typeof call[2].onChange).toBe('function');
+    });
 
-      // Entity Extraction Settings
-      expect(registerCalls.some((call) => call[1] === 'autoExtractEntities')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'confirmEntityCreation')).toBe(true);
+    it('should register kankaApiToken as world-scoped string with empty default', () => {
+      Settings.registerSettings();
 
-      // Relationship Extraction Settings
-      expect(registerCalls.some((call) => call[1] === 'autoExtractRelationships')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'relationshipConfidenceThreshold')).toBe(
-        true
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'kankaApiToken');
+      expect(call).toBeDefined();
+      expect(call[2].scope).toBe('world');
+      expect(call[2].config).toBe(true);
+      expect(call[2].type).toBe(String);
+      expect(call[2].default).toBe('');
+      expect(typeof call[2].onChange).toBe('function');
+    });
+
+    it('should register kankaCampaignId as world-scoped string', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'kankaCampaignId');
+      expect(call).toBeDefined();
+      expect(call[2].scope).toBe('world');
+      expect(call[2].type).toBe(String);
+      expect(call[2].default).toBe('');
+    });
+
+    it('should register transcriptionLanguage with language choices', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'transcriptionLanguage'
       );
-      expect(registerCalls.some((call) => call[1] === 'maxRelationshipsPerSession')).toBe(true);
+      expect(call).toBeDefined();
+      expect(call[2].choices).toBeDefined();
+      expect(call[2].choices).toHaveProperty('');
+      expect(call[2].choices).toHaveProperty('en');
+      expect(call[2].choices).toHaveProperty('it');
+      expect(call[2].choices).toHaveProperty('es');
+      expect(call[2].choices).toHaveProperty('de');
+      expect(call[2].choices).toHaveProperty('fr');
+      expect(call[2].choices).toHaveProperty('pt');
+      expect(call[2].choices).toHaveProperty('ja');
+      expect(call[2].choices).toHaveProperty('zh');
+      expect(call[2].default).toBe('');
+    });
 
-      // Speaker Labeling
-      expect(registerCalls.some((call) => call[1] === 'speakerLabels')).toBe(true);
+    it('should register transcriptionMode with api/local/auto choices', () => {
+      Settings.registerSettings();
 
-      // Session Storage
-      expect(registerCalls.some((call) => call[1] === 'pendingSessions')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'knownSpeakers')).toBe(true);
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'transcriptionMode');
+      expect(call).toBeDefined();
+      expect(call[2].choices).toEqual({
+        api: 'VOXCHRONICLE.Settings.TranscriptionModeAPI',
+        local: 'VOXCHRONICLE.Settings.TranscriptionModeLocal',
+        auto: 'VOXCHRONICLE.Settings.TranscriptionModeAuto'
+      });
+      expect(call[2].default).toBe('auto');
+    });
 
-      // Narrator Master Settings
-      expect(registerCalls.some((call) => call[1] === 'multiLanguageMode')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'transcriptionBatchDuration')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'offTrackSensitivity')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'rulesDetection')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'rulesSource')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'debugMode')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'apiRetryEnabled')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'apiRetryMaxAttempts')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'apiRetryBaseDelay')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'apiRetryMaxDelay')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'apiQueueMaxSize')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'imageGallery')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'panelPosition')).toBe(true);
+    it('should register whisperBackendUrl with localhost default', () => {
+      Settings.registerSettings();
 
-      // Verify console.log was called
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Settings registered successfully')
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'whisperBackendUrl');
+      expect(call).toBeDefined();
+      expect(call[2].default).toBe('http://localhost:8080');
+    });
+
+    it('should register customVocabularyDictionary as hidden Object setting', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'customVocabularyDictionary'
       );
+      expect(call).toBeDefined();
+      expect(call[2].config).toBe(false);
+      expect(call[2].type).toBe(Object);
+      expect(call[2].default).toEqual({
+        character_names: [],
+        location_names: [],
+        items: [],
+        terms: [],
+        custom: []
+      });
     });
 
-    it('should register client-scoped settings correctly', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should register audioCaptureSource with auto/microphone/webrtc choices', () => {
       Settings.registerSettings();
 
-      const registerCalls = mockSettings.register.mock.calls;
-
-      // Find openaiApiKey registration
-      const openaiKeyCall = registerCalls.find((call) => call[1] === 'openaiApiKey');
-      expect(openaiKeyCall).toBeDefined();
-      expect(openaiKeyCall[2].scope).toBe('client');
-      expect(openaiKeyCall[2].type).toBe(String);
-      expect(openaiKeyCall[2].default).toBe('');
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'audioCaptureSource');
+      expect(call).toBeDefined();
+      expect(call[2].scope).toBe('client');
+      expect(call[2].choices).toHaveProperty('auto');
+      expect(call[2].choices).toHaveProperty('microphone');
+      expect(call[2].choices).toHaveProperty('webrtc');
+      expect(call[2].default).toBe('auto');
     });
 
-    it('should register world-scoped settings correctly', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should register boolean audio settings with correct defaults', () => {
       Settings.registerSettings();
 
-      const registerCalls = mockSettings.register.mock.calls;
+      const echoCancelCall = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'echoCancellation'
+      );
+      expect(echoCancelCall[2].type).toBe(Boolean);
+      expect(echoCancelCall[2].default).toBe(true);
+      expect(echoCancelCall[2].scope).toBe('client');
 
-      // Find kankaApiToken registration
-      const kankaTokenCall = registerCalls.find((call) => call[1] === 'kankaApiToken');
-      expect(kankaTokenCall).toBeDefined();
-      expect(kankaTokenCall[2].scope).toBe('world');
-      expect(kankaTokenCall[2].type).toBe(String);
-      expect(kankaTokenCall[2].default).toBe('');
+      const noiseCall = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'noiseSuppression'
+      );
+      expect(noiseCall[2].type).toBe(Boolean);
+      expect(noiseCall[2].default).toBe(true);
+      expect(noiseCall[2].scope).toBe('client');
     });
 
-    it('should register settings with choices correctly', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should register imageQuality with quality choices defaulting to high', () => {
       Settings.registerSettings();
 
-      const registerCalls = mockSettings.register.mock.calls;
-
-      // Find transcriptionLanguage registration
-      const languageCall = registerCalls.find((call) => call[1] === 'transcriptionLanguage');
-      expect(languageCall).toBeDefined();
-      expect(languageCall[2].choices).toBeDefined();
-      expect(languageCall[2].choices).toHaveProperty('en');
-      expect(languageCall[2].choices).toHaveProperty('it');
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'imageQuality');
+      expect(call).toBeDefined();
+      expect(call[2].scope).toBe('world');
+      expect(call[2].choices).toHaveProperty('low');
+      expect(call[2].choices).toHaveProperty('medium');
+      expect(call[2].choices).toHaveProperty('high');
+      expect(call[2].choices).toHaveProperty('auto');
+      expect(call[2].default).toBe('high');
     });
 
-    it('should register settings with range correctly', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should register maxImagesPerSession with range 0-10', () => {
       Settings.registerSettings();
 
-      const registerCalls = mockSettings.register.mock.calls;
-
-      // Find maxImagesPerSession registration
-      const maxImagesCall = registerCalls.find((call) => call[1] === 'maxImagesPerSession');
-      expect(maxImagesCall).toBeDefined();
-      expect(maxImagesCall[2].type).toBe(Number);
-      expect(maxImagesCall[2].range).toBeDefined();
-      expect(maxImagesCall[2].range.min).toBe(0);
-      expect(maxImagesCall[2].range.max).toBe(10);
-      expect(maxImagesCall[2].range.step).toBe(1);
+      const call = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'maxImagesPerSession'
+      );
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(Number);
+      expect(call[2].range).toEqual({ min: 0, max: 10, step: 1 });
+      expect(call[2].default).toBe(3);
     });
 
-    it('should register settings with onChange handlers', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should register entity extraction boolean settings', () => {
       Settings.registerSettings();
 
-      const registerCalls = mockSettings.register.mock.calls;
+      const autoExtract = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'autoExtractEntities'
+      );
+      expect(autoExtract[2].type).toBe(Boolean);
+      expect(autoExtract[2].default).toBe(true);
 
-      // Find openaiApiKey registration
-      const openaiKeyCall = registerCalls.find((call) => call[1] === 'openaiApiKey');
-      expect(openaiKeyCall).toBeDefined();
-      expect(openaiKeyCall[2].onChange).toBeDefined();
-      expect(typeof openaiKeyCall[2].onChange).toBe('function');
+      const confirm = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'confirmEntityCreation'
+      );
+      expect(confirm[2].type).toBe(Boolean);
+      expect(confirm[2].default).toBe(true);
+    });
+
+    it('should register relationship settings with correct types and defaults', () => {
+      Settings.registerSettings();
+
+      const autoExtract = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'autoExtractRelationships'
+      );
+      expect(autoExtract[2].scope).toBe('client');
+      expect(autoExtract[2].type).toBe(Boolean);
+      expect(autoExtract[2].default).toBe(true);
+
+      const threshold = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'relationshipConfidenceThreshold'
+      );
+      expect(threshold[2].scope).toBe('world');
+      expect(threshold[2].type).toBe(Number);
+      expect(threshold[2].range).toEqual({ min: 1, max: 10, step: 1 });
+      expect(threshold[2].default).toBe(5);
+
+      const maxRelationships = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'maxRelationshipsPerSession'
+      );
+      expect(maxRelationships[2].range).toEqual({ min: 0, max: 50, step: 1 });
+      expect(maxRelationships[2].default).toBe(20);
+    });
+
+    it('should register speakerLabels as hidden world-scoped Object', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'speakerLabels');
+      expect(call).toBeDefined();
+      expect(call[2].scope).toBe('world');
+      expect(call[2].config).toBe(false);
+      expect(call[2].type).toBe(Object);
+      expect(call[2].default).toEqual({});
+    });
+
+    it('should register session storage settings as hidden', () => {
+      Settings.registerSettings();
+
+      const pending = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'pendingSessions'
+      );
+      expect(pending[2].config).toBe(false);
+      expect(pending[2].type).toBe(Array);
+      expect(pending[2].default).toEqual([]);
+
+      const known = game.settings.register.mock.calls.find((c) => c[1] === 'knownSpeakers');
+      expect(known[2].config).toBe(false);
+      expect(known[2].type).toBe(Array);
+      expect(known[2].default).toEqual([]);
+
+      const tokenCreated = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'kankaApiTokenCreatedAt'
+      );
+      expect(tokenCreated[2].config).toBe(false);
+      expect(tokenCreated[2].type).toBe(Number);
+      expect(tokenCreated[2].default).toBe(0);
+    });
+
+    it('should register offTrackSensitivity with low/medium/high choices', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'offTrackSensitivity'
+      );
+      expect(call).toBeDefined();
+      expect(call[2].choices).toEqual({
+        low: 'VOXCHRONICLE.Settings.SensitivityLow',
+        medium: 'VOXCHRONICLE.Settings.SensitivityMedium',
+        high: 'VOXCHRONICLE.Settings.SensitivityHigh'
+      });
+      expect(call[2].default).toBe('medium');
+    });
+
+    it('should register transcriptionBatchDuration with range 5000-30000', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'transcriptionBatchDuration'
+      );
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(Number);
+      expect(call[2].range).toEqual({ min: 5000, max: 30000, step: 1000 });
+      expect(call[2].default).toBe(10000);
+    });
+
+    it('should register debugMode with onChange handler', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'debugMode');
+      expect(call).toBeDefined();
+      expect(call[2].type).toBe(Boolean);
+      expect(call[2].default).toBe(false);
+      expect(typeof call[2].onChange).toBe('function');
+    });
+
+    it('should register rulesSource with auto/dnd5e choices', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'rulesSource');
+      expect(call).toBeDefined();
+      expect(call[2].choices).toHaveProperty('auto');
+      expect(call[2].choices).toHaveProperty('dnd5e');
+      expect(call[2].default).toBe('auto');
+    });
+
+    it('should register RAG settings with correct types and defaults', () => {
+      Settings.registerSettings();
+
+      const ragEnabled = game.settings.register.mock.calls.find((c) => c[1] === 'ragEnabled');
+      expect(ragEnabled[2].type).toBe(Boolean);
+      expect(ragEnabled[2].default).toBe(true);
+      expect(ragEnabled[2].scope).toBe('world');
+
+      const ragProvider = game.settings.register.mock.calls.find((c) => c[1] === 'ragProvider');
+      expect(ragProvider[2].type).toBe(String);
+      expect(ragProvider[2].choices).toHaveProperty('openai-file-search');
+      expect(ragProvider[2].default).toBe('openai-file-search');
+
+      const ragMaxResults = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'ragMaxResults'
+      );
+      expect(ragMaxResults[2].type).toBe(Number);
+      expect(ragMaxResults[2].range).toEqual({ min: 1, max: 20, step: 1 });
+      expect(ragMaxResults[2].default).toBe(5);
+
+      const ragAutoIndex = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'ragAutoIndex'
+      );
+      expect(ragAutoIndex[2].type).toBe(Boolean);
+      expect(ragAutoIndex[2].default).toBe(true);
+
+      const ragSilence = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'ragSilenceThresholdMs'
+      );
+      expect(ragSilence[2].range).toEqual({ min: 10000, max: 120000, step: 5000 });
+      expect(ragSilence[2].default).toBe(30000);
+    });
+
+    it('should register ragVectorStoreId as hidden internal setting', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'ragVectorStoreId'
+      );
+      expect(call).toBeDefined();
+      expect(call[2].config).toBe(false);
+      expect(call[2].type).toBe(String);
+      expect(call[2].default).toBe('');
+    });
+
+    it('should register API retry settings with correct ranges', () => {
+      Settings.registerSettings();
+
+      const enabled = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'apiRetryEnabled'
+      );
+      expect(enabled[2].type).toBe(Boolean);
+      expect(enabled[2].default).toBe(true);
+
+      const maxAttempts = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'apiRetryMaxAttempts'
+      );
+      expect(maxAttempts[2].range).toEqual({ min: 0, max: 10, step: 1 });
+      expect(maxAttempts[2].default).toBe(3);
+
+      const baseDelay = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'apiRetryBaseDelay'
+      );
+      expect(baseDelay[2].range).toEqual({ min: 500, max: 10000, step: 500 });
+      expect(baseDelay[2].default).toBe(1000);
+
+      const maxDelay = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'apiRetryMaxDelay'
+      );
+      expect(maxDelay[2].range).toEqual({ min: 5000, max: 120000, step: 5000 });
+      expect(maxDelay[2].default).toBe(60000);
+
+      const queueSize = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'apiQueueMaxSize'
+      );
+      expect(queueSize[2].range).toEqual({ min: 5, max: 100, step: 5 });
+      expect(queueSize[2].default).toBe(100);
+    });
+
+    it('should register imageGallery as hidden world-scoped Object', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'imageGallery');
+      expect(call).toBeDefined();
+      expect(call[2].config).toBe(false);
+      expect(call[2].scope).toBe('world');
+      expect(call[2].type).toBe(Object);
+      expect(call[2].default).toEqual({});
+    });
+
+    it('should register panelPosition as hidden client-scoped Object', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'panelPosition');
+      expect(call).toBeDefined();
+      expect(call[2].config).toBe(false);
+      expect(call[2].scope).toBe('client');
+      expect(call[2].type).toBe(Object);
+      expect(call[2].default).toEqual({});
+    });
+
+    it('should register onChange handler for openaiApiKey that calls _onApiKeyChange', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'openaiApiKey');
+      const spy = vi.spyOn(Settings, '_onApiKeyChange');
+
+      call[2].onChange();
+
+      expect(spy).toHaveBeenCalledWith('openai');
+      spy.mockRestore();
+    });
+
+    it('should register onChange handler for kankaApiToken that calls _onApiKeyChange', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'kankaApiToken');
+      const spy = vi.spyOn(Settings, '_onApiKeyChange');
+
+      call[2].onChange();
+
+      expect(spy).toHaveBeenCalledWith('kanka');
+      spy.mockRestore();
     });
   });
 
   describe('get', () => {
-    it('should retrieve a setting value', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should delegate to game.settings.get with MODULE_ID', () => {
+      Settings.registerSettings();
+      game.settings.get.mockReturnValue('test-value');
 
-      // Set up a test value
-      mockSettings.get.mockReturnValue('test-api-key');
+      const result = Settings.get('openaiApiKey');
 
-      const value = Settings.get('openaiApiKey');
+      expect(game.settings.get).toHaveBeenCalledWith(MODULE_ID, 'openaiApiKey');
+      expect(result).toBe('test-value');
+    });
 
-      expect(mockSettings.get).toHaveBeenCalledWith(MODULE_ID, 'openaiApiKey');
-      expect(value).toBe('test-api-key');
+    it('should return undefined for unregistered keys', () => {
+      const result = Settings.get('nonExistentKey');
+
+      expect(game.settings.get).toHaveBeenCalledWith(MODULE_ID, 'nonExistentKey');
+      expect(result).toBeUndefined();
     });
   });
 
   describe('set', () => {
-    it('should set a setting value', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should delegate to game.settings.set with MODULE_ID', async () => {
+      await Settings.set('openaiApiKey', 'new-key');
 
-      await Settings.set('openaiApiKey', 'new-api-key');
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'openaiApiKey', 'new-key');
+    });
 
-      expect(mockSettings.set).toHaveBeenCalledWith(MODULE_ID, 'openaiApiKey', 'new-api-key');
+    it('should return the promise from game.settings.set', async () => {
+      const result = await Settings.set('openaiApiKey', 'value');
+
+      expect(result).toBeUndefined(); // mock returns Promise.resolve()
     });
   });
 
   describe('isOpenAIConfigured', () => {
-    it('should return true when API key is set', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    beforeEach(() => {
+      Settings.registerSettings();
+    });
 
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'openaiApiKey') return 'sk-test-key';
+    it('should return true when API key is a non-empty string', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test-key-1234';
         return '';
       });
 
-      const result = Settings.isOpenAIConfigured();
-
-      expect(result).toBe(true);
+      expect(Settings.isOpenAIConfigured()).toBe(true);
     });
 
-    it('should return false when API key is empty', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return false when API key is empty string', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return '';
         return '';
       });
 
-      const result = Settings.isOpenAIConfigured();
-
-      expect(result).toBeFalsy();
+      expect(Settings.isOpenAIConfigured()).toBeFalsy();
     });
 
-    it('should return false when API key is only whitespace', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return false when API key is only whitespace', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return '   ';
         return '';
       });
 
-      const result = Settings.isOpenAIConfigured();
-
-      expect(result).toBeFalsy();
+      expect(Settings.isOpenAIConfigured()).toBeFalsy();
     });
 
-    it('should return false when API key is null', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return false when API key is null', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return null;
         return '';
       });
 
-      const result = Settings.isOpenAIConfigured();
+      expect(Settings.isOpenAIConfigured()).toBeFalsy();
+    });
 
-      expect(result).toBeFalsy();
+    it('should return false when API key is undefined', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'openaiApiKey') return undefined;
+        return '';
+      });
+
+      expect(Settings.isOpenAIConfigured()).toBeFalsy();
     });
   });
 
   describe('isKankaConfigured', () => {
-    it('should return true when token and campaign ID are set', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    beforeEach(() => {
+      Settings.registerSettings();
+    });
 
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return true when both token and campaign ID are set', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'kankaApiToken') return 'test-token';
         if (key === 'kankaCampaignId') return '12345';
         return '';
       });
 
-      const result = Settings.isKankaConfigured();
-
-      expect(result).toBe(true);
+      expect(Settings.isKankaConfigured()).toBe(true);
     });
 
-    it('should return false when token is missing', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return false when token is empty', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'kankaApiToken') return '';
         if (key === 'kankaCampaignId') return '12345';
-        return undefined;
-      });
-
-      const result = Settings.isKankaConfigured();
-
-      expect(result).toBeFalsy();
-    });
-
-    it('should return false when campaign ID is missing', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'kankaApiToken') return 'test-token';
-        if (key === 'kankaCampaignId') return '';
-        return undefined;
-      });
-
-      const result = Settings.isKankaConfigured();
-
-      expect(result).toBeFalsy();
-    });
-
-    it('should return false when both are missing', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((_module, _key) => {
         return '';
       });
 
-      const result = Settings.isKankaConfigured();
+      expect(Settings.isKankaConfigured()).toBeFalsy();
+    });
 
-      expect(result).toBeFalsy();
+    it('should return false when campaign ID is empty', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'kankaApiToken') return 'test-token';
+        if (key === 'kankaCampaignId') return '';
+        return '';
+      });
+
+      expect(Settings.isKankaConfigured()).toBeFalsy();
+    });
+
+    it('should return false when both are empty', () => {
+      game.settings.get.mockImplementation(() => '');
+
+      expect(Settings.isKankaConfigured()).toBeFalsy();
+    });
+
+    it('should return false when token is null', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'kankaApiToken') return null;
+        if (key === 'kankaCampaignId') return '12345';
+        return '';
+      });
+
+      expect(Settings.isKankaConfigured()).toBeFalsy();
+    });
+
+    it('should return false when campaign ID is only whitespace', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'kankaApiToken') return 'token';
+        if (key === 'kankaCampaignId') return '   ';
+        return '';
+      });
+
+      expect(Settings.isKankaConfigured()).toBeFalsy();
     });
   });
 
   describe('getConfigurationStatus', () => {
-    it('should return all ready when both APIs are configured', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    beforeEach(() => {
+      Settings.registerSettings();
+    });
 
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'openaiApiKey') return 'sk-test-key';
-        if (key === 'kankaApiToken') return 'test-token';
-        if (key === 'kankaCampaignId') return '12345';
+    it('should return all true when both APIs are configured', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test';
+        if (key === 'kankaApiToken') return 'token';
+        if (key === 'kankaCampaignId') return '123';
         return '';
       });
 
-      const status = Settings.getConfigurationStatus();
-
-      expect(status).toEqual({
+      expect(Settings.getConfigurationStatus()).toEqual({
         openai: true,
         kanka: true,
         ready: true
       });
     });
 
-    it('should return not ready when OpenAI is missing', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return ready false when OpenAI is not configured', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return '';
-        if (key === 'kankaApiToken') return 'test-token';
-        if (key === 'kankaCampaignId') return '12345';
-        return undefined;
+        if (key === 'kankaApiToken') return 'token';
+        if (key === 'kankaCampaignId') return '123';
+        return '';
       });
 
       const status = Settings.getConfigurationStatus();
@@ -455,14 +672,12 @@ describe('Settings', () => {
       expect(status.ready).toBeFalsy();
     });
 
-    it('should return not ready when Kanka is missing', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'openaiApiKey') return 'sk-test-key';
+    it('should return ready false when Kanka is not configured', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test';
         if (key === 'kankaApiToken') return '';
-        if (key === 'kankaCampaignId') return '12345';
-        return undefined;
+        if (key === 'kankaCampaignId') return '';
+        return '';
       });
 
       const status = Settings.getConfigurationStatus();
@@ -471,266 +686,215 @@ describe('Settings', () => {
       expect(status.kanka).toBeFalsy();
       expect(status.ready).toBeFalsy();
     });
+
+    it('should return all falsy when nothing is configured', () => {
+      game.settings.get.mockImplementation(() => '');
+
+      const status = Settings.getConfigurationStatus();
+
+      expect(status.openai).toBeFalsy();
+      expect(status.kanka).toBeFalsy();
+      expect(status.ready).toBeFalsy();
+    });
   });
 
   describe('getSpeakerLabels', () => {
-    it('should return speaker labels object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should return the stored speaker labels object', () => {
+      Settings.registerSettings();
       const labels = { SPEAKER_00: 'Alice', SPEAKER_01: 'Bob' };
-      mockSettings.get.mockReturnValue(labels);
+      game.settings.get.mockReturnValue(labels);
 
-      const result = Settings.getSpeakerLabels();
-
-      expect(result).toEqual(labels);
+      expect(Settings.getSpeakerLabels()).toEqual(labels);
     });
 
-    it('should return empty object when labels are null', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should return empty object when setting is null', () => {
+      Settings.registerSettings();
+      game.settings.get.mockReturnValue(null);
 
-      mockSettings.get.mockReturnValue(null);
-
-      const result = Settings.getSpeakerLabels();
-
-      expect(result).toEqual({});
+      expect(Settings.getSpeakerLabels()).toEqual({});
     });
 
-    it('should return empty object on error', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should return empty object when setting is undefined', () => {
+      Settings.registerSettings();
+      game.settings.get.mockReturnValue(undefined);
 
-      mockSettings.get.mockImplementation(() => {
-        throw new Error('Settings error');
+      expect(Settings.getSpeakerLabels()).toEqual({});
+    });
+
+    it('should return empty object when game.settings.get throws', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation(() => {
+        throw new Error('Settings unavailable');
       });
 
-      const result = Settings.getSpeakerLabels();
-
-      expect(result).toEqual({});
+      expect(Settings.getSpeakerLabels()).toEqual({});
     });
   });
 
   describe('setSpeakerLabels', () => {
-    it('should update speaker labels', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
+    it('should delegate to Settings.set with speakerLabels key', async () => {
       const labels = { SPEAKER_00: 'Alice', SPEAKER_01: 'Bob' };
 
       await Settings.setSpeakerLabels(labels);
 
-      expect(mockSettings.set).toHaveBeenCalledWith(MODULE_ID, 'speakerLabels', labels);
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'speakerLabels', labels);
+    });
+
+    it('should handle empty labels object', async () => {
+      await Settings.setSpeakerLabels({});
+
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'speakerLabels', {});
     });
   });
 
   describe('getTranscriptionLanguage', () => {
-    it('should return language code when set', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockReturnValue('en');
-
-      const result = Settings.getTranscriptionLanguage();
-
-      expect(result).toBe('en');
+    beforeEach(() => {
+      Settings.registerSettings();
     });
 
-    it('should return null when language is empty (auto-detect)', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should return the language code when set', () => {
+      game.settings.get.mockReturnValue('en');
 
-      mockSettings.get.mockReturnValue('');
-
-      const result = Settings.getTranscriptionLanguage();
-
-      expect(result).toBeNull();
+      expect(Settings.getTranscriptionLanguage()).toBe('en');
     });
 
-    it('should return null when language is whitespace', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should return null when language is empty string (auto-detect)', () => {
+      game.settings.get.mockReturnValue('');
 
-      mockSettings.get.mockReturnValue('   ');
+      expect(Settings.getTranscriptionLanguage()).toBeNull();
+    });
 
-      const result = Settings.getTranscriptionLanguage();
+    it('should return null when language is only whitespace', () => {
+      game.settings.get.mockReturnValue('   ');
 
-      expect(result).toBeNull();
+      expect(Settings.getTranscriptionLanguage()).toBeNull();
+    });
+
+    it('should return null when language is null', () => {
+      game.settings.get.mockReturnValue(null);
+
+      expect(Settings.getTranscriptionLanguage()).toBeNull();
+    });
+
+    it('should return the exact language code for non-English languages', () => {
+      game.settings.get.mockReturnValue('ja');
+
+      expect(Settings.getTranscriptionLanguage()).toBe('ja');
     });
   });
 
   describe('getAudioSettings', () => {
-    it('should return audio configuration object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return audio configuration with all keys', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'audioCaptureSource') return 'microphone';
         if (key === 'echoCancellation') return true;
         if (key === 'noiseSuppression') return false;
         return '';
       });
 
-      const result = Settings.getAudioSettings();
-
-      expect(result).toEqual({
+      expect(Settings.getAudioSettings()).toEqual({
         source: 'microphone',
         echoCancellation: true,
         noiseSuppression: false
       });
     });
+
+    it('should return defaults from registered settings', () => {
+      Settings.registerSettings();
+
+      const result = Settings.getAudioSettings();
+
+      expect(result).toEqual({
+        source: 'auto',
+        echoCancellation: true,
+        noiseSuppression: true
+      });
+    });
   });
 
   describe('getImageSettings', () => {
-    it('should return image generation configuration object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'imageQuality') return 'high';
-        if (key === 'maxImagesPerSession') return 5;
+    it('should return image generation configuration', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'imageQuality') return 'medium';
+        if (key === 'maxImagesPerSession') return 7;
         return '';
       });
 
-      const result = Settings.getImageSettings();
+      expect(Settings.getImageSettings()).toEqual({
+        quality: 'medium',
+        maxPerSession: 7
+      });
+    });
 
-      expect(result).toEqual({
+    it('should return defaults from registered settings', () => {
+      Settings.registerSettings();
+
+      expect(Settings.getImageSettings()).toEqual({
         quality: 'high',
-        maxPerSession: 5
+        maxPerSession: 3
       });
     });
   });
 
   describe('getEntitySettings', () => {
-    it('should return entity extraction configuration object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'autoExtractEntities') return true;
-        if (key === 'confirmEntityCreation') return false;
+    it('should return entity extraction configuration', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'autoExtractEntities') return false;
+        if (key === 'confirmEntityCreation') return true;
         return '';
       });
 
-      const result = Settings.getEntitySettings();
+      expect(Settings.getEntitySettings()).toEqual({
+        autoExtract: false,
+        confirmCreation: true
+      });
+    });
 
-      expect(result).toEqual({
+    it('should return defaults from registered settings', () => {
+      Settings.registerSettings();
+
+      expect(Settings.getEntitySettings()).toEqual({
         autoExtract: true,
-        confirmCreation: false
+        confirmCreation: true
       });
     });
   });
 
   describe('getRelationshipSettings', () => {
-    it('should return relationship extraction configuration object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return relationship extraction configuration', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'autoExtractRelationships') return true;
         if (key === 'relationshipConfidenceThreshold') return 7;
         if (key === 'maxRelationshipsPerSession') return 15;
         return '';
       });
 
-      const result = Settings.getRelationshipSettings();
-
-      expect(result).toEqual({
+      expect(Settings.getRelationshipSettings()).toEqual({
         autoExtract: true,
         confidenceThreshold: 7,
         maxPerSession: 15
       });
     });
-  });
 
-  describe('_onApiKeyChange', () => {
-    it('should show notification for OpenAI key change', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
+    it('should return defaults from registered settings', () => {
+      Settings.registerSettings();
 
-      Settings._onApiKeyChange('openai');
-
-      expect(mockNotifications.info).toHaveBeenCalledWith(expect.stringContaining('OpenAI'));
-    });
-
-    it('should show notification for Kanka key change', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      Settings._onApiKeyChange('kanka');
-
-      expect(mockNotifications.info).toHaveBeenCalledWith(expect.stringContaining('Kanka'));
-    });
-
-    it('should not show notification when game is not ready', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      globalThis.game.ready = false;
-
-      Settings._onApiKeyChange('openai');
-
-      expect(mockNotifications.info).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('validateOpenAIKey', () => {
-    it('should return false when API key is not configured', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'openaiApiKey') return '';
-        return undefined;
+      expect(Settings.getRelationshipSettings()).toEqual({
+        autoExtract: true,
+        confidenceThreshold: 5,
+        maxPerSession: 20
       });
-
-      const result = await Settings.validateOpenAIKey();
-
-      expect(result).toBe(false);
-      expect(mockNotifications.error).toHaveBeenCalledWith('OpenAI API key not configured');
-    });
-
-    it('should handle validation errors gracefully', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockReturnValue('sk-test-key');
-
-      // Mock dynamic import to throw error
-      vi.doMock('../../scripts/core/VoxChronicle.mjs', () => {
-        throw new Error('Import failed');
-      });
-
-      const result = await Settings.validateOpenAIKey();
-
-      expect(result).toBe(false);
-      expect(mockNotifications.error).toHaveBeenCalled();
-    });
-  });
-
-  describe('validateKankaToken', () => {
-    it('should return false when API token is not configured', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((_module, _key) => {
-        return '';
-      });
-
-      const result = await Settings.validateKankaToken();
-
-      expect(result).toBe(false);
-      expect(mockNotifications.error).toHaveBeenCalledWith('Kanka API token not configured');
-    });
-
-    it('should handle validation errors gracefully', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'kankaApiToken') return 'test-token';
-        if (key === 'kankaCampaignId') return '12345';
-        return '';
-      });
-
-      // Mock dynamic import to throw error
-      vi.doMock('../../scripts/core/VoxChronicle.mjs', () => {
-        throw new Error('Import failed');
-      });
-
-      const result = await Settings.validateKankaToken();
-
-      expect(result).toBe(false);
-      expect(mockNotifications.error).toHaveBeenCalled();
     });
   });
 
   describe('getNarratorSettings', () => {
-    it('should return narrator configuration object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return narrator configuration object with all keys', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
         const values = {
           multiLanguageMode: true,
           transcriptionBatchDuration: 15000,
@@ -739,10 +903,10 @@ describe('Settings', () => {
           rulesSource: 'dnd5e',
           debugMode: true
         };
-        return values[key] ?? '';
+        return values[key] !== undefined ? values[key] : '';
       });
-      const result = Settings.getNarratorSettings();
-      expect(result).toEqual({
+
+      expect(Settings.getNarratorSettings()).toEqual({
         multiLanguageMode: true,
         transcriptionBatchDuration: 15000,
         offTrackSensitivity: 'high',
@@ -751,398 +915,148 @@ describe('Settings', () => {
         debugMode: true
       });
     });
+
+    it('should return defaults from registered settings', () => {
+      Settings.registerSettings();
+
+      expect(Settings.getNarratorSettings()).toEqual({
+        multiLanguageMode: false,
+        transcriptionBatchDuration: 10000,
+        offTrackSensitivity: 'medium',
+        rulesDetection: true,
+        rulesSource: 'auto',
+        debugMode: false
+      });
+    });
   });
 
   describe('getRetrySettings', () => {
-    it('should return retry configuration object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return retry configuration object with all keys', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
         const values = {
-          apiRetryEnabled: true,
+          apiRetryEnabled: false,
           apiRetryMaxAttempts: 5,
           apiRetryBaseDelay: 2000,
           apiRetryMaxDelay: 30000,
           apiQueueMaxSize: 50
         };
-        return values[key] ?? '';
+        return values[key] !== undefined ? values[key] : '';
       });
-      const result = Settings.getRetrySettings();
-      expect(result).toEqual({
-        enabled: true,
+
+      expect(Settings.getRetrySettings()).toEqual({
+        enabled: false,
         maxAttempts: 5,
         baseDelay: 2000,
         maxDelay: 30000,
         queueMaxSize: 50
       });
     });
-  });
 
-  describe('isNarratorConfigured', () => {
-    it('should return true when OpenAI is configured', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'openaiApiKey') return 'sk-test-key';
-        return '';
+    it('should return defaults from registered settings', () => {
+      Settings.registerSettings();
+
+      expect(Settings.getRetrySettings()).toEqual({
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 1000,
+        maxDelay: 60000,
+        queueMaxSize: 100
       });
-      expect(Settings.isNarratorConfigured()).toBe(true);
-    });
-
-    it('should return false when OpenAI is not configured', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockReturnValue('');
-      expect(Settings.isNarratorConfigured()).toBeFalsy();
-    });
-  });
-
-  describe('Narrator Master settings registration', () => {
-    it('should register offTrackSensitivity with choices', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'offTrackSensitivity');
-      expect(call).toBeDefined();
-      expect(call[2].choices).toBeDefined();
-      expect(call[2].choices).toHaveProperty('low');
-      expect(call[2].choices).toHaveProperty('medium');
-      expect(call[2].choices).toHaveProperty('high');
-      expect(call[2].default).toBe('medium');
-    });
-
-    it('should register transcriptionBatchDuration with range', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'transcriptionBatchDuration');
-      expect(call).toBeDefined();
-      expect(call[2].range).toBeDefined();
-      expect(call[2].range.min).toBe(5000);
-      expect(call[2].range.max).toBe(30000);
-      expect(call[2].range.step).toBe(1000);
-      expect(call[2].default).toBe(10000);
-    });
-
-    it('should register debugMode with onChange handler', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'debugMode');
-      expect(call).toBeDefined();
-      expect(typeof call[2].onChange).toBe('function');
-    });
-
-    it('should register imageGallery as hidden', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'imageGallery');
-      expect(call).toBeDefined();
-      expect(call[2].config).toBe(false);
-      expect(call[2].type).toBe(Object);
-    });
-
-    it('should register panelPosition as client-scoped', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'panelPosition');
-      expect(call).toBeDefined();
-      expect(call[2].scope).toBe('client');
-      expect(call[2].config).toBe(false);
-    });
-
-    it('should register apiRetry settings with correct ranges', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-
-      const maxAttempts = registerCalls.find((c) => c[1] === 'apiRetryMaxAttempts');
-      expect(maxAttempts[2].range.min).toBe(0);
-      expect(maxAttempts[2].range.max).toBe(10);
-      expect(maxAttempts[2].default).toBe(3);
-
-      const baseDelay = registerCalls.find((c) => c[1] === 'apiRetryBaseDelay');
-      expect(baseDelay[2].range.min).toBe(500);
-      expect(baseDelay[2].default).toBe(1000);
-
-      const maxDelay = registerCalls.find((c) => c[1] === 'apiRetryMaxDelay');
-      expect(maxDelay[2].range.max).toBe(120000);
-      expect(maxDelay[2].default).toBe(60000);
-    });
-  });
-
-  describe('RAG Configuration settings registration', () => {
-    it('should register all RAG settings', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-
-      // Verify all RAG settings are registered
-      expect(registerCalls.some((call) => call[1] === 'ragEnabled')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragEmbeddingModel')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragEmbeddingDimensions')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragChunkSize')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragChunkOverlap')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragSimilarityThreshold')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragMaxResults')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragStorageLimitMB')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragSilenceThresholdMs')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragAutoIndex')).toBe(true);
-      expect(registerCalls.some((call) => call[1] === 'ragIndexMetadata')).toBe(true);
-    });
-
-    it('should register ragEnabled as boolean with default true', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragEnabled');
-      expect(call).toBeDefined();
-      expect(call[2].type).toBe(Boolean);
-      expect(call[2].default).toBe(true);
-      expect(call[2].scope).toBe('world');
-      expect(call[2].config).toBe(true);
-    });
-
-    it('should register ragEmbeddingModel with choices', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragEmbeddingModel');
-      expect(call).toBeDefined();
-      expect(call[2].type).toBe(String);
-      expect(call[2].choices).toBeDefined();
-      expect(call[2].choices).toHaveProperty('text-embedding-3-small');
-      expect(call[2].choices).toHaveProperty('text-embedding-3-large');
-      expect(call[2].default).toBe('text-embedding-3-small');
-    });
-
-    it('should register ragEmbeddingDimensions with choices', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragEmbeddingDimensions');
-      expect(call).toBeDefined();
-      expect(call[2].type).toBe(Number);
-      expect(call[2].choices).toBeDefined();
-      expect(call[2].choices).toHaveProperty(256);
-      expect(call[2].choices).toHaveProperty(512);
-      expect(call[2].choices).toHaveProperty(1024);
-      expect(call[2].choices).toHaveProperty(1536);
-      expect(call[2].default).toBe(512);
-    });
-
-    it('should register ragChunkSize with range', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragChunkSize');
-      expect(call).toBeDefined();
-      expect(call[2].type).toBe(Number);
-      expect(call[2].range).toBeDefined();
-      expect(call[2].range.min).toBe(200);
-      expect(call[2].range.max).toBe(2000);
-      expect(call[2].range.step).toBe(100);
-      expect(call[2].default).toBe(500);
-    });
-
-    it('should register ragChunkOverlap with range', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragChunkOverlap');
-      expect(call).toBeDefined();
-      expect(call[2].range.min).toBe(50);
-      expect(call[2].range.max).toBe(200);
-      expect(call[2].range.step).toBe(10);
-      expect(call[2].default).toBe(100);
-    });
-
-    it('should register ragSimilarityThreshold with range 0-100', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragSimilarityThreshold');
-      expect(call).toBeDefined();
-      expect(call[2].range.min).toBe(0);
-      expect(call[2].range.max).toBe(100);
-      expect(call[2].range.step).toBe(5);
-      expect(call[2].default).toBe(70);
-    });
-
-    it('should register ragMaxResults with range 1-20', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragMaxResults');
-      expect(call).toBeDefined();
-      expect(call[2].range.min).toBe(1);
-      expect(call[2].range.max).toBe(20);
-      expect(call[2].default).toBe(5);
-    });
-
-    it('should register ragStorageLimitMB with range 10-500', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragStorageLimitMB');
-      expect(call).toBeDefined();
-      expect(call[2].range.min).toBe(10);
-      expect(call[2].range.max).toBe(500);
-      expect(call[2].range.step).toBe(10);
-      expect(call[2].default).toBe(100);
-    });
-
-    it('should register ragSilenceThresholdMs with range 10000-120000', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragSilenceThresholdMs');
-      expect(call).toBeDefined();
-      expect(call[2].range.min).toBe(10000);
-      expect(call[2].range.max).toBe(120000);
-      expect(call[2].range.step).toBe(5000);
-      expect(call[2].default).toBe(30000);
-    });
-
-    it('should register ragAutoIndex as boolean with default true', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragAutoIndex');
-      expect(call).toBeDefined();
-      expect(call[2].type).toBe(Boolean);
-      expect(call[2].default).toBe(true);
-    });
-
-    it('should register ragIndexMetadata as hidden internal setting', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      Settings.registerSettings();
-      const registerCalls = mockSettings.register.mock.calls;
-      const call = registerCalls.find((c) => c[1] === 'ragIndexMetadata');
-      expect(call).toBeDefined();
-      expect(call[2].config).toBe(false);
-      expect(call[2].type).toBe(Object);
-      expect(call[2].default).toEqual({});
     });
   });
 
   describe('getRAGSettings', () => {
-    it('should return RAG configuration object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return RAG configuration object with all keys', () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
         const values = {
           ragEnabled: true,
-          ragEmbeddingModel: 'text-embedding-3-small',
-          ragEmbeddingDimensions: 512,
-          ragChunkSize: 500,
-          ragChunkOverlap: 100,
-          ragSimilarityThreshold: 70, // stored as percentage
-          ragMaxResults: 5,
-          ragStorageLimitMB: 100,
-          ragSilenceThresholdMs: 30000,
-          ragAutoIndex: true
+          ragProvider: 'openai-file-search',
+          ragMaxResults: 10,
+          ragAutoIndex: false,
+          ragSilenceThresholdMs: 60000,
+          ragVectorStoreId: 'vs_abc123',
+          ragflowBaseUrl: 'http://myserver:9380',
+          ragflowApiKey: 'rf-key',
+          ragflowModelName: 'deepseek',
+          ragflowDatasetId: 'ds-1',
+          ragflowChatId: 'ch-1'
         };
-        return values[key] ?? '';
+        return values[key] !== undefined ? values[key] : '';
       });
-      const result = Settings.getRAGSettings();
-      expect(result).toEqual({
+
+      expect(Settings.getRAGSettings()).toEqual({
         enabled: true,
-        embeddingModel: 'text-embedding-3-small',
-        embeddingDimensions: 512,
-        chunkSize: 500,
-        chunkOverlap: 100,
-        similarityThreshold: 0.7, // converted to 0-1
+        provider: 'openai-file-search',
+        maxResults: 10,
+        autoIndex: false,
+        silenceThresholdMs: 60000,
+        vectorStoreId: 'vs_abc123',
+        ragflowBaseUrl: 'http://myserver:9380',
+        ragflowApiKey: 'rf-key',
+        ragflowModelName: 'deepseek',
+        ragflowDatasetId: 'ds-1',
+        ragflowChatId: 'ch-1'
+      });
+    });
+
+    it('should return defaults from registered settings', () => {
+      Settings.registerSettings();
+
+      expect(Settings.getRAGSettings()).toEqual({
+        enabled: true,
+        provider: 'openai-file-search',
         maxResults: 5,
-        storageLimitMB: 100,
+        autoIndex: true,
         silenceThresholdMs: 30000,
-        autoIndex: true
+        vectorStoreId: '',
+        ragflowBaseUrl: 'http://localhost:9380',
+        ragflowApiKey: '',
+        ragflowModelName: '',
+        ragflowDatasetId: '',
+        ragflowChatId: ''
       });
-    });
-
-    it('should convert similarity threshold from percentage to 0-1 range', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'ragSimilarityThreshold') return 85;
-        return '';
-      });
-      const result = Settings.getRAGSettings();
-      expect(result.similarityThreshold).toBe(0.85);
-    });
-
-    it('should handle zero similarity threshold', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'ragSimilarityThreshold') return 0;
-        return '';
-      });
-      const result = Settings.getRAGSettings();
-      expect(result.similarityThreshold).toBe(0);
-    });
-
-    it('should handle 100% similarity threshold', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
-        if (key === 'ragSimilarityThreshold') return 100;
-        return '';
-      });
-      const result = Settings.getRAGSettings();
-      expect(result.similarityThreshold).toBe(1);
     });
   });
 
-  describe('getRAGIndexMetadata', () => {
-    it('should return RAG index metadata object', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      const metadata = {
-        lastIndexed: '2024-01-15T10:00:00Z',
-        vectorCount: 150,
-        indexedJournals: ['journal-1', 'journal-2']
-      };
-      mockSettings.get.mockReturnValue(metadata);
+  describe('setRAGVectorStoreId', () => {
+    it('should delegate to Settings.set with ragVectorStoreId key', async () => {
+      await Settings.setRAGVectorStoreId('vs_abc123');
 
-      const result = Settings.getRAGIndexMetadata();
-
-      expect(result).toEqual(metadata);
+      expect(game.settings.set).toHaveBeenCalledWith(
+        MODULE_ID,
+        'ragVectorStoreId',
+        'vs_abc123'
+      );
     });
 
-    it('should return empty object when metadata is null', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockReturnValue(null);
+    it('should store empty string when called with falsy value', async () => {
+      await Settings.setRAGVectorStoreId(null);
 
-      const result = Settings.getRAGIndexMetadata();
-
-      expect(result).toEqual({});
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'ragVectorStoreId', '');
     });
 
-    it('should return empty object on error', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation(() => {
-        throw new Error('Settings error');
-      });
+    it('should store empty string when called with undefined', async () => {
+      await Settings.setRAGVectorStoreId(undefined);
 
-      const result = Settings.getRAGIndexMetadata();
-
-      expect(result).toEqual({});
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'ragVectorStoreId', '');
     });
-  });
 
-  describe('setRAGIndexMetadata', () => {
-    it('should update RAG index metadata', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      const metadata = {
-        lastIndexed: '2024-01-15T10:00:00Z',
-        vectorCount: 150
-      };
+    it('should store empty string when called with empty string', async () => {
+      await Settings.setRAGVectorStoreId('');
 
-      await Settings.setRAGIndexMetadata(metadata);
-
-      expect(mockSettings.set).toHaveBeenCalledWith(MODULE_ID, 'ragIndexMetadata', metadata);
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'ragVectorStoreId', '');
     });
   });
 
   describe('isRAGConfigured', () => {
-    it('should return true when OpenAI is configured and RAG is enabled', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
+    beforeEach(() => {
+      Settings.registerSettings();
+    });
+
+    it('should return true when OpenAI is configured and RAG is enabled', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return 'sk-test-key';
         if (key === 'ragEnabled') return true;
         return '';
@@ -1151,9 +1065,8 @@ describe('Settings', () => {
       expect(Settings.isRAGConfigured()).toBe(true);
     });
 
-    it('should return false when OpenAI is not configured', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return false when OpenAI is not configured', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return '';
         if (key === 'ragEnabled') return true;
         return '';
@@ -1162,9 +1075,8 @@ describe('Settings', () => {
       expect(Settings.isRAGConfigured()).toBeFalsy();
     });
 
-    it('should return false when RAG is disabled', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return false when RAG is disabled', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return 'sk-test-key';
         if (key === 'ragEnabled') return false;
         return '';
@@ -1173,15 +1085,235 @@ describe('Settings', () => {
       expect(Settings.isRAGConfigured()).toBeFalsy();
     });
 
-    it('should return false when both conditions fail', async () => {
-      const { Settings } = await import('../../scripts/core/Settings.mjs');
-      mockSettings.get.mockImplementation((module, key) => {
+    it('should return false when both conditions fail', () => {
+      game.settings.get.mockImplementation((_module, key) => {
         if (key === 'openaiApiKey') return '';
         if (key === 'ragEnabled') return false;
         return '';
       });
 
       expect(Settings.isRAGConfigured()).toBeFalsy();
+    });
+  });
+
+  describe('isNarratorConfigured', () => {
+    beforeEach(() => {
+      Settings.registerSettings();
+    });
+
+    it('should return true when OpenAI is configured', () => {
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test-key';
+        return '';
+      });
+
+      expect(Settings.isNarratorConfigured()).toBe(true);
+    });
+
+    it('should return false when OpenAI is not configured', () => {
+      game.settings.get.mockImplementation(() => '');
+
+      expect(Settings.isNarratorConfigured()).toBeFalsy();
+    });
+
+    it('should delegate to isOpenAIConfigured', () => {
+      const spy = vi.spyOn(Settings, 'isOpenAIConfigured').mockReturnValue(true);
+
+      expect(Settings.isNarratorConfigured()).toBe(true);
+      expect(spy).toHaveBeenCalled();
+
+      spy.mockRestore();
+    });
+  });
+
+  describe('_onApiKeyChange', () => {
+    it('should show info notification for openai key change when game is ready', () => {
+      game.ready = true;
+
+      Settings._onApiKeyChange('openai');
+
+      expect(ui.notifications.info).toHaveBeenCalledWith(
+        expect.stringContaining('OpenAI')
+      );
+      expect(ui.notifications.info).toHaveBeenCalledWith(
+        expect.stringContaining('API key updated')
+      );
+    });
+
+    it('should show info notification for kanka key change when game is ready', () => {
+      game.ready = true;
+
+      Settings._onApiKeyChange('kanka');
+
+      expect(ui.notifications.info).toHaveBeenCalledWith(
+        expect.stringContaining('Kanka')
+      );
+      expect(ui.notifications.info).toHaveBeenCalledWith(
+        expect.stringContaining('API key updated')
+      );
+    });
+
+    it('should not show notification when game is not ready', () => {
+      game.ready = false;
+
+      Settings._onApiKeyChange('openai');
+
+      expect(ui.notifications.info).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when ui.notifications is undefined', () => {
+      game.ready = true;
+      const originalNotifications = ui.notifications;
+      ui.notifications = undefined;
+
+      expect(() => Settings._onApiKeyChange('openai')).not.toThrow();
+
+      ui.notifications = originalNotifications;
+    });
+  });
+
+  describe('validateOpenAIKey', () => {
+    it('should return false and show error when OpenAI is not configured', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation(() => '');
+
+      const result = await Settings.validateOpenAIKey();
+
+      expect(result).toBe(false);
+      expect(ui.notifications.error).toHaveBeenCalled();
+    });
+
+    it('should show the correct localized message when not configured', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation(() => '');
+
+      await Settings.validateOpenAIKey();
+
+      expect(game.i18n.localize).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Validation.OpenAIKeyNotConfigured'
+      );
+    });
+
+    it('should return false when dynamic import throws an error', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test-key';
+        return '';
+      });
+
+      // The dynamic import of VoxChronicle.mjs will fail in test context
+      const result = await Settings.validateOpenAIKey();
+
+      expect(result).toBe(false);
+      expect(ui.notifications.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('validateKankaToken', () => {
+    it('should return false and show error when Kanka is not configured', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation(() => '');
+
+      const result = await Settings.validateKankaToken();
+
+      expect(result).toBe(false);
+      expect(ui.notifications.error).toHaveBeenCalled();
+    });
+
+    it('should show the correct localized message when not configured', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation(() => '');
+
+      await Settings.validateKankaToken();
+
+      expect(game.i18n.localize).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Validation.KankaTokenNotConfigured'
+      );
+    });
+
+    it('should return false when token is set but campaign ID is missing', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'kankaApiToken') return 'test-token';
+        return '';
+      });
+
+      const result = await Settings.validateKankaToken();
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when dynamic import throws an error', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'kankaApiToken') return 'test-token';
+        if (key === 'kankaCampaignId') return '12345';
+        return '';
+      });
+
+      // The dynamic import of VoxChronicle.mjs will fail in test context
+      const result = await Settings.validateKankaToken();
+
+      expect(result).toBe(false);
+      expect(ui.notifications.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('setting defaults via registerSettings mock store', () => {
+    it('should populate defaults into the mock store when registerSettings is called', () => {
+      Settings.registerSettings();
+
+      // The mock settings.register stores defaults, so Settings.get should return them
+      expect(Settings.get('openaiApiKey')).toBe('');
+      expect(Settings.get('transcriptionMode')).toBe('auto');
+      expect(Settings.get('echoCancellation')).toBe(true);
+      expect(Settings.get('imageQuality')).toBe('high');
+      expect(Settings.get('maxImagesPerSession')).toBe(3);
+      expect(Settings.get('autoExtractEntities')).toBe(true);
+      expect(Settings.get('ragEnabled')).toBe(true);
+      expect(Settings.get('ragProvider')).toBe('openai-file-search');
+      expect(Settings.get('apiRetryEnabled')).toBe(true);
+      expect(Settings.get('debugMode')).toBe(false);
+    });
+  });
+
+  describe('onChange side effects', () => {
+    it('should invoke Logger.setDebugMode when debugMode onChange fires', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'debugMode');
+      // The onChange handler calls Logger.setDebugMode(value)
+      // Since Logger is used at module level, we verify the handler is callable
+      expect(() => call[2].onChange(true)).not.toThrow();
+      expect(() => call[2].onChange(false)).not.toThrow();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle registerSettings being called multiple times', () => {
+      Settings.registerSettings();
+      Settings.registerSettings();
+
+      // Should not throw, just registers settings twice
+      const callCount = game.settings.register.mock.calls.length;
+      expect(callCount).toBeGreaterThan(35);
+    });
+
+    it('should handle get/set before registerSettings', () => {
+      // get returns undefined since no defaults were registered
+      const value = Settings.get('openaiApiKey');
+      expect(value).toBeUndefined();
+    });
+
+    it('should handle set with various value types', async () => {
+      await Settings.set('debugMode', true);
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'debugMode', true);
+
+      await Settings.set('maxImagesPerSession', 5);
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'maxImagesPerSession', 5);
+
+      await Settings.set('speakerLabels', { a: 'b' });
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'speakerLabels', { a: 'b' });
     });
   });
 });

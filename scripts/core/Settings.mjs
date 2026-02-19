@@ -453,7 +453,8 @@ class Settings {
       config: true,
       type: String,
       choices: {
-        'openai-file-search': 'VOXCHRONICLE.Settings.RAGProviderOpenAIFileSearch'
+        'openai-file-search': 'VOXCHRONICLE.Settings.RAGProviderOpenAIFileSearch',
+        'ragflow': 'VOXCHRONICLE.Settings.RAGProviderRAGFlow'
       },
       default: 'openai-file-search'
     });
@@ -492,6 +493,56 @@ class Settings {
 
     // Persisted vector store ID (internal, not shown in config)
     game.settings.register(MODULE_ID, 'ragVectorStoreId', {
+      scope: 'world',
+      config: false,
+      type: String,
+      default: ''
+    });
+
+    // ==========================================
+    // RAGFlow Provider Settings
+    // ==========================================
+
+    // RAGFlow Server URL
+    game.settings.register(MODULE_ID, 'ragflowBaseUrl', {
+      name: 'VOXCHRONICLE.Settings.RAGFlowBaseUrl',
+      hint: 'VOXCHRONICLE.Settings.RAGFlowBaseUrlHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'http://localhost:9380'
+    });
+
+    // RAGFlow API Key (client-side, per user)
+    game.settings.register(MODULE_ID, 'ragflowApiKey', {
+      name: 'VOXCHRONICLE.Settings.RAGFlowApiKey',
+      hint: 'VOXCHRONICLE.Settings.RAGFlowApiKeyHint',
+      scope: 'client',
+      config: true,
+      type: String,
+      default: ''
+    });
+
+    // RAGFlow LLM Model Name (configured in RAGFlow admin)
+    game.settings.register(MODULE_ID, 'ragflowModelName', {
+      name: 'VOXCHRONICLE.Settings.RAGFlowModelName',
+      hint: 'VOXCHRONICLE.Settings.RAGFlowModelNameHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: ''
+    });
+
+    // Persisted RAGFlow dataset ID (internal)
+    game.settings.register(MODULE_ID, 'ragflowDatasetId', {
+      scope: 'world',
+      config: false,
+      type: String,
+      default: ''
+    });
+
+    // Persisted RAGFlow chat assistant ID (internal)
+    game.settings.register(MODULE_ID, 'ragflowChatId', {
       scope: 'world',
       config: false,
       type: String,
@@ -941,7 +992,13 @@ class Settings {
       maxResults: Settings.get('ragMaxResults'),
       autoIndex: Settings.get('ragAutoIndex'),
       silenceThresholdMs: Settings.get('ragSilenceThresholdMs'),
-      vectorStoreId: Settings.get('ragVectorStoreId')
+      vectorStoreId: Settings.get('ragVectorStoreId'),
+      // RAGFlow-specific settings
+      ragflowBaseUrl: Settings.get('ragflowBaseUrl'),
+      ragflowApiKey: Settings.get('ragflowApiKey'),
+      ragflowModelName: Settings.get('ragflowModelName'),
+      ragflowDatasetId: Settings.get('ragflowDatasetId'),
+      ragflowChatId: Settings.get('ragflowChatId')
     };
   }
 
@@ -963,7 +1020,15 @@ class Settings {
    * @static
    */
   static isRAGConfigured() {
-    return Settings.isOpenAIConfigured() && Settings.get('ragEnabled');
+    if (!Settings.get('ragEnabled')) return false;
+    const provider = Settings.get('ragProvider');
+    if (provider === 'ragflow') {
+      const url = Settings.get('ragflowBaseUrl');
+      const key = Settings.get('ragflowApiKey');
+      return !!(url?.trim() && key?.trim());
+    }
+    // Default: OpenAI File Search requires OpenAI API key
+    return Settings.isOpenAIConfigured();
   }
 }
 

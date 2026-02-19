@@ -147,7 +147,17 @@
       "RAGStorageLimit": "[EN] Storage Limit (MB)",
       "RAGStorageLimitHint": "[EN] Maximum IndexedDB storage for vector embeddings (10-500 MB)",
       "RAGSilenceThreshold": "[EN] Silence Detection Threshold",
-      "RAGSilenceThresholdHint": "[EN] Time in milliseconds before triggering autonomous suggestion (10-120 seconds)"
+      "RAGSilenceThresholdHint": "[EN] Time in milliseconds before triggering autonomous suggestion (10-120 seconds)",
+      "RAGProvider": "[EN] RAG Provider",
+      "RAGProviderHint": "[EN] Choose which RAG backend to use for knowledge retrieval",
+      "RAGProviderOpenAIFileSearch": "OpenAI File Search (Cloud)",
+      "RAGProviderRAGFlow": "RAGFlow (Self-hosted)",
+      "RAGFlowBaseUrl": "[EN] RAGFlow Server URL",
+      "RAGFlowBaseUrlHint": "[EN] URL of your RAGFlow server (e.g. http://localhost:9380)",
+      "RAGFlowApiKey": "[EN] RAGFlow API Key",
+      "RAGFlowApiKeyHint": "[EN] API key for your RAGFlow instance (from RAGFlow admin panel)",
+      "RAGFlowModelName": "[EN] RAGFlow LLM Model",
+      "RAGFlowModelNameHint": "[EN] Name of the LLM model configured in RAGFlow (leave empty for default)"
     },
     "Panel": {
       "Title": "VoxChronicle",
