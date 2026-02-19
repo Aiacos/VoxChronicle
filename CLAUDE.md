@@ -781,6 +781,72 @@ When testing with real APIs:
 
 Use mocks for development and save real API calls for integration testing.
 
+## AI Development Workflow — Skills, Agents, and Subagents
+
+This project uses **Claude Code skills and subagents** for structured development. Follow these rules strictly.
+
+### Required Skills
+
+Always invoke the relevant skill BEFORE starting work. If there is even 1% chance a skill applies, use it.
+
+| Situation | Skill to invoke |
+|-----------|----------------|
+| Starting any new feature or creative work | `superpowers:brainstorming` |
+| Have a plan/spec to implement | `superpowers:executing-plans` |
+| Bug, test failure, unexpected behavior | `superpowers:systematic-debugging` |
+| Writing new code for a feature/bugfix | `superpowers:test-driven-development` |
+| Multiple independent tasks to parallelize | `superpowers:dispatching-parallel-agents` |
+| Need isolation for feature work | `superpowers:using-git-worktrees` |
+| Implementation complete, need to finish branch | `superpowers:finishing-a-development-branch` |
+| About to claim work is done | `superpowers:verification-before-completion` |
+| Received code review feedback | `superpowers:receiving-code-review` |
+| Want to request a code review | `superpowers:requesting-code-review` |
+| Creating or editing skills | `superpowers:writing-skills` |
+| Need to write an implementation plan | `superpowers:writing-plans` |
+
+### Subagent Usage
+
+Use the `Task` tool to launch specialized subagents for parallelizable work:
+
+- **`feature-dev:code-explorer`** — Analyze codebase features, trace execution paths, map architecture
+- **`feature-dev:code-architect`** — Design feature architectures with implementation blueprints
+- **`feature-dev:code-reviewer`** — Review code for bugs, security, quality issues
+- **`pr-review-toolkit:code-reviewer`** — Review code against project guidelines (CLAUDE.md)
+- **`pr-review-toolkit:silent-failure-hunter`** — Find silent failures and bad error handling
+- **`pr-review-toolkit:type-design-analyzer`** — Analyze type design quality
+- **`pr-review-toolkit:pr-test-analyzer`** — Review test coverage quality
+- **`pr-review-toolkit:comment-analyzer`** — Verify comment accuracy
+- **`code-simplifier:code-simplifier`** — Simplify code for clarity and maintainability
+
+### When to Use Subagents
+
+- **Audits**: Launch multiple explorers in parallel to audit different parts of the codebase
+- **Code review**: After completing a feature, launch code-reviewer + silent-failure-hunter
+- **Before PR**: Launch pr-test-analyzer + code-reviewer + comment-analyzer in parallel
+- **Research**: Use code-explorer to understand unfamiliar code before modifying it
+- **After writing code**: Launch code-simplifier to refine the implementation
+
+### Workflow Pattern
+
+```
+1. Invoke brainstorming skill (for new features) or systematic-debugging (for bugs)
+2. Write plan with writing-plans skill
+3. Execute plan with executing-plans skill
+   - Use dispatching-parallel-agents for independent tasks
+   - Use test-driven-development for each implementation step
+4. Verify with verification-before-completion skill
+5. Request review with requesting-code-review skill
+6. Finish branch with finishing-a-development-branch skill
+```
+
+### Task Tracking
+
+Use `TaskCreate`, `TaskUpdate`, `TaskList` for all multi-step work:
+- Create tasks with clear descriptions and `activeForm` (present continuous for spinner)
+- Set `addBlockedBy` dependencies between sequential tasks
+- Mark `in_progress` before starting, `completed` when done
+- Check `TaskList` after completing a task to find the next available one
+
 ## Questions?
 
 If you're unsure about:
