@@ -13,6 +13,7 @@
 
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 import { VocabularyDictionary, VocabularyCategory } from '../core/VocabularyDictionary.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -42,6 +43,13 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
    * @private
    */
   _activeCategory = VocabularyCategory.CHARACTER_NAMES;
+
+  /**
+   * AbortController for non-action event listeners
+   * @type {AbortController|null}
+   * @private
+   */
+  #listenerController = null;
 
   /** @override */
   static DEFAULT_OPTIONS = {
@@ -124,6 +132,10 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this.#listenerController?.abort();
+    this.#listenerController = new AbortController();
+    const { signal } = this.#listenerController;
+
     // Enter key on term input triggers add-term
     this.element?.querySelectorAll('.term-input').forEach((input) => {
       input.addEventListener('keypress', (event) => {
@@ -131,17 +143,27 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
           event.preventDefault();
           this._onAddTerm(event);
         }
-      });
+      }, { signal });
     });
 
     // Track active tab from tab clicks
     this.element?.querySelectorAll('.tabs .item').forEach((tab) => {
       tab.addEventListener('click', (event) => {
         this._activeCategory = event.currentTarget.dataset.tab;
-      });
+      }, { signal });
     });
 
     this._logger.debug('Event listeners activated');
+  }
+
+  /**
+   * Clean up event listeners on close
+   * @param {object} [options] - Close options
+   * @returns {Promise<void>}
+   */
+  async close(options = {}) {
+    this.#listenerController?.abort();
+    return super.close(options);
   }
 
   /**
@@ -503,7 +525,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
           <form>
             <div class="form-group">
               <label>${game.i18n?.localize('VOXCHRONICLE.Vocabulary.ExportLabel') || 'Copy this JSON:'}</label>
-              <textarea readonly rows="10" style="width: 100%; font-family: monospace;">${json}</textarea>
+              <textarea readonly rows="10" style="width: 100%; font-family: monospace;">${escapeHtml(json)}</textarea>
             </div>
           </form>
         `,
@@ -652,14 +674,15 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
           const exists = this._dictionary.hasTerm(VocabularyCategory.CHARACTER_NAMES, name);
           const disabled = exists ? 'disabled checked' : '';
           const style = exists ? 'opacity: 0.5;' : '';
+          const safeName = escapeHtml(name);
 
           suggestionsHtml += `
             <label style="display: block; margin-bottom: 0.25em; ${style}">
               <input type="checkbox"
                      name="character"
-                     value="${name}"
+                     value="${safeName}"
                      ${disabled} />
-              ${name}
+              ${safeName}
               ${exists ? '<em>(already added)</em>' : ''}
             </label>
           `;
@@ -689,14 +712,15 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
           const exists = this._dictionary.hasTerm(VocabularyCategory.ITEMS, name);
           const disabled = exists ? 'disabled checked' : '';
           const style = exists ? 'opacity: 0.5;' : '';
+          const safeName = escapeHtml(name);
 
           suggestionsHtml += `
             <label style="display: block; margin-bottom: 0.25em; ${style}">
               <input type="checkbox"
                      name="item"
-                     value="${name}"
+                     value="${safeName}"
                      ${disabled} />
-              ${name}
+              ${safeName}
               ${exists ? '<em>(already added)</em>' : ''}
             </label>
           `;

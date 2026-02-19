@@ -31,6 +31,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {MainPanel|null} */
   static _instance = null;
 
+  /** @type {AbortController|null} */
+  #listenerController = null;
+
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-main-panel',
     classes: ['vox-chronicle', 'vox-chronicle-panel'],
@@ -153,12 +156,16 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this.#listenerController?.abort();
+    this.#listenerController = new AbortController();
+    const { signal } = this.#listenerController;
+
     // Tab switching (uses data-tab attribute, not data-action)
     this.element?.querySelectorAll('.vox-chronicle-tab').forEach(el => {
       el.addEventListener('click', (event) => {
         const tab = event.currentTarget.dataset.tab;
         if (tab) this.switchTab(tab);
-      });
+      }, { signal });
     });
   }
 
@@ -210,7 +217,29 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     this._activeTab = tabName;
     this._logger.debug(`Switched to tab: ${tabName}`);
-    this.render();
+
+    // CSS-only tab switching — avoid full re-render
+    if (this.element) {
+      this.element.querySelectorAll('.tab-content').forEach(el => el.hidden = true);
+      const activeContent = this.element.querySelector(`[data-tab-content="${tabName}"]`);
+      if (activeContent) activeContent.hidden = false;
+
+      this.element.querySelectorAll('.vox-chronicle-tab').forEach(el =>
+        el.classList.toggle('active', el.dataset.tab === tabName)
+      );
+    } else {
+      this.render();
+    }
+  }
+
+  /**
+   * Clean up event listeners on close
+   * @param {object} [options] - Close options
+   * @returns {Promise<void>}
+   */
+  async close(options = {}) {
+    this.#listenerController?.abort();
+    return super.close(options);
   }
 
   /**

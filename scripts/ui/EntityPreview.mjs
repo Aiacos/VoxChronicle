@@ -177,6 +177,13 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _renderTimeout = null;
 
+  /**
+   * AbortController for non-action event listeners
+   * @type {AbortController|null}
+   * @private
+   */
+  #listenerController = null;
+
   /** @override */
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-entity-preview',
@@ -302,8 +309,12 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this.#listenerController?.abort();
+    this.#listenerController = new AbortController();
+    const { signal } = this.#listenerController;
+
     this.element?.querySelectorAll('input[type="checkbox"][data-entity-key]').forEach((el) => {
-      el.addEventListener('change', this._onToggleEntity.bind(this));
+      el.addEventListener('change', this._onToggleEntity.bind(this), { signal });
     });
   }
 
@@ -1376,6 +1387,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<void>}
    */
   async close(options = {}) {
+    this.#listenerController?.abort();
     if (this._renderTimeout !== null) {
       clearTimeout(this._renderTimeout);
       this._renderTimeout = null;

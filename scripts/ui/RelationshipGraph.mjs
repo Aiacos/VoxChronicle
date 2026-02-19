@@ -93,6 +93,21 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   };
 
   /**
+   * AbortController for non-action event listeners
+   * @type {AbortController|null}
+   * @private
+   */
+  #listenerController = null;
+
+  /**
+   * Whether vis-network CDN script has been loaded
+   * @type {boolean}
+   * @private
+   * @static
+   */
+  static #visLoaded = false;
+
+  /**
    * Color mapping for entity types
    * @type {object}
    * @private
@@ -306,12 +321,16 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this.#listenerController?.abort();
+    this.#listenerController = new AbortController();
+    const { signal } = this.#listenerController;
+
     // Filter change handlers
     this.element?.querySelectorAll('[data-filter="entity-type"]').forEach(el => {
-      el.addEventListener('change', this._onEntityTypeFilterChange.bind(this));
+      el.addEventListener('change', this._onEntityTypeFilterChange.bind(this), { signal });
     });
     this.element?.querySelectorAll('[data-filter="relationship-type"]').forEach(el => {
-      el.addEventListener('change', this._onRelationshipTypeFilterChange.bind(this));
+      el.addEventListener('change', this._onRelationshipTypeFilterChange.bind(this), { signal });
     });
 
     // Initialize the graph if in ready mode
@@ -385,10 +404,19 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _initializeGraph() {
     try {
-      // Wait for vis-network library to load (will be loaded via CDN in template)
+      // Destroy previous network instance before re-creating
+      if (this._network) {
+        this._network.destroy();
+        this._network = null;
+      }
+
+      // Wait for vis-network library to load (loaded once via CDN, guarded by static flag)
       if (typeof vis === 'undefined') {
-        this._logger.warn('vis-network library not loaded yet, waiting...');
+        if (!RelationshipGraph.#visLoaded) {
+          this._logger.warn('vis-network library not loaded yet, waiting...');
+        }
         await this._waitForVisLibrary();
+        RelationshipGraph.#visLoaded = true;
       }
 
       const container = this.element?.querySelector('#relationship-graph-network');
@@ -669,6 +697,8 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<void>}
    */
   async close(options = {}) {
+    this.#listenerController?.abort();
+
     // Destroy the network instance to free resources
     if (this._network) {
       this._network.destroy();

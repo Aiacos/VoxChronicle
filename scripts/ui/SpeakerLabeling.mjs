@@ -58,6 +58,13 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _knownSpeakers = [];
 
+  /**
+   * AbortController for non-action event listeners
+   * @type {AbortController|null}
+   * @private
+   */
+  #listenerController = null;
+
   /** @override */
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-speaker-labeling',
@@ -115,15 +122,19 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
+    this.#listenerController?.abort();
+    this.#listenerController = new AbortController();
+    const { signal } = this.#listenerController;
+
     // Form submission
     const form = this.element?.querySelector('form');
     if (form) {
-      form.addEventListener('submit', this._onFormSubmit.bind(this));
+      form.addEventListener('submit', this._onFormSubmit.bind(this), { signal });
     }
 
     // Quick-assign dropdown change events
     this.element?.querySelectorAll('select[data-action="quick-assign"]').forEach((el) => {
-      el.addEventListener('change', this._onQuickAssign.bind(this));
+      el.addEventListener('change', this._onQuickAssign.bind(this), { signal });
     });
   }
 
@@ -139,6 +150,16 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
     const data = Object.fromEntries(formData.entries());
     await this._updateObject(event, data);
     this.close();
+  }
+
+  /**
+   * Clean up event listeners on close
+   * @param {object} [options] - Close options
+   * @returns {Promise<void>}
+   */
+  async close(options = {}) {
+    this.#listenerController?.abort();
+    return super.close(options);
   }
 
   /**
