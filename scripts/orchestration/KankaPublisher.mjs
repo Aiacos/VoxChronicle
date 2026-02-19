@@ -304,6 +304,12 @@ class KankaPublisher {
     const parentJournalId = results.journal?.id;
     if (!parentJournalId) {
       this._logger.warn('No parent chronicle journal - skipping character sub-journals');
+      for (const character of characters) {
+        results.errors.push({
+          entity: character.name, type: 'character',
+          error: 'No parent chronicle journal available'
+        });
+      }
       return;
     }
 

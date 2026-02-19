@@ -707,92 +707,78 @@ const cost = extractor.estimateCost(transcriptText);
 
 ---
 
-### EmbeddingService
+### RAGProvider (Abstract)
 
-Generate vector embeddings for RAG using OpenAI's text-embedding-3-small model.
+Abstract base class defining the RAG provider interface. All providers extend this class.
 
 **Import:**
 ```javascript
-import { EmbeddingService } from './scripts/ai/EmbeddingService.mjs';
+import { RAGProvider } from './scripts/rag/RAGProvider.mjs';
 ```
 
-#### Constructor
+#### Methods (all abstract — must be implemented by subclasses)
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `initialize(config)` | `{campaignId?, model?}` | `Promise<void>` | Set up provider resources |
+| `destroy()` | — | `Promise<void>` | Clean up resources (idempotent) |
+| `indexDocuments(documents)` | `RAGDocument[]` | `Promise<{indexed, failed}>` | Upload and index documents |
+| `removeDocument(documentId)` | `string` | `Promise<boolean>` | Remove a single document |
+| `clearIndex()` | — | `Promise<void>` | Remove all documents |
+| `query(question, options)` | `string, {maxResults?}` | `Promise<{answer, sources}>` | Query the RAG index |
+| `getStatus()` | — | `Promise<{ready, documentCount, providerName}>` | Get provider status |
+
+#### RAGDocument Format
 
 ```javascript
-const embeddings = new EmbeddingService(apiKey, {
-  model: 'text-embedding-3-small',
-  dimensions: 512
-});
+{ id: 'doc-1', title: 'Session 1', content: '...', metadata: { type: 'journal' } }
 ```
-
-#### Methods
-
-##### `generateEmbedding(text)`
-Generate an embedding vector for a single text.
-
-```javascript
-const vector = await embeddings.generateEmbedding('The dragon attacked the village');
-// Float32Array(512) [0.023, -0.041, ...]
-```
-
-**Returns:** `Promise<Float32Array>` — 512-dimensional vector
-
-##### `generateBatchEmbeddings(texts)`
-Generate embeddings for multiple texts in a single API call.
-
-```javascript
-const vectors = await embeddings.generateBatchEmbeddings([
-  'Text chunk 1...',
-  'Text chunk 2...'
-]);
-// [Float32Array(512), Float32Array(512)]
-```
-
-**Returns:** `Promise<Float32Array[]>`
 
 ---
 
-### RAGVectorStore
+### RAGProviderFactory
 
-In-memory vector store with IndexedDB persistence for RAG retrieval.
+Factory for creating RAG provider instances by type.
 
 **Import:**
 ```javascript
-import { RAGVectorStore } from './scripts/ai/RAGVectorStore.mjs';
+import { RAGProviderFactory } from './scripts/rag/RAGProviderFactory.mjs';
 ```
 
-#### Constructor
+#### Static Methods
 
 ```javascript
-const store = new RAGVectorStore({
-  maxVectors: 10000,
-  dbName: 'vox-chronicle-rag'
-});
+const provider = RAGProviderFactory.create('openai-file-search', { apiKey, campaignId });
+const provider = RAGProviderFactory.create('ragflow', { baseUrl, apiKey });
+RAGProviderFactory.register('custom', CustomProvider); // Register new provider
+RAGProviderFactory.getAvailableProviders(); // ['openai-file-search', 'ragflow']
 ```
 
-#### Methods
+---
 
-##### `addVector(id, vector, metadata)`
-Store a vector with metadata.
+### OpenAIFileSearchProvider
 
-##### `search(queryVector, options)`
-Find most similar vectors using cosine similarity.
+Default RAG provider using OpenAI Responses API + `file_search` tool.
 
+**Import:**
 ```javascript
-const results = await store.search(queryVector, { topK: 5 });
-// [{ id, score, metadata }]
+import { OpenAIFileSearchProvider } from './scripts/rag/OpenAIFileSearchProvider.mjs';
 ```
 
-##### `getStats()`
-Get store statistics.
+Features: auto-chunking (800-token windows), hosted vector store, built-in reranking, 30-day expiry with auto-recreate.
 
+---
+
+### RAGFlowProvider
+
+Alternative RAG provider for self-hosted RAGFlow instances.
+
+**Import:**
 ```javascript
-const stats = store.getStats();
-// { vectorCount, estimatedSizeBytes, dbName }
+import { RAGFlowProvider } from './scripts/rag/RAGFlowProvider.mjs';
 ```
 
-##### `clear()`
-Remove all vectors from store and IndexedDB.
+Features: dataset management, document upload with parsing status polling, OpenAI-compatible chat completions, Bearer token auth.
 
 ---
 

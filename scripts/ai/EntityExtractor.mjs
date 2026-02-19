@@ -570,7 +570,7 @@ Return JSON in this exact format:
     const truncated = text.substring(0, maxChars);
     const lastPeriod = truncated.lastIndexOf('.');
 
-    if (lastPeriod > maxChars * 0.9) {
+    if (lastPeriod >= maxChars * 0.9) {
       return truncated.substring(0, lastPeriod + 1);
     }
 

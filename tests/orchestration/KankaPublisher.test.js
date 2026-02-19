@@ -424,11 +424,15 @@ describe('KankaPublisher', () => {
         expect(frodoCall[0].type).toBe('PC');
       });
 
-      it('should skip character creation when no parent journal', async () => {
+      it('should skip character creation and report errors when no parent journal', async () => {
         const result = await publisher.publishSession(createSessionData(), {
           createChronicle: false
         });
         expect(result.characters).toHaveLength(0);
+        // Should report an error for each character that couldn't be created
+        const charErrors = result.errors.filter(e => e.type === 'character');
+        expect(charErrors).toHaveLength(2);
+        expect(charErrors[0].error).toMatch(/parent chronicle journal/i);
       });
 
       it('should create locations using createIfNotExists', async () => {

@@ -256,8 +256,8 @@ describe('RAGFlowProvider', () => {
   // ─── destroy() ────────────────────────────────────────────────────
 
   describe('destroy()', () => {
-    it('should throw if not initialized', async () => {
-      await expect(provider.destroy()).rejects.toThrow(/not initialized/);
+    it('should return gracefully if not initialized', async () => {
+      await expect(provider.destroy()).resolves.toBeUndefined();
     });
 
     it('should delete chat assistant and dataset', async () => {

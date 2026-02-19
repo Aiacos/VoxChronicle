@@ -541,14 +541,6 @@ class TranscriptionService extends OpenAIClient {
       ...(result.chunkCount !== undefined && { chunkCount: result.chunkCount })
     };
 
-    // Preserve chunking metadata if present
-    if (result.chunked !== undefined) {
-      mappedResult.chunked = result.chunked;
-    }
-    if (result.chunkCount !== undefined) {
-      mappedResult.chunkCount = result.chunkCount;
-    }
-
     return mappedResult;
   }
 

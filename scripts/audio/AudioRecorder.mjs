@@ -895,6 +895,10 @@ class AudioRecorder {
     } catch (error) {
       this._logger.warn('Failed to initialize audio analysis:', error);
       // Non-fatal: recording continues without level metering
+      // Close the AudioContext to prevent resource leak before nullifying
+      if (this._audioContext) {
+        try { this._audioContext.close(); } catch (_) { /* ignore close error */ }
+      }
       this._audioContext = null;
       this._analyserNode = null;
       this._sourceNode = null;

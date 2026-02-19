@@ -131,7 +131,11 @@ export class RAGFlowProvider extends RAGProvider {
    * @returns {Promise<void>}
    */
   async destroy() {
-    this.#ensureInitialized();
+    if (!this.#initialized) {
+      this._logger.debug('Already destroyed or not initialized, skipping');
+      return;
+    }
+    this.#initialized = false; // Set FIRST to prevent re-entrant calls
     this._logger.info('Destroying RAGFlow provider');
 
     // Delete chat assistant
@@ -163,7 +167,6 @@ export class RAGFlowProvider extends RAGProvider {
     this.#documentIds.clear();
     this.#datasetId = null;
     this.#chatId = null;
-    this.#initialized = false;
   }
 
   // ─── Indexing ───────────────────────────────────────────────────────
@@ -278,7 +281,8 @@ export class RAGFlowProvider extends RAGProvider {
           body: JSON.stringify({ ids: allDocIds })
         });
       } catch (err) {
-        this._logger.warn(`Failed to delete documents: ${err.message}`);
+        this._logger.error(`Failed to delete documents from remote: ${err.message}`);
+        throw err;
       }
     }
 
@@ -551,9 +555,9 @@ export class RAGFlowProvider extends RAGProvider {
 
     // OpenAI-compatible response format
     const choices = response.choices || [];
-    if (choices.length > 0) {
+    if (choices.length > 0 && choices[0]) {
       const message = choices[0].message || choices[0];
-      answer = message.content || '';
+      answer = (message && message.content) || '';
 
       // RAGFlow includes references in the response when reference: true
       const references = response.references || message.references || [];

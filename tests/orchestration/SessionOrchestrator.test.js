@@ -986,8 +986,9 @@ describe('SessionOrchestrator', () => {
       expect(orchestrator._liveCycleTimer).toBeNull();
     });
 
-    it('should throw if not in live mode', async () => {
-      await expect(orchestrator.stopLiveMode()).rejects.toThrow('Live mode is not active');
+    it('should return gracefully if not in live mode', async () => {
+      const result = await orchestrator.stopLiveMode();
+      expect(result).toBeNull();
     });
 
     it('should handle stop failure', async () => {

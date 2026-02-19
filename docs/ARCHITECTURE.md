@@ -77,10 +77,14 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 │  │  │  │ Chunker  │ │ Transcription│ │ SceneDetect  │ │ KankaService│  │  │
 │  │  │  │          │ │ ImageGen     │ │ ChapterTrack │ │ EntityMgr   │  │  │
 │  │  │  │          │ │ EntityExtract│ │ RulesRef     │ │ Narrative   │  │  │
-│  │  │  │          │ │ Embedding    │ │ Analytics    │ │  Exporter   │  │  │
-│  │  │  │          │ │ RAGVectorStr │ │ RAGRetriever │ │             │  │  │
-│  │  │  │          │ │ WhisperLocal │ │ SilenceDetect│ │             │  │  │
+│  │  │  │          │ │ WhisperLocal │ │ Analytics    │ │  Exporter   │  │  │
+│  │  │  │          │ │              │ │ SilenceDetect│ │             │  │  │
 │  │  │  └──────────┘ └──────────────┘ └──────────────┘ └─────────────┘  │  │
+│  │  │                                                                    │  │
+│  │  │  ┌──────────────────────────────────────────────────────────────┐  │  │
+│  │  │  │  RAG: RAGProvider (abstract) → OpenAIFileSearchProvider,    │  │  │
+│  │  │  │       RAGFlowProvider, RAGProviderFactory                   │  │  │
+│  │  │  └──────────────────────────────────────────────────────────────┘  │  │
 │  │  │                                                                    │  │
 │  │  │  ┌──────────────────────────────────────────────────────────────┐  │  │
 │  │  │  │  Utils: Logger, RateLimiter, AudioUtils, CacheManager,      │  │  │
@@ -99,7 +103,7 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 │  • Speaker Diarization       │  │  • Journal CRUD (chronicles)             │
 │  • Entity Extraction (GPT-4o)│  │  • Character/Location/Item CRUD         │
 │  • Image Gen (gpt-image-1)   │  │  • Image Upload                         │
-│  • Embeddings (text-embed-3) │  │  • Rate Limited: 30/90 req/min          │
+│  • File Search (RAG)         │  │  • Rate Limited: 30/90 req/min          │
 │  • Chat (GPT-4o-mini)        │  │                                          │
 │                              │  │  Endpoint: api.kanka.io/1.0              │
 │  Endpoint: api.openai.com/v1 │  │                                          │
@@ -110,7 +114,7 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 
 ## Component Map
 
-48 source files across 8 directories:
+48 source files across 9 directories:
 
 ```
 scripts/
@@ -133,16 +137,19 @@ scripts/
 │   ├── LocalWhisperService.mjs       # Local Whisper backend client
 │   ├── WhisperBackend.mjs            # HTTP client for whisper.cpp server
 │   ├── ImageGenerationService.mjs    # gpt-image-1, base64 responses
-│   ├── EntityExtractor.mjs           # GPT-4o entity extraction + salient moments
-│   ├── EmbeddingService.mjs          # text-embedding-3-small (512-dim)
-│   └── RAGVectorStore.mjs            # IndexedDB + in-memory cosine similarity
+│   └── EntityExtractor.mjs           # GPT-4o entity extraction + salient moments
+│
+├── rag/                              # Modular RAG provider system (v3.0)
+│   ├── RAGProvider.mjs               # Abstract base class (interface)
+│   ├── RAGProviderFactory.mjs        # Factory for creating providers
+│   ├── OpenAIFileSearchProvider.mjs  # OpenAI Responses API + file_search
+│   └── RAGFlowProvider.mjs           # Self-hosted RAGFlow API integration
 │
 ├── narrator/                         # Real-time DM assistant services
 │   ├── AIAssistant.mjs               # Contextual suggestions with RAG injection
 │   ├── ChapterTracker.mjs            # Chapter/scene tracking from journals
 │   ├── CompendiumParser.mjs          # Parse compendiums for rules + text chunking
 │   ├── JournalParser.mjs             # Parse journals for story + text chunking
-│   ├── RAGRetriever.mjs              # Hybrid semantic+keyword retrieval
 │   ├── RulesReference.mjs            # D&D rules Q&A with citations
 │   ├── SceneDetector.mjs             # Scene type: combat/social/exploration/rest
 │   ├── SessionAnalytics.mjs          # Speaker participation, timeline, stats
@@ -215,31 +222,37 @@ Hooks.on('getSceneControlButtons', (controls) => { /* v13 object format */ });
 - **LocalWhisperService** / **WhisperBackend** — Local Whisper backend for offline transcription
 - **ImageGenerationService** — gpt-image-1 (base64 responses, NOT URLs), 3 valid sizes: 1024x1024, 1024x1536, 1536x1024
 - **EntityExtractor** — GPT-4o structured JSON output for NPCs, locations, items, salient moments
-- **EmbeddingService** — text-embedding-3-small (512-dim) for RAG vector generation
-- **RAGVectorStore** — IndexedDB persistence + in-memory Map, brute-force cosine similarity, LRU eviction
 
-### Layer 5: Narrator Services (`narrator/`)
+### Layer 5: RAG System (`rag/`)
+
+Modular RAG provider architecture (v3.0):
+
+- **RAGProvider** — Abstract base class defining the RAG interface (initialize, indexDocuments, query, destroy)
+- **RAGProviderFactory** — Factory for creating providers by type (`openai-file-search`, `ragflow`)
+- **OpenAIFileSearchProvider** — Default provider using OpenAI Responses API + `file_search` tool (auto-chunking, hosted vector store, reranking)
+- **RAGFlowProvider** — Alternative provider for self-hosted RAGFlow instances (dataset management, document upload/parsing, OpenAI-compatible chat)
+
+### Layer 6: Narrator Services (`narrator/`)
 
 Real-time DM assistant services for Live Mode:
 
-- **AIAssistant** — Contextual suggestions (narration, dialogue, action, reference) with RAG context injection
+- **AIAssistant** — Contextual suggestions (narration, dialogue, action, reference) with RAG context injection via `ragProvider.query()`
 - **ChapterTracker** — Track current chapter/scene from Foundry journal entries
 - **CompendiumParser** — Parse Foundry compendiums for rules content + text chunking for RAG
 - **JournalParser** — Parse Foundry journals for story context + text chunking for RAG
-- **RAGRetriever** — Hybrid semantic (70%) + keyword (20%) + recency (10%) retrieval
 - **RulesReference** — D&D rules Q&A with compendium citations
 - **SceneDetector** — Detect scene type (combat, social, exploration, rest) from transcript
 - **SessionAnalytics** — Speaker participation, timeline, session statistics
 - **SilenceDetector** — Timer-based silence detection for auto-triggering AI suggestions
 
-### Layer 6: Kanka Services (`kanka/`)
+### Layer 7: Kanka Services (`kanka/`)
 
 - **KankaClient** — Base client with Bearer auth, rate limiting (30/90 req/min)
 - **KankaService** — CRUD for journals, characters, locations, items; image upload; entity search
 - **KankaEntityManager** — Entity lifecycle: create-if-not-exists, batch create, cache
 - **NarrativeExporter** — Format transcripts as Kanka journal entries (transcript/narrative/summary/full)
 
-### Layer 7: Orchestration (`orchestration/`)
+### Layer 8: Orchestration (`orchestration/`)
 
 - **SessionOrchestrator** — Dual-mode workflow coordinator (live + chronicle)
 - **TranscriptionProcessor** — Audio → transcript with auto-fallback (cloud/local)
@@ -247,7 +260,7 @@ Real-time DM assistant services for Live Mode:
 - **ImageProcessor** — Entities/moments → generated images
 - **KankaPublisher** — Journal + entities + images → Kanka
 
-### Layer 8: UI (`ui/`)
+### Layer 9: UI (`ui/`)
 
 All 5 components use ApplicationV2 + HandlebarsApplicationMixin (v13):
 
@@ -257,7 +270,7 @@ All 5 components use ApplicationV2 + HandlebarsApplicationMixin (v13):
 - **RelationshipGraph** — vis-network entity relationship visualization
 - **VocabularyManager** — Manage custom vocabulary dictionaries
 
-### Layer 9: Utilities (`utils/`)
+### Layer 10: Utilities (`utils/`)
 
 - **Logger** — Module-prefixed logging with child loggers and log levels
 - **RateLimiter** — Sliding window throttling with queue and presets
@@ -318,33 +331,7 @@ Services used: AudioRecorder, TranscriptionProcessor, EntityProcessor, ImageProc
 
 ## RAG Architecture
 
-### Current (v2.x): Custom Vector Store
-
-```
-JournalParser / CompendiumParser
-    │ (text chunks: 500 tokens, 100 overlap)
-    ▼
-EmbeddingService (text-embedding-3-small, 512-dim)
-    │ (OpenAI API: $0.02/1M tokens)
-    ▼
-RAGVectorStore (IndexedDB + in-memory Map)
-    │ (brute-force cosine similarity, LRU eviction)
-    ▼
-RAGRetriever (hybrid scoring)
-    │ semantic: 70% | keyword: 20% | recency: 10%
-    ▼
-AIAssistant (injects RAG context into GPT-4o-mini prompt)
-```
-
-**Limitations:**
-- Brute-force cosine similarity doesn't scale beyond ~10K vectors
-- No reranking — relevance depends on embedding quality alone
-- IndexedDB persistence is fragile (cleared by browser, per-origin)
-- Complex hybrid scoring is hard to tune
-
-### Planned (v3.0): Modular RAG Provider
-
-See `docs/plans/2026-02-19-v3-rewrite-plan.md` for full details.
+### Current (v3.0): Modular RAG Provider
 
 ```
 RAGProvider (abstract interface)
@@ -354,12 +341,32 @@ RAGProvider (abstract interface)
 ├── clearIndex()
 └── getStatus()
 
-OpenAIFileSearchProvider (default)
-├── Creates vector store via OpenAI API
-├── Uploads documents as files
-├── Queries via Responses API + file_search tool
-└── Auto-chunking (800 tokens) + reranking
+OpenAIFileSearchProvider (default)           RAGFlowProvider (self-hosted)
+├── Creates vector store via OpenAI API      ├── Creates dataset + chat assistant
+├── Uploads documents as files               ├── Uploads documents with parsing
+├── Queries via Responses API + file_search  ├── Queries via OpenAI-compatible chat
+└── Auto-chunking (800 tokens) + reranking   └── Polls for document processing status
 ```
+
+**Data flow:**
+```
+JournalParser / CompendiumParser
+    │ (produces RAGDocument[]: {id, title, content, metadata})
+    ▼
+RAGProviderFactory.create(providerType, config)
+    │ (creates OpenAIFileSearchProvider or RAGFlowProvider)
+    ▼
+ragProvider.indexDocuments(documents)
+    │ (provider handles chunking, embedding, storage)
+    ▼
+AIAssistant → ragProvider.query(question) → {answer, sources}
+    │ (injects RAG context into GPT-4o-mini prompt)
+```
+
+### Previous (v2.x): Custom Vector Store (removed)
+
+The v2.x RAG stack (EmbeddingService, RAGVectorStore, RAGRetriever) was removed in v3.0.
+See `docs/plans/2026-02-19-v3-rewrite-plan.md` for migration details.
 
 ---
 
@@ -661,7 +668,8 @@ Exponential backoff + jitter with sequential queue and automatic circuit breakin
 | `/v1/audio/transcriptions` | Transcribe + diarize | gpt-4o-transcribe-diarize | POST (FormData) |
 | `/v1/chat/completions` | Entity extraction, suggestions | gpt-4o / gpt-4o-mini | POST (JSON) |
 | `/v1/images/generations` | Image generation | gpt-image-1 | POST (JSON) |
-| `/v1/embeddings` | RAG vector generation | text-embedding-3-small | POST (JSON) |
+| `/v1/vector_stores` | RAG vector store management | — | POST/DELETE (JSON) |
+| `/v1/responses` | RAG query (file_search tool) | gpt-4o-mini | POST (JSON) |
 
 **Critical notes:**
 - Audio: FormData (NOT JSON), ≤25MB per chunk

@@ -41,8 +41,8 @@ Piano completo: `docs/plans/2026-02-19-v3-rewrite-plan.md`
 - [x] Aggiornare CLAUDE.md con architettura attuale
 - [x] Aggiornare CHANGELOG.md con entry v3.0.0
 - [x] Aggiornare TODO.md con piano v3.0
-- [ ] Riscrivere ARCHITECTURE.md (completamente obsoleto)
-- [ ] Aggiornare API_REFERENCE.md (mancano servizi narrator, RAG, utilities)
+- [x] Riscrivere ARCHITECTURE.md (aggiornato per v3.0 RAG, layer corretti, file eliminati rimossi)
+- [x] Aggiornare API_REFERENCE.md (aggiunta documentazione RAGProvider, rimossi EmbeddingService/RAGVectorStore)
 
 ---
 

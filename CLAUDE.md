@@ -27,7 +27,7 @@ Core capabilities:
 - **Styling**: CSS with `.vox-chronicle` namespace
 - **Testing**: Vitest with jsdom environment (3600+ tests across 61+ files)
 - **External APIs**: OpenAI (transcription, images, chat, embeddings), Kanka (campaign management)
-- **RAG**: Custom vector store with IndexedDB persistence (v2.x); planned migration to OpenAI File Search (v3.0)
+- **RAG**: Modular provider system — OpenAI File Search (default) or self-hosted RAGFlow
 
 ## Project Structure
 
@@ -51,15 +51,17 @@ VoxChronicle/
 │   │   ├── LocalWhisperService.mjs   # Local Whisper backend client
 │   │   ├── WhisperBackend.mjs        # HTTP client for whisper.cpp server
 │   │   ├── ImageGenerationService.mjs # gpt-image-1 image generation
-│   │   ├── EntityExtractor.mjs    # Extract NPCs/locations/items from text
-│   │   ├── EmbeddingService.mjs   # OpenAI text-embedding-3-small (512-dim) for RAG
-│   │   └── RAGVectorStore.mjs     # IndexedDB + in-memory vector store with cosine similarity
+│   │   └── EntityExtractor.mjs    # Extract NPCs/locations/items from text
+│   ├── rag/                        # Modular RAG provider system (v3.0)
+│   │   ├── RAGProvider.mjs         # Abstract base class (interface)
+│   │   ├── RAGProviderFactory.mjs  # Factory for creating providers
+│   │   ├── OpenAIFileSearchProvider.mjs # OpenAI Responses API + file_search
+│   │   └── RAGFlowProvider.mjs     # Self-hosted RAGFlow API integration
 │   ├── narrator/                   # Real-time DM assistant services (from Narrator Master)
 │   │   ├── AIAssistant.mjs         # Contextual AI suggestions with RAG context injection
 │   │   ├── ChapterTracker.mjs      # Chapter/scene tracking from Foundry journals
 │   │   ├── CompendiumParser.mjs    # Parse Foundry compendiums for rules content + text chunking
 │   │   ├── JournalParser.mjs       # Parse Foundry journal entries for story context + text chunking
-│   │   ├── RAGRetriever.mjs        # Hybrid semantic+keyword retrieval (70/20/10 scoring)
 │   │   ├── RulesReference.mjs      # D&D rules Q&A with compendium citations
 │   │   ├── SceneDetector.mjs       # Scene type detection (combat, social, exploration, rest)
 │   │   ├── SessionAnalytics.mjs    # Speaker participation, timeline, session stats
@@ -454,19 +456,15 @@ All CSS classes are namespaced:
 .vox-chronicle-recorder--recording { /* BEM-style modifier */ }
 ```
 
-### RAG Architecture (v2.x → v3.0 Migration Planned)
+### RAG Architecture (v3.0)
 
-**Current (v2.x):** Custom RAG stack with three components:
-- `EmbeddingService` — text-embedding-3-small (512-dim), batch embedding
-- `RAGVectorStore` — IndexedDB persistence + in-memory Map, brute-force cosine similarity, LRU eviction
-- `RAGRetriever` — Hybrid semantic+keyword search (70% semantic, 20% keyword, 10% recency)
+Modular RAG provider system with two implementations:
+- `RAGProvider` — Abstract interface for any RAG backend (`scripts/rag/RAGProvider.mjs`)
+- `OpenAIFileSearchProvider` — Default: OpenAI Responses API + `file_search` tool, hosted vector store
+- `RAGFlowProvider` — Alternative: self-hosted RAGFlow with dataset management + document parsing
+- `RAGProviderFactory` — Factory for creating providers based on `ragProvider` setting
 
-**Planned (v3.0):** Modular RAG provider interface with OpenAI File Search:
-- `RAGProvider` — Abstract interface for any RAG backend
-- `OpenAIFileSearchProvider` — Default implementation using OpenAI Responses API + file_search tool
-- `RAGProviderFactory` — Factory for creating providers based on settings
-
-See `docs/plans/2026-02-19-v3-rewrite-plan.md` for full migration details.
+The v2.x custom stack (EmbeddingService, RAGVectorStore, RAGRetriever) was removed in v3.0.
 
 ## Important Patterns
 

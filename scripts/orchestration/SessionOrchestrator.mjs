@@ -894,7 +894,8 @@ class SessionOrchestrator {
    */
   async stopLiveMode() {
     if (!this._liveMode) {
-      throw new Error('Live mode is not active.');
+      this._logger.warn('stopLiveMode called but live mode is not active, ignoring');
+      return this._currentSession;
     }
 
     this._logger.log('Stopping live mode...');
@@ -1002,6 +1003,12 @@ class SessionOrchestrator {
 
           this._updateState(SessionState.LIVE_ANALYZING);
           await this._runAIAnalysis(result);
+
+          // Check after async AI analysis — session may have been stopped
+          if (!this._liveMode) {
+            this._logger.debug('Live mode stopped during AI analysis, ending cycle');
+            return;
+          }
         } else {
           this._logger.debug('Transcription returned no segments');
         }
