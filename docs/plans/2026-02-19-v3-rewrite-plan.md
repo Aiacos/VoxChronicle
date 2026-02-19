@@ -409,36 +409,91 @@ Add v3.0 rewrite plan items:
 
 Add [Unreleased] section documenting planned v3.0 changes.
 
-## Phase 5: Testing
+## Phase 5: Riscrittura completa dei test con coverage totale
 
-### 5.1 New Test Files
+### Strategia
 
-| File | Tests | Description |
-|------|-------|-------------|
-| `tests/rag/RAGProvider.test.js` | ~15 | Interface contract tests |
-| `tests/rag/OpenAIFileSearchProvider.test.js` | ~40 | Full implementation tests |
-| `tests/rag/RAGProviderFactory.test.js` | ~10 | Factory creation tests |
-| `tests/ui/memory-leak-regression.test.js` | ~25 | Verify AbortController cleanup |
+I 3600+ test attuali sono strettamente accoppiati all'implementazione v2.x. Anziche' aggiornare puntualmente i test vecchi rischiando coverage parziale e test fragili, si riscrivono TUTTI i test da zero con target **100% code coverage**.
 
-### 5.2 Updated Test Files
+### 5.0 Eliminazione test esistenti
 
-| File | Changes |
-|------|---------|
-| `tests/narrator/AIAssistant.test.mjs` | Replace RAGRetriever mock with RAGProvider mock |
-| `tests/orchestration/SessionOrchestrator.test.js` | Replace RAG initialization mocks |
-| `tests/ui/MainPanel.test.mjs` | Add listener cleanup tests |
-| `tests/ui/EntityPreview.test.js` | Add listener cleanup tests |
-| `tests/ui/SpeakerLabeling.test.js` | Add listener cleanup tests |
-| `tests/ui/RelationshipGraph.test.js` | Add CDN loading guard tests |
-| `tests/ui/VocabularyManager.test.js` | Add listener cleanup + XSS tests |
+Eliminare l'intera directory `tests/` e ricrearla vuota. I test vecchi non hanno valore per v3.0:
+- Test RAG vecchi testano EmbeddingService/RAGVectorStore/RAGRetriever (rimossi)
+- Test UI non verificano AbortController/memory leak (il bug principale)
+- Test orchestration sono accoppiati al workflow vecchio (5-20 immagini, entity-centric)
+- Mock Foundry/ApplicationV2 obsoleti e fragili
 
-### 5.3 Removed Test Files
+### 5.1 Configurazione coverage
 
-| File | Reason |
-|------|--------|
-| `tests/ai/EmbeddingService.test.js` | Service removed |
-| `tests/ai/RAGVectorStore.test.js` | Service removed |
-| `tests/narrator/RAGRetriever.test.js` | Service removed |
+```javascript
+// vitest.config.js
+export default {
+  test: {
+    environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['scripts/**/*.mjs'],
+      exclude: ['scripts/data/**'],  // static dictionaries
+      thresholds: {
+        lines: 95,
+        functions: 95,
+        branches: 90,
+        statements: 95
+      }
+    }
+  }
+};
+```
+
+### 5.2 Piano test per modulo
+
+| Directory | File da testare | Coverage target |
+|-----------|----------------|-----------------|
+| `scripts/core/` | VoxChronicle, Settings, VocabularyDictionary | 100% |
+| `scripts/audio/` | AudioRecorder, AudioChunker, SilenceDetector | 95%+ |
+| `scripts/ai/` | OpenAIClient, TranscriptionService, TranscriptionFactory, LocalWhisperService, WhisperBackend, ImageGenerationService, EntityExtractor | 95%+ |
+| `scripts/rag/` | RAGProvider, OpenAIFileSearchProvider, RAGProviderFactory | 100% |
+| `scripts/narrator/` | AIAssistant, ChapterTracker, CompendiumParser, JournalParser, RulesReference, SceneDetector, SessionAnalytics, SilenceDetector | 95%+ |
+| `scripts/kanka/` | KankaClient, KankaService, KankaEntityManager, NarrativeExporter | 95%+ |
+| `scripts/orchestration/` | SessionOrchestrator (live+chronicle), TranscriptionProcessor, EntityProcessor, ImageProcessor, KankaPublisher | 95%+ |
+| `scripts/ui/` | MainPanel, EntityPreview, SpeakerLabeling, RelationshipGraph, VocabularyManager | 95%+ (inclusi test memory leak) |
+| `scripts/utils/` | Logger, RateLimiter, AudioUtils, SensitiveDataFilter, HtmlUtils, CacheManager, DomUtils, ErrorNotificationHelper | 100% |
+
+### 5.3 Test struttura per ogni modulo
+
+Ogni file di test deve coprire:
+1. **Costruttore e inizializzazione** — parametri validi, default, errori
+2. **Ogni metodo pubblico** — happy path, edge case, errori
+3. **Interazioni con dipendenze** — mock verificati (chiamate corrette, ordine)
+4. **Error handling** — ogni catch/throw testato
+5. **Cleanup e lifecycle** — destroy, close, abort, dispose
+
+### 5.4 Test specifici per bug fix v3.0
+
+| Test | Verifica |
+|------|----------|
+| UI memory leak regression | Ogni componente: render 10x, verificare che i listener non si accumulino |
+| AbortController cleanup | `close()` chiama `abort()`, nuovo render chiama `abort()` prima di re-add |
+| RelationshipGraph CDN | `vis-network` caricato una sola volta, guard `if (!window.vis)` |
+| VocabularyManager XSS | Input con `<script>` sanitizzato da `HtmlUtils.escapeHtml()` |
+| RAG provider swap | Factory crea provider corretto, fallback se provider non disponibile |
+| File Search error handling | Network error, quota exceeded, vector store expired |
+
+### 5.5 Test di integrazione
+
+| Test | Scenario |
+|------|----------|
+| Full chronicle flow | Record → Transcribe → Extract → Images(3) → Publish to Kanka |
+| Full live flow | Start live → RAG query → Suggestion → Scene detect → Analytics → Stop |
+| RAG end-to-end | Upload file → Index → Query → Results con citations |
+| Dual-mode switch | Start live → Stop → Start chronicle → Complete |
+
+### 5.6 CI integration
+
+- Aggiungere `npm run test:coverage` a CI pipeline
+- Fail se coverage sotto soglia (95% lines/functions, 90% branches)
+- Report HTML coverage come artifact
 
 ## Implementation Order
 
@@ -455,29 +510,40 @@ Add [Unreleased] section documenting planned v3.0 changes.
 8. Fix SpeakerLabeling.mjs (AbortController)
 9. Fix RelationshipGraph.mjs (AbortController + CDN guard + vis-network cleanup)
 10. Fix VocabularyManager.mjs (AbortController + XSS fix)
-11. Add memory leak regression tests
 
 ### Batch 3: RAG System Replacement
-12. Create `scripts/rag/RAGProvider.mjs` interface
-13. Create `scripts/rag/RAGProviderFactory.mjs`
-14. Create `scripts/rag/OpenAIFileSearchProvider.mjs`
-15. Update `AIAssistant.mjs` to use RAGProvider
-16. Update `SessionOrchestrator.mjs` to use RAGProviderFactory
-17. Update `Settings.mjs` (remove old RAG settings, add new ones)
-18. Write RAG tests
-19. Delete old RAG files
+11. Create `scripts/rag/RAGProvider.mjs` interface
+12. Create `scripts/rag/RAGProviderFactory.mjs`
+13. Create `scripts/rag/OpenAIFileSearchProvider.mjs`
+14. Update `AIAssistant.mjs` to use RAGProvider
+15. Update `SessionOrchestrator.mjs` to use RAGProviderFactory
+16. Update `Settings.mjs` (remove old RAG settings, add new ones)
+17. Delete old RAG files (EmbeddingService, RAGVectorStore, RAGRetriever)
 
 ### Batch 4: Workflow Simplification
-20. Reduce default `maxImagesPerSession` to 3
-21. Update ImageProcessor to only generate scene images
-22. Update KankaPublisher to focus on journal entries
-23. Update tests for simplified workflow
+18. Reduce default `maxImagesPerSession` to 3
+19. Update ImageProcessor to only generate scene images
+20. Update KankaPublisher to focus on journal entries
 
-### Batch 5: Finalize
-24. Version bump to 3.0.0
-25. Update CHANGELOG.md with final v3.0.0 entry
-26. Run full test suite
-27. Build and release
+### Batch 5: Riscrittura completa test
+21. Eliminare tutti i test esistenti (`tests/`)
+22. Configurare Vitest con v8 coverage e soglie (95% lines/functions, 90% branches)
+23. Riscrivere test per `scripts/core/` (VoxChronicle, Settings, VocabularyDictionary)
+24. Riscrivere test per `scripts/utils/` (tutti gli 8 moduli)
+25. Riscrivere test per `scripts/audio/` (AudioRecorder, AudioChunker, SilenceDetector)
+26. Riscrivere test per `scripts/ai/` (tutti i 7 moduli)
+27. Riscrivere test per `scripts/rag/` (RAGProvider, OpenAIFileSearchProvider, RAGProviderFactory)
+28. Riscrivere test per `scripts/narrator/` (tutti gli 8 moduli)
+29. Riscrivere test per `scripts/kanka/` (tutti i 4 moduli)
+30. Riscrivere test per `scripts/orchestration/` (tutti i 5 moduli)
+31. Riscrivere test per `scripts/ui/` (tutti i 5 componenti + memory leak regression)
+32. Riscrivere test di integrazione (full chronicle flow, full live flow, RAG e2e, dual-mode)
+33. Verificare coverage >= soglia su tutti i moduli
+
+### Batch 6: Finalize
+34. Version bump to 3.0.0
+35. Update CHANGELOG.md with final v3.0.0 entry
+36. Build and release
 
 ## Cost Analysis
 
@@ -508,7 +574,7 @@ Roughly cost-neutral, with significantly better RAG quality and fewer images.
 | File Search latency (cold start) | Pre-warm vector store on session start |
 | Vector store expiry (30 days) | Auto-recreate from Foundry journals |
 | Breaking existing workflows | Major version bump (v3.0), clear migration guide |
-| Test coverage gaps | New RAG tests + memory leak regression tests |
+| Riscrittura test completa | Batch 5 dedicato, coverage enforced >= 95% con CI gate |
 
 ## Migration Guide (v2.x → v3.0)
 

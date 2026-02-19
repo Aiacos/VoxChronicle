@@ -29,6 +29,22 @@ Piano completo: `docs/plans/2026-02-19-v3-rewrite-plan.md`
 - [ ] ImageProcessor genera solo immagini di scena (non ritratti entita')
 - [ ] KankaPublisher focalizzato su journal entries
 
+### Test: Riscrittura completa con coverage totale
+- [ ] Eliminare TUTTI i test esistenti (3600+ test attuali sono accoppiati all'implementazione vecchia)
+- [ ] Riscrivere test per ogni modulo da zero con target 100% coverage
+- [ ] Test RAG: RAGProvider, OpenAIFileSearchProvider, RAGProviderFactory
+- [ ] Test UI: AbortController cleanup, memory leak regression per tutti i 5 componenti
+- [ ] Test Audio: AudioRecorder, AudioChunker, SilenceDetector
+- [ ] Test AI: OpenAIClient, TranscriptionService, TranscriptionFactory, ImageGenerationService, EntityExtractor
+- [ ] Test Narrator: AIAssistant, ChapterTracker, CompendiumParser, JournalParser, RulesReference, SceneDetector, SessionAnalytics
+- [ ] Test Kanka: KankaClient, KankaService, KankaEntityManager, NarrativeExporter
+- [ ] Test Orchestration: SessionOrchestrator (dual-mode), TranscriptionProcessor, EntityProcessor, ImageProcessor, KankaPublisher
+- [ ] Test Utils: Logger, RateLimiter, AudioUtils, SensitiveDataFilter, HtmlUtils, CacheManager, DomUtils, ErrorNotificationHelper
+- [ ] Test Core: VoxChronicle singleton, Settings, VocabularyDictionary
+- [ ] Test Integration: full session flow (live + chronicle)
+- [ ] Configurare Vitest coverage reporter (istanbul/v8) con soglia minima
+- [ ] Aggiungere coverage check in CI (fail se < 95%)
+
 ### Documentazione
 - [x] Scrivere piano v3.0 (docs/plans/2026-02-19-v3-rewrite-plan.md)
 - [x] Aggiornare CLAUDE.md con architettura attuale
