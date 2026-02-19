@@ -255,10 +255,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   _getRAGData() {
-    // Get RAG services from VoxChronicle singleton
+    // Get RAG provider from VoxChronicle singleton
     const voxChronicle = VoxChronicle.getInstance();
-    const ragRetriever = voxChronicle?.ragRetriever;
-    const ragVectorStore = voxChronicle?.ragVectorStore;
+    const ragProvider = voxChronicle?.ragProvider;
 
     // Check if RAG is enabled via settings
     let ragEnabled = false;
@@ -268,47 +267,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       // Settings not available
     }
 
-    // Get indexing status and stats
-    let status = 'idle';
-    let progress = 0;
-    let progressText = '';
-    let vectorCount = 0;
-    let storageUsage = '0 KB';
-    let lastIndexed = null;
-
-    if (ragRetriever) {
-      // Get status from RAGRetriever
-      const indexStatus = ragRetriever.getIndexStatus?.() || {};
-      status = indexStatus.isIndexing ? 'indexing' : (indexStatus.vectorCount > 0 ? 'indexed' : 'idle');
-      progress = indexStatus.progress || 0;
-      progressText = indexStatus.progressText || '';
-    }
-
-    if (ragVectorStore) {
-      // Get stats from RAGVectorStore
-      const stats = ragVectorStore.getStats?.() || {};
-      vectorCount = stats.vectorCount || 0;
-      storageUsage = this._formatStorageSize(stats.estimatedSizeBytes || 0);
-    }
-
-    // Get last indexed time from settings metadata
-    try {
-      const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
-      if (metadata.lastIndexed) {
-        lastIndexed = this._formatTimestamp(metadata.lastIndexed);
-      }
-    } catch {
-      // Settings not available
-    }
-
     return {
       enabled: ragEnabled,
-      status,
-      progress,
-      progressText,
-      vectorCount,
-      storageUsage,
-      lastIndexed
+      status: ragProvider ? 'ready' : 'idle',
+      progress: 0,
+      progressText: '',
+      vectorCount: 0,
+      storageUsage: 'N/A (managed by OpenAI)',
+      lastIndexed: null
     };
   }
 

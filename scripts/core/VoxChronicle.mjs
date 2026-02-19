@@ -29,9 +29,7 @@ import { SessionAnalytics } from '../narrator/SessionAnalytics.mjs';
 import { OpenAIClient } from '../ai/OpenAIClient.mjs';
 import { Logger } from '../utils/Logger.mjs';
 // RAG (Retrieval-Augmented Generation) services
-import { EmbeddingService } from '../ai/EmbeddingService.mjs';
-import { RAGVectorStore } from '../ai/RAGVectorStore.mjs';
-import { RAGRetriever } from '../narrator/RAGRetriever.mjs';
+import { RAGProviderFactory } from '../rag/RAGProviderFactory.mjs';
 import { SilenceDetector } from '../narrator/SilenceDetector.mjs';
 import { Settings } from './Settings.mjs';
 
@@ -96,17 +94,8 @@ class VoxChronicle {
     this.sessionAnalytics = null;
 
     // RAG (Retrieval-Augmented Generation) services
-    /** @type {object | null} OpenAI client for RAG embedding requests */
-    this.ragOpenAIClient = null;
-
-    /** @type {object | null} Embedding service for generating vector embeddings */
-    this.embeddingService = null;
-
-    /** @type {object | null} Vector store for RAG embeddings */
-    this.ragVectorStore = null;
-
-    /** @type {object | null} RAG retriever for hybrid search */
-    this.ragRetriever = null;
+    /** @type {import('../rag/RAGProvider.mjs').RAGProvider|null} RAG provider instance */
+    this.ragProvider = null;
 
     /** @type {object | null} Silence detector for autonomous suggestions */
     this.silenceDetector = null;
@@ -350,9 +339,9 @@ class VoxChronicle {
 
   /**
    * Initialize RAG (Retrieval-Augmented Generation) services
-   * Creates embedding service, vector store, retriever, and silence detector
+   * Creates RAG provider via factory and connects to AIAssistant
    *
-   * @param {string} openaiApiKey - OpenAI API key for embedding generation
+   * @param {string} openaiApiKey - OpenAI API key
    * @returns {Promise<void>}
    * @private
    */
@@ -367,7 +356,7 @@ class VoxChronicle {
         return;
       }
 
-      // Check if OpenAI is configured (required for embeddings)
+      // Check if OpenAI is configured (required for File Search)
       if (!openaiApiKey) {
         logger.warn('RAG services require OpenAI API key - skipping initialization');
         return;
@@ -375,39 +364,27 @@ class VoxChronicle {
 
       logger.info('Initializing RAG services...');
 
+      // Create RAG provider via factory
+      const providerType = ragSettings.provider || 'openai-file-search';
+      this.ragProvider = RAGProviderFactory.create(providerType);
+
       // Create dedicated OpenAI client for RAG operations
-      this.ragOpenAIClient = new OpenAIClient(openaiApiKey);
+      const ragClient = new OpenAIClient(openaiApiKey);
 
-      // Initialize Embedding Service
-      this.embeddingService = new EmbeddingService({
-        openaiClient: this.ragOpenAIClient,
-        model: ragSettings.embeddingModel,
-        dimensions: ragSettings.embeddingDimensions,
-        chunkSize: ragSettings.chunkSize,
-        chunkOverlap: ragSettings.chunkOverlap
+      // Initialize provider with client and persisted vector store ID
+      await this.ragProvider.initialize({
+        client: ragClient,
+        vectorStoreId: ragSettings.vectorStoreId || null,
+        storeName: `vox-chronicle-${ragSettings.campaignId || 'default'}`
       });
 
-      // Initialize RAG Vector Store
-      this.ragVectorStore = new RAGVectorStore({
-        embeddingService: this.embeddingService,
-        maxSizeInMB: ragSettings.storageLimitMB,
-        dimensions: ragSettings.embeddingDimensions,
-        model: ragSettings.embeddingModel,
-        persistToIndexedDB: true
-      });
-
-      // Initialize the vector store (opens IndexedDB connection)
-      await this.ragVectorStore.initialize();
-
-      // Initialize RAG Retriever (hybrid semantic + keyword search)
-      this.ragRetriever = new RAGRetriever({
-        embeddingService: this.embeddingService,
-        vectorStore: this.ragVectorStore,
-        journalParser: this.journalParser,
-        compendiumParser: this.compendiumParser,
-        similarityThreshold: ragSettings.similarityThreshold,
-        maxResults: ragSettings.maxResults
-      });
+      // Persist vector store ID for reuse across sessions
+      if (this.ragProvider.getVectorStoreId) {
+        const vsId = this.ragProvider.getVectorStoreId();
+        if (vsId) {
+          Settings.setRAGVectorStoreId(vsId);
+        }
+      }
 
       // Initialize Silence Detector for autonomous suggestions
       this.silenceDetector = new SilenceDetector({
@@ -415,18 +392,16 @@ class VoxChronicle {
         autoRestart: true
       });
 
-      // Connect RAG services to AIAssistant if available
+      // Connect RAG provider to AIAssistant if available
       if (this.aiAssistant) {
-        this.aiAssistant.setRAGRetriever(this.ragRetriever);
+        this.aiAssistant.setRAGProvider(this.ragProvider);
         this.aiAssistant.setSilenceDetector(this.silenceDetector);
-        logger.debug('RAG services connected to AIAssistant');
+        logger.debug('RAG provider connected to AIAssistant');
       }
 
       logger.info('RAG services initialized successfully', {
-        embeddingModel: ragSettings.embeddingModel,
-        dimensions: ragSettings.embeddingDimensions,
-        storageLimitMB: ragSettings.storageLimitMB,
-        silenceThresholdMs: ragSettings.silenceThresholdMs
+        provider: providerType,
+        vectorStoreId: this.ragProvider.getVectorStoreId?.() || 'N/A'
       });
     } catch (error) {
       logger.error('Failed to initialize RAG services:', error);
@@ -458,9 +433,7 @@ class VoxChronicle {
         rulesReference: !!this.rulesReference,
         sessionAnalytics: !!this.sessionAnalytics,
         // RAG services
-        embeddingService: !!this.embeddingService,
-        ragVectorStore: !!this.ragVectorStore,
-        ragRetriever: !!this.ragRetriever,
+        ragProvider: !!this.ragProvider,
         silenceDetector: !!this.silenceDetector
       },
       settings: {

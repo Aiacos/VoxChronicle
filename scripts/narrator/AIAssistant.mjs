@@ -183,11 +183,11 @@ class AIAssistant {
     this._chapterContext = null;
 
     /**
-     * RAGRetriever instance for context-aware retrieval
-     * @type {import('./RAGRetriever.mjs').RAGRetriever|null}
+     * RAGProvider instance for context-aware retrieval
+     * @type {import('../rag/RAGProvider.mjs').RAGProvider|null}
      * @private
      */
-    this._ragRetriever = options.ragRetriever || null;
+    this._ragProvider = options.ragProvider || null;
 
     /**
      * Whether to use RAG for context retrieval (vs. truncated full-text)
@@ -202,13 +202,6 @@ class AIAssistant {
      * @private
      */
     this._ragMaxResults = options.ragMaxResults || 5;
-
-    /**
-     * Maximum characters for RAG context
-     * @type {number}
-     * @private
-     */
-    this._ragMaxChars = options.ragMaxChars || 5000;
 
     /**
      * Cached RAG context from last retrieval
@@ -269,23 +262,23 @@ class AIAssistant {
   }
 
   /**
-   * Sets the RAGRetriever instance for context-aware retrieval
+   * Sets the RAGProvider instance for context-aware retrieval
    *
-   * @param {import('./RAGRetriever.mjs').RAGRetriever} ragRetriever - RAGRetriever instance
+   * @param {import('../rag/RAGProvider.mjs').RAGProvider} ragProvider - RAGProvider instance
    */
-  setRAGRetriever(ragRetriever) {
-    this._ragRetriever = ragRetriever;
-    this._cachedRAGContext = null; // Clear cache when retriever changes
-    this._logger.debug('RAGRetriever updated');
+  setRAGProvider(ragProvider) {
+    this._ragProvider = ragProvider;
+    this._cachedRAGContext = null;
+    this._logger.debug('RAGProvider updated');
   }
 
   /**
-   * Gets the RAGRetriever instance
+   * Gets the RAGProvider instance
    *
-   * @returns {import('./RAGRetriever.mjs').RAGRetriever|null} The RAGRetriever instance or null
+   * @returns {import('../rag/RAGProvider.mjs').RAGProvider|null} The RAGProvider instance or null
    */
-  getRAGRetriever() {
-    return this._ragRetriever;
+  getRAGProvider() {
+    return this._ragProvider;
   }
 
   /**
@@ -294,12 +287,7 @@ class AIAssistant {
    * @returns {boolean} True if RAG can be used for context retrieval
    */
   isRAGConfigured() {
-    return Boolean(
-      this._useRAG &&
-      this._ragRetriever &&
-      (this._ragRetriever.isConfigured() || this._ragRetriever.hasKeywordFallback()) &&
-      this._ragRetriever.hasIndex()
-    );
+    return Boolean(this._useRAG && this._ragProvider);
   }
 
   /**
@@ -1017,7 +1005,6 @@ class AIAssistant {
       ragConfigured: this.isRAGConfigured(),
       ragEnabled: this._useRAG,
       ragMaxResults: this._ragMaxResults,
-      ragMaxChars: this._ragMaxChars,
       ragHasCachedContext: Boolean(this._cachedRAGContext && this._cachedRAGContext.context),
       ragCachedSourceCount: this._cachedRAGContext?.sources?.length || 0,
       // Silence detection stats
@@ -1665,12 +1652,11 @@ Respond in JSON format:
   // ---------------------------------------------------------------------------
 
   /**
-   * Retrieves relevant context using RAG
+   * Retrieves relevant context using RAG provider
    *
    * @param {string} query - The query to retrieve context for (usually the transcription)
    * @param {Object} [options={}] - Retrieval options
    * @param {number} [options.maxResults] - Maximum results to retrieve
-   * @param {number} [options.maxChars] - Maximum characters for context
    * @returns {Promise<{context: string, sources: string[]}>} Retrieved context and sources
    * @private
    */
@@ -1680,16 +1666,17 @@ Respond in JSON format:
     }
 
     const maxResults = options.maxResults || this._ragMaxResults;
-    const maxChars = options.maxChars || this._ragMaxChars;
 
     try {
-      const result = await this._ragRetriever.retrieveForAI(query, {
-        maxResults,
-        maxChars
-      });
+      const ragResult = await this._ragProvider.query(query, { maxResults });
+
+      // Convert RAGQueryResult to internal format
+      const context = ragResult.sources.map(s => s.excerpt).join('\n\n');
+      const sources = ragResult.sources.map(s => s.title);
+      const result = { context, sources };
 
       this._cachedRAGContext = result;
-      this._logger.debug(`Retrieved RAG context: ${result.sources.length} sources, ${result.context.length} chars`);
+      this._logger.debug(`Retrieved RAG context: ${sources.length} sources, ${context.length} chars`);
 
       return result;
     } catch (error) {

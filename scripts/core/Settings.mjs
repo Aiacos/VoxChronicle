@@ -445,70 +445,20 @@ class Settings {
       default: true
     });
 
-    // Embedding model selection
-    game.settings.register(MODULE_ID, 'ragEmbeddingModel', {
-      name: 'VOXCHRONICLE.Settings.RAGEmbeddingModel',
-      hint: 'VOXCHRONICLE.Settings.RAGEmbeddingModelHint',
+    // RAG provider selection
+    game.settings.register(MODULE_ID, 'ragProvider', {
+      name: 'VOXCHRONICLE.Settings.RAGProvider',
+      hint: 'VOXCHRONICLE.Settings.RAGProviderHint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        'text-embedding-3-small': 'VOXCHRONICLE.Settings.RAGEmbeddingModelSmall',
-        'text-embedding-3-large': 'VOXCHRONICLE.Settings.RAGEmbeddingModelLarge'
+        'openai-file-search': 'VOXCHRONICLE.Settings.RAGProviderOpenAIFileSearch'
       },
-      default: 'text-embedding-3-small'
+      default: 'openai-file-search'
     });
 
-    // Embedding dimensions (affects storage size and search accuracy)
-    game.settings.register(MODULE_ID, 'ragEmbeddingDimensions', {
-      name: 'VOXCHRONICLE.Settings.RAGEmbeddingDimensions',
-      hint: 'VOXCHRONICLE.Settings.RAGEmbeddingDimensionsHint',
-      scope: 'world',
-      config: true,
-      type: Number,
-      choices: {
-        '256': '256 (Fastest)',
-        '512': '512 (Balanced)',
-        '1024': '1024 (High Quality)',
-        '1536': '1536 (Maximum)'
-      },
-      default: 512
-    });
-
-    // Text chunk size for embedding (characters per chunk)
-    game.settings.register(MODULE_ID, 'ragChunkSize', {
-      name: 'VOXCHRONICLE.Settings.RAGChunkSize',
-      hint: 'VOXCHRONICLE.Settings.RAGChunkSizeHint',
-      scope: 'world',
-      config: true,
-      type: Number,
-      range: { min: 200, max: 2000, step: 100 },
-      default: 500
-    });
-
-    // Overlap between chunks (characters)
-    game.settings.register(MODULE_ID, 'ragChunkOverlap', {
-      name: 'VOXCHRONICLE.Settings.RAGChunkOverlap',
-      hint: 'VOXCHRONICLE.Settings.RAGChunkOverlapHint',
-      scope: 'world',
-      config: true,
-      type: Number,
-      range: { min: 50, max: 200, step: 10 },
-      default: 100
-    });
-
-    // Similarity threshold for retrieval (0-100, displayed as percentage)
-    game.settings.register(MODULE_ID, 'ragSimilarityThreshold', {
-      name: 'VOXCHRONICLE.Settings.RAGSimilarityThreshold',
-      hint: 'VOXCHRONICLE.Settings.RAGSimilarityThresholdHint',
-      scope: 'world',
-      config: true,
-      type: Number,
-      range: { min: 0, max: 100, step: 5 },
-      default: 70
-    });
-
-    // Maximum number of chunks to retrieve per query
+    // Maximum number of source results per query
     game.settings.register(MODULE_ID, 'ragMaxResults', {
       name: 'VOXCHRONICLE.Settings.RAGMaxResults',
       hint: 'VOXCHRONICLE.Settings.RAGMaxResultsHint',
@@ -519,15 +469,14 @@ class Settings {
       default: 5
     });
 
-    // Maximum IndexedDB storage size for vectors (MB)
-    game.settings.register(MODULE_ID, 'ragStorageLimitMB', {
-      name: 'VOXCHRONICLE.Settings.RAGStorageLimit',
-      hint: 'VOXCHRONICLE.Settings.RAGStorageLimitHint',
+    // Automatically index journals on session start
+    game.settings.register(MODULE_ID, 'ragAutoIndex', {
+      name: 'VOXCHRONICLE.Settings.RAGAutoIndex',
+      hint: 'VOXCHRONICLE.Settings.RAGAutoIndexHint',
       scope: 'world',
       config: true,
-      type: Number,
-      range: { min: 10, max: 500, step: 10 },
-      default: 100
+      type: Boolean,
+      default: true
     });
 
     // Silence detection threshold (milliseconds)
@@ -541,22 +490,12 @@ class Settings {
       default: 30000
     });
 
-    // Automatically rebuild index when content changes
-    game.settings.register(MODULE_ID, 'ragAutoIndex', {
-      name: 'VOXCHRONICLE.Settings.RAGAutoIndex',
-      hint: 'VOXCHRONICLE.Settings.RAGAutoIndexHint',
-      scope: 'world',
-      config: true,
-      type: Boolean,
-      default: true
-    });
-
-    // RAG index metadata (internal storage, not shown in config)
-    game.settings.register(MODULE_ID, 'ragIndexMetadata', {
+    // Persisted vector store ID (internal, not shown in config)
+    game.settings.register(MODULE_ID, 'ragVectorStoreId', {
       scope: 'world',
       config: false,
-      type: Object,
-      default: {}
+      type: String,
+      default: ''
     });
 
     // ==========================================
@@ -998,41 +937,23 @@ class Settings {
   static getRAGSettings() {
     return {
       enabled: Settings.get('ragEnabled'),
-      embeddingModel: Settings.get('ragEmbeddingModel'),
-      embeddingDimensions: Settings.get('ragEmbeddingDimensions'),
-      chunkSize: Settings.get('ragChunkSize'),
-      chunkOverlap: Settings.get('ragChunkOverlap'),
-      similarityThreshold: Settings.get('ragSimilarityThreshold') / 100, // Convert from percentage to 0-1
+      provider: Settings.get('ragProvider'),
       maxResults: Settings.get('ragMaxResults'),
-      storageLimitMB: Settings.get('ragStorageLimitMB'),
+      autoIndex: Settings.get('ragAutoIndex'),
       silenceThresholdMs: Settings.get('ragSilenceThresholdMs'),
-      autoIndex: Settings.get('ragAutoIndex')
+      vectorStoreId: Settings.get('ragVectorStoreId')
     };
   }
 
   /**
-   * Get RAG index metadata (internal)
+   * Persist the vector store ID for reuse across sessions
    *
-   * @returns {object} RAG index metadata
-   * @static
-   */
-  static getRAGIndexMetadata() {
-    try {
-      return Settings.get('ragIndexMetadata') || {};
-    } catch {
-      return {};
-    }
-  }
-
-  /**
-   * Update RAG index metadata (internal)
-   *
-   * @param {object} metadata - New metadata to store
+   * @param {string} vectorStoreId - OpenAI vector store ID
    * @returns {Promise<void>}
    * @static
    */
-  static async setRAGIndexMetadata(metadata) {
-    await Settings.set('ragIndexMetadata', metadata);
+  static async setRAGVectorStoreId(vectorStoreId) {
+    await Settings.set('ragVectorStoreId', vectorStoreId || '');
   }
 
   /**
