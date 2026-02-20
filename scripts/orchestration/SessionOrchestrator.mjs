@@ -74,6 +74,7 @@ class SessionOrchestrator {
 
   // Live mode state
   _liveMode = false;
+  _isStopping = false;
   _liveCycleTimer = null;
   _liveBatchDuration = 10000;
   _liveTranscript = [];
@@ -699,6 +700,7 @@ class SessionOrchestrator {
       this._liveCycleTimer = null;
     }
     this._liveMode = false;
+    this._isStopping = false;
     this._liveTranscript = [];
     this._silenceStartTime = null;
     this._lastAISuggestions = null;
@@ -926,11 +928,16 @@ class SessionOrchestrator {
    * @returns {Promise<object>} Session data with accumulated transcript
    */
   async stopLiveMode() {
-    if (!this._liveMode) {
+    if (!this._liveMode && !this._isStopping) {
       this._logger.warn('stopLiveMode called but live mode is not active, ignoring');
       return this._currentSession;
     }
+    if (this._isStopping) {
+      this._logger.debug('stopLiveMode already in progress, returning current session');
+      return this._currentSession;
+    }
 
+    this._isStopping = true;
     this._logger.log('Stopping live mode...');
     this._liveMode = false;
     const stopStart = Date.now();
@@ -970,6 +977,8 @@ class SessionOrchestrator {
       this._logger.error('Failed to stop live mode:', error);
       this._handleError(error, 'stopLiveMode');
       throw error;
+    } finally {
+      this._isStopping = false;
     }
   }
 

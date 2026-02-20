@@ -999,6 +999,50 @@ describe('SessionOrchestrator', () => {
       await expect(orchestrator.stopLiveMode()).rejects.toThrow('Stop error');
       expect(onError).toHaveBeenCalledWith(expect.any(Error), 'stopLiveMode');
     });
+
+    it('should prevent concurrent stopLiveMode calls (race condition guard)', async () => {
+      await orchestrator.startLiveMode();
+
+      // Make stopRecording slow to simulate async delay
+      let resolveStop;
+      services.audioRecorder.stopRecording.mockReturnValue(
+        new Promise(resolve => { resolveStop = resolve; })
+      );
+
+      // Call stopLiveMode twice concurrently
+      const stop1 = orchestrator.stopLiveMode();
+      const stop2 = orchestrator.stopLiveMode();
+
+      // The second call should return immediately (guarded by _isStopping)
+      const result2 = await stop2;
+      expect(result2).toBeTruthy(); // returns _currentSession
+
+      // Resolve the first call
+      resolveStop(new Blob(['audio'], { type: 'audio/webm' }));
+      await stop1;
+
+      // stopRecording should only be called once
+      expect(services.audioRecorder.stopRecording).toHaveBeenCalledTimes(1);
+      // endSession should only be called once
+      expect(services.sessionAnalytics.endSession).toHaveBeenCalledTimes(1);
+    });
+
+    it('should clear _isStopping flag after successful stop', async () => {
+      await orchestrator.startLiveMode();
+      await orchestrator.stopLiveMode();
+      expect(orchestrator._isStopping).toBe(false);
+    });
+
+    it('should clear _isStopping flag after failed stop', async () => {
+      await orchestrator.startLiveMode();
+      services.audioRecorder.stopRecording.mockRejectedValue(new Error('Stop error'));
+      try {
+        await orchestrator.stopLiveMode();
+      } catch {
+        // expected
+      }
+      expect(orchestrator._isStopping).toBe(false);
+    });
   });
 
   // ── _liveCycle ────────────────────────────────────────────────────────
@@ -1358,6 +1402,12 @@ describe('SessionOrchestrator', () => {
       await orchestrator.startSession();
       orchestrator.reset();
       expect(services.audioRecorder.cancel).toHaveBeenCalled();
+    });
+
+    it('should clear _isStopping flag', async () => {
+      orchestrator._isStopping = true;
+      orchestrator.reset();
+      expect(orchestrator._isStopping).toBe(false);
     });
   });
 
