@@ -161,12 +161,15 @@ describe('SessionAnalytics', () => {
       expect(result).toBeNull();
     });
 
-    it('should return null if session is not active', () => {
-      analytics.startSession();
+    it('should save paused session to history when endSession is called', () => {
+      analytics.startSession('paused-test');
+      analytics.addSegment({ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 5 });
       analytics.pauseSession();
-      // paused session is not 'active'
-      const result = analytics.endSession();
-      expect(result).toBeNull();
+      const summary = analytics.endSession();
+      expect(summary).not.toBeNull();
+      expect(summary.metadata.sessionId).toBe('paused-test');
+      expect(summary.metadata.status).toBe('completed');
+      expect(summary.speakerCount).toBeGreaterThanOrEqual(1);
     });
 
     it('should return a session summary', () => {

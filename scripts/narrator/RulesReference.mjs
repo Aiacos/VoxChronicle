@@ -536,6 +536,11 @@ export class RulesReference {
 
     this._log.debug(`searchCompendiums() entry — query="${query}", limit=${limit}`);
 
+    if (!game.packs) {
+      this._log.warn('Compendium packs not available');
+      return [];
+    }
+
     // Iterate through all compendium packs
     for (const pack of game.packs) {
       // Filter by pack names if specified

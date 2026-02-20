@@ -190,7 +190,8 @@ export class SessionAnalytics {
    * @returns {SessionSummary|null} The completed session summary, or null if no active session
    */
   endSession() {
-    if (!this._currentSession || this._currentSession.status !== 'active') {
+    if (!this._currentSession ||
+        (this._currentSession.status !== 'active' && this._currentSession.status !== 'paused')) {
       log.warn('No active session to end');
       return null;
     }

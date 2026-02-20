@@ -635,6 +635,14 @@ describe('RulesReference', () => {
       expect(results).toEqual([]);
     });
 
+    it('should return empty array when game.packs is unavailable', async () => {
+      const savedPacks = game.packs;
+      game.packs = null;
+      const result = await rules.searchCompendiums('dragon');
+      expect(result).toEqual([]);
+      game.packs = savedPacks;
+    });
+
     it('should include citation information', async () => {
       const results = await rules.searchCompendiums('fireball');
       expect(results[0].rule.citation).toBeDefined();
