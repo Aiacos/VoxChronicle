@@ -235,12 +235,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // CSS-only tab switching — avoid full re-render
     if (this.element) {
-      this.element.querySelectorAll('.tab-content').forEach(el => el.hidden = true);
-      const activeContent = this.element.querySelector(`[data-tab-content="${tabName}"]`);
+      this.element.querySelectorAll('.vox-chronicle-tab-pane').forEach(el => el.hidden = true);
+      const activeContent = this.element.querySelector(`[data-tab-pane="${tabName}"]`);
       if (activeContent) activeContent.hidden = false;
 
       this.element.querySelectorAll('.vox-chronicle-tab').forEach(el =>
-        el.classList.toggle('active', el.dataset.tab === tabName)
+        el.classList.toggle('vox-chronicle-tab--active', el.dataset.tab === tabName)
       );
     } else {
       this.render();

@@ -361,12 +361,12 @@ describe('MainPanel', () => {
 
       panel._element = {
         querySelectorAll: vi.fn((selector) => {
-          if (selector === '.tab-content') return tabContentElements;
+          if (selector === '.vox-chronicle-tab-pane') return tabContentElements;
           if (selector === '.vox-chronicle-tab') return tabElements;
           return [];
         }),
         querySelector: vi.fn((selector) => {
-          if (selector === '[data-tab-content="chronicle"]') {
+          if (selector === '[data-tab-pane="chronicle"]') {
             return { hidden: true };
           }
           return null;
