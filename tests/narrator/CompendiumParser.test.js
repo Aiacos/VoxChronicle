@@ -536,6 +536,21 @@ describe('CompendiumParser', () => {
     it('normalizes whitespace', () => {
       expect(parser.stripHtml('<p>Hello    World</p>')).toBe('Hello World');
     });
+
+    it('should safely handle XSS-dangerous input in stripHtml', () => {
+      const xssInput = '<img src=x onerror="alert(1)"><p>Safe text</p>';
+      const result = parser.stripHtml(xssInput);
+      expect(result).toBe('Safe text');
+      expect(result).not.toContain('onerror');
+      expect(result).not.toContain('alert');
+    });
+
+    it('should handle script tags in stripHtml', () => {
+      const scriptInput = '<script>alert("xss")</script><p>Content</p>';
+      const result = parser.stripHtml(scriptInput);
+      expect(result).toContain('Content');
+      expect(result).not.toContain('<script>');
+    });
   });
 
   // =========================================================================

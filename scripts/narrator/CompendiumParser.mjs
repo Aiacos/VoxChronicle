@@ -640,7 +640,7 @@ export class CompendiumParser {
 
   /**
    * Strips HTML tags from content while preserving text.
-   * Uses the DOM to parse HTML and extract plain text.
+   * Uses DOMParser for safe parsing without script execution (XSS prevention).
    *
    * @param {string} html - The HTML content to strip
    * @returns {string} Plain text content with normalized whitespace
@@ -650,11 +650,11 @@ export class CompendiumParser {
       return '';
     }
 
-    // Use DOM to parse HTML and extract text
-    const div = document.createElement('div');
-    div.innerHTML = html;
+    // Use DOMParser to safely parse HTML without executing scripts
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
 
-    let text = div.textContent || div.innerText || '';
+    let text = doc.body.textContent || '';
 
     // Normalize whitespace
     text = text.replace(/\s+/g, ' ').trim();
