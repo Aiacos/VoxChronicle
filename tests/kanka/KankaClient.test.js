@@ -336,6 +336,7 @@ describe('KankaClient', () => {
 
   describe('error handling', () => {
     it('should parse 401 as authentication error', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockResolvedValue(
         mockResponse({ message: 'Unauthenticated' }, { status: 401 })
@@ -352,6 +353,7 @@ describe('KankaClient', () => {
     });
 
     it('should parse 403 as permission error', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockResolvedValue(
         mockResponse({ message: 'Forbidden' }, { status: 403 })
@@ -368,6 +370,7 @@ describe('KankaClient', () => {
     });
 
     it('should parse 404 as not found error', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockResolvedValue(
         mockResponse({ message: 'Not found' }, { status: 404 })
@@ -384,6 +387,7 @@ describe('KankaClient', () => {
     });
 
     it('should parse 422 as validation error', async () => {
+      expect.assertions(4);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockResolvedValue(
         mockResponse(
@@ -404,6 +408,7 @@ describe('KankaClient', () => {
     });
 
     it('should parse 429 as rate limit error and pause limiter', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN, { maxRetries: 0 });
       const pauseSpy = vi.spyOn(client._rateLimiter, 'pause');
 
@@ -428,6 +433,7 @@ describe('KankaClient', () => {
     });
 
     it('should parse 500 as API error with service unavailable message', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockResolvedValue(
         mockResponse({ message: 'Internal server error' }, { status: 500 })
@@ -444,6 +450,7 @@ describe('KankaClient', () => {
     });
 
     it('should parse 502 as API error', async () => {
+      expect.assertions(2);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockResolvedValue(
         mockResponse({}, { status: 502 })
@@ -459,6 +466,7 @@ describe('KankaClient', () => {
     });
 
     it('should parse 503 as API error', async () => {
+      expect.assertions(2);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockResolvedValue(
         mockResponse({}, { status: 503 })
@@ -474,6 +482,7 @@ describe('KankaClient', () => {
     });
 
     it('should handle non-JSON error response body', async () => {
+      expect.assertions(2);
       const client = new KankaClient(TEST_TOKEN);
       const resp = mockResponse({}, { status: 400 });
       resp.text.mockResolvedValue('Not valid JSON {{{');
@@ -490,6 +499,7 @@ describe('KankaClient', () => {
     });
 
     it('should handle empty error response body', async () => {
+      expect.assertions(1);
       const client = new KankaClient(TEST_TOKEN);
       const resp = mockResponse({}, { status: 400 });
       resp.text.mockResolvedValue('');
@@ -504,6 +514,7 @@ describe('KankaClient', () => {
     });
 
     it('should use error.error field if present in response', async () => {
+      expect.assertions(1);
       const client = new KankaClient(TEST_TOKEN);
       const resp = mockResponse({}, { status: 400 });
       resp.text.mockResolvedValue(JSON.stringify({ error: 'Custom error' }));
@@ -518,6 +529,7 @@ describe('KankaClient', () => {
     });
 
     it('should handle timeout (AbortError)', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN, { timeout: 100 });
       const abortError = new Error('Aborted');
       abortError.name = 'AbortError';
@@ -534,6 +546,7 @@ describe('KankaClient', () => {
     });
 
     it('should handle network errors (TypeError from fetch)', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockRejectedValue(new TypeError('Failed to fetch'));
 
@@ -548,6 +561,7 @@ describe('KankaClient', () => {
     });
 
     it('should wrap unknown errors as API errors', async () => {
+      expect.assertions(2);
       const client = new KankaClient(TEST_TOKEN);
       fetchSpy.mockRejectedValue(new Error('Something went wrong'));
 
@@ -561,6 +575,7 @@ describe('KankaClient', () => {
     });
 
     it('should re-throw KankaError as-is', async () => {
+      expect.assertions(1);
       const client = new KankaClient(TEST_TOKEN);
       const kankaError = new KankaError('Custom error', KankaErrorType.VALIDATION_ERROR, 422);
       fetchSpy.mockRejectedValue(kankaError);
@@ -1079,6 +1094,7 @@ describe('KankaClient', () => {
 
   describe('rate limit headers ordering', () => {
     it('should NOT call _handleRateLimitHeaders on 429 responses (no double-pause)', async () => {
+      expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN, { maxRetries: 0 });
       const handleHeadersSpy = vi.spyOn(client, '_handleRateLimitHeaders');
 
@@ -1131,6 +1147,7 @@ describe('KankaClient', () => {
     });
 
     it('should NOT call _handleRateLimitHeaders on non-429 error responses', async () => {
+      expect.assertions(2);
       const client = new KankaClient(TEST_TOKEN);
       const handleHeadersSpy = vi.spyOn(client, '_handleRateLimitHeaders');
 

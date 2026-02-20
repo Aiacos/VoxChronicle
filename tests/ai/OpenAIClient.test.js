@@ -338,6 +338,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should parse 429 error as rate limit error', async () => {
+      expect.assertions(2);
       fetchSpy.mockResolvedValue(mockResponse(
         { error: { message: 'Rate limit exceeded' } },
         429
@@ -352,6 +353,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should parse 400 error as invalid request error', async () => {
+      expect.assertions(2);
       fetchSpy.mockResolvedValue(mockResponse(
         { error: { message: 'Bad request' } },
         400
@@ -366,6 +368,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should parse 500 error as API error', async () => {
+      expect.assertions(2);
       fetchSpy.mockResolvedValue(mockResponse(
         { error: { message: 'Internal error' } },
         500
@@ -380,6 +383,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should parse 502 error as API error', async () => {
+      expect.assertions(2);
       fetchSpy.mockResolvedValue(mockResponse({}, 502));
 
       try {
@@ -391,6 +395,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should parse 503 error as API error', async () => {
+      expect.assertions(2);
       fetchSpy.mockResolvedValue(mockResponse({}, 503));
 
       try {
@@ -402,6 +407,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should handle timeout (AbortError)', async () => {
+      expect.assertions(2);
       const abortError = new DOMException('The operation was aborted', 'AbortError');
       fetchSpy.mockRejectedValue(abortError);
 
@@ -414,6 +420,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should handle network errors (TypeError with fetch)', async () => {
+      expect.assertions(2);
       const networkError = new TypeError('Failed to fetch');
       fetchSpy.mockRejectedValue(networkError);
 
@@ -426,6 +433,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should wrap unknown errors as API errors', async () => {
+      expect.assertions(2);
       fetchSpy.mockRejectedValue(new Error('Something strange'));
 
       try {
@@ -437,6 +445,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should handle error response with non-JSON body', async () => {
+      expect.assertions(2);
       const resp = {
         ok: false,
         status: 500,
@@ -456,6 +465,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should extract retry-after header from error response', async () => {
+      expect.assertions(2);
       fetchSpy.mockResolvedValue(mockResponse(
         { error: { message: 'Rate limit' } },
         429,
