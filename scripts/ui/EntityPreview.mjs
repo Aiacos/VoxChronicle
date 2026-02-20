@@ -805,7 +805,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     // Create characters
     for (const character of selectedEntities.characters) {
       try {
-        this._progress.message = `Creating character: ${character.name}`;
+        this._progress.message = game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', { type: 'character', name: character.name }) || `Creating character: ${character.name}`;
         this._batchedRender();
 
         const result = await kankaService.createCharacter({
@@ -842,7 +842,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     // Create locations
     for (const location of selectedEntities.locations) {
       try {
-        this._progress.message = `Creating location: ${location.name}`;
+        this._progress.message = game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', { type: 'location', name: location.name }) || `Creating location: ${location.name}`;
         this._batchedRender();
 
         const result = await kankaService.createLocation({
@@ -879,7 +879,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     // Create items
     for (const item of selectedEntities.items) {
       try {
-        this._progress.message = `Creating item: ${item.name}`;
+        this._progress.message = game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', { type: 'item', name: item.name }) || `Creating item: ${item.name}`;
         this._batchedRender();
 
         const result = await kankaService.createItem({

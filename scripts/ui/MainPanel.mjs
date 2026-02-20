@@ -37,7 +37,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-main-panel',
     classes: ['vox-chronicle', 'vox-chronicle-panel'],
-    window: { title: 'VoxChronicle', resizable: true, minimizable: true },
+    window: { title: 'VOXCHRONICLE.Panel.Title', resizable: true, minimizable: true },
     position: { width: 420, height: 600 },
     actions: {
       'toggle-recording': MainPanel._onToggleRecording,

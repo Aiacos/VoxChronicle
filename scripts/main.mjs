@@ -58,7 +58,7 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open main panel:', error);
-      ui.notifications?.error('VoxChronicle: Failed to open panel. Check console.');
+      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenPanel') || 'VoxChronicle: Failed to open panel. Check console.');
     }
   },
   speakerLabels: async () => {
@@ -72,7 +72,7 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open speaker labeling:', error);
-      ui.notifications?.error('VoxChronicle: Failed to open speaker labeling. Check console.');
+      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSpeakerLabeling') || 'VoxChronicle: Failed to open speaker labeling. Check console.');
     }
   },
   vocabulary: async () => {
@@ -86,7 +86,7 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open vocabulary manager:', error);
-      ui.notifications?.error('VoxChronicle: Failed to open vocabulary manager. Check console.');
+      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenVocabularyManager') || 'VoxChronicle: Failed to open vocabulary manager. Check console.');
     }
   },
   relationshipGraph: async () => {
@@ -100,7 +100,7 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open relationship graph:', error);
-      ui.notifications?.error('VoxChronicle: Failed to open relationship graph. Check console.');
+      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenRelationshipGraph') || 'VoxChronicle: Failed to open relationship graph. Check console.');
     }
   },
   settings: () => {
@@ -162,7 +162,7 @@ Hooks.once('ready', async () => {
   } catch (error) {
     logger.error('Failed to initialize module:', error);
     ui.notifications?.error(
-      'VoxChronicle: Failed to initialize module. Check console for details.'
+      game.i18n?.localize('VOXCHRONICLE.Errors.FailedToInitialize') || 'VoxChronicle: Failed to initialize module. Check console for details.'
     );
   }
 });
