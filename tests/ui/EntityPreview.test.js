@@ -818,6 +818,91 @@ describe('EntityPreview', () => {
       preview._onRetry({ preventDefault: vi.fn() });
       expect(preview.render).toHaveBeenCalled();
     });
+
+    it('should filter out already-created entities on retry', () => {
+      preview.setEntities(sampleEntities);
+      vi.spyOn(preview, 'render').mockImplementation(() => {});
+
+      // Simulate partial success: Gandalf and Rivendell created, rest failed
+      preview._results = {
+        created: [
+          { type: 'character', name: 'Gandalf', kankaId: 1, entityId: 100 },
+          { type: 'location', name: 'Rivendell', kankaId: 2, entityId: 200 }
+        ],
+        failed: [
+          { type: 'character', name: 'Frodo', error: 'API fail' },
+          { type: 'item', name: 'The One Ring', error: 'API fail' }
+        ]
+      };
+      preview._mode = 'error';
+
+      preview._onRetry({ preventDefault: vi.fn() });
+
+      // Gandalf should be removed (already created)
+      expect(preview._entities.characters).toHaveLength(1);
+      expect(preview._entities.characters[0].name).toBe('Frodo');
+
+      // Rivendell should be removed (already created)
+      expect(preview._entities.locations).toHaveLength(0);
+
+      // The One Ring should remain (failed)
+      expect(preview._entities.items).toHaveLength(1);
+      expect(preview._entities.items[0].name).toBe('The One Ring');
+    });
+
+    it('should rebuild selections after filtering created entities', () => {
+      preview.setEntities(sampleEntities);
+      vi.spyOn(preview, 'render').mockImplementation(() => {});
+
+      preview._results = {
+        created: [{ type: 'character', name: 'Gandalf', kankaId: 1 }],
+        failed: [{ type: 'character', name: 'Frodo', error: 'fail' }]
+      };
+
+      preview._onRetry({ preventDefault: vi.fn() });
+
+      // Selections should only contain remaining entities: Frodo + Rivendell + The One Ring
+      expect(preview._selections.size).toBe(3);
+      expect(preview._selections.get('characters-0')).toBe(true); // Frodo is now index 0
+      expect(preview._selections.get('locations-0')).toBe(true);
+      expect(preview._selections.get('items-0')).toBe(true);
+    });
+
+    it('should handle case-insensitive name matching when filtering', () => {
+      preview.setEntities({
+        characters: [{ name: 'GANDALF', description: 'A wizard', isNPC: true }],
+        locations: [],
+        items: []
+      });
+      vi.spyOn(preview, 'render').mockImplementation(() => {});
+
+      preview._results = {
+        created: [{ type: 'character', name: 'gandalf', kankaId: 1 }],
+        failed: []
+      };
+
+      preview._onRetry({ preventDefault: vi.fn() });
+
+      // GANDALF should be filtered even though created entry says 'gandalf'
+      expect(preview._entities.characters).toHaveLength(0);
+    });
+
+    it('should not filter entities when no entities were created', () => {
+      preview.setEntities(sampleEntities);
+      vi.spyOn(preview, 'render').mockImplementation(() => {});
+
+      preview._results = {
+        created: [],
+        failed: [{ type: 'character', name: 'Gandalf', error: 'fail' }]
+      };
+
+      preview._onRetry({ preventDefault: vi.fn() });
+
+      // All entities should remain
+      expect(preview._entities.characters).toHaveLength(2);
+      expect(preview._entities.locations).toHaveLength(1);
+      expect(preview._entities.items).toHaveLength(1);
+    });
   });
 
   describe('_onEditDescription', () => {

@@ -1121,7 +1121,22 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     event.preventDefault();
     this._logger.log('Retrying failed entities');
 
-    // Reset to review mode, keeping only failed entities
+    // Filter out already-created entities to prevent duplicates in Kanka
+    if (this._results.created?.length > 0) {
+      const createdNames = new Set(this._results.created.map(e => e.name?.toLowerCase()));
+
+      ['characters', 'locations', 'items'].forEach((type) => {
+        this._entities[type] = this._entities[type].filter(
+          e => !createdNames.has(e.name?.toLowerCase())
+        );
+      });
+
+      // Rebuild selections to match filtered entities
+      this._selections.clear();
+      this._initializeSelections();
+    }
+
+    // Reset to review mode
     this._mode = PreviewMode.REVIEW;
     this._results = { created: [], failed: [] };
     this.render();
