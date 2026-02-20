@@ -276,6 +276,55 @@ describe('CacheManager', () => {
       }
       expect(bigCache.size()).toBe(3);
     });
+
+    it('should evict least recently used entry, not oldest created (true LRU)', () => {
+      // maxSize is 5, add 5 entries with distinct lastAccessedAt timestamps
+      cache.set('key0', 'val0', futureDate());
+      cache.set('key1', 'val1', futureDate());
+      cache.set('key2', 'val2', futureDate());
+      cache.set('key3', 'val3', futureDate());
+      cache.set('key4', 'val4', futureDate());
+
+      // Manually set lastAccessedAt to ensure deterministic ordering
+      // key1 has the oldest lastAccessedAt (should be evicted first)
+      cache.getEntry('key0').lastAccessedAt = 100;
+      cache.getEntry('key1').lastAccessedAt = 1;   // least recently used
+      cache.getEntry('key2').lastAccessedAt = 50;
+      cache.getEntry('key3').lastAccessedAt = 75;
+      cache.getEntry('key4').lastAccessedAt = 90;
+
+      // Add a 6th entry to trigger trimming
+      cache.set('key5', 'val5', futureDate());
+
+      expect(cache.size()).toBe(5);
+      // key1 had the smallest lastAccessedAt, so it should be evicted
+      expect(cache.has('key1')).toBe(false);
+      // key0 was recently used, so it should survive
+      expect(cache.has('key0')).toBe(true);
+      // key5 (newest) should exist
+      expect(cache.has('key5')).toBe(true);
+    });
+
+    it('should update lastAccessedAt on get()', () => {
+      cache.set('lru-test', 'value', futureDate());
+      const entryBefore = cache.getEntry('lru-test');
+      const accessTimeBefore = entryBefore.lastAccessedAt;
+
+      // Small delay to ensure timestamp differs
+      const start = Date.now();
+      while (Date.now() === start) { /* spin */ }
+
+      cache.get('lru-test');
+      const entryAfter = cache.getEntry('lru-test');
+      expect(entryAfter.lastAccessedAt).toBeGreaterThanOrEqual(accessTimeBefore);
+    });
+
+    it('should include lastAccessedAt in cache entries', () => {
+      cache.set('meta-test', 'value', futureDate());
+      const entry = cache.getEntry('meta-test');
+      expect(entry.lastAccessedAt).toBeDefined();
+      expect(typeof entry.lastAccessedAt).toBe('number');
+    });
   });
 
   // ── static generateCacheKey ────────────────────────────────────────────

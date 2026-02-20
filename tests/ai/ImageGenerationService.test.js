@@ -522,6 +522,30 @@ describe('ImageGenerationService', () => {
       expect(gallery).toEqual([]);
     });
 
+    it('should return empty gallery if settings value is not an array', async () => {
+      game.settings.get.mockReturnValueOnce('corrupted string data');
+      const gallery = await service.loadGallery();
+      expect(gallery).toEqual([]);
+    });
+
+    it('should return empty gallery if settings value is an object', async () => {
+      game.settings.get.mockReturnValueOnce({ notAnArray: true });
+      const gallery = await service.loadGallery();
+      expect(gallery).toEqual([]);
+    });
+
+    it('should return empty gallery if settings value is null', async () => {
+      game.settings.get.mockReturnValueOnce(null);
+      const gallery = await service.loadGallery();
+      expect(gallery).toEqual([]);
+    });
+
+    it('should return empty gallery if settings value is a number', async () => {
+      game.settings.get.mockReturnValueOnce(42);
+      const gallery = await service.loadGallery();
+      expect(gallery).toEqual([]);
+    });
+
     it('should clear gallery', async () => {
       await service.saveToGallery({ prompt: 'test' });
       await service.clearGallery();

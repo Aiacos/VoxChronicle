@@ -771,6 +771,27 @@ describe('RelationshipGraph', () => {
       expect(graph._initializeGraph).toHaveBeenCalled();
     });
 
+    it('should catch _initializeGraph errors and set ERROR mode', async () => {
+      const mockElement = {
+        querySelectorAll: vi.fn(() => [])
+      };
+      Object.defineProperty(graph, 'element', {
+        get: () => mockElement,
+        configurable: true
+      });
+      graph._mode = GraphMode.READY;
+      graph.render = vi.fn();
+      vi.spyOn(graph, '_initializeGraph').mockRejectedValue(new Error('CDN failed'));
+
+      graph._onRender({}, {});
+
+      // Wait for the catch handler to execute
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(graph._mode).toBe(GraphMode.ERROR);
+      expect(graph.render).toHaveBeenCalled();
+    });
+
     it('should not initialize graph when in EMPTY mode', () => {
       const mockElement = {
         querySelectorAll: vi.fn(() => [])

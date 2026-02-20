@@ -344,7 +344,11 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Initialize the graph if in ready mode
     if (this._mode === GraphMode.READY) {
-      this._initializeGraph();
+      this._initializeGraph().catch(err => {
+        this._logger.error('Graph initialization failed:', err);
+        this._mode = GraphMode.ERROR;
+        this.render();
+      });
     }
 
     this._logger.debug('Listeners activated');

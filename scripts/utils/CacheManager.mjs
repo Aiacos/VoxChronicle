@@ -79,9 +79,11 @@ export class CacheManager {
      * @param {Object} [metadata={}] - Optional metadata
      */
     set(key, value, expiresAt, metadata = {}) {
+        const now = Date.now();
         const cacheEntry = {
             value: value,
-            createdAt: new Date(),
+            createdAt: new Date(now),
+            lastAccessedAt: now,
             expiresAt: expiresAt,
             metadata: metadata
         };
@@ -108,6 +110,9 @@ export class CacheManager {
             this._cache.delete(key);
             return null;
         }
+
+        // Update last accessed time for LRU tracking
+        entry.lastAccessedAt = Date.now();
 
         return entry.value;
     }
@@ -224,9 +229,9 @@ export class CacheManager {
     _trim() {
         if (this._cache.size <= this._maxSize) { return; }
 
-        // Remove oldest entries (LRU - Least Recently Used)
+        // Remove least recently used entries (LRU)
         const entries = Array.from(this._cache.entries())
-            .sort((a, b) => a[1].createdAt - b[1].createdAt);
+            .sort((a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt);
 
         const toRemove = entries.slice(0, this._cache.size - this._maxSize);
         for (const [key] of toRemove) {

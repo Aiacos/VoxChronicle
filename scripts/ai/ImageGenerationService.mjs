@@ -537,7 +537,7 @@ class ImageGenerationService extends OpenAIClient {
     this._logger.debug('loadGallery called');
     try {
       const gallery = await game.settings.get(MODULE_ID, 'imageGallery');
-      this._gallery = gallery || [];
+      this._gallery = Array.isArray(gallery) ? gallery : [];
       this._logger.debug(`loadGallery completed, ${this._gallery.length} images loaded`);
       return this._gallery;
     } catch (error) {

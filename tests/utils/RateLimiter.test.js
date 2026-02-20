@@ -275,6 +275,11 @@ describe('RateLimiter', () => {
       // Resolve the blocker
       blockResolve('done');
 
+      // Add rejection handlers to prevent unhandled rejections before reset
+      p1.catch(() => {});
+      p2.catch(() => {});
+      p3.catch(() => {});
+
       // At least one of the later requests should resolve; or the third should reject
       // Because queue size is 2, and one is being processed, the third may or may not fail
       // Let's test a definitive case: fill queue completely first by pausing
