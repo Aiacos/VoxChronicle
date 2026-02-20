@@ -126,6 +126,72 @@ describe('MainPanel', () => {
       delete mockOrchestrator.setCallbacks;
       expect(() => MainPanel.getInstance(mockOrchestrator)).not.toThrow();
     });
+
+    it('should update orchestrator reference when a new orchestrator is provided', () => {
+      const first = MainPanel.getInstance(mockOrchestrator);
+      expect(first._orchestrator).toBe(mockOrchestrator);
+
+      const newOrchestrator = {
+        state: 'idle',
+        isLiveMode: false,
+        hasTranscriptionService: true,
+        currentSession: null,
+        setCallbacks: vi.fn(),
+        startSession: vi.fn(),
+        startLiveMode: vi.fn(),
+        stopSession: vi.fn(),
+        stopLiveMode: vi.fn()
+      };
+
+      const second = MainPanel.getInstance(newOrchestrator);
+      expect(second).toBe(first); // Same instance
+      expect(second._orchestrator).toBe(newOrchestrator); // Updated reference
+    });
+
+    it('should re-register callbacks when orchestrator is updated', () => {
+      MainPanel.getInstance(mockOrchestrator);
+      expect(mockOrchestrator.setCallbacks).toHaveBeenCalledTimes(1);
+
+      const newOrchestrator = {
+        ...mockOrchestrator,
+        setCallbacks: vi.fn()
+      };
+      // Force a different reference
+      MainPanel.getInstance(newOrchestrator);
+      expect(newOrchestrator.setCallbacks).toHaveBeenCalledWith(
+        expect.objectContaining({ onStateChange: expect.any(Function) })
+      );
+    });
+
+    it('should not update orchestrator when same reference is passed', () => {
+      const first = MainPanel.getInstance(mockOrchestrator);
+      expect(mockOrchestrator.setCallbacks).toHaveBeenCalledTimes(1);
+
+      // Pass same orchestrator again — should not re-register callbacks
+      MainPanel.getInstance(mockOrchestrator);
+      expect(mockOrchestrator.setCallbacks).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not update orchestrator when null is passed to existing instance', () => {
+      MainPanel.getInstance(mockOrchestrator);
+      const panel = MainPanel.getInstance(null);
+      expect(panel._orchestrator).toBe(mockOrchestrator); // Unchanged
+    });
+
+    it('should not update orchestrator when undefined is passed to existing instance', () => {
+      MainPanel.getInstance(mockOrchestrator);
+      const panel = MainPanel.getInstance(undefined);
+      expect(panel._orchestrator).toBe(mockOrchestrator); // Unchanged
+    });
+
+    it('should handle new orchestrator without setCallbacks gracefully', () => {
+      MainPanel.getInstance(mockOrchestrator);
+
+      const newOrchestrator = { state: 'idle' }; // No setCallbacks
+      expect(() => MainPanel.getInstance(newOrchestrator)).not.toThrow();
+      const panel = MainPanel.getInstance(newOrchestrator);
+      expect(panel._orchestrator).toBe(newOrchestrator);
+    });
   });
 
   // ─── DEFAULT_OPTIONS ────────────────────────────────────────────

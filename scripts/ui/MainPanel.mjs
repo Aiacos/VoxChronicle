@@ -84,6 +84,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   static getInstance(orchestrator) {
     if (!MainPanel.#instance) {
       MainPanel.#instance = new MainPanel(orchestrator);
+    } else if (orchestrator && MainPanel.#instance._orchestrator !== orchestrator) {
+      MainPanel.#instance._orchestrator = orchestrator;
+      // Re-register callbacks on the new orchestrator
+      if (orchestrator.setCallbacks) {
+        orchestrator.setCallbacks({
+          onStateChange: () => MainPanel.#instance._debouncedRender()
+        });
+      }
     }
     return MainPanel.#instance;
   }
