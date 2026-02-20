@@ -192,8 +192,10 @@ class KankaService extends KankaClient {
    */
   constructor(apiToken, campaignId, options = {}) {
     super(apiToken, options);
+    if (!campaignId) {
+      this._logger.warn('KankaService created without campaignId — API calls will fail');
+    }
     this._campaignId = campaignId || '';
-    this._logger = Logger.createChild('KankaService');
     this._entityManager = new KankaEntityManager(this, campaignId);
     this._logger.debug(`KankaService initialized for campaign: ${campaignId}`);
   }

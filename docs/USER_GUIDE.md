@@ -66,7 +66,7 @@ VoxChronicle can be installed directly within Foundry VTT:
 2. Click **Install Module**
 3. Search for "VoxChronicle" or paste this manifest URL:
    ```
-   https://github.com/voxchronicle/vox-chronicle/releases/latest/download/module.json
+   https://github.com/Aiacos/VoxChronicle/releases/latest/download/module.json
    ```
 4. Click **Install**
 5. Wait for the installation to complete
@@ -157,8 +157,8 @@ Configure how VoxChronicle captures audio:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | **Transcription Language** | Specify language for better accuracy | Auto-detect |
-| **Image Quality** | Standard ($0.04) or HD ($0.08) | Standard |
-| **Max Images Per Session** | Limit AI images to control costs | 5 |
+| **Image Quality** | Medium ($0.04/image) or High ($0.08/image) | Medium |
+| **Max Images Per Session** | Limit AI images to control costs | 3 |
 | **Auto-Extract Entities** | Automatically extract entities | Enabled |
 | **Confirm Entity Creation** | Review before creating in Kanka | Enabled |
 
@@ -321,7 +321,7 @@ For dramatic moments from your session:
 2. These appear in the chronicle preview
 3. Generate illustrations for key story beats
 
-> **Cost note:** Each image costs $0.04 (standard) or $0.08 (HD). Use the "Max Images Per Session" setting to control costs.
+> **Cost note:** Each image costs $0.04 (medium) or $0.08 (high). Use the "Max Images Per Session" setting to control costs.
 
 ---
 
@@ -361,11 +361,11 @@ Each entity includes:
 
 Generated images are automatically uploaded:
 
-1. Images are downloaded from OpenAI (URLs expire in 60 minutes)
-2. Uploaded to the corresponding Kanka entity
+1. Images are returned as base64 data from gpt-image-1
+2. Converted and uploaded to the corresponding Kanka entity
 3. Set as the entity's portrait/image
 
-> **Important:** Images must be uploaded within 60 minutes of generation. VoxChronicle handles this automatically during the publish process.
+> **Note:** gpt-image-1 returns base64 data directly, so there are no URL expiry concerns. VoxChronicle handles the conversion and upload automatically during the publish process.
 
 ---
 
@@ -378,19 +378,19 @@ VoxChronicle uses paid API services:
 | Service | Cost | Example |
 |---------|------|---------|
 | **Transcription** | $0.006/minute | 3-hour session = $1.08 |
-| **Image (Standard)** | $0.04/image | 5 images = $0.20 |
-| **Image (HD)** | $0.08/image | 5 images = $0.40 |
+| **Image (Medium)** | $0.04/image | 5 images = $0.20 |
+| **Image (High)** | $0.08/image | 5 images = $0.40 |
 
 **Example session:**
 - 3-hour session transcription: $1.08
-- 5 standard portraits: $0.20
+- 5 medium-quality portraits: $0.20
 - **Total: ~$1.28**
 
 ### Tips for Reducing Costs
 
 1. **Pause during breaks** - Don't record silence or off-topic chat
 2. **Limit images** - Set "Max Images Per Session" to 3-5
-3. **Use Standard quality** - HD is twice the cost with minimal visible difference
+3. **Use Medium quality** - High is twice the cost with minimal visible difference
 4. **Skip unnecessary images** - You don't need portraits for every NPC
 5. **Review before generating** - Check entity descriptions before image generation
 6. **Set a budget** - OpenAI allows setting monthly spending limits
@@ -542,7 +542,7 @@ A: The free tier works fine. Premium subscribers get higher API rate limits (90/
 A: Common causes:
 - Long recordings (transcription is billed per minute)
 - Many generated images
-- HD quality images
+- High quality images
 - Multiple attempts/regenerations
 
 **Q: Can I set spending limits?**
@@ -559,8 +559,8 @@ A: Not currently. The features VoxChronicle provides require powerful AI service
 
 If you encounter issues not covered here:
 
-- **Bug Reports**: [GitHub Issues](https://github.com/voxchronicle/vox-chronicle/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/voxchronicle/vox-chronicle/discussions)
+- **Bug Reports**: [GitHub Issues](https://github.com/Aiacos/VoxChronicle/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/Aiacos/VoxChronicle/discussions)
 - **Community Help**: Join the conversation on the Foundry VTT Discord
 
 ---

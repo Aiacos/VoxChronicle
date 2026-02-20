@@ -64,7 +64,7 @@ export class RulesReference {
    */
   constructor(options = {}) {
     /** @private */
-    this._log = Logger.createChild('RulesReference');
+    this._logger = Logger.createChild('RulesReference');
 
     /**
      * Language for rule descriptions
@@ -161,10 +161,10 @@ export class RulesReference {
    * @returns {Promise<void>}
    */
   async loadRules() {
-    this._log.debug('loadRules() entry');
+    this._logger.debug('loadRules() entry');
     // TODO: Implementation
     this._isLoaded = true;
-    this._log.debug('loadRules() exit — rules loaded');
+    this._logger.debug('loadRules() exit — rules loaded');
   }
 
   /**
@@ -176,9 +176,9 @@ export class RulesReference {
    * @returns {Promise<SearchResult[]>} Array of search results
    */
   async searchRules(_query, _options = {}) {
-    this._log.debug(`searchRules() entry — query="${_query}"`);
+    this._logger.debug(`searchRules() entry — query="${_query}"`);
     // TODO: Implementation
-    this._log.debug('searchRules() exit — 0 results (not implemented)');
+    this._logger.debug('searchRules() exit — 0 results (not implemented)');
     return [];
   }
 
@@ -188,9 +188,9 @@ export class RulesReference {
    * @returns {Promise<RuleEntry|null>} The rule entry or null if not found
    */
   async getRuleById(_ruleId) {
-    this._log.debug(`getRuleById() entry — ruleId="${_ruleId}"`);
+    this._logger.debug(`getRuleById() entry — ruleId="${_ruleId}"`);
     // TODO: Implementation
-    this._log.debug('getRuleById() exit — null (not implemented)');
+    this._logger.debug('getRuleById() exit — null (not implemented)');
     return null;
   }
 
@@ -208,7 +208,7 @@ export class RulesReference {
    * @returns {Promise<void>}
    */
   async reloadRules() {
-    this._log.debug('reloadRules() — clearing cache and reloading');
+    this._logger.debug('reloadRules() — clearing cache and reloading');
     this._rulesCache.clear();
     this._searchIndex.clear();
     this._recentRules = [];
@@ -246,7 +246,7 @@ export class RulesReference {
    * @property {string} [extractedTopic] - The specific topic/mechanic being asked about
    */
   detectRulesQuestion(text) {
-    this._log.debug(`detectRulesQuestion() entry — text length: ${(text || '').length}`);
+    this._logger.debug(`detectRulesQuestion() entry — text length: ${(text || '').length}`);
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return {
@@ -315,7 +315,7 @@ export class RulesReference {
       extractedTopic
     };
 
-    this._log.debug(`detectRulesQuestion() exit — isRulesQuestion=${result.isRulesQuestion}, confidence=${result.confidence.toFixed(2)}, type=${questionType}, terms=[${detectedTerms.join(',')}]`);
+    this._logger.debug(`detectRulesQuestion() exit — isRulesQuestion=${result.isRulesQuestion}, confidence=${result.confidence.toFixed(2)}, type=${questionType}, terms=[${detectedTerms.join(',')}]`);
     return result;
   }
 
@@ -525,7 +525,7 @@ export class RulesReference {
    */
   async searchCompendiums(query, options = {}) {
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
-      this._log.warn('Invalid compendium search query');
+      this._logger.warn('Invalid compendium search query');
       return [];
     }
 
@@ -534,10 +534,10 @@ export class RulesReference {
     const results = [];
     const _searchStart = performance.now();
 
-    this._log.debug(`searchCompendiums() entry — query="${query}", limit=${limit}`);
+    this._logger.debug(`searchCompendiums() entry — query="${query}", limit=${limit}`);
 
     if (!game.packs) {
-      this._log.warn('Compendium packs not available');
+      this._logger.warn('Compendium packs not available');
       return [];
     }
 
@@ -557,7 +557,7 @@ export class RulesReference {
         const packResults = await this._searchCompendiumPack(pack, normalizedQuery);
         results.push(...packResults);
       } catch (error) {
-        this._log.warn(`Error searching pack ${pack.collection}`, error);
+        this._logger.warn(`Error searching pack ${pack.collection}`, error);
       }
     }
 
@@ -567,7 +567,7 @@ export class RulesReference {
     // Limit results
     const limitedResults = results.slice(0, limit);
 
-    this._log.debug(`searchCompendiums() exit — ${results.length} total results, returning ${limitedResults.length}, ${(performance.now() - _searchStart).toFixed(1)}ms`);
+    this._logger.debug(`searchCompendiums() exit — ${results.length} total results, returning ${limitedResults.length}, ${(performance.now() - _searchStart).toFixed(1)}ms`);
 
     return limitedResults;
   }
@@ -692,7 +692,7 @@ export class RulesReference {
         citation
       };
     } catch (error) {
-      this._log.warn(`Error extracting compendium entry ${indexEntry._id}`, error);
+      this._logger.warn(`Error extracting compendium entry ${indexEntry._id}`, error);
       return null;
     }
   }

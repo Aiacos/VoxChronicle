@@ -2,7 +2,7 @@
 
 This document provides detailed API documentation for all service classes in the VoxChronicle module.
 
-**Last updated:** 2026-02-19 (v3.0.1)
+**Last updated:** 2026-02-19 (v3.0.3)
 
 ## Table of Contents
 
@@ -98,47 +98,8 @@ await VoxChronicle.getInstance().initialize();
 **Returns:** `Promise<void>`
 **Throws:** `Error` if initialization fails
 
-##### `startRecording()`
-Start a new recording session.
+> **Removed in v3.0** — The following methods were removed: `startRecording()`, `stopRecording()`, `processSession(audioBlob)`, `publishToKanka(sessionData)`. Use `SessionOrchestrator` for all workflow operations.
 
-```javascript
-await vox.startRecording();
-```
-
-**Returns:** `Promise<void>`
-**Throws:** `Error` if recording cannot be started
-
-##### `stopRecording()`
-Stop the current recording session.
-
-```javascript
-const audioBlob = await vox.stopRecording();
-```
-
-**Returns:** `Promise<Blob>` - The recorded audio blob
-
-##### `processSession(audioBlob)`
-Process a completed recording session.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `audioBlob` | `Blob` | The recorded audio blob |
-
-```javascript
-const result = await vox.processSession(audioBlob);
-// { transcript, entities, salientMoments }
-```
-
-**Returns:** `Promise<Object>` - Processed session data
-
-##### `publishToKanka(sessionData)`
-Publish a processed session to Kanka.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sessionData` | `Object` | The processed session data |
-
-**Returns:** `Promise<Object>` - Created Kanka entities
 
 ##### `getServicesStatus()`
 Check if all required services are configured.
@@ -494,7 +455,7 @@ import {
 
 ```javascript
 const imageGen = new ImageGenerationService(apiKey, {
-  quality: 'standard',
+  quality: 'medium',
   style: 'vivid',
   campaignStyle: 'dark fantasy'
 });
@@ -510,13 +471,13 @@ Generate an image for an entity.
 | `entityType` | `string` | Type: 'character', 'location', 'item', 'scene' |
 | `description` | `string` | Description of what to generate |
 | `options.size` | `string` | Image size |
-| `options.quality` | `string` | 'standard' or 'hd' |
+| `options.quality` | `string` | 'low', 'medium', or 'high' |
 | `options.style` | `string` | 'vivid' or 'natural' |
 
 ```javascript
 const result = await imageGen.generatePortrait('character',
   'A grizzled dwarf warrior with a braided beard',
-  { quality: 'hd', style: 'vivid' }
+  { quality: 'high', style: 'vivid' }
 );
 // { b64_json, revisedPrompt, entityType, ... }
 ```
@@ -597,7 +558,6 @@ const cost = imageGen.estimateCost('medium', '1024x1024');
 // { estimatedCostUSD: 0.02, ... }
 ```
 
-> **Note:** gpt-image-1 uses quality levels `low`, `medium`, `high` (not `standard`/`hd` like DALL-E 3).
 
 #### Static Methods
 
@@ -1295,7 +1255,7 @@ await kanka.uploadImage('characters', 123, 'https://...');
 await kanka.uploadImage('characters', 123, imageBlob);
 ```
 
-> ⚠️ **Important:** Download OpenAI image URLs before they expire (60 minutes)!
+> **Note:** gpt-image-1 returns base64 data (`b64_json`), not URLs, so URL expiry is not a concern. Images can be uploaded to Kanka directly from base64 data.
 
 ##### `uploadCharacterImage(characterId, imageSource, options)`
 ##### `uploadLocationImage(locationId, imageSource, options)`

@@ -2,7 +2,7 @@
 
 This document describes the system architecture, components, and data flow of the VoxChronicle Foundry VTT module.
 
-**Last updated:** 2026-02-19 (v2.3.7)
+**Last updated:** 2026-02-20 (v3.0.3)
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This document describes the system architecture, components, and data flow of th
 11. [External Integrations](#external-integrations)
 12. [Security Considerations](#security-considerations)
 13. [Error Handling Strategy](#error-handling-strategy)
-14. [v3.0 Planned Changes](#v30-planned-changes)
+14. [v3.0 Changes (Released 2026-02-19)](#v30-changes-released-2026-02-19)
 
 ---
 
@@ -114,7 +114,7 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 
 ## Component Map
 
-48 source files across 9 directories:
+49 source files across 9 directories:
 
 ```
 scripts/
@@ -315,7 +315,7 @@ Real-time AI assistance during gameplay:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Services used: AudioRecorder, TranscriptionService, AIAssistant, SceneDetector, ChapterTracker, SessionAnalytics, SilenceDetector, RAGRetriever, RulesReference
+Services used: AudioRecorder, TranscriptionService, AIAssistant, SceneDetector, ChapterTracker, SessionAnalytics, SilenceDetector, RAGProvider, RulesReference
 
 ### Chronicle Mode
 
@@ -526,8 +526,8 @@ Foundry VTT Startup
 │                                                            │
 │   Settings.registerSettings()                             │
 │   • 40+ settings (API keys, campaign ID, RAG, UI prefs)  │
-│   • Client-scope: openaiApiKey, speakerLabels             │
-│   • World-scope: kankaCampaignId, kankaApiToken           │
+│   • Client-scope: openaiApiKey                            │
+│   • World-scope: kankaCampaignId, kankaApiToken, speakerLabels │
 └───────────────────────────────────────────────────────────┘
         │
         ▼
@@ -595,7 +595,7 @@ class MyPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
 ### Known Issue: Memory Leaks in `_onRender()`
 
-`_onRender()` is called on EVERY render cycle. Event listeners added here accumulate without cleanup. The fix (planned for v3.0) uses AbortController:
+`_onRender()` is called on EVERY render cycle. Event listeners added here accumulate without cleanup. The fix (implemented in v3.0) uses AbortController:
 
 ```javascript
 #listenerController = null;

@@ -25,7 +25,7 @@ Core capabilities:
 - **UI Framework**: Foundry VTT ApplicationV2 + HandlebarsApplicationMixin
 - **Templates**: Handlebars (.hbs)
 - **Styling**: CSS with `.vox-chronicle` namespace
-- **Testing**: Vitest with jsdom environment (3600+ tests across 61+ files)
+- **Testing**: Vitest with jsdom environment (3888+ tests across 46+ files)
 - **External APIs**: OpenAI (transcription, images, chat, embeddings), Kanka (campaign management)
 - **RAG**: Modular provider system — OpenAI File Search (default) or self-hosted RAGFlow
 
@@ -115,12 +115,14 @@ VoxChronicle/
 │   ├── pt.json                    # Portuguese
 │   └── template.json             # Translation template
 ├── tests/
-│   └── ...                        # 61+ test files, 3600+ tests
+│   └── ...                        # 46+ test files, 3888+ tests
 ├── docs/
 │   ├── ARCHITECTURE.md            # System design documentation
 │   ├── API_REFERENCE.md           # Service class documentation
 │   ├── USER_GUIDE.md              # End-user instructions
 │   ├── WHISPER_SETUP.md           # Local Whisper backend setup
+│   ├── CONTRIBUTING.md            # Contributor guidelines
+│   ├── TESTING.md                 # Testing guide and conventions
 │   ├── GPT4O_TRANSCRIBE_API.md   # Diarization API documentation
 │   └── plans/                     # Design and implementation plans
 │       └── 2026-02-19-v3-rewrite-plan.md  # v3.0 RAG + UI rewrite plan
@@ -195,8 +197,8 @@ class SessionOrchestrator {
   }
 
   // Chronicle Mode: post-session publishing workflow
-  async startChronicleMode(options) {
-    // Record → Transcribe → Extract entities → Generate images → Publish
+  async startSession(options) {
+    // Starts recording session for chronicle mode
   }
 }
 ```
@@ -705,7 +707,7 @@ Before starting any work, check `TODO.md` for known issues and open tasks. After
 ## Gotchas
 
 1. **Foundry VTT API**: The `game` object is not available until 'init' hook fires
-2. **MediaRecorder**: Not all browsers support all audio formats - use `_getSupportedMimeType()`
+2. **MediaRecorder**: Not all browsers support all audio formats - use `AudioUtils.getSupportedMimeType()`
 3. **Speaker Diarization**: Speaker IDs (SPEAKER_00, SPEAKER_01) need mapping to player names
 4. **Kanka API Token**: Expires after 364 days - consider warning users
 5. **WebRTC Capture**: May not capture all peer audio depending on Foundry version
@@ -723,7 +725,7 @@ Run tests with:
 
 ```bash
 npm install      # Install dependencies
-npm test         # Run all 3094+ tests across 55+ files
+npm test         # Run all 3888+ tests across 46+ files
 npm run test:ui  # Run with Vitest UI
 ```
 
@@ -749,7 +751,7 @@ Enable verbose logging:
 
 ```javascript
 import { Logger, LogLevel } from './utils/Logger.mjs';
-Logger.setLevel(LogLevel.DEBUG);
+Logger.setLogLevel(LogLevel.DEBUG);
 ```
 
 Check browser console for `VoxChronicle |` prefixed messages.

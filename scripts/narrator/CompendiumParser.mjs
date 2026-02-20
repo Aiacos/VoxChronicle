@@ -77,7 +77,7 @@ export class CompendiumParser {
    */
   constructor() {
     /** @private @type {ReturnType<typeof Logger.createChild>} */
-    this._log = Logger.createChild('CompendiumParser');
+    this._logger = Logger.createChild('CompendiumParser');
 
     /**
      * Cache for parsed compendium content to reduce re-parsing
@@ -123,16 +123,16 @@ export class CompendiumParser {
    * @returns {Promise<ParsedCompendium[]>} Array of parsed journal compendiums
    */
   async parseJournalCompendiums() {
-    this._log.debug('parseJournalCompendiums() entry');
+    this._logger.debug('parseJournalCompendiums() entry');
     const _startTime = performance.now();
 
     if (!game.packs) {
-      this._log.warn('Compendium packs not available');
+      this._logger.warn('Compendium packs not available');
       return [];
     }
 
     const journalPacks = game.packs.filter(p => p.documentName === 'JournalEntry');
-    this._log.debug(`Found ${journalPacks.length} journal compendium packs`);
+    this._logger.debug(`Found ${journalPacks.length} journal compendium packs`);
 
     const results = [];
 
@@ -143,13 +143,13 @@ export class CompendiumParser {
           results.push(parsed);
         }
       } catch (error) {
-        this._log.warn(`Failed to parse journal compendium "${pack.metadata?.label}"`, error);
+        this._logger.warn(`Failed to parse journal compendium "${pack.metadata?.label}"`, error);
       }
     }
 
     this._journalCompendiums = results;
     const totalEntries = results.reduce((sum, c) => sum + c.entries.length, 0);
-    this._log.debug(`parseJournalCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
+    this._logger.debug(`parseJournalCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
 
     return results;
   }
@@ -161,11 +161,11 @@ export class CompendiumParser {
    * @returns {Promise<ParsedCompendium[]>} Array of parsed rules compendiums
    */
   async parseRulesCompendiums() {
-    this._log.debug('parseRulesCompendiums() entry');
+    this._logger.debug('parseRulesCompendiums() entry');
     const _startTime = performance.now();
 
     if (!game.packs) {
-      this._log.warn('Compendium packs not available');
+      this._logger.warn('Compendium packs not available');
       return [];
     }
 
@@ -195,7 +195,7 @@ export class CompendiumParser {
       return false;
     });
 
-    this._log.debug(`Found ${rulesPacks.length} rules compendium packs`);
+    this._logger.debug(`Found ${rulesPacks.length} rules compendium packs`);
 
     const results = [];
 
@@ -206,13 +206,13 @@ export class CompendiumParser {
           results.push(parsed);
         }
       } catch (error) {
-        this._log.warn(`Failed to parse rules compendium "${pack.metadata?.label}"`, error);
+        this._logger.warn(`Failed to parse rules compendium "${pack.metadata?.label}"`, error);
       }
     }
 
     this._rulesCompendiums = results;
     const totalEntries = results.reduce((sum, c) => sum + c.entries.length, 0);
-    this._log.debug(`parseRulesCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
+    this._logger.debug(`parseRulesCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
 
     return results;
   }
@@ -231,7 +231,7 @@ export class CompendiumParser {
   searchByKeywords(packId, keywords) {
     const cached = this._cachedContent.get(packId);
     if (!cached) {
-      this._log.warn(`Compendium not cached: ${packId}`);
+      this._logger.warn(`Compendium not cached: ${packId}`);
       return [];
     }
 
@@ -266,7 +266,7 @@ export class CompendiumParser {
       return [];
     }
 
-    this._log.debug(`search() entry — query="${query}", cached compendiums: ${this._cachedContent.size}`);
+    this._logger.debug(`search() entry — query="${query}", cached compendiums: ${this._cachedContent.size}`);
 
     const normalizedQuery = query.toLowerCase().trim();
     const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
@@ -295,7 +295,7 @@ export class CompendiumParser {
     // Sort by score (highest first)
     results.sort((a, b) => b.score - a.score);
 
-    this._log.debug(`Search for "${query}" found ${results.length} results`);
+    this._logger.debug(`Search for "${query}" found ${results.length} results`);
 
     return results;
   }
@@ -450,7 +450,7 @@ export class CompendiumParser {
    */
   listAvailablePacks() {
     if (!game.packs) {
-      this._log.warn('Compendium packs not available');
+      this._logger.warn('Compendium packs not available');
       return [];
     }
 
@@ -484,7 +484,7 @@ export class CompendiumParser {
     this._journalCompendiums = this._journalCompendiums.filter(c => c.id !== packId);
     this._rulesCompendiums = this._rulesCompendiums.filter(c => c.id !== packId);
 
-    this._log.debug(`Cleared cache for compendium: ${packId}`);
+    this._logger.debug(`Cleared cache for compendium: ${packId}`);
   }
 
   /**
@@ -495,7 +495,7 @@ export class CompendiumParser {
     this._keywordIndex.clear();
     this._journalCompendiums = [];
     this._rulesCompendiums = [];
-    this._log.debug('Cleared all compendium cache');
+    this._logger.debug('Cleared all compendium cache');
   }
 
   /**
@@ -547,7 +547,7 @@ export class CompendiumParser {
    * @throws {Error} If the pack is not cached
    */
   async getChunksForEmbedding(packId, options = {}) {
-    this._log.debug(`getChunksForEmbedding() entry — packId="${packId}"`);
+    this._logger.debug(`getChunksForEmbedding() entry — packId="${packId}"`);
     const _chunkStart = performance.now();
 
     const cached = this._cachedContent.get(packId);
@@ -600,7 +600,7 @@ export class CompendiumParser {
       }
     }
 
-    this._log.debug(
+    this._logger.debug(
       `getChunksForEmbedding() exit — ${allChunks.length} chunks from "${cached.name}" ` +
       `(${cached.entries.length} entries, chunkSize=${chunkSize}, overlap=${overlap}), ${(performance.now() - _chunkStart).toFixed(1)}ms`
     );
@@ -625,11 +625,11 @@ export class CompendiumParser {
         // Yield to the event loop between compendiums
         await new Promise(resolve => setTimeout(resolve, 0));
       } catch (error) {
-        this._log.warn(`Failed to chunk compendium "${packId}":`, error);
+        this._logger.warn(`Failed to chunk compendium "${packId}":`, error);
       }
     }
 
-    this._log.debug(`Extracted ${allChunks.length} chunks from ${this._cachedContent.size} compendiums`);
+    this._logger.debug(`Extracted ${allChunks.length} chunks from ${this._cachedContent.size} compendiums`);
 
     return allChunks;
   }
@@ -677,27 +677,27 @@ export class CompendiumParser {
     const packId = pack.collection || pack.metadata?.id;
 
     if (!packId) {
-      this._log.warn('Pack has no valid identifier');
+      this._logger.warn('Pack has no valid identifier');
       return null;
     }
 
     // Check cache first
     if (this._cachedContent.has(packId)) {
-      this._log.debug(`Using cached compendium content for: ${packId}`);
+      this._logger.debug(`Using cached compendium content for: ${packId}`);
       return this._cachedContent.get(packId);
     }
 
     const packName = pack.metadata?.label || pack.title || packId;
     const documentName = pack.documentName;
 
-    this._log.debug(`_parseCompendiumPack() entry — "${packName}" (${documentName})`);
+    this._logger.debug(`_parseCompendiumPack() entry — "${packName}" (${documentName})`);
     const _parseStart = performance.now();
 
     // Get the index first (lightweight operation)
     const index = await pack.getIndex();
 
     if (!index || index.size === 0) {
-      this._log.debug(`Compendium "${packName}" is empty`);
+      this._logger.debug(`Compendium "${packName}" is empty`);
       return null;
     }
 
@@ -716,12 +716,12 @@ export class CompendiumParser {
           totalCharacters += parsedEntry.text.length;
         }
       } catch (error) {
-        this._log.debug(`Failed to parse entry "${indexEntry.name}" in pack "${packName}"`, error);
+        this._logger.debug(`Failed to parse entry "${indexEntry.name}" in pack "${packName}"`, error);
       }
     }
 
     if (entries.length === 0) {
-      this._log.debug(`No parseable content in compendium "${packName}"`);
+      this._logger.debug(`No parseable content in compendium "${packName}"`);
       return null;
     }
 
@@ -744,7 +744,7 @@ export class CompendiumParser {
     // Build keyword index for the compendium
     this._buildKeywordIndex(packId, entries);
 
-    this._log.debug(
+    this._logger.debug(
       `_parseCompendiumPack() exit — ${entries.length} entries, ${totalCharacters} chars from "${packName}", ${(performance.now() - _parseStart).toFixed(1)}ms`
     );
 
@@ -991,7 +991,7 @@ export class CompendiumParser {
       this._keywordIndex.delete(key);
     }
 
-    this._log.debug(
+    this._logger.debug(
       `Trimmed keyword index: removed ${entriesToRemove} entries (${currentSize} -> ${targetSize})`
     );
   }

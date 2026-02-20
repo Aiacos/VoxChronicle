@@ -99,7 +99,6 @@ class KankaEntityManager {
     this._client = client;
     this._campaignId = campaignId || '';
     this._cacheExpiryMs = options.cacheExpiryMs ?? 300000;
-    this._logger = Logger.createChild('KankaEntityManager');
     this._logger.debug(`KankaEntityManager initialized for campaign: ${campaignId}`);
   }
 
