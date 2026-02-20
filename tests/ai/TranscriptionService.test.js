@@ -330,6 +330,52 @@ describe('TranscriptionService', () => {
       expect(fetchSpy).toHaveBeenCalled();
     });
 
+    it('should not mutate the caller\'s options object', async () => {
+      const blob = createAudioBlob();
+      const originalOptions = {
+        prompt: 'my custom prompt',
+        model: TranscriptionModel.GPT4O_DIARIZE
+      };
+      // Keep a copy to verify against
+      const optionsBefore = { ...originalOptions };
+
+      // The diarize model strips the prompt via `delete options.prompt`.
+      // Without the shallow copy fix, the caller's object would be mutated.
+      await service.transcribe(blob, originalOptions);
+
+      // The caller's options should be unchanged
+      expect(originalOptions).toEqual(optionsBefore);
+      expect(originalOptions.prompt).toBe('my custom prompt');
+    });
+
+    it('should not mutate options when vocabulary prompt is generated', async () => {
+      const blob = createAudioBlob();
+      const originalOptions = {
+        model: TranscriptionModel.GPT4O // Non-diarize model, vocabulary prompt gets generated
+      };
+
+      await service.transcribe(blob, originalOptions);
+
+      // The caller's object should not have a prompt property added
+      expect(originalOptions.prompt).toBeUndefined();
+      expect(Object.keys(originalOptions)).toEqual(['model']);
+    });
+
+    it('should allow reusing same options across multiple calls', async () => {
+      const blob = createAudioBlob();
+      const reusableOptions = {
+        prompt: 'Dungeons and Dragons session',
+        model: TranscriptionModel.GPT4O_DIARIZE
+      };
+
+      // Call twice with the same options object
+      await service.transcribe(blob, reusableOptions);
+      await service.transcribe(blob, reusableOptions);
+
+      // The prompt should still be present in the original options
+      expect(reusableOptions.prompt).toBe('Dungeons and Dragons session');
+    });
+
     it('should enable multi-language tagging when mode is active', async () => {
       service.setMultiLanguageMode(true);
 

@@ -173,6 +173,7 @@ class TranscriptionService extends OpenAIClient {
    * @returns {Promise<TranscriptionResult>} Transcription result with speaker-labeled segments
    */
   async transcribe(audioBlob, options = {}) {
+    options = { ...options }; // Prevent mutation of caller's object
     this._logger.debug('transcribe called', { blobSize: audioBlob?.size, model: options.model, language: options.language });
     const t0 = Date.now();
 
