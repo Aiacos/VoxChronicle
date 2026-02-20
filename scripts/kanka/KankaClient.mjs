@@ -452,14 +452,10 @@ class KankaClient {
       delete headers['Content-Type'];
     }
 
-    // Create timeout controller
-    const controller = this._createTimeoutController(options.timeout);
-
-    // Build fetch options
+    // Build fetch options (without signal — AbortController is created per attempt)
     const fetchOptions = {
       method,
-      headers,
-      signal: controller.signal
+      headers
     };
 
     if (options.body) {
@@ -473,18 +469,17 @@ class KankaClient {
 
     // Execute request with rate limiting and retry logic
     return this._rateLimiter.executeWithRetry(async () => {
+      // Create a fresh AbortController for each attempt so retries are not poisoned
+      const controller = this._createTimeoutController(options.timeout);
       try {
-        const response = await fetch(url, fetchOptions);
+        const response = await fetch(url, { ...fetchOptions, signal: controller.signal });
 
         // Clear timeout
         clearTimeout(controller.timeoutId);
 
         const elapsed = Date.now() - requestStartTime;
 
-        // Update rate limiter based on response headers
-        this._handleRateLimitHeaders(response);
-
-        // Handle error responses
+        // Handle error responses FIRST (before processing rate limit headers)
         if (!response.ok) {
           this._logger.debug(`Request ${method} ${sanitizedUrl} failed: status=${response.status}, elapsed=${elapsed}ms`);
           const error = await this._parseErrorResponse(response);
@@ -498,6 +493,9 @@ class KankaClient {
 
           throw error;
         }
+
+        // Only process rate limit headers on successful responses
+        this._handleRateLimitHeaders(response);
 
         // Parse and return JSON response
         // Kanka wraps data in { data: ... } for most endpoints
