@@ -433,6 +433,7 @@ class VoxChronicle {
       });
     } catch (error) {
       logger.error('Failed to initialize RAG services:', error);
+      this.ragProvider = null;
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.RAGInitFailed') ||
         'VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.'

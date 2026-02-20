@@ -43,7 +43,7 @@ const POLL_INTERVAL_MS = 1000;
  * Max polling duration before timeout (ms)
  * @constant {number}
  */
-const POLL_TIMEOUT_MS = 120000;
+const POLL_TIMEOUT_MS = 300000;
 
 export class OpenAIFileSearchProvider extends RAGProvider {
   /** @type {import('../ai/OpenAIClient.mjs').OpenAIClient|null} */

@@ -34,6 +34,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {AbortController|null} */
   #listenerController = null;
 
+  /** @type {{vectorCount: number, lastIndexed: string|null, indexing: boolean, progress: number, progressText: string}} */
+  #ragCachedStatus = { vectorCount: 0, lastIndexed: null, indexing: false, progress: 0, progressText: '' };
+
+  /** @type {boolean} */
+  #ragStatusFetched = false;
+
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-main-panel',
     classes: ['vox-chronicle', 'vox-chronicle-panel'],
@@ -260,16 +266,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Get RAG indexing status data
+   * Get RAG indexing status data from cached state
    * @returns {object} RAG status data for template
    * @private
    */
   _getRAGData() {
-    // Get RAG provider from VoxChronicle singleton
     const voxChronicle = VoxChronicle.getInstance();
     const ragProvider = voxChronicle?.ragProvider;
 
-    // Check if RAG is enabled via settings
     let ragEnabled = false;
     try {
       ragEnabled = game?.settings?.get(MODULE_ID, 'ragEnabled') ?? false;
@@ -277,15 +281,57 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this._logger.debug('Could not read ragEnabled setting:', error.message);
     }
 
+    // On first access with a live provider, kick off async status fetch
+    if (ragProvider && !this.#ragStatusFetched) {
+      this.#ragStatusFetched = true;
+      this._refreshRAGStatus();
+    }
+
+    // Determine display status from cached data
+    let status = 'idle';
+    if (ragProvider && this.#ragCachedStatus.indexing) {
+      status = 'indexing';
+    } else if (ragProvider && this.#ragCachedStatus.vectorCount > 0) {
+      status = 'indexed';
+    }
+
     return {
       enabled: ragEnabled,
-      status: ragProvider ? 'ready' : 'idle',
-      progress: 0,
-      progressText: '',
-      vectorCount: 0,
+      status,
+      progress: this.#ragCachedStatus.progress,
+      progressText: this.#ragCachedStatus.progressText,
+      vectorCount: this.#ragCachedStatus.vectorCount,
       storageUsage: 'N/A (managed by OpenAI)',
-      lastIndexed: null
+      lastIndexed: this.#ragCachedStatus.lastIndexed
     };
+  }
+
+  /**
+   * Fetch RAG status from provider and update cached state (non-blocking)
+   * @private
+   */
+  async _refreshRAGStatus() {
+    try {
+      const voxChronicle = VoxChronicle.getInstance();
+      const ragProvider = voxChronicle?.ragProvider;
+      if (!ragProvider) return;
+
+      const providerStatus = await ragProvider.getStatus();
+      this.#ragCachedStatus.vectorCount = providerStatus.documentCount || 0;
+
+      // Also read persisted lastIndexed from settings
+      try {
+        const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
+        if (metadata.lastIndexed) {
+          this.#ragCachedStatus.lastIndexed = new Date(metadata.lastIndexed).toLocaleString();
+        }
+      } catch { /* ignore */ }
+
+      this._logger.debug(`RAG status refreshed: ${this.#ragCachedStatus.vectorCount} docs`);
+      if (this.rendered) this.render();
+    } catch (error) {
+      this._logger.debug('Could not refresh RAG status:', error.message);
+    }
   }
 
   /**
@@ -489,6 +535,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       this._logger.info('Starting RAG index build');
 
+      // Set indexing state for UI feedback
+      this.#ragCachedStatus.indexing = true;
+      this.#ragCachedStatus.progress = 0;
+      this.#ragCachedStatus.progressText = '';
+      this.render();
+
       // Collect journal entries as RAGDocuments
       const documents = [];
       const journals = game?.journal ?? [];
@@ -514,11 +566,20 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       const result = await ragProvider.indexDocuments(documents, {
         onProgress: (progress, total, text) => {
           this._logger.debug(`Index progress: ${progress}/${total} - ${text}`);
+          this.#ragCachedStatus.progress = total > 0 ? Math.round((progress / total) * 100) : 0;
+          this.#ragCachedStatus.progressText = text;
           this.requestRender();
         }
       });
 
       this._logger.info(`Index build complete: ${result.indexed} indexed, ${result.failed} failed`);
+
+      // Update cached status
+      this.#ragCachedStatus.indexing = false;
+      this.#ragCachedStatus.vectorCount = result.indexed;
+      this.#ragCachedStatus.progress = 0;
+      this.#ragCachedStatus.progressText = '';
+      this.#ragCachedStatus.lastIndexed = new Date().toLocaleString();
 
       // Update last indexed timestamp in settings
       try {
@@ -529,11 +590,18 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         this._logger.debug('Could not update ragIndexMetadata setting:', error.message);
       }
 
-      ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexComplete') || 'RAG index built successfully');
+      const msg = result.failed > 0
+        ? `RAG index built: ${result.indexed} indexed, ${result.failed} failed`
+        : (game.i18n?.localize('VOXCHRONICLE.RAG.IndexComplete') || 'RAG index built successfully');
+      ui?.notifications?.info(msg);
       this.render();
     } catch (error) {
+      this.#ragCachedStatus.indexing = false;
+      this.#ragCachedStatus.progress = 0;
+      this.#ragCachedStatus.progressText = '';
       this._logger.error('RAG index build failed:', error);
       ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.IndexFailed', { error: error.message }) || `RAG index failed: ${error.message}`);
+      this.render();
     }
   }
 
@@ -566,6 +634,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       this._logger.info('Clearing RAG index');
       await ragProvider.clearIndex();
+
+      // Reset cached status
+      this.#ragCachedStatus.vectorCount = 0;
+      this.#ragCachedStatus.lastIndexed = null;
 
       // Clear last indexed timestamp
       try {

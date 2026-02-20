@@ -824,14 +824,14 @@ describe('MainPanel', () => {
       expect(ragData).toHaveProperty('vectorCount', 0);
     });
 
-    it('should return ready status when ragProvider exists', () => {
+    it('should return idle status when ragProvider exists but index is empty', () => {
       VoxChronicle.getInstance.mockReturnValue({
         ragProvider: {}
       });
       const panel = MainPanel.getInstance(mockOrchestrator);
       const ragData = panel._getRAGData();
 
-      expect(ragData.status).toBe('ready');
+      expect(ragData.status).toBe('idle');
     });
 
     it('should return idle status when ragProvider is null', () => {
