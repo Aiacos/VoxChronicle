@@ -29,7 +29,7 @@ const VALID_TABS = ['live', 'chronicle', 'images', 'transcript', 'entities', 'an
  */
 class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {MainPanel|null} */
-  static _instance = null;
+  static #instance = null;
 
   /** @type {AbortController|null} */
   #listenerController = null;
@@ -82,10 +82,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static getInstance(orchestrator) {
-    if (!MainPanel._instance) {
-      MainPanel._instance = new MainPanel(orchestrator);
+    if (!MainPanel.#instance) {
+      MainPanel.#instance = new MainPanel(orchestrator);
     }
-    return MainPanel._instance;
+    return MainPanel.#instance;
   }
 
   /**
@@ -93,7 +93,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static resetInstance() {
-    MainPanel._instance = null;
+    MainPanel.#instance = null;
   }
 
   /**
@@ -430,7 +430,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   async _handleReviewEntities() {
     try {
       const { EntityPreview } = await import('./EntityPreview.mjs');
-      const preview = new EntityPreview(this._orchestrator?.currentSession?.entities);
+      const preview = new EntityPreview({ entities: this._orchestrator?.currentSession?.entities });
       preview.render(true);
     } catch (error) {
       this._logger.error('Review entities failed:', error);
@@ -469,10 +469,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _handleRAGBuildIndex() {
     const voxChronicle = VoxChronicle.getInstance();
-    const ragRetriever = voxChronicle?.ragRetriever;
+    const ragProvider = voxChronicle?.ragProvider;
 
-    if (!ragRetriever) {
-      this._logger.warn('RAG retriever not available');
+    if (!ragProvider) {
+      this._logger.warn('RAG provider not available');
       ui?.notifications?.warn(game.i18n?.localize('VOXCHRONICLE.RAG.NotConfigured') || 'RAG not configured');
       return;
     }
@@ -480,19 +480,36 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       this._logger.info('Starting RAG index build');
 
-      // Collect all available journal IDs and compendium pack IDs
-      const journalIds = (game?.journal?.map(j => j.id)) || [];
-      const packIds = (game?.packs?.map(p => p.collection)) || [];
+      // Collect journal entries as RAGDocuments
+      const documents = [];
+      const journals = game?.journal ?? [];
+      for (const journal of journals) {
+        const pages = journal.pages?.contents ?? [];
+        const content = pages
+          .map(p => p.text?.content || '')
+          .filter(Boolean)
+          .join('\n\n');
+        if (content) {
+          documents.push({
+            id: journal.id,
+            title: journal.name || journal.id,
+            content,
+            metadata: { source: 'journal', type: 'journal' }
+          });
+        }
+      }
 
-      this._logger.info(`Building index from ${journalIds.length} journals, ${packIds.length} compendiums`);
+      this._logger.info(`Building index from ${documents.length} journal documents`);
 
-      // Build index with collected IDs and progress callback
-      await ragRetriever.buildIndex(journalIds, packIds, {
+      // Index documents with progress callback
+      const result = await ragProvider.indexDocuments(documents, {
         onProgress: (progress, total, text) => {
           this._logger.debug(`Index progress: ${progress}/${total} - ${text}`);
           this.requestRender();
         }
       });
+
+      this._logger.info(`Index build complete: ${result.indexed} indexed, ${result.failed} failed`);
 
       // Update last indexed timestamp in settings
       try {
@@ -517,10 +534,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _handleRAGClearIndex() {
     const voxChronicle = VoxChronicle.getInstance();
-    const ragVectorStore = voxChronicle?.ragVectorStore;
+    const ragProvider = voxChronicle?.ragProvider;
 
-    if (!ragVectorStore) {
-      this._logger.warn('RAG vector store not available');
+    if (!ragProvider) {
+      this._logger.warn('RAG provider not available');
       return;
     }
 
@@ -539,7 +556,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     try {
       this._logger.info('Clearing RAG index');
-      await ragVectorStore.clear();
+      await ragProvider.clearIndex();
 
       // Clear last indexed timestamp
       try {

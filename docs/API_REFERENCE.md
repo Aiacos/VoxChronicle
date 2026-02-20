@@ -518,12 +518,12 @@ const result = await imageGen.generatePortrait('character',
   'A grizzled dwarf warrior with a braided beard',
   { quality: 'hd', style: 'vivid' }
 );
-// { url, revisedPrompt, entityType, expiresAt, ... }
+// { b64_json, revisedPrompt, entityType, ... }
 ```
 
 **Returns:** `Promise<ImageGenerationResult>`
 
-> ⚠️ **Important:** Image URLs expire in 60 minutes! Download immediately.
+> **Note:** gpt-image-1 returns base64 data (`b64_json`), not URLs. No expiry concerns.
 
 ##### `generateCharacterPortrait(description, options)`
 Generate a character portrait.

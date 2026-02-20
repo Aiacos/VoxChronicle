@@ -1426,6 +1426,56 @@ describe('SessionOrchestrator', () => {
       // No canvas or game.journal defined -> should not throw
       await orchestrator._enrichSessionWithJournalContext();
     });
+
+    it('should populate session with journal text and NPC profiles', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('Thorin the blacksmith guards the mountain pass.');
+      jp.extractNPCProfiles.mockReturnValue([
+        { name: 'Thorin', description: 'A gruff blacksmith', personality: 'stubborn', pages: ['p1'] }
+      ]);
+
+      orchestrator.setNarratorServices({ journalParser: jp });
+      orchestrator._currentSession = {
+        id: 'session-1',
+        title: 'Test Session',
+        errors: []
+      };
+
+      globalThis.canvas = { scene: { journal: 'journal-1' } };
+
+      await orchestrator._enrichSessionWithJournalContext();
+
+      expect(jp.parseJournal).toHaveBeenCalledWith('journal-1');
+      expect(orchestrator._currentSession.journalText).toBe(
+        'Thorin the blacksmith guards the mountain pass.'
+      );
+      expect(orchestrator._currentSession.npcProfiles).toHaveLength(1);
+      expect(orchestrator._currentSession.npcProfiles[0].name).toBe('Thorin');
+
+      delete globalThis.canvas;
+    });
+
+    it('should not set npcProfiles when none are found', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('Some journal text.');
+      jp.extractNPCProfiles.mockReturnValue([]);
+
+      orchestrator.setNarratorServices({ journalParser: jp });
+      orchestrator._currentSession = {
+        id: 'session-1',
+        title: 'Test Session',
+        errors: []
+      };
+
+      globalThis.canvas = { scene: { journal: 'journal-1' } };
+
+      await orchestrator._enrichSessionWithJournalContext();
+
+      expect(orchestrator._currentSession.journalText).toBe('Some journal text.');
+      expect(orchestrator._currentSession.npcProfiles).toBeUndefined();
+
+      delete globalThis.canvas;
+    });
   });
 
   // ── _initializeJournalContext ─────────────────────────────────────────
@@ -1444,6 +1494,63 @@ describe('SessionOrchestrator', () => {
 
       // Should not throw
       await orchestrator._initializeJournalContext();
+    });
+
+    it('should load journal context from scene-linked journal', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('The heroes begin their quest in the ancient forest.');
+      const ai = createMockAIAssistant();
+      const ct = createMockChapterTracker();
+      ct.getCurrentChapter.mockReturnValue({
+        title: 'Chapter 1: The Forest',
+        subchapters: [{ title: 'Encounter' }],
+        pageId: 'page-1',
+        pageName: 'Forest Page',
+        journalName: 'Adventure',
+        content: 'The ancient forest is dark and foreboding.'
+      });
+
+      orchestrator.setNarratorServices({
+        journalParser: jp,
+        aiAssistant: ai,
+        chapterTracker: ct
+      });
+
+      // Mock canvas.scene.journal
+      globalThis.canvas = { scene: { journal: 'journal-1', name: 'Forest Scene' } };
+
+      await orchestrator._initializeJournalContext();
+
+      expect(jp.parseJournal).toHaveBeenCalledWith('journal-1');
+      expect(ai.setAdventureContext).toHaveBeenCalledWith(
+        'The heroes begin their quest in the ancient forest.'
+      );
+      expect(ct.setSelectedJournal).toHaveBeenCalledWith('journal-1');
+      expect(ct.updateFromScene).toHaveBeenCalled();
+      expect(ai.setChapterContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          chapterName: 'Chapter 1: The Forest',
+          summary: 'The ancient forest is dark and foreboding.'
+        })
+      );
+
+      delete globalThis.canvas;
+    });
+
+    it('should skip setAdventureContext when journal text is empty', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('');
+      const ai = createMockAIAssistant();
+
+      orchestrator.setNarratorServices({ journalParser: jp, aiAssistant: ai });
+      globalThis.canvas = { scene: { journal: 'j1' } };
+
+      await orchestrator._initializeJournalContext();
+
+      expect(jp.parseJournal).toHaveBeenCalledWith('j1');
+      expect(ai.setAdventureContext).not.toHaveBeenCalled();
+
+      delete globalThis.canvas;
     });
   });
 

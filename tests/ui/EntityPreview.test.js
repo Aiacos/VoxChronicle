@@ -74,10 +74,14 @@ vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({
 }));
 
 // Mock the RelationshipGraph import used by EntityPreview.mjs
+// Store last-constructed instance for assertion in tests
+const _mockRelationshipGraphInstances = [];
 vi.mock('../../scripts/ui/RelationshipGraph.mjs', () => {
   class MockRelationshipGraph {
-    constructor() {
+    constructor(options) {
+      this._options = options;
       this._renderFn = vi.fn();
+      _mockRelationshipGraphInstances.push(this);
     }
     render() { return this._renderFn(); }
     close() { return Promise.resolve(); }
@@ -128,6 +132,9 @@ describe('EntityPreview', () => {
     ];
 
     preview = new EntityPreview();
+
+    // Clear tracked RelationshipGraph instances
+    _mockRelationshipGraphInstances.length = 0;
   });
 
   afterEach(() => {
@@ -381,7 +388,8 @@ describe('EntityPreview', () => {
 
     it('should capitalize first letter for unknown type', () => {
       const label = preview._getRelationshipTypeLabel('custom');
-      expect(typeof label).toBe('string');
+      // game.i18n.localize returns the key itself; typeKey is 'Custom'
+      expect(label).toBe('VOXCHRONICLE.RelationshipGraph.Custom');
     });
   });
 
@@ -472,6 +480,52 @@ describe('EntityPreview', () => {
       preview._renderBatchCounter = 5;
       preview._batchedRender();
       expect(preview._renderBatchCounter).toBe(0);
+    });
+
+    it('should execute deferred render after timeout elapses', () => {
+      vi.useFakeTimers();
+      vi.spyOn(preview, 'render').mockImplementation(() => {});
+      preview._lastRenderTime = Date.now(); // recent, so below time threshold
+      preview._renderBatchCounter = 0; // below count threshold
+
+      preview._batchedRender();
+
+      // Render should NOT have been called yet
+      expect(preview.render).not.toHaveBeenCalled();
+      expect(preview._pendingRender).toBe(true);
+
+      // Advance past the RENDER_BATCH_INTERVAL_MS (500ms)
+      vi.advanceTimersByTime(500);
+
+      // Deferred render should now have fired
+      expect(preview.render).toHaveBeenCalledTimes(1);
+      expect(preview._pendingRender).toBe(false);
+      expect(preview._renderTimeout).toBeNull();
+      expect(preview._renderBatchCounter).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('should clear deferred render when immediate render fires', () => {
+      vi.useFakeTimers();
+      vi.spyOn(preview, 'render').mockImplementation(() => {});
+      preview._lastRenderTime = Date.now();
+      preview._renderBatchCounter = 0;
+
+      // Schedule a deferred render
+      preview._batchedRender();
+      expect(preview._pendingRender).toBe(true);
+      const timeoutId = preview._renderTimeout;
+
+      // Force time threshold to trigger immediate render
+      preview._lastRenderTime = 0;
+      preview._batchedRender();
+
+      // Deferred render should be cleared
+      expect(preview._pendingRender).toBe(false);
+      expect(preview._renderTimeout).toBeNull();
+
+      vi.useRealTimers();
     });
   });
 
@@ -975,17 +1029,26 @@ describe('EntityPreview', () => {
   });
 
   describe('_onViewGraph', () => {
-    it('should create a RelationshipGraph with entities and relationships', () => {
+    it('should create a RelationshipGraph with correct entities and relationships', () => {
       preview.setEntities(sampleEntities);
       preview.setRelationships(sampleRelationships);
 
-      // The RelationshipGraph mock from vi.mock returns an object with a render fn
-      // But the source code does `new RelationshipGraph(...)` which calls the mock constructor
-      // and then calls .render() on it. We need to verify no error is thrown.
-      // The mock was set up to return { render: vi.fn() }
-      expect(() => {
-        preview._onViewGraph({ preventDefault: vi.fn() });
-      }).not.toThrow();
+      preview._onViewGraph({ preventDefault: vi.fn() });
+
+      expect(_mockRelationshipGraphInstances).toHaveLength(1);
+      const graphInstance = _mockRelationshipGraphInstances[0];
+      expect(graphInstance._options.entities).toBe(preview._entities);
+      expect(graphInstance._options.relationships).toBe(preview._relationships);
+    });
+
+    it('should call render(true) on the created graph', () => {
+      preview.setEntities(sampleEntities);
+      preview.setRelationships(sampleRelationships);
+
+      preview._onViewGraph({ preventDefault: vi.fn() });
+
+      const graphInstance = _mockRelationshipGraphInstances[0];
+      expect(graphInstance._renderFn).toHaveBeenCalled();
     });
   });
 
@@ -1349,6 +1412,219 @@ describe('EntityPreview', () => {
       expect(preview._results.failed).toHaveLength(1);
       expect(preview._results.failed[0].name).toBe('FailChar');
     });
+
+    it('should successfully create characters, locations, and items', async () => {
+      const mockKanka = {
+        createCharacter: vi.fn(() => Promise.resolve({ data: { id: 10, entity_id: 100 } })),
+        createLocation: vi.fn(() => Promise.resolve({ data: { id: 20, entity_id: 200 } })),
+        createItem: vi.fn(() => Promise.resolve({ data: { id: 30, entity_id: 300 } })),
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+      vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
+
+      await preview._createEntitiesInKanka({
+        characters: [
+          { name: 'Gandalf', description: 'A wizard', isNPC: true },
+          { name: 'Frodo', description: 'A hobbit', isNPC: false }
+        ],
+        locations: [
+          { name: 'Rivendell', description: 'Elven city', type: 'City' }
+        ],
+        items: [
+          { name: 'The One Ring', description: 'A powerful ring', type: 'Artifact' }
+        ]
+      });
+
+      expect(preview._results.created).toHaveLength(4);
+      expect(preview._results.failed).toHaveLength(0);
+
+      // Verify character results
+      const charResults = preview._results.created.filter((r) => r.type === 'character');
+      expect(charResults).toHaveLength(2);
+      expect(charResults[0]).toEqual({
+        type: 'character',
+        name: 'Gandalf',
+        kankaId: 10,
+        entityId: 100
+      });
+      expect(charResults[1]).toEqual({
+        type: 'character',
+        name: 'Frodo',
+        kankaId: 10,
+        entityId: 100
+      });
+
+      // Verify location result
+      const locResults = preview._results.created.filter((r) => r.type === 'location');
+      expect(locResults).toHaveLength(1);
+      expect(locResults[0]).toEqual({
+        type: 'location',
+        name: 'Rivendell',
+        kankaId: 20,
+        entityId: 200
+      });
+
+      // Verify item result
+      const itemResults = preview._results.created.filter((r) => r.type === 'item');
+      expect(itemResults).toHaveLength(1);
+      expect(itemResults[0]).toEqual({
+        type: 'item',
+        name: 'The One Ring',
+        kankaId: 30,
+        entityId: 300
+      });
+    });
+
+    it('should populate entityNameToId mapping for created entities', async () => {
+      // Use distinct entity_id values per call to verify each mapping
+      let charCallCount = 0;
+      const mockKanka = {
+        createCharacter: vi.fn(() => {
+          charCallCount++;
+          return Promise.resolve({ data: { id: charCallCount, entity_id: charCallCount * 100 } });
+        }),
+        createLocation: vi.fn(() => Promise.resolve({ data: { id: 20, entity_id: 200 } })),
+        createItem: vi.fn(() => Promise.resolve({ data: { id: 30, entity_id: 300 } })),
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
+
+      // Set up relationships that reference these entities to verify entityNameToId was populated
+      preview.setRelationships([{
+        sourceEntity: 'Gandalf',
+        targetEntity: 'Rivendell',
+        relationType: 'resides_in',
+        confidence: 7
+      }]);
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+      vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
+
+      await preview._createEntitiesInKanka({
+        characters: [{ name: 'Gandalf', description: 'A wizard', isNPC: true }],
+        locations: [{ name: 'Rivendell', description: 'Elven city', type: 'City' }],
+        items: []
+      });
+
+      // Verify batchCreateRelations was called (proving entityNameToId was populated)
+      expect(mockKanka.batchCreateRelations).toHaveBeenCalled();
+      const [sourceEntityId, relations] = mockKanka.batchCreateRelations.mock.calls[0];
+      expect(sourceEntityId).toBe(100); // Gandalf's entity_id
+      expect(relations[0].target_id).toBe(200); // Rivendell's entity_id
+    });
+
+    it('should handle location creation failure gracefully', async () => {
+      const mockKanka = {
+        createCharacter: vi.fn(() => Promise.resolve({ data: { id: 1, entity_id: 100 } })),
+        createLocation: vi.fn(() => Promise.reject(new Error('Location API fail'))),
+        createItem: vi.fn(() => Promise.resolve({ data: { id: 3, entity_id: 300 } })),
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+      vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
+
+      await preview._createEntitiesInKanka({
+        characters: [],
+        locations: [{ name: 'FailLocation', description: 'test', type: 'City' }],
+        items: []
+      });
+
+      expect(preview._results.failed).toHaveLength(1);
+      expect(preview._results.failed[0]).toEqual({
+        type: 'location',
+        name: 'FailLocation',
+        error: 'Location API fail'
+      });
+      expect(preview._results.created).toHaveLength(0);
+    });
+
+    it('should handle item creation failure gracefully', async () => {
+      const mockKanka = {
+        createCharacter: vi.fn(() => Promise.resolve({ data: { id: 1, entity_id: 100 } })),
+        createLocation: vi.fn(() => Promise.resolve({ data: { id: 2, entity_id: 200 } })),
+        createItem: vi.fn(() => Promise.reject(new Error('Item API fail'))),
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+      vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
+
+      await preview._createEntitiesInKanka({
+        characters: [],
+        locations: [],
+        items: [{ name: 'FailItem', description: 'test', type: 'Artifact' }]
+      });
+
+      expect(preview._results.failed).toHaveLength(1);
+      expect(preview._results.failed[0]).toEqual({
+        type: 'item',
+        name: 'FailItem',
+        error: 'Item API fail'
+      });
+      expect(preview._results.created).toHaveLength(0);
+    });
+
+    it('should show info notification when entities are created', async () => {
+      const mockKanka = {
+        createCharacter: vi.fn(() => Promise.resolve({ data: { id: 1, entity_id: 100 } })),
+        createLocation: vi.fn(() => Promise.resolve({ data: { id: 2, entity_id: 200 } })),
+        createItem: vi.fn(() => Promise.resolve({ data: { id: 3, entity_id: 300 } })),
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+      vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
+
+      await preview._createEntitiesInKanka({
+        characters: [{ name: 'Gandalf', description: 'test' }],
+        locations: [],
+        items: []
+      });
+
+      expect(ui.notifications.info).toHaveBeenCalled();
+    });
+
+    it('should show warn notification when some entities fail', async () => {
+      const mockKanka = {
+        createCharacter: vi.fn(() => Promise.resolve({ data: { id: 1, entity_id: 100 } })),
+        createLocation: vi.fn(() => Promise.reject(new Error('fail'))),
+        createItem: vi.fn(() => Promise.resolve({ data: { id: 3, entity_id: 300 } })),
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+      vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
+
+      await preview._createEntitiesInKanka({
+        characters: [{ name: 'Gandalf', description: 'test' }],
+        locations: [{ name: 'FailLoc', description: 'test', type: 'City' }],
+        items: []
+      });
+
+      expect(ui.notifications.warn).toHaveBeenCalled();
+    });
+
+    it('should increment progress.current for each entity regardless of success or failure', async () => {
+      const mockKanka = {
+        createCharacter: vi.fn(() => Promise.resolve({ data: { id: 1, entity_id: 100 } })),
+        createLocation: vi.fn(() => Promise.reject(new Error('fail'))),
+        createItem: vi.fn(() => Promise.resolve({ data: { id: 3, entity_id: 300 } })),
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+      vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
+
+      await preview._createEntitiesInKanka({
+        characters: [{ name: 'Gandalf', description: 'test' }],
+        locations: [{ name: 'FailLoc', description: 'test', type: 'City' }],
+        items: [{ name: 'Ring', description: 'test', type: 'Artifact' }]
+      });
+
+      expect(preview._progress.current).toBe(3);
+    });
   });
 
   // --- _createRelationshipsInKanka ---
@@ -1415,6 +1691,86 @@ describe('EntityPreview', () => {
       await expect(
         preview._createRelationshipsInKanka(entityNameToId, mockKanka)
       ).resolves.not.toThrow();
+    });
+
+    it('should count partial successes and failures from batchCreateRelations', async () => {
+      preview.setRelationships([
+        {
+          sourceEntity: 'Gandalf',
+          targetEntity: 'Frodo',
+          relationType: 'ally',
+          confidence: 8
+        },
+        {
+          sourceEntity: 'Gandalf',
+          targetEntity: 'The One Ring',
+          relationType: 'possesses',
+          confidence: 5
+        }
+      ]);
+      const mockKanka = {
+        batchCreateRelations: vi.fn(() => Promise.resolve([
+          { id: 1 },
+          { _error: 'Target not found', relation: 'possesses' }
+        ]))
+      };
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+
+      const entityNameToId = new Map([
+        ['gandalf', 100],
+        ['frodo', 200],
+        ['the one ring', 300]
+      ]);
+
+      await preview._createRelationshipsInKanka(entityNameToId, mockKanka);
+
+      // 1 success notification + 1 failure notification
+      expect(ui.notifications.info).toHaveBeenCalled();
+      expect(ui.notifications.warn).toHaveBeenCalled();
+    });
+
+    it('should count all relations as failed when batchCreateRelations throws', async () => {
+      preview.setRelationships([
+        {
+          sourceEntity: 'Gandalf',
+          targetEntity: 'Frodo',
+          relationType: 'ally',
+          confidence: 8
+        }
+      ]);
+      const mockKanka = {
+        batchCreateRelations: vi.fn(() => Promise.reject(new Error('network error')))
+      };
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+
+      const entityNameToId = new Map([
+        ['gandalf', 100],
+        ['frodo', 200]
+      ]);
+
+      await preview._createRelationshipsInKanka(entityNameToId, mockKanka);
+
+      // Should show warn for failed relationships
+      expect(ui.notifications.warn).toHaveBeenCalled();
+    });
+
+    it('should skip relationships where only source entity exists', async () => {
+      preview.setRelationships([{
+        sourceEntity: 'Gandalf',
+        targetEntity: 'NonExistent',
+        relationType: 'ally',
+        confidence: 8
+      }]);
+      const mockKanka = {
+        batchCreateRelations: vi.fn(() => Promise.resolve([]))
+      };
+      vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
+
+      const entityNameToId = new Map([['gandalf', 100]]);
+
+      await preview._createRelationshipsInKanka(entityNameToId, mockKanka);
+
+      expect(mockKanka.batchCreateRelations).not.toHaveBeenCalled();
     });
   });
 

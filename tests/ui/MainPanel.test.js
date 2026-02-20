@@ -56,8 +56,6 @@ vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({
   VoxChronicle: {
     getInstance: vi.fn(() => ({
       ragProvider: null,
-      ragRetriever: null,
-      ragVectorStore: null,
       audioRecorder: null
     }))
   }
@@ -842,38 +840,41 @@ describe('MainPanel', () => {
   // ─── _handleRAGBuildIndex ───────────────────────────────────────
 
   describe('_handleRAGBuildIndex', () => {
-    it('should warn when ragRetriever not available', async () => {
-      VoxChronicle.getInstance.mockReturnValue({ ragRetriever: null });
+    it('should warn when ragProvider not available', async () => {
+      VoxChronicle.getInstance.mockReturnValue({ ragProvider: null });
       const panel = MainPanel.getInstance(mockOrchestrator);
       await panel._handleRAGBuildIndex();
 
       expect(ui.notifications.warn).toHaveBeenCalled();
     });
 
-    it('should build index when ragRetriever is available', async () => {
-      const buildIndex = vi.fn().mockResolvedValue(undefined);
+    it('should index documents when ragProvider is available', async () => {
+      const indexDocuments = vi.fn().mockResolvedValue({ indexed: 1, failed: 0 });
       VoxChronicle.getInstance.mockReturnValue({
-        ragRetriever: { buildIndex }
+        ragProvider: { indexDocuments }
       });
 
-      // Mock game.journal and game.packs
-      game.journal = { map: vi.fn(() => []) };
-      game.packs = { map: vi.fn(() => []) };
+      // Mock game.journal with iterable journal entries
+      game.journal = [
+        { id: 'j1', name: 'Journal 1', pages: { contents: [{ text: { content: 'Test content' } }] } }
+      ];
 
       const panel = MainPanel.getInstance(mockOrchestrator);
       await panel._handleRAGBuildIndex();
 
-      expect(buildIndex).toHaveBeenCalled();
+      expect(indexDocuments).toHaveBeenCalledWith(
+        [{ id: 'j1', title: 'Journal 1', content: 'Test content', metadata: { source: 'journal', type: 'journal' } }],
+        expect.objectContaining({ onProgress: expect.any(Function) })
+      );
       expect(ui.notifications.info).toHaveBeenCalled();
     });
 
     it('should show error on build failure', async () => {
-      const buildIndex = vi.fn().mockRejectedValue(new Error('build failed'));
+      const indexDocuments = vi.fn().mockRejectedValue(new Error('build failed'));
       VoxChronicle.getInstance.mockReturnValue({
-        ragRetriever: { buildIndex }
+        ragProvider: { indexDocuments }
       });
-      game.journal = { map: vi.fn(() => []) };
-      game.packs = { map: vi.fn(() => []) };
+      game.journal = [];
 
       const panel = MainPanel.getInstance(mockOrchestrator);
       await panel._handleRAGBuildIndex();
@@ -885,8 +886,8 @@ describe('MainPanel', () => {
   // ─── _handleRAGClearIndex ───────────────────────────────────────
 
   describe('_handleRAGClearIndex', () => {
-    it('should return early when ragVectorStore not available', async () => {
-      VoxChronicle.getInstance.mockReturnValue({ ragVectorStore: null });
+    it('should return early when ragProvider not available', async () => {
+      VoxChronicle.getInstance.mockReturnValue({ ragProvider: null });
       const panel = MainPanel.getInstance(mockOrchestrator);
       await panel._handleRAGClearIndex();
 
@@ -895,31 +896,31 @@ describe('MainPanel', () => {
     });
 
     it('should clear index when confirmed', async () => {
-      const clear = vi.fn().mockResolvedValue(undefined);
-      VoxChronicle.getInstance.mockReturnValue({ ragVectorStore: { clear } });
+      const clearIndex = vi.fn().mockResolvedValue(undefined);
+      VoxChronicle.getInstance.mockReturnValue({ ragProvider: { clearIndex } });
       Dialog.confirm = vi.fn().mockResolvedValue(true);
 
       const panel = MainPanel.getInstance(mockOrchestrator);
       await panel._handleRAGClearIndex();
 
-      expect(clear).toHaveBeenCalled();
+      expect(clearIndex).toHaveBeenCalled();
       expect(ui.notifications.info).toHaveBeenCalled();
     });
 
     it('should not clear index when not confirmed', async () => {
-      const clear = vi.fn();
-      VoxChronicle.getInstance.mockReturnValue({ ragVectorStore: { clear } });
+      const clearIndex = vi.fn();
+      VoxChronicle.getInstance.mockReturnValue({ ragProvider: { clearIndex } });
       Dialog.confirm = vi.fn().mockResolvedValue(false);
 
       const panel = MainPanel.getInstance(mockOrchestrator);
       await panel._handleRAGClearIndex();
 
-      expect(clear).not.toHaveBeenCalled();
+      expect(clearIndex).not.toHaveBeenCalled();
     });
 
     it('should show error on clear failure', async () => {
-      const clear = vi.fn().mockRejectedValue(new Error('clear failed'));
-      VoxChronicle.getInstance.mockReturnValue({ ragVectorStore: { clear } });
+      const clearIndex = vi.fn().mockRejectedValue(new Error('clear failed'));
+      VoxChronicle.getInstance.mockReturnValue({ ragProvider: { clearIndex } });
       Dialog.confirm = vi.fn().mockResolvedValue(true);
 
       const panel = MainPanel.getInstance(mockOrchestrator);

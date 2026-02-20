@@ -22,12 +22,6 @@ import { MODULE_ID } from '../constants.mjs';
 const DEFAULT_RESULT_LIMIT = 5;
 
 /**
- * Maximum cache size for rules entries
- * @constant {number}
- */
-const _MAX_CACHE_SIZE = 1000;
-
-/**
  * Represents a rule or game mechanic entry
  * @typedef {Object} RuleEntry
  * @property {string} id - Unique identifier for the rule

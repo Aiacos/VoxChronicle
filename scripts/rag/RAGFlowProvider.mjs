@@ -32,12 +32,6 @@ const PARSE_POLL_INTERVAL_MS = 2000;
  */
 const PARSE_POLL_TIMEOUT_MS = 300000; // 5 minutes
 
-/**
- * Default similarity threshold for retrieval (0-1)
- * @constant {number}
- */
-const DEFAULT_SIMILARITY_THRESHOLD = 0.2;
-
 export class RAGFlowProvider extends RAGProvider {
   /** @type {string|null} RAGFlow base URL */
   #baseUrl = null;

@@ -1704,31 +1704,6 @@ Respond in JSON format:
   }
 
   /**
-   * Gets context for AI prompts, using RAG if available or falling back to truncated adventure context
-   *
-   * @param {string} query - The query/transcription to use for RAG retrieval
-   * @returns {Promise<string>} The formatted context string for inclusion in prompts
-   * @private
-   */
-  async _getContextForPrompt(query) {
-    // Try RAG first if configured
-    if (this.isRAGConfigured()) {
-      const ragResult = await this._getRAGContext(query);
-
-      if (ragResult.context) {
-        return this._formatRAGContext(ragResult);
-      }
-    }
-
-    // Fall back to truncated adventure context
-    if (this._adventureContext) {
-      return this._truncateContext(this._adventureContext);
-    }
-
-    return '';
-  }
-
-  /**
    * Formats RAG retrieval results for inclusion in AI prompts
    *
    * @param {{context: string, sources: string[]}} ragResult - The RAG retrieval result

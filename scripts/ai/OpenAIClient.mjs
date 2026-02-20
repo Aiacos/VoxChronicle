@@ -373,42 +373,6 @@ class OpenAIClient {
   }
 
   /**
-   * Parses the Retry-After header from an API response or OpenAIError
-   *
-   * Supports both numeric (seconds) and HTTP-date formats.
-   *
-   * @param {Response|null} response - The fetch response object (or null)
-   * @returns {number|null} Delay in milliseconds, or null if header is absent/invalid
-   * @private
-   */
-  _parseRetryAfter(response) {
-    const retryAfter = response?.headers?.get?.('Retry-After') ?? response?.headers?.get?.('retry-after');
-    if (!retryAfter) {
-      return null;
-    }
-
-    // Try parsing as seconds (numeric format)
-    const seconds = parseInt(retryAfter, 10);
-    if (!isNaN(seconds) && seconds > 0) {
-      return seconds * 1000;
-    }
-
-    // Try parsing as HTTP-date
-    try {
-      const date = new Date(retryAfter);
-      const now = new Date();
-      const delayMs = date.getTime() - now.getTime();
-      if (!isNaN(delayMs) && delayMs > 0) {
-        return delayMs;
-      }
-    } catch {
-      // Invalid date format, fall through to null
-    }
-
-    return null;
-  }
-
-  /**
    * Executes an operation with exponential backoff retry logic
    *
    * Delay formula: min(baseDelay * 2^attempt, maxDelay) + jitter

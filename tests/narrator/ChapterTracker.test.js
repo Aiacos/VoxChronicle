@@ -298,9 +298,9 @@ describe('ChapterTracker', () => {
       tracker._currentChapter.content = 'Some adventure content here.';
 
       const result = tracker.getCurrentChapterContentForAI();
-      expect(result).toContain('CAPITOLO CORRENTE: Chapter 1');
-      expect(result).toContain('PERCORSO:');
-      expect(result).toContain('CONTENUTO:');
+      expect(result).toContain('CURRENT CHAPTER: Chapter 1');
+      expect(result).toContain('PATH:');
+      expect(result).toContain('CONTENT:');
       expect(result).toContain('Some adventure content here.');
     });
 
@@ -317,7 +317,7 @@ describe('ChapterTracker', () => {
       // node-1 has children from structure
 
       const result = tracker.getCurrentChapterContentForAI();
-      expect(result).toContain('SOTTOSEZIONI DISPONIBILI:');
+      expect(result).toContain('AVAILABLE SUBSECTIONS:');
       expect(result).toContain('The Tavern');
     });
   });

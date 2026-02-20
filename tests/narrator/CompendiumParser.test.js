@@ -354,7 +354,7 @@ describe('CompendiumParser', () => {
       await parser.parseJournalCompendiums();
 
       const content = parser.getContentForAI();
-      expect(content).toContain('CONTENUTO COMPENDI');
+      expect(content).toContain('COMPENDIUM CONTENT');
       expect(content).toContain('Adventure');
     });
 

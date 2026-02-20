@@ -558,43 +558,6 @@ describe('OpenAIClient', () => {
     });
   });
 
-  // ── _parseRetryAfter ────────────────────────────────────────────────────
-
-  describe('_parseRetryAfter()', () => {
-    it('should parse numeric retry-after header', () => {
-      const resp = { headers: { get: vi.fn().mockReturnValue('30') } };
-      expect(client._parseRetryAfter(resp)).toBe(30000);
-    });
-
-    it('should return null when no header', () => {
-      const resp = { headers: { get: vi.fn().mockReturnValue(null) } };
-      expect(client._parseRetryAfter(resp)).toBeNull();
-    });
-
-    it('should return null for null response', () => {
-      expect(client._parseRetryAfter(null)).toBeNull();
-    });
-
-    it('should return null for invalid numeric value', () => {
-      const resp = { headers: { get: vi.fn().mockReturnValue('0') } };
-      expect(client._parseRetryAfter(resp)).toBeNull();
-    });
-
-    it('should parse HTTP-date format', () => {
-      const futureDate = new Date(Date.now() + 60000).toUTCString();
-      const resp = { headers: { get: vi.fn().mockReturnValue(futureDate) } };
-      const result = client._parseRetryAfter(resp);
-      expect(result).toBeGreaterThan(0);
-      expect(result).toBeLessThanOrEqual(61000);
-    });
-
-    it('should return null for past HTTP-date', () => {
-      const pastDate = new Date(Date.now() - 60000).toUTCString();
-      const resp = { headers: { get: vi.fn().mockReturnValue(pastDate) } };
-      expect(client._parseRetryAfter(resp)).toBeNull();
-    });
-  });
-
   // ── Request Queue ────────────────────────────────────────────────────────
 
   describe('request queue', () => {

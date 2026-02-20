@@ -10,7 +10,6 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
-import { MODULE_ID } from '../constants.mjs';
 
 /**
  * Scene type constants
@@ -55,7 +54,7 @@ export class SceneDetector {
    */
   constructor(options = {}) {
     /** @private */
-    this._log = Logger.createChild('SceneDetector');
+    this._logger = Logger.createChild('SceneDetector');
 
     /** @private */
     this._sensitivity = options.sensitivity || 'medium';
@@ -84,7 +83,7 @@ export class SceneDetector {
     // Initialize pattern sets
     this._initializePatterns();
 
-    this._log.debug('SceneDetector initialized', { sensitivity: this._sensitivity });
+    this._logger.debug('SceneDetector initialized', { sensitivity: this._sensitivity });
   }
 
   /**
@@ -103,7 +102,7 @@ export class SceneDetector {
     if (['low', 'medium', 'high'].includes(sensitivity)) {
       this._sensitivity = sensitivity;
       this._updateConfidenceThreshold();
-      this._log.debug('Sensitivity updated', { sensitivity, threshold: this._minimumConfidence });
+      this._logger.debug('Sensitivity updated', { sensitivity, threshold: this._minimumConfidence });
     }
   }
 
@@ -122,7 +121,7 @@ export class SceneDetector {
    * @returns {SceneTransition} The scene transition detection result
    */
   detectSceneTransition(text, _previousText = '') {
-    this._log.debug(`detectSceneTransition() entry — text length: ${(text || '').length}, current scene: ${this._currentSceneType}`);
+    this._logger.debug(`detectSceneTransition() entry — text length: ${(text || '').length}, current scene: ${this._currentSceneType}`);
 
     if (!text || typeof text !== 'string') {
       return {
@@ -178,7 +177,7 @@ export class SceneDetector {
         const prevType = this._currentSceneType;
         this._updateSceneHistory(bestTransition.sceneType, text);
         this._currentSceneType = bestTransition.sceneType;
-        this._log.debug(`detectSceneTransition() — transition "${prevType}" -> "${bestTransition.sceneType}", type=${bestTransition.type}, confidence=${bestTransition.confidence.toFixed(2)}, trigger="${bestTransition.trigger.substring(0, 50)}"`);
+        this._logger.debug(`detectSceneTransition() — transition "${prevType}" -> "${bestTransition.sceneType}", type=${bestTransition.type}, confidence=${bestTransition.confidence.toFixed(2)}, trigger="${bestTransition.trigger.substring(0, 50)}"`);
         return bestTransition;
       }
     }
@@ -198,7 +197,7 @@ export class SceneDetector {
    * @returns {string} The identified scene type (exploration, combat, social, rest, unknown)
    */
   identifySceneType(text) {
-    this._log.debug(`identifySceneType() entry — text length: ${(text || '').length}`);
+    this._logger.debug(`identifySceneType() entry — text length: ${(text || '').length}`);
 
     if (!text || typeof text !== 'string') {
       return SCENE_TYPES.UNKNOWN;
@@ -233,11 +232,11 @@ export class SceneDetector {
 
     // Require minimum score to classify
     if (bestScore < 0.5) {
-      this._log.debug(`identifySceneType() exit — unknown (best score ${bestScore.toFixed(2)} below threshold)`);
+      this._logger.debug(`identifySceneType() exit — unknown (best score ${bestScore.toFixed(2)} below threshold)`);
       return SCENE_TYPES.UNKNOWN;
     }
 
-    this._log.debug(`identifySceneType() exit — type="${bestType}", score=${bestScore.toFixed(2)}`);
+    this._logger.debug(`identifySceneType() exit — type="${bestType}", score=${bestScore.toFixed(2)}`);
     return bestType;
   }
 
@@ -257,7 +256,7 @@ export class SceneDetector {
     if (Object.values(SCENE_TYPES).includes(sceneType)) {
       this._currentSceneType = sceneType;
       this._updateSceneHistory(sceneType, '');
-      this._log.debug('Scene type manually set', { sceneType });
+      this._logger.debug('Scene type manually set', { sceneType });
     }
   }
 
@@ -283,7 +282,7 @@ export class SceneDetector {
   clearHistory() {
     this._sceneHistory = [];
     this._currentSceneType = SCENE_TYPES.UNKNOWN;
-    this._log.debug('Scene history cleared');
+    this._logger.debug('Scene history cleared');
   }
 
   /**

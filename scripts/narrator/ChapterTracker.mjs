@@ -390,8 +390,8 @@ export class ChapterTracker {
     const parts = [];
 
     // Add chapter header
-    parts.push(`CAPITOLO CORRENTE: ${this._currentChapter.title}`);
-    parts.push(`PERCORSO: ${this._currentChapter.path}`);
+    parts.push(`CURRENT CHAPTER: ${this._currentChapter.title}`);
+    parts.push(`PATH: ${this._currentChapter.path}`);
     parts.push('');
 
     // Add chapter content
@@ -400,14 +400,14 @@ export class ChapterTracker {
       if (content.length > maxLength) {
         content = content.substring(0, maxLength) + '...';
       }
-      parts.push('CONTENUTO:');
+      parts.push('CONTENT:');
       parts.push(content);
       parts.push('');
     }
 
     // Add subchapters list
     if (this._subchapters.length > 0) {
-      parts.push('SOTTOSEZIONI DISPONIBILI:');
+      parts.push('AVAILABLE SUBSECTIONS:');
       for (const sub of this._subchapters) {
         parts.push(`- ${sub.title}`);
       }

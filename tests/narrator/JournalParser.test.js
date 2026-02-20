@@ -310,10 +310,10 @@ describe('JournalParser', () => {
       expect(result).not.toBeNull();
     });
 
-    it('handles scene names with prefixes', () => {
+    it('matches scene name with prefix to chapter title', () => {
       const result = parser.getChapterBySceneName('j1', 'Scene 1: The Dark Tavern');
-      // May or may not match depending on score - just ensure no crash
-      expect(result === null || result !== null).toBe(true);
+      expect(result).not.toBeNull();
+      expect(result.title).toBe('The Dark Tavern');
     });
   });
 
@@ -326,15 +326,21 @@ describe('JournalParser', () => {
     });
 
     it('extracts NPC profiles from journal content', async () => {
+      // NPC name must appear mid-sentence (not first word) for proper noun detection,
+      // since _extractProperNouns skips the first word of each sentence.
       const journal = createMockJournal('j1', 'Adventure', [
-        { id: 'p1', name: 'NPCs', content: '<p>The village has many people. Thorin is a gruff blacksmith with a personality of being stubborn. He is a strong ally to the heroes.</p>' }
+        { id: 'p1', name: 'NPCs', content: '<p>The party met a gruff blacksmith named Thorin at the forge. The villagers say Thorin has a personality of being stubborn and brave.</p>' }
       ]);
       setupGameJournal([journal]);
       await parser.parseJournal('j1');
 
       const profiles = parser.extractNPCProfiles('j1');
-      // May or may not find NPCs depending on proper noun detection
-      expect(Array.isArray(profiles)).toBe(true);
+      expect(profiles.length).toBeGreaterThanOrEqual(1);
+      const thorin = profiles.find(p => p.name === 'Thorin');
+      expect(thorin).toBeDefined();
+      expect(thorin.description).toBeTruthy();
+      expect(thorin.description.length).toBeGreaterThan(0);
+      expect(thorin.pages).toContain('p1');
     });
   });
 
@@ -536,6 +542,133 @@ describe('JournalParser', () => {
       parser._addToKeywordIndex('k3', 'p3');
       parser._addToKeywordIndex('k4', 'p4'); // Should trigger trim
       expect(parser._keywordIndex.size).toBeLessThanOrEqual(4); // After trim + add
+    });
+  });
+
+  // =========================================================================
+  // Private: _buildHeadingHierarchy()
+  // =========================================================================
+  describe('_buildHeadingHierarchy()', () => {
+    it('returns empty array for empty input', () => {
+      expect(parser._buildHeadingHierarchy([], 0)).toEqual([]);
+      expect(parser._buildHeadingHierarchy(null, 0)).toEqual([]);
+    });
+
+    it('nests h2 under h1', () => {
+      const headings = [
+        { level: 1, title: 'Chapter 1', position: 0, content: 'Intro', pageId: 'p1', pageName: 'Page' },
+        { level: 2, title: 'Scene A', position: 100, content: 'Details', pageId: 'p1', pageName: 'Page' }
+      ];
+      const result = parser._buildHeadingHierarchy(headings, 0);
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Chapter 1');
+      expect(result[0].children).toHaveLength(1);
+      expect(result[0].children[0].title).toBe('Scene A');
+    });
+
+    it('places sibling h2s at the same level', () => {
+      const headings = [
+        { level: 1, title: 'Chapter 1', position: 0, content: '', pageId: 'p1', pageName: 'Page' },
+        { level: 2, title: 'Scene A', position: 50, content: '', pageId: 'p1', pageName: 'Page' },
+        { level: 2, title: 'Scene B', position: 100, content: '', pageId: 'p1', pageName: 'Page' }
+      ];
+      const result = parser._buildHeadingHierarchy(headings, 0);
+      expect(result).toHaveLength(1);
+      expect(result[0].children).toHaveLength(2);
+      expect(result[0].children[0].title).toBe('Scene A');
+      expect(result[0].children[1].title).toBe('Scene B');
+    });
+
+    it('builds three-level hierarchy (h1 > h2 > h3)', () => {
+      const headings = [
+        { level: 1, title: 'Act I', position: 0, content: '', pageId: 'p1', pageName: 'Page' },
+        { level: 2, title: 'Chapter 1', position: 50, content: '', pageId: 'p1', pageName: 'Page' },
+        { level: 3, title: 'Scene 1', position: 100, content: '', pageId: 'p1', pageName: 'Page' }
+      ];
+      const result = parser._buildHeadingHierarchy(headings, 0);
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Act I');
+      expect(result[0].children).toHaveLength(1);
+      expect(result[0].children[0].title).toBe('Chapter 1');
+      expect(result[0].children[0].children).toHaveLength(1);
+      expect(result[0].children[0].children[0].title).toBe('Scene 1');
+    });
+
+    it('handles multiple h1 siblings at root level', () => {
+      const headings = [
+        { level: 1, title: 'Part 1', position: 0, content: '', pageId: 'p1', pageName: 'Page' },
+        { level: 1, title: 'Part 2', position: 100, content: '', pageId: 'p1', pageName: 'Page' }
+      ];
+      const result = parser._buildHeadingHierarchy(headings, 0);
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe('Part 1');
+      expect(result[1].title).toBe('Part 2');
+    });
+
+    it('assigns unique node IDs', () => {
+      const headings = [
+        { level: 1, title: 'A', position: 0, content: '', pageId: 'p1', pageName: 'Page' },
+        { level: 2, title: 'B', position: 50, content: '', pageId: 'p1', pageName: 'Page' }
+      ];
+      const result = parser._buildHeadingHierarchy(headings, 10);
+      expect(result[0].id).toBe('node-11');
+      expect(result[0].children[0].id).toBe('node-12');
+    });
+  });
+
+  // =========================================================================
+  // Private: _extractSectionMarkers()
+  // =========================================================================
+  describe('_extractSectionMarkers()', () => {
+    it('detects HR elements as section markers', () => {
+      const div = document.createElement('div');
+      div.innerHTML = '<p>Before</p><hr><p>After the break</p>';
+      const markers = parser._extractSectionMarkers(div, 'p1', 'Page 1');
+      expect(markers.length).toBeGreaterThanOrEqual(1);
+      expect(markers[0].type).toBe('section');
+      expect(markers[0].level).toBe(7);
+      expect(markers[0].pageId).toBe('p1');
+      expect(markers[0].pageName).toBe('Page 1');
+    });
+
+    it('skips HR without content after it', () => {
+      const div = document.createElement('div');
+      div.innerHTML = '<p>Before</p><hr>';
+      const markers = parser._extractSectionMarkers(div, 'p1', 'Page 1');
+      const hrMarkers = markers.filter(m => m.title === '---' || m.title === 'VOXCHRONICLE.Journal.SectionBreak');
+      expect(hrMarkers).toHaveLength(0);
+    });
+
+    it('detects elements with section-marking CSS classes', () => {
+      const div = document.createElement('div');
+      div.innerHTML = '<div class="scene">The Dark Forest</div>';
+      const markers = parser._extractSectionMarkers(div, 'p1', 'Page 1');
+      expect(markers.length).toBeGreaterThanOrEqual(1);
+      expect(markers[0].type).toBe('section');
+      expect(markers[0].title).toBe('The Dark Forest');
+    });
+
+    it('detects elements with chapter CSS class', () => {
+      const div = document.createElement('div');
+      div.innerHTML = '<div class="chapter">Chapter One</div>';
+      const markers = parser._extractSectionMarkers(div, 'p1', 'Page 1');
+      expect(markers.length).toBeGreaterThanOrEqual(1);
+      expect(markers[0].title).toBe('Chapter One');
+    });
+
+    it('skips heading elements even with section class', () => {
+      const div = document.createElement('div');
+      div.innerHTML = '<h2 class="scene">Scene Title</h2>';
+      const markers = parser._extractSectionMarkers(div, 'p1', 'Page 1');
+      // h2 with .scene class should be skipped (headings handled elsewhere)
+      expect(markers).toHaveLength(0);
+    });
+
+    it('returns empty array for content without markers', () => {
+      const div = document.createElement('div');
+      div.innerHTML = '<p>Just a paragraph.</p>';
+      const markers = parser._extractSectionMarkers(div, 'p1', 'Page 1');
+      expect(markers).toEqual([]);
     });
   });
 

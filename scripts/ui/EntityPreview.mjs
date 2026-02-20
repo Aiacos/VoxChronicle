@@ -1062,9 +1062,9 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     // 4-7: neutral attitudes (0)
     // 8-10: positive attitudes (1 to 3)
     if (confidence <= 3) {
-      return Math.floor((confidence - 4) / 1); // -3 to -1
+      return confidence - 4; // -3 to -1
     } else if (confidence >= 8) {
-      return Math.floor((confidence - 7) / 1); // 1 to 3
+      return confidence - 7; // 1 to 3
     }
     return 0; // Neutral for 4-7
   }

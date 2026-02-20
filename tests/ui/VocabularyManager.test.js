@@ -543,22 +543,176 @@ describe('VocabularyManager', () => {
   // --- _onImport ---
 
   describe('_onImport', () => {
+    /** Helper: capture the Dialog constructor data and extract the import callback */
+    function captureImportDialog() {
+      let capturedData = null;
+      globalThis.Dialog = class Dialog {
+        constructor(data) {
+          capturedData = data;
+        }
+        render() { return this; }
+        close() { return Promise.resolve(); }
+        static confirm(config) { return Promise.resolve(true); }
+      };
+      return { getCapturedData: () => capturedData };
+    }
+
     it('should open import dialog', async () => {
+      const { getCapturedData } = captureImportDialog();
       vi.spyOn(manager, 'render').mockImplementation(() => {});
 
       await manager._onImport({ preventDefault: vi.fn() });
 
-      // Dialog constructor should have been called (global mock)
-      // The Dialog mock creates a dialog and calls render(true)
-      // We just verify no error was thrown
+      const data = getCapturedData();
+      expect(data).not.toBeNull();
+      expect(data.buttons.import).toBeDefined();
+      expect(data.buttons.cancel).toBeDefined();
+    });
+
+    it('should call importDictionary with parsed JSON and merge=true when checkbox is checked', async () => {
+      const { getCapturedData } = captureImportDialog();
+      vi.spyOn(manager, 'render').mockImplementation(() => {});
+
+      await manager._onImport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const importCallback = data.buttons.import.callback;
+
+      // Create mock HTML element with textarea containing valid JSON and checked merge box
+      const mockHtml = {
+        querySelector: vi.fn((selector) => {
+          if (selector === '[name="json"]') return { value: '{"character_names":["Gandalf"]}' };
+          if (selector === '[name="merge"]') return { checked: true };
+          return null;
+        })
+      };
+
+      await importCallback(mockHtml);
+
+      expect(mockDictionary.importDictionary).toHaveBeenCalledWith(
+        '{"character_names":["Gandalf"]}',
+        true
+      );
+      expect(ui.notifications.info).toHaveBeenCalled();
+      expect(manager.render).toHaveBeenCalled();
+    });
+
+    it('should call importDictionary with merge=false when checkbox is unchecked', async () => {
+      const { getCapturedData } = captureImportDialog();
+      vi.spyOn(manager, 'render').mockImplementation(() => {});
+
+      await manager._onImport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const importCallback = data.buttons.import.callback;
+
+      const mockHtml = {
+        querySelector: vi.fn((selector) => {
+          if (selector === '[name="json"]') return { value: '{"items":["Sword"]}' };
+          if (selector === '[name="merge"]') return { checked: false };
+          return null;
+        })
+      };
+
+      await importCallback(mockHtml);
+
+      expect(mockDictionary.importDictionary).toHaveBeenCalledWith(
+        '{"items":["Sword"]}',
+        false
+      );
+    });
+
+    it('should show warning when textarea is empty', async () => {
+      const { getCapturedData } = captureImportDialog();
+
+      await manager._onImport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const importCallback = data.buttons.import.callback;
+
+      const mockHtml = {
+        querySelector: vi.fn((selector) => {
+          if (selector === '[name="json"]') return { value: '   ' };
+          if (selector === '[name="merge"]') return { checked: true };
+          return null;
+        })
+      };
+
+      await importCallback(mockHtml);
+
+      expect(mockDictionary.importDictionary).not.toHaveBeenCalled();
+      expect(ui.notifications.warn).toHaveBeenCalled();
+    });
+
+    it('should show error notification when JSON is malformed', async () => {
+      const { getCapturedData } = captureImportDialog();
+      mockDictionary.importDictionary.mockRejectedValue(new Error('Invalid JSON'));
+
+      await manager._onImport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const importCallback = data.buttons.import.callback;
+
+      const mockHtml = {
+        querySelector: vi.fn((selector) => {
+          if (selector === '[name="json"]') return { value: '{not valid json' };
+          if (selector === '[name="merge"]') return { checked: true };
+          return null;
+        })
+      };
+
+      await importCallback(mockHtml);
+
+      expect(ui.notifications.error).toHaveBeenCalled();
+    });
+
+    it('should unwrap jQuery-style html array with [0]', async () => {
+      const { getCapturedData } = captureImportDialog();
+      vi.spyOn(manager, 'render').mockImplementation(() => {});
+
+      await manager._onImport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const importCallback = data.buttons.import.callback;
+
+      // Pass html as an array (jQuery-style)
+      const innerEl = {
+        querySelector: vi.fn((selector) => {
+          if (selector === '[name="json"]') return { value: '{"terms":["Fireball"]}' };
+          if (selector === '[name="merge"]') return { checked: true };
+          return null;
+        })
+      };
+      const jqueryHtml = [innerEl];
+
+      await importCallback(jqueryHtml);
+
+      expect(mockDictionary.importDictionary).toHaveBeenCalledWith(
+        '{"terms":["Fireball"]}',
+        true
+      );
     });
   });
 
   // --- _onExport ---
 
   describe('_onExport', () => {
+    /** Helper: capture the Dialog constructor data and extract the copy callback */
+    function captureExportDialog() {
+      let capturedData = null;
+      globalThis.Dialog = class Dialog {
+        constructor(data) {
+          capturedData = data;
+        }
+        render() { return this; }
+        close() { return Promise.resolve(); }
+        static confirm(config) { return Promise.resolve(true); }
+      };
+      return { getCapturedData: () => capturedData };
+    }
+
     it('should export dictionary and show dialog', async () => {
-      vi.spyOn(manager, 'render').mockImplementation(() => {});
+      captureExportDialog();
 
       await manager._onExport({ preventDefault: vi.fn() });
 
@@ -574,6 +728,83 @@ describe('VocabularyManager', () => {
       await manager._onExport({ preventDefault: vi.fn() });
 
       expect(ui.notifications.error).toHaveBeenCalled();
+    });
+
+    it('should copy JSON to clipboard via navigator.clipboard.writeText', async () => {
+      const { getCapturedData } = captureExportDialog();
+      const mockWriteText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: mockWriteText },
+        writable: true,
+        configurable: true
+      });
+
+      await manager._onExport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const copyCallback = data.buttons.copy.callback;
+
+      const mockTextarea = { select: vi.fn() };
+      const mockHtml = {
+        querySelector: vi.fn(() => mockTextarea)
+      };
+
+      await copyCallback(mockHtml);
+
+      expect(mockTextarea.select).toHaveBeenCalled();
+      expect(mockWriteText).toHaveBeenCalledWith('{"character_names":["Test"]}');
+      expect(ui.notifications.info).toHaveBeenCalled();
+    });
+
+    it('should fall back to document.execCommand when clipboard API fails', async () => {
+      const { getCapturedData } = captureExportDialog();
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn(() => Promise.reject(new Error('clipboard denied'))) },
+        writable: true,
+        configurable: true
+      });
+      const mockExecCommand = vi.fn();
+      document.execCommand = mockExecCommand;
+
+      await manager._onExport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const copyCallback = data.buttons.copy.callback;
+
+      const mockTextarea = { select: vi.fn() };
+      const mockHtml = {
+        querySelector: vi.fn(() => mockTextarea)
+      };
+
+      await copyCallback(mockHtml);
+
+      expect(mockExecCommand).toHaveBeenCalledWith('copy');
+      expect(ui.notifications.info).toHaveBeenCalled();
+    });
+
+    it('should unwrap jQuery-style html array in copy callback', async () => {
+      const { getCapturedData } = captureExportDialog();
+      const mockWriteText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: mockWriteText },
+        writable: true,
+        configurable: true
+      });
+
+      await manager._onExport({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const copyCallback = data.buttons.copy.callback;
+
+      const innerEl = {
+        querySelector: vi.fn(() => ({ select: vi.fn() }))
+      };
+      const jqueryHtml = [innerEl];
+
+      await copyCallback(jqueryHtml);
+
+      expect(innerEl.querySelector).toHaveBeenCalledWith('textarea');
+      expect(mockWriteText).toHaveBeenCalled();
     });
   });
 
@@ -695,6 +926,20 @@ describe('VocabularyManager', () => {
   // --- _onSuggestFromFoundry ---
 
   describe('_onSuggestFromFoundry', () => {
+    /** Helper: capture the Dialog constructor data for suggest-from-foundry */
+    function captureSuggestDialog() {
+      let capturedData = null;
+      globalThis.Dialog = class Dialog {
+        constructor(data) {
+          capturedData = data;
+        }
+        render() { return this; }
+        close() { return Promise.resolve(); }
+        static confirm(config) { return Promise.resolve(true); }
+      };
+      return { getCapturedData: () => capturedData };
+    }
+
     it('should warn if no suggestions found', async () => {
       game.actors = undefined;
       game.items = undefined;
@@ -705,6 +950,7 @@ describe('VocabularyManager', () => {
     });
 
     it('should show dialog with suggestions', async () => {
+      const { getCapturedData } = captureSuggestDialog();
       game.actors = {
         forEach: vi.fn((fn) => {
           [{ name: 'Gandalf' }].forEach(fn);
@@ -714,8 +960,273 @@ describe('VocabularyManager', () => {
 
       await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
 
-      // Dialog was created (the global mock handles this)
-      // No error means success
+      const data = getCapturedData();
+      expect(data).not.toBeNull();
+      expect(data.buttons.add).toBeDefined();
+      expect(data.buttons.cancel).toBeDefined();
+    });
+
+    it('should call addTerm for each checked non-disabled character checkbox', async () => {
+      const { getCapturedData } = captureSuggestDialog();
+      vi.spyOn(manager, 'render').mockImplementation(() => {});
+      game.actors = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Gandalf' }, { name: 'Frodo' }].forEach(fn);
+        })
+      };
+      game.items = { forEach: vi.fn() };
+
+      await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const addCallback = data.buttons.add.callback;
+
+      // Create mock HTML with two checked character checkboxes, one checked item
+      const mockHtml = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === 'input[name="character"]:checked:not(:disabled)') {
+            return [
+              { value: 'Gandalf' },
+              { value: 'Frodo' }
+            ];
+          }
+          if (selector === 'input[name="item"]:checked:not(:disabled)') {
+            return [];
+          }
+          return [];
+        })
+      };
+
+      await addCallback(mockHtml);
+
+      expect(mockDictionary.addTerm).toHaveBeenCalledWith('character_names', 'Gandalf');
+      expect(mockDictionary.addTerm).toHaveBeenCalledWith('character_names', 'Frodo');
+      expect(ui.notifications.info).toHaveBeenCalled();
+      expect(manager.render).toHaveBeenCalled();
+    });
+
+    it('should call addTerm for checked item checkboxes', async () => {
+      const { getCapturedData } = captureSuggestDialog();
+      vi.spyOn(manager, 'render').mockImplementation(() => {});
+      game.actors = { forEach: vi.fn() };
+      game.items = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Sword' }, { name: 'Shield' }].forEach(fn);
+        })
+      };
+
+      await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const addCallback = data.buttons.add.callback;
+
+      const mockHtml = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === 'input[name="character"]:checked:not(:disabled)') return [];
+          if (selector === 'input[name="item"]:checked:not(:disabled)') {
+            return [
+              { value: 'Sword' },
+              { value: 'Shield' }
+            ];
+          }
+          return [];
+        })
+      };
+
+      await addCallback(mockHtml);
+
+      expect(mockDictionary.addTerm).toHaveBeenCalledWith('items', 'Sword');
+      expect(mockDictionary.addTerm).toHaveBeenCalledWith('items', 'Shield');
+      expect(ui.notifications.info).toHaveBeenCalled();
+    });
+
+    it('should show warning when no terms are selected', async () => {
+      const { getCapturedData } = captureSuggestDialog();
+      mockDictionary.addTerm.mockReturnValue(false);
+      game.actors = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Gandalf' }].forEach(fn);
+        })
+      };
+      game.items = { forEach: vi.fn() };
+
+      await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const addCallback = data.buttons.add.callback;
+
+      // No checked checkboxes
+      const mockHtml = {
+        querySelectorAll: vi.fn(() => [])
+      };
+
+      await addCallback(mockHtml);
+
+      expect(ui.notifications.warn).toHaveBeenCalled();
+    });
+
+    it('should show warning when all selected terms already exist (addTerm returns false)', async () => {
+      const { getCapturedData } = captureSuggestDialog();
+      mockDictionary.addTerm.mockReturnValue(false);
+      game.actors = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Gandalf' }].forEach(fn);
+        })
+      };
+      game.items = { forEach: vi.fn() };
+
+      await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const addCallback = data.buttons.add.callback;
+
+      const mockHtml = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === 'input[name="character"]:checked:not(:disabled)') {
+            return [{ value: 'Gandalf' }];
+          }
+          return [];
+        })
+      };
+
+      await addCallback(mockHtml);
+
+      // addTerm returns false so addedCount stays 0 => warn notification
+      expect(ui.notifications.warn).toHaveBeenCalled();
+    });
+
+    it('should unwrap jQuery-style html array in add callback', async () => {
+      const { getCapturedData } = captureSuggestDialog();
+      vi.spyOn(manager, 'render').mockImplementation(() => {});
+      game.actors = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Gandalf' }].forEach(fn);
+        })
+      };
+      game.items = { forEach: vi.fn() };
+
+      await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      const addCallback = data.buttons.add.callback;
+
+      const innerEl = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === 'input[name="character"]:checked:not(:disabled)') {
+            return [{ value: 'Gandalf' }];
+          }
+          return [];
+        })
+      };
+      const jqueryHtml = [innerEl];
+
+      await addCallback(jqueryHtml);
+
+      expect(innerEl.querySelectorAll).toHaveBeenCalled();
+      expect(mockDictionary.addTerm).toHaveBeenCalledWith('character_names', 'Gandalf');
+    });
+
+    it('should invoke render callback to wire up select-all checkboxes', async () => {
+      const { getCapturedData } = captureSuggestDialog();
+      game.actors = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Gandalf' }, { name: 'Frodo' }].forEach(fn);
+        })
+      };
+      game.items = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Sword' }].forEach(fn);
+        })
+      };
+
+      await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+      expect(data.render).toBeDefined();
+
+      // Build mock HTML with select-all checkboxes and individual checkboxes
+      const characterCheckboxes = [
+        { checked: false, disabled: false },
+        { checked: false, disabled: false }
+      ];
+      const itemCheckboxes = [
+        { checked: false, disabled: false }
+      ];
+      let selectAllCharsHandler = null;
+      let selectAllItemsHandler = null;
+
+      const mockEl = {
+        querySelector: vi.fn((selector) => {
+          if (selector === 'input[name="select-all-characters"]') {
+            return {
+              addEventListener: vi.fn((event, handler) => {
+                selectAllCharsHandler = handler;
+              })
+            };
+          }
+          if (selector === 'input[name="select-all-items"]') {
+            return {
+              addEventListener: vi.fn((event, handler) => {
+                selectAllItemsHandler = handler;
+              })
+            };
+          }
+          return null;
+        }),
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === 'input[name="character"]:not(:disabled)') return characterCheckboxes;
+          if (selector === 'input[name="item"]:not(:disabled)') return itemCheckboxes;
+          return [];
+        })
+      };
+
+      // Invoke the render callback
+      data.render(mockEl);
+
+      expect(selectAllCharsHandler).not.toBeNull();
+      expect(selectAllItemsHandler).not.toBeNull();
+
+      // Simulate "select all characters" checked
+      selectAllCharsHandler.call({ checked: true });
+      expect(characterCheckboxes[0].checked).toBe(true);
+      expect(characterCheckboxes[1].checked).toBe(true);
+
+      // Simulate "select all characters" unchecked
+      selectAllCharsHandler.call({ checked: false });
+      expect(characterCheckboxes[0].checked).toBe(false);
+      expect(characterCheckboxes[1].checked).toBe(false);
+
+      // Simulate "select all items" checked
+      selectAllItemsHandler.call({ checked: true });
+      expect(itemCheckboxes[0].checked).toBe(true);
+
+      // Simulate "select all items" unchecked
+      selectAllItemsHandler.call({ checked: false });
+      expect(itemCheckboxes[0].checked).toBe(false);
+    });
+
+    it('should handle render callback with jQuery-style html array', async () => {
+      const { getCapturedData } = captureSuggestDialog();
+      game.actors = {
+        forEach: vi.fn((fn) => {
+          [{ name: 'Gandalf' }].forEach(fn);
+        })
+      };
+      game.items = { forEach: vi.fn() };
+
+      await manager._onSuggestFromFoundry({ preventDefault: vi.fn() });
+
+      const data = getCapturedData();
+
+      const innerEl = {
+        querySelector: vi.fn(() => null),
+        querySelectorAll: vi.fn(() => [])
+      };
+      const jqueryHtml = [innerEl];
+
+      // Should not throw when passed jQuery-style array
+      expect(() => data.render(jqueryHtml)).not.toThrow();
+      expect(innerEl.querySelector).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
@@ -799,12 +1310,188 @@ describe('VocabularyManager', () => {
       });
       expect(() => manager._onRender({}, {})).not.toThrow();
     });
+
+    it('should invoke _onAddTerm when Enter key is pressed on term input', () => {
+      let capturedKeypressHandler = null;
+      const mockInput = {
+        addEventListener: vi.fn((eventName, handler) => {
+          if (eventName === 'keypress') capturedKeypressHandler = handler;
+        })
+      };
+      const mockElement = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === '.term-input') return [mockInput];
+          return [];
+        })
+      };
+      Object.defineProperty(manager, 'element', {
+        get: () => mockElement,
+        configurable: true
+      });
+
+      vi.spyOn(manager, '_onAddTerm').mockImplementation(() => {});
+
+      manager._onRender({}, {});
+
+      expect(capturedKeypressHandler).not.toBeNull();
+
+      // Simulate Enter keypress
+      const mockEvent = {
+        key: 'Enter',
+        which: 13,
+        preventDefault: vi.fn()
+      };
+      capturedKeypressHandler(mockEvent);
+
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(manager._onAddTerm).toHaveBeenCalledWith(mockEvent);
+    });
+
+    it('should not invoke _onAddTerm for non-Enter keypress', () => {
+      let capturedKeypressHandler = null;
+      const mockInput = {
+        addEventListener: vi.fn((eventName, handler) => {
+          if (eventName === 'keypress') capturedKeypressHandler = handler;
+        })
+      };
+      const mockElement = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === '.term-input') return [mockInput];
+          return [];
+        })
+      };
+      Object.defineProperty(manager, 'element', {
+        get: () => mockElement,
+        configurable: true
+      });
+
+      vi.spyOn(manager, '_onAddTerm').mockImplementation(() => {});
+
+      manager._onRender({}, {});
+
+      // Simulate a non-Enter keypress (e.g., 'a')
+      const mockEvent = {
+        key: 'a',
+        which: 65,
+        preventDefault: vi.fn()
+      };
+      capturedKeypressHandler(mockEvent);
+
+      expect(manager._onAddTerm).not.toHaveBeenCalled();
+    });
+
+    it('should update _activeCategory when tab is clicked', () => {
+      let capturedClickHandler = null;
+      const mockTab = {
+        addEventListener: vi.fn((eventName, handler) => {
+          if (eventName === 'click') capturedClickHandler = handler;
+        }),
+        dataset: { tab: 'items' }
+      };
+      const mockElement = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === '.tabs .item') return [mockTab];
+          return [];
+        })
+      };
+      Object.defineProperty(manager, 'element', {
+        get: () => mockElement,
+        configurable: true
+      });
+
+      manager._onRender({}, {});
+
+      expect(capturedClickHandler).not.toBeNull();
+      expect(manager._activeCategory).toBe('character_names');
+
+      // Simulate click on the 'items' tab
+      capturedClickHandler({ currentTarget: { dataset: { tab: 'items' } } });
+
+      expect(manager._activeCategory).toBe('items');
+    });
+
+    it('should change _activeCategory to different tabs', () => {
+      let capturedClickHandler = null;
+      const mockTab = {
+        addEventListener: vi.fn((eventName, handler) => {
+          if (eventName === 'click') capturedClickHandler = handler;
+        }),
+        dataset: { tab: 'custom' }
+      };
+      const mockElement = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === '.tabs .item') return [mockTab];
+          return [];
+        })
+      };
+      Object.defineProperty(manager, 'element', {
+        get: () => mockElement,
+        configurable: true
+      });
+
+      manager._onRender({}, {});
+
+      capturedClickHandler({ currentTarget: { dataset: { tab: 'custom' } } });
+      expect(manager._activeCategory).toBe('custom');
+
+      capturedClickHandler({ currentTarget: { dataset: { tab: 'terms' } } });
+      expect(manager._activeCategory).toBe('terms');
+    });
   });
 
   // --- close ---
 
   describe('close', () => {
     it('should close without error', async () => {
+      await expect(manager.close()).resolves.not.toThrow();
+    });
+
+    it('should abort the listener controller when closing after render', async () => {
+      // First, trigger _onRender to create the AbortController
+      const mockElement = {
+        querySelectorAll: vi.fn(() => [])
+      };
+      Object.defineProperty(manager, 'element', {
+        get: () => mockElement,
+        configurable: true
+      });
+
+      manager._onRender({}, {});
+
+      // Access the private #listenerController's signal indirectly:
+      // After _onRender, a new AbortController is created. We can verify
+      // it gets aborted by checking that a second _onRender doesn't throw
+      // (the previous controller was aborted) and by tracking signal state
+      // through the addEventListener calls.
+      let capturedSignal = null;
+      const mockInput = {
+        addEventListener: vi.fn((_, __, opts) => {
+          capturedSignal = opts?.signal;
+        })
+      };
+      const mockElement2 = {
+        querySelectorAll: vi.fn((selector) => {
+          if (selector === '.term-input') return [mockInput];
+          return [];
+        })
+      };
+      Object.defineProperty(manager, 'element', {
+        get: () => mockElement2,
+        configurable: true
+      });
+
+      manager._onRender({}, {});
+      expect(capturedSignal).toBeDefined();
+      expect(capturedSignal.aborted).toBe(false);
+
+      await manager.close();
+
+      // After close, the signal from the last render should be aborted
+      expect(capturedSignal.aborted).toBe(true);
+    });
+
+    it('should handle close gracefully when no render was called', async () => {
+      // No _onRender called, so #listenerController is null
       await expect(manager.close()).resolves.not.toThrow();
     });
   });

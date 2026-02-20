@@ -108,6 +108,14 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   static #visLoaded = false;
 
   /**
+   * Shared promise for vis-network CDN load (prevents duplicate script injection)
+   * @type {Promise<void>|null}
+   * @private
+   * @static
+   */
+  static #visLoadPromise = null;
+
+  /**
    * Color mapping for entity types
    * @type {object}
    * @private
@@ -411,13 +419,9 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
         this._network = null;
       }
 
-      // Wait for vis-network library to load (loaded once via CDN, guarded by static flag)
+      // Load vis-network library once via CDN (guarded by static flag)
       if (typeof vis === 'undefined') {
-        if (!RelationshipGraph.#visLoaded) {
-          this._logger.warn('vis-network library not loaded yet, waiting...');
-        }
-        await this._waitForVisLibrary();
-        RelationshipGraph.#visLoaded = true;
+        await this._loadVisLibrary();
       }
 
       const container = this.element?.querySelector('#relationship-graph-network');
@@ -503,25 +507,34 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Wait for vis-network library to be loaded
+   * Load vis-network library from CDN exactly once.
+   * Uses a static promise so concurrent calls share the same load.
    * @returns {Promise<void>}
    * @private
    */
-  async _waitForVisLibrary() {
-    this._logger.debug('Waiting for vis-network library to load...');
-    const maxWaitTime = 5000; // 5 seconds
-    const checkInterval = 100; // 100ms
-    let waited = 0;
-
-    while (typeof vis === 'undefined' && waited < maxWaitTime) {
-      await new Promise((resolve) => setTimeout(resolve, checkInterval));
-      waited += checkInterval;
+  async _loadVisLibrary() {
+    if (typeof vis !== 'undefined') {
+      RelationshipGraph.#visLoaded = true;
+      return;
     }
 
-    if (typeof vis === 'undefined') {
-      throw new Error('vis-network library failed to load');
+    // Share a single load promise across all instances
+    if (!RelationshipGraph.#visLoadPromise) {
+      this._logger.debug('Loading vis-network library from CDN...');
+      RelationshipGraph.#visLoadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/vis-network/standalone/umd/vis-network.min.js';
+        script.onload = () => {
+          RelationshipGraph.#visLoaded = true;
+          resolve();
+        };
+        script.onerror = () => reject(new Error('vis-network library failed to load from CDN'));
+        document.head.appendChild(script);
+      });
     }
-    this._logger.debug(`vis-network loaded after ${waited}ms`);
+
+    await RelationshipGraph.#visLoadPromise;
+    this._logger.debug('vis-network library loaded');
   }
 
   /**
@@ -711,6 +724,15 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     return super.close(options);
+  }
+
+  /**
+   * Reset static vis-network load state (for testing only)
+   * @static
+   */
+  static _resetVisLoadState() {
+    RelationshipGraph.#visLoaded = false;
+    RelationshipGraph.#visLoadPromise = null;
   }
 }
 

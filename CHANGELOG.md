@@ -5,6 +5,18 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2026-02-20
+
+### Fixed
+- **RelationshipGraph CDN loading** — Replaced unconditional `<script>` tag in template (re-injected on every render) with JS-side `_loadVisLibrary()` using shared Promise to prevent duplicate script injection
+- **API_REFERENCE.md** — Corrected stale DALL-E 3 "URLs expire" note to reflect gpt-image-1 base64 behavior
+- **Dead code removal** — Removed unused `_parseRetryAfter` (OpenAIClient), `_getContextForPrompt` (AIAssistant), and other unreachable code paths
+
+### Improved
+- **68 new meaningful tests** — Coverage improved from 96.87% to 98.32% statements, 89.52% to 89.94% branches
+- Fixed tautology tests (always-true assertions) in JournalParser and VocabularyManager
+- Added Dialog callback coverage for VocabularyManager (import/export/suggest), EntityPreview (Kanka creation), SessionOrchestrator (journal context), RAGFlowProvider (parsing failures), AIAssistant (prompt branches)
+
 ## [3.0.0] - 2026-02-19
 
 ### Changed

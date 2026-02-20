@@ -786,6 +786,247 @@ describe('RAGFlowProvider', () => {
     });
   });
 
+  // ─── #waitForParsing failure branch ──────────────────────────────
+
+  describe('#waitForParsing failure handling', () => {
+    it('should handle FAIL status without throwing', async () => {
+      await initProvider();
+      mockFetch.mockClear();
+
+      mockFetchResponses(
+        { body: { code: 0, data: [{ id: 'doc-1' }] } },   // upload document
+        { body: { code: 0 } },                               // trigger parsing
+        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'FAIL' }] } } }  // poll: FAIL
+      );
+
+      const docs = [{ id: 'test-doc', title: 'Test', content: 'Content' }];
+      const result = await provider.indexDocuments(docs);
+
+      // Document was uploaded (indexed=1), but parsing failed — still counted as indexed
+      expect(result).toEqual({ indexed: 1, failed: 0 });
+    });
+
+    it('should handle CANCEL status without throwing', async () => {
+      await initProvider();
+      mockFetch.mockClear();
+
+      mockFetchResponses(
+        { body: { code: 0, data: [{ id: 'doc-1' }] } },   // upload document
+        { body: { code: 0 } },                               // trigger parsing
+        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'CANCEL' }] } } }  // poll: CANCEL
+      );
+
+      const docs = [{ id: 'test-doc', title: 'Test', content: 'Content' }];
+      const result = await provider.indexDocuments(docs);
+
+      expect(result).toEqual({ indexed: 1, failed: 0 });
+    });
+
+    it('should handle mixed DONE and FAIL statuses', async () => {
+      await initProvider();
+      mockFetch.mockClear();
+
+      mockFetchResponses(
+        { body: { code: 0, data: [{ id: 'rf-1' }] } },   // upload doc 1
+        { body: { code: 0, data: [{ id: 'rf-2' }] } },   // upload doc 2
+        { body: { code: 0 } },                             // trigger parsing
+        { body: { code: 0, data: { docs: [
+          { id: 'rf-1', run: 'DONE' },
+          { id: 'rf-2', run: 'FAIL' }
+        ] } } }
+      );
+
+      const docs = [
+        { id: 'doc-1', title: 'Doc 1', content: 'C1' },
+        { id: 'doc-2', title: 'Doc 2', content: 'C2' }
+      ];
+
+      const result = await provider.indexDocuments(docs);
+      // Both documents uploaded successfully, parsing had mixed results but does not affect count
+      expect(result).toEqual({ indexed: 2, failed: 0 });
+    });
+  });
+
+  // ─── initialize() invalid chatId fallback ──────────────────────────
+
+  describe('initialize() invalid chatId fallback', () => {
+    it('should create new chat when existing chatId is invalid', async () => {
+      mockFetchResponses(
+        { body: { code: 0, data: [{ id: DATASET_ID }] } },  // validate dataset (valid)
+        { body: { code: 0, data: [] } },                     // validate chat: not found
+        { body: { code: 0, data: { id: 'new-chat-789' } } }  // create new chat
+      );
+
+      await provider.initialize({
+        baseUrl: BASE_URL,
+        apiKey: API_KEY,
+        datasetId: DATASET_ID,
+        chatId: 'invalid-chat-id'
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      // First call: validate dataset
+      expect(mockFetch.mock.calls[0][0]).toContain(`datasets?id=${DATASET_ID}`);
+      expect(mockFetch.mock.calls[0][1].method).toBe('GET');
+
+      // Second call: validate chat (returns empty — not found)
+      expect(mockFetch.mock.calls[1][0]).toContain('chats?id=invalid-chat-id');
+      expect(mockFetch.mock.calls[1][1].method).toBe('GET');
+
+      // Third call: create new chat assistant
+      expect(mockFetch.mock.calls[2][0]).toBe(`${BASE_URL}/api/v1/chats`);
+      expect(mockFetch.mock.calls[2][1].method).toBe('POST');
+
+      // The new chat ID should be used
+      expect(provider.getChatId()).toBe('new-chat-789');
+    });
+
+    it('should create new chat when chat validation throws', async () => {
+      let callIndex = 0;
+      mockFetch.mockImplementation(() => {
+        callIndex++;
+        if (callIndex === 1) {
+          // validate dataset — valid
+          return Promise.resolve({
+            ok: true, status: 200,
+            json: () => Promise.resolve({ code: 0, data: [{ id: DATASET_ID }] }),
+            text: () => Promise.resolve('')
+          });
+        }
+        if (callIndex === 2) {
+          // validate chat — network error
+          return Promise.resolve({
+            ok: false, status: 500,
+            json: () => Promise.resolve({ code: 1, message: 'Server error' }),
+            text: () => Promise.resolve('Server error')
+          });
+        }
+        // create new chat
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: () => Promise.resolve({ code: 0, data: { id: 'fallback-chat' } }),
+          text: () => Promise.resolve('')
+        });
+      });
+
+      await provider.initialize({
+        baseUrl: BASE_URL,
+        apiKey: API_KEY,
+        datasetId: DATASET_ID,
+        chatId: 'bad-chat'
+      });
+
+      // Should have fallen back to creating a new chat
+      expect(provider.getChatId()).toBe('fallback-chat');
+    });
+  });
+
+  // ─── #parseQueryResponse edge cases ─────────────────────────────────
+
+  describe('#parseQueryResponse edge cases', () => {
+    it('should extract references from message object when not on root', async () => {
+      await initProvider();
+      mockFetch.mockClear();
+
+      mockFetchResponses({
+        body: {
+          choices: [{
+            message: {
+              content: 'The forest is ancient.',
+              references: [{
+                document_name: 'lore.txt',
+                content: 'The ancient forest predates civilization.',
+                similarity: 0.88,
+                document_id: 'doc-lore'
+              }]
+            }
+          }]
+          // Note: no top-level "references" — they are on message only
+        }
+      });
+
+      const result = await provider.query('Tell me about the forest');
+      expect(result.answer).toBe('The forest is ancient.');
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0].title).toBe('lore.txt');
+      expect(result.sources[0].excerpt).toBe('The ancient forest predates civilization.');
+      expect(result.sources[0].score).toBe(0.88);
+      expect(result.sources[0].documentId).toBe('doc-lore');
+    });
+
+    it('should use ref.score as fallback when similarity is absent', async () => {
+      await initProvider();
+      mockFetch.mockClear();
+
+      mockFetchResponses({
+        body: {
+          choices: [{
+            message: { content: 'Answer text' }
+          }],
+          references: [{
+            document_name: 'notes.txt',
+            content: 'Some reference',
+            score: 0.75,           // score instead of similarity
+            document_id: 'doc-notes'
+          }]
+        }
+      });
+
+      const result = await provider.query('A question');
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0].score).toBe(0.75);
+    });
+
+    it('should set score to null when neither similarity nor score is present', async () => {
+      await initProvider();
+      mockFetch.mockClear();
+
+      mockFetchResponses({
+        body: {
+          choices: [{
+            message: { content: 'Answer' }
+          }],
+          references: [{
+            document_name: 'doc.txt',
+            content: 'Content'
+            // No similarity, no score
+          }]
+        }
+      });
+
+      const result = await provider.query('Question');
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0].score).toBeNull();
+    });
+
+    it('should handle alternative field names (doc_name, text, doc_id)', async () => {
+      await initProvider();
+      mockFetch.mockClear();
+
+      mockFetchResponses({
+        body: {
+          choices: [{
+            message: { content: 'Answer' }
+          }],
+          references: [{
+            doc_name: 'alt-name.txt',
+            text: 'Alternative text field',
+            score: 0.6,
+            doc_id: 'alt-doc-id'
+          }]
+        }
+      });
+
+      const result = await provider.query('Question');
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0].title).toBe('alt-name.txt');
+      expect(result.sources[0].excerpt).toBe('Alternative text field');
+      expect(result.sources[0].score).toBe(0.6);
+      expect(result.sources[0].documentId).toBe('alt-doc-id');
+    });
+  });
+
   // ─── HTTP error handling ──────────────────────────────────────────
 
   describe('HTTP error handling', () => {

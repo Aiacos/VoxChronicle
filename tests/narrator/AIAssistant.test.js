@@ -1128,6 +1128,134 @@ describe('AIAssistant', () => {
     });
   });
 
+  // =========================================================================
+  // analyzeContext() option variants
+  // =========================================================================
+  describe('analyzeContext() with selective options', () => {
+    it('sends only off-track request when includeSuggestions is false', async () => {
+      const response = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              offTrackStatus: { isOffTrack: true, severity: 0.6, reason: 'Players discussing food' },
+              summary: 'Off topic discussion'
+            })
+          }
+        }]
+      };
+      mockClient.post.mockResolvedValue(response);
+
+      const result = await assistant.analyzeContext('Let us order some pizza.', { includeSuggestions: false });
+
+      // Verify the prompt only contains off-track assessment (not suggestion generation)
+      const userMessage = mockClient.post.mock.calls[0][1].messages.find(m => m.role === 'user');
+      expect(userMessage.content).toContain('off-track');
+      expect(userMessage.content).not.toContain('"suggestions"');
+
+      // The result should still have the offTrackStatus parsed
+      expect(result.offTrackStatus).toBeDefined();
+      expect(result.offTrackStatus.isOffTrack).toBe(true);
+      expect(result.offTrackStatus.severity).toBe(0.6);
+      // suggestions array should be empty since the response had none
+      expect(result.suggestions).toEqual([]);
+    });
+
+    it('sends only suggestions request when checkOffTrack is false', async () => {
+      const response = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              suggestions: [
+                { type: 'narration', content: 'The merchant beckons.', confidence: 0.85 }
+              ],
+              summary: 'Players at the market'
+            })
+          }
+        }]
+      };
+      mockClient.post.mockResolvedValue(response);
+
+      const result = await assistant.analyzeContext('We browse the market stalls.', { checkOffTrack: false });
+
+      // Verify the prompt only contains suggestion generation (not off-track assessment)
+      const userMessage = mockClient.post.mock.calls[0][1].messages.find(m => m.role === 'user');
+      expect(userMessage.content).toContain('suggestions');
+      expect(userMessage.content).not.toContain('"offTrackStatus"');
+
+      // The result should have suggestions parsed
+      expect(result.suggestions).toHaveLength(1);
+      expect(result.suggestions[0].content).toBe('The merchant beckons.');
+      // offTrackStatus should be default (no off-track data in response)
+      expect(result.offTrackStatus.isOffTrack).toBe(false);
+      expect(result.offTrackStatus.severity).toBe(0);
+    });
+  });
+
+  // =========================================================================
+  // _buildSystemPrompt unsupported language
+  // =========================================================================
+  describe('_buildSystemPrompt() language fallback', () => {
+    it('falls back to English for unsupported language code', () => {
+      assistant.setPrimaryLanguage('xx');
+      const prompt = assistant._buildSystemPrompt();
+      expect(prompt).toContain('English');
+      expect(prompt).not.toContain('xx');
+    });
+
+    it('uses correct language for supported codes', () => {
+      assistant.setPrimaryLanguage('de');
+      const prompt = assistant._buildSystemPrompt();
+      expect(prompt).toContain('German');
+    });
+
+    it('falls back to English for empty language code', () => {
+      // setPrimaryLanguage(null) defaults to 'it', so we set directly
+      assistant._primaryLanguage = '';
+      const prompt = assistant._buildSystemPrompt();
+      // '' is not in languageNames map, falls back to languageNames['en'] = 'English'
+      expect(prompt).toContain('English');
+    });
+  });
+
+  // =========================================================================
+  // generateNarrativeBridge with empty response
+  // =========================================================================
+  describe('generateNarrativeBridge() edge cases', () => {
+    it('returns empty string for empty choices array', async () => {
+      mockClient.post.mockResolvedValue({ choices: [] });
+
+      const result = await assistant.generateNarrativeBridge('Players are shopping', 'Return to dungeon');
+      expect(result).toBe('');
+    });
+
+    it('returns empty string for missing message content', async () => {
+      mockClient.post.mockResolvedValue({ choices: [{ message: {} }] });
+
+      const result = await assistant.generateNarrativeBridge('Situation', 'Target');
+      expect(result).toBe('');
+    });
+
+    it('returns empty string for null choices', async () => {
+      mockClient.post.mockResolvedValue({});
+
+      const result = await assistant.generateNarrativeBridge('Situation', 'Target');
+      expect(result).toBe('');
+    });
+
+    it('uses RAG context when available', async () => {
+      const rag = createMockRAGProvider();
+      assistant.setRAGProvider(rag);
+
+      mockClient.post.mockResolvedValue({
+        choices: [{ message: { content: 'A bridge narrative.' } }]
+      });
+
+      const result = await assistant.generateNarrativeBridge('Lost in town', 'Dragon lair');
+      expect(result).toBe('A bridge narrative.');
+      expect(rag.query).toHaveBeenCalled();
+    });
+  });
+
   describe('exported constants', () => {
     it('exports DEFAULT_MODEL', () => {
       expect(DEFAULT_MODEL).toBe('gpt-4o-mini');

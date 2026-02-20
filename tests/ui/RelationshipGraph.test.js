@@ -821,7 +821,7 @@ describe('RelationshipGraph', () => {
 
       // vis not defined, so it will try to wait and eventually fail
       // but the destroy should happen first
-      vi.spyOn(graph, '_waitForVisLibrary').mockRejectedValue(new Error('not loaded'));
+      vi.spyOn(graph, '_loadVisLibrary').mockRejectedValue(new Error('not loaded'));
 
       await graph._initializeGraph();
 
@@ -911,27 +911,46 @@ describe('RelationshipGraph', () => {
     });
   });
 
-  // --- _waitForVisLibrary ---
+  // --- _loadVisLibrary ---
 
-  describe('_waitForVisLibrary', () => {
-    it('should resolve when vis is already loaded', async () => {
+  describe('_loadVisLibrary', () => {
+    it('should resolve immediately when vis is already loaded', async () => {
       globalThis.vis = {};
-      await expect(graph._waitForVisLibrary()).resolves.not.toThrow();
+      await expect(graph._loadVisLibrary()).resolves.not.toThrow();
       delete globalThis.vis;
     });
 
-    it('should throw when vis never loads', async () => {
-      // Override the method to use a shorter timeout for testing
-      const originalMethod = graph._waitForVisLibrary.bind(graph);
+    it('should inject script tag and resolve on load', async () => {
+      delete globalThis.vis;
+      // Reset static state for clean test
+      RelationshipGraph._resetVisLoadState?.();
 
-      // Create a version with short timeout by directly testing the error condition
-      // The real method polls every 100ms for up to 5000ms.
-      // We mock it to simulate the timeout behavior.
-      vi.spyOn(graph, '_waitForVisLibrary').mockRejectedValue(
-        new Error('vis-network library failed to load')
-      );
+      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((script) => {
+        // Simulate successful load
+        globalThis.vis = { DataSet: vi.fn(), Network: vi.fn() };
+        script.onload();
+      });
 
-      await expect(graph._waitForVisLibrary()).rejects.toThrow('vis-network library failed to load');
+      await graph._loadVisLibrary();
+      expect(appendChildSpy).toHaveBeenCalled();
+      const script = appendChildSpy.mock.calls[0][0];
+      expect(script.src).toContain('vis-network');
+
+      appendChildSpy.mockRestore();
+      delete globalThis.vis;
+    });
+
+    it('should reject when CDN load fails', async () => {
+      delete globalThis.vis;
+      RelationshipGraph._resetVisLoadState?.();
+
+      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((script) => {
+        script.onerror();
+      });
+
+      await expect(graph._loadVisLibrary()).rejects.toThrow('vis-network library failed to load from CDN');
+
+      appendChildSpy.mockRestore();
     });
   });
 

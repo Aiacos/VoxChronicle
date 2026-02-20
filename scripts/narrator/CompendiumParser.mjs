@@ -331,13 +331,13 @@ export class CompendiumParser {
       return '';
     }
 
-    content += '# CONTENUTO COMPENDI\n\n';
+    content += '# COMPENDIUM CONTENT\n\n';
 
     for (const compendium of allCompendiums) {
-      const compendiumHeader = `## Compendio: ${compendium.name} (${compendium.documentName})\n\n`;
+      const compendiumHeader = `## Compendium: ${compendium.name} (${compendium.documentName})\n\n`;
 
       if (content.length + compendiumHeader.length > maxLength) {
-        content += '\n[... contenuto compendi troncato per lunghezza ...]\n';
+        content += '\n[... compendium content truncated for length ...]\n';
         break;
       }
 
@@ -345,10 +345,10 @@ export class CompendiumParser {
 
       for (const entry of compendium.entries) {
         // Format with source citation
-        const entryContent = `### ${entry.name}\n[Fonte: ${compendium.name}]\n${entry.text}\n\n`;
+        const entryContent = `### ${entry.name}\n[Source: ${compendium.name}]\n${entry.text}\n\n`;
 
         if (content.length + entryContent.length > maxLength) {
-          content += '\n[... contenuto troncato per lunghezza ...]\n';
+          content += '\n[... content truncated for length ...]\n';
           break;
         }
 
@@ -369,7 +369,7 @@ export class CompendiumParser {
     return this._getContentForAIFromList(
       this._journalCompendiums,
       maxLength,
-      'CONTENUTO AVVENTURA (COMPENDI)'
+      'ADVENTURE CONTENT (COMPENDIUMS)'
     );
   }
 
@@ -406,7 +406,7 @@ export class CompendiumParser {
 
     for (const result of topResults) {
       content += `## ${result.entry.name}\n`;
-      content += `[Fonte: ${result.compendium}]\n`;
+      content += `[Source: ${result.compendium}]\n`;
       content += `${result.entry.text}\n\n`;
     }
 
@@ -848,7 +848,7 @@ export class CompendiumParser {
 
     // Additional system-specific fields
     if (item.system?.source) {
-      parts.push(`Fonte: ${item.system.source}`);
+      parts.push(`Source: ${item.system.source}`);
     }
 
     return parts.join('\n');
@@ -1064,7 +1064,7 @@ export class CompendiumParser {
       const compendiumHeader = `## ${compendium.name}\n\n`;
 
       if (content.length + compendiumHeader.length > maxLength) {
-        content += '\n[... contenuto troncato per lunghezza ...]\n';
+        content += '\n[... content truncated for length ...]\n';
         break;
       }
 
@@ -1074,7 +1074,7 @@ export class CompendiumParser {
         const entryContent = `### ${entry.name}\n${entry.text}\n\n`;
 
         if (content.length + entryContent.length > maxLength) {
-          content += '\n[... contenuto troncato per lunghezza ...]\n';
+          content += '\n[... content truncated for length ...]\n';
           break;
         }
 
