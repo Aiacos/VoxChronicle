@@ -5,6 +5,48 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.3] - 2026-02-20
+
+### Fixed — Comprehensive Audit (43 issues found, 43 fixed)
+
+#### Security (2)
+- **XSS in EntityPreview textarea** — Escape HTML in entity descriptions via `escapeHtml()` to prevent script injection
+- **XSS in CompendiumParser.stripHtml** — Replace `innerHTML` with safe `DOMParser` approach (matching JournalParser)
+
+#### Critical Bugs (5)
+- **Missing batchCreateRelations** — Implement KankaService method for entity relationship creation (was guaranteed runtime crash)
+- **Race condition in stopLiveMode** — Add `_isStopping` guard to prevent concurrent stop calls corrupting session data
+- **Notification leak in Settings** — Use `try/finally` to guarantee loading spinner removal during API key validation
+- **Timeout leak in OpenAIClient** — Wrap rate limiter call with outer `try/finally` for guaranteed timeout cleanup
+- **Stale orchestrator in MainPanel** — Update orchestrator reference on subsequent `getInstance()` calls
+
+#### Silent Failure Notifications (8)
+- **Orchestration notifications** — Users now notified when live transcription, AI analysis, entity extraction, relationship extraction, or image generation fails
+- **RAG/AI notifications** — Users notified when RAG init fails or context retrieval repeatedly fails; bare catches now log errors
+
+#### Bug Fixes (8)
+- **AbortController reuse** — Fresh controller per retry attempt in KankaClient
+- **Rate limit double-pause** — Only process rate limit headers on successful responses
+- **Options mutation** — Shallow copy options in TranscriptionService.transcribe()
+- **CacheManager true LRU** — Evict by `lastAccessedAt` instead of FIFO insertion order
+- **EntityPreview retry** — Filter already-created entities to prevent Kanka duplicates
+- **isRetryable null guard** — Explicit `status !== null` check prevents `null >= 500` coercion
+- **loadGallery validation** — Validate setting is Array before assignment
+- **SessionAnalytics paused sessions** — Allow `endSession()` to save paused session data instead of silently discarding
+- **RulesReference null guard** — Add `game.packs` check before iteration in `searchCompendiums()`
+
+#### i18n (10 hardcoded strings fixed)
+- Replace all hardcoded English notification strings with `game.i18n.localize()` + fallback pattern
+- Add 15+ error/UI keys to all 8 language files (en, it, de, es, fr, ja, pt, template)
+
+#### Code Quality
+- Add debug logging to 10+ bare catches across VoxChronicle, AudioRecorder, MainPanel, VocabularyManager
+- Wrap clipboard fallback in VocabularyManager with proper try/catch
+- Add `expect.assertions()` to 27 try/catch error tests for stronger guarantees
+
+### Improved
+- **83 new tests** — Test count from 3805 to 3888 (+83), zero regressions, zero unhandled errors
+
 ## [3.0.2] - 2026-02-20
 
 ### Fixed
