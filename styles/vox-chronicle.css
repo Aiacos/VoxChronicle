@@ -1,152 +1,34 @@
 /**
  * VoxChronicle - Foundry VTT Module Styles
  *
- * Main stylesheet for the VoxChronicle session transcription module.
- * All classes use the .vox-chronicle prefix for namespace isolation.
+ * Native Foundry v13 integration — structural layout and functional styles only.
+ * No custom theme colors — inherits from Foundry's native dark theme.
  *
  * @module vox-chronicle
- * @version 1.0.0
+ * @version 3.1.0
  */
 
 /* ==========================================================================
-   CSS Variables - Theme Configuration
-   ========================================================================== */
-
-:root {
-  /* Primary colors */
-  --vox-primary: #7b2cbf;
-  --vox-primary-dark: #5a189a;
-  --vox-primary-light: #9d4edd;
-  --vox-secondary: #3c096c;
-
-  /* Accent colors */
-  --vox-accent: #e0aaff;
-  --vox-accent-dim: #c77dff;
-
-  /* Status colors */
-  --vox-recording: #ef233c;
-  --vox-recording-pulse: rgba(239, 35, 60, 0.5);
-  --vox-paused: #fca311;
-  --vox-processing: #4cc9f0;
-  --vox-success: #06d6a0;
-  --vox-error: #ef233c;
-  --vox-warning: #fca311;
-  --vox-info: #4cc9f0;
-
-  /* Text colors */
-  --vox-text: #f8f9fa;
-  --vox-text-dim: #adb5bd;
-  --vox-text-muted: #6c757d;
-
-  /* Background colors */
-  --vox-bg: #1a1a2e;
-  --vox-bg-dark: #16161d;
-  --vox-bg-light: #2a2a4e;
-  --vox-bg-hover: #3a3a5e;
-
-  /* Border colors */
-  --vox-border: #4a4a6e;
-  --vox-border-light: #5a5a7e;
-
-  /* Shadows */
-  --vox-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --vox-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
-
-  /* Spacing */
-  --vox-spacing-xs: 4px;
-  --vox-spacing-sm: 8px;
-  --vox-spacing-md: 16px;
-  --vox-spacing-lg: 24px;
-  --vox-spacing-xl: 32px;
-
-  /* Border radius */
-  --vox-radius-sm: 4px;
-  --vox-radius-md: 8px;
-  --vox-radius-lg: 12px;
-
-  /* Transitions */
-  --vox-transition: 0.2s ease;
-  --vox-transition-slow: 0.3s ease;
-}
-
-/* ==========================================================================
-   Base Application Styles
-   ========================================================================== */
-
-.vox-chronicle {
-  font-family: 'Signika', sans-serif;
-  color: var(--vox-text);
-  background: var(--vox-bg);
-}
-
-.vox-chronicle .window-content {
-  padding: var(--vox-spacing-md);
-  background: var(--vox-bg);
-}
-
-/* ==========================================================================
-   Settings Validation Buttons
+   Settings Validation Button (shown in Foundry settings dialog)
    ========================================================================== */
 
 .vox-chronicle-validate-button {
   display: inline-flex;
   align-items: center;
-  gap: var(--vox-spacing-xs);
-  margin-left: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
-  background: var(--vox-primary);
-  color: white;
-  border: 1px solid var(--vox-primary-dark);
-  border-radius: var(--vox-radius-sm);
+  gap: 4px;
+  margin-left: 8px;
+  padding: 4px 8px;
   font-size: 0.9em;
   font-weight: 500;
-  cursor: pointer;
-  transition: all var(--vox-transition);
   white-space: nowrap;
 }
 
-.vox-chronicle-validate-button:hover:not(:disabled) {
-  background: var(--vox-primary-dark);
-  border-color: var(--vox-secondary);
-  transform: translateY(-1px);
-  box-shadow: var(--vox-shadow);
-}
+.vox-chronicle-validate-button i.fa-spinner { color: #4cc9f0; }
+.vox-chronicle-validate-button i.fa-check { color: #06d6a0; }
+.vox-chronicle-validate-button i.fa-times { color: #ef233c; }
 
-.vox-chronicle-validate-button:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: none;
-}
-
-.vox-chronicle-validate-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Icon states within validation button */
-.vox-chronicle-validate-button i {
-  font-size: 1em;
-  transition: all var(--vox-transition);
-}
-
-/* Loading state - spinning icon */
-.vox-chronicle-validate-button i.fa-spinner {
-  color: var(--vox-processing);
-}
-
-/* Success state - checkmark icon */
-.vox-chronicle-validate-button i.fa-check {
-  color: var(--vox-success);
-}
-
-/* Error state - X icon */
-.vox-chronicle-validate-button i.fa-times {
-  color: var(--vox-error);
-}
-
-/* Ensure button aligns properly with Foundry input fields in settings */
 form .form-group .vox-chronicle-validate-button {
-  margin-left: var(--vox-spacing-xs);
+  margin-left: 4px;
   vertical-align: middle;
 }
 
@@ -157,395 +39,208 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-recorder {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-md);
-  padding: var(--vox-spacing-sm);
+  gap: 16px;
+  padding: 8px;
 }
 
-/* Status indicator */
 .vox-chronicle-recorder .recorder-status {
   display: flex;
   align-items: center;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-light);
-  border-radius: var(--vox-radius-md);
-  border-left: 4px solid var(--vox-border);
-  transition:
-    border-color var(--vox-transition),
-    background-color var(--vox-transition);
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  border-left: 4px solid rgba(255, 255, 255, 0.15);
+  transition: border-color 0.2s, background-color 0.2s;
 }
 
-.vox-chronicle-recorder .recorder-status.ready {
-  border-left-color: var(--vox-success);
-}
-
+.vox-chronicle-recorder .recorder-status.ready { border-left-color: #06d6a0; }
 .vox-chronicle-recorder .recorder-status.recording {
-  border-left-color: var(--vox-recording);
-  background: linear-gradient(90deg, rgba(239, 35, 60, 0.1), var(--vox-bg-light));
+  border-left-color: #ef233c;
+  background: rgba(239, 35, 60, 0.08);
 }
-
-.vox-chronicle-recorder .recorder-status.paused {
-  border-left-color: var(--vox-paused);
-}
-
+.vox-chronicle-recorder .recorder-status.paused { border-left-color: #fca311; }
 .vox-chronicle-recorder .recorder-status.processing {
-  border-left-color: var(--vox-processing);
-  background: linear-gradient(90deg, rgba(76, 201, 240, 0.1), var(--vox-bg-light));
+  border-left-color: #4cc9f0;
+  background: rgba(76, 201, 240, 0.08);
 }
-
 .vox-chronicle-recorder .recorder-status.error {
-  border-left-color: var(--vox-error);
-  background: linear-gradient(90deg, rgba(239, 35, 60, 0.1), var(--vox-bg-light));
+  border-left-color: #ef233c;
+  background: rgba(239, 35, 60, 0.08);
 }
 
 .vox-chronicle-recorder .status-indicator {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--vox-border);
-  transition: background-color var(--vox-transition);
+  background: rgba(255, 255, 255, 0.15);
+  transition: background-color 0.2s;
   flex-shrink: 0;
 }
 
-.vox-chronicle-recorder .recorder-status.ready .status-indicator {
-  background: var(--vox-success);
-}
-
+.vox-chronicle-recorder .recorder-status.ready .status-indicator { background: #06d6a0; }
 .vox-chronicle-recorder .recorder-status.recording .status-indicator {
-  background: var(--vox-recording);
+  background: #ef233c;
   animation: vox-pulse 1.5s ease-in-out infinite;
 }
-
-.vox-chronicle-recorder .recorder-status.paused .status-indicator {
-  background: var(--vox-paused);
-}
-
+.vox-chronicle-recorder .recorder-status.paused .status-indicator { background: #fca311; }
 .vox-chronicle-recorder .recorder-status.processing .status-indicator {
-  background: var(--vox-processing);
+  background: #4cc9f0;
   animation: vox-spin 1s linear infinite;
 }
-
-.vox-chronicle-recorder .recorder-status.error .status-indicator {
-  background: var(--vox-error);
-}
+.vox-chronicle-recorder .recorder-status.error .status-indicator { background: #ef233c; }
 
 .vox-chronicle-recorder .status-text {
   flex: 1;
   font-weight: 500;
-  color: var(--vox-text);
 }
 
-/* Duration display */
 .vox-chronicle-recorder .recorder-duration {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-dark);
-  border-radius: var(--vox-radius-sm);
-  font-family: 'Courier New', monospace;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-family: monospace;
 }
 
-.vox-chronicle-recorder .duration-label {
-  color: var(--vox-text-dim);
-  font-size: 0.9em;
-}
+.vox-chronicle-recorder .duration-label { opacity: 0.7; font-size: 0.9em; }
+.vox-chronicle-recorder .duration-value { font-size: 1.4em; font-weight: bold; letter-spacing: 2px; }
 
-.vox-chronicle-recorder .duration-value {
-  font-size: 1.4em;
-  font-weight: bold;
-  color: var(--vox-accent);
-  letter-spacing: 2px;
-}
-
-/* Transcription mode indicator */
 .vox-chronicle-recorder .recorder-mode-indicator {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--vox-spacing-xs) var(--vox-spacing-md);
-  background: var(--vox-bg-dark);
-  border-radius: var(--vox-radius-sm);
+  padding: 4px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
 
-.vox-chronicle-recorder .mode-label {
-  color: var(--vox-text-dim);
-  font-size: 0.9em;
-}
+.vox-chronicle-recorder .mode-label { opacity: 0.7; font-size: 0.9em; }
 
 .vox-chronicle-recorder .mode-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--vox-spacing-xs);
-  padding: 2px var(--vox-spacing-sm);
-  border-radius: var(--vox-radius-sm);
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-size: 0.85em;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  transition: all var(--vox-transition);
-  cursor: help;
 }
 
-/* Mode badge colors */
 .vox-chronicle-recorder .mode-badge.mode-api {
-  background: rgba(76, 201, 240, 0.2);
-  color: var(--vox-processing);
-  border: 1px solid var(--vox-processing);
+  background: rgba(76, 201, 240, 0.15);
+  color: #4cc9f0;
+  border: 1px solid rgba(76, 201, 240, 0.3);
 }
-
 .vox-chronicle-recorder .mode-badge.mode-local {
-  background: rgba(6, 214, 160, 0.2);
-  color: var(--vox-success);
-  border: 1px solid var(--vox-success);
+  background: rgba(6, 214, 160, 0.15);
+  color: #06d6a0;
+  border: 1px solid rgba(6, 214, 160, 0.3);
 }
-
 .vox-chronicle-recorder .mode-badge.mode-auto {
-  background: rgba(252, 163, 17, 0.2);
-  color: var(--vox-warning);
-  border: 1px solid var(--vox-warning);
+  background: rgba(252, 163, 17, 0.15);
+  color: #fca311;
+  border: 1px solid rgba(252, 163, 17, 0.3);
 }
 
-/* Health status icons */
-.vox-chronicle-recorder .health-icon {
-  font-size: 0.9em;
-  margin-left: 2px;
-}
-
-.vox-chronicle-recorder .health-connected .health-icon {
-  color: var(--vox-success);
-}
-
-.vox-chronicle-recorder .health-checking .health-icon {
-  color: var(--vox-warning);
-}
-
-.vox-chronicle-recorder .health-unavailable .health-icon {
-  color: var(--vox-error);
-}
-
-/* Mode badge hover effect */
-.vox-chronicle-recorder .mode-badge:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
+.vox-chronicle-recorder .health-icon { font-size: 0.9em; margin-left: 2px; }
+.vox-chronicle-recorder .health-connected .health-icon { color: #06d6a0; }
+.vox-chronicle-recorder .health-checking .health-icon { color: #fca311; }
+.vox-chronicle-recorder .health-unavailable .health-icon { color: #ef233c; }
 
 /* Progress bar */
 .vox-chronicle-recorder .recorder-progress {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-xs);
+  gap: 4px;
 }
 
 .vox-chronicle-recorder .progress-bar,
 .vox-chronicle-entity-preview .progress-bar {
   height: 8px;
-  background: var(--vox-bg-dark);
-  border-radius: var(--vox-radius-sm);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .vox-chronicle-recorder .progress-fill,
 .vox-chronicle-entity-preview .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--vox-primary), var(--vox-primary-light));
-  border-radius: var(--vox-radius-sm);
-  transition: width var(--vox-transition);
+  background: linear-gradient(90deg, #4cc9f0, #06d6a0);
+  border-radius: 4px;
+  transition: width 0.2s;
 }
 
-.vox-chronicle-recorder .progress-text {
-  font-size: 0.85em;
-  color: var(--vox-text-dim);
-  text-align: center;
-}
+.vox-chronicle-recorder .progress-text { font-size: 0.85em; opacity: 0.7; text-align: center; }
 
-/* Control buttons */
 .vox-chronicle-recorder .recorder-controls {
   display: flex;
-  gap: var(--vox-spacing-sm);
+  gap: 8px;
   justify-content: center;
   flex-wrap: wrap;
 }
 
-.vox-chronicle-recorder .recorder-controls button,
-.vox-chronicle-recorder .btn-record,
-.vox-chronicle-recorder .btn-stop,
-.vox-chronicle-recorder .btn-pause,
-.vox-chronicle-recorder .btn-resume {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  border: none;
-  border-radius: var(--vox-radius-md);
-  font-size: 1em;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--vox-transition);
-  min-width: 120px;
-}
-
-.vox-chronicle-recorder .btn-record {
-  background: var(--vox-recording);
-  color: white;
-}
-
-.vox-chronicle-recorder .btn-record:hover {
-  background: #d90429;
-  transform: translateY(-1px);
-  box-shadow: var(--vox-shadow);
-}
-
-.vox-chronicle-recorder .btn-stop {
-  background: var(--vox-bg-light);
-  color: var(--vox-text);
-  border: 1px solid var(--vox-border);
-}
-
-.vox-chronicle-recorder .btn-stop:hover {
-  background: var(--vox-bg-hover);
-}
-
-.vox-chronicle-recorder .btn-pause,
-.vox-chronicle-recorder .btn-resume {
-  background: var(--vox-bg-light);
-  color: var(--vox-text);
-  border: 1px solid var(--vox-border);
-  min-width: auto;
-  padding: var(--vox-spacing-sm);
-}
-
-.vox-chronicle-recorder .btn-pause:hover,
-.vox-chronicle-recorder .btn-resume:hover {
-  background: var(--vox-bg-hover);
-}
-
-/* Warning message */
+/* Warning & error messages */
 .vox-chronicle-recorder .recorder-warning,
 .vox-chronicle-entity-preview .preview-warning {
   display: flex;
   align-items: center;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-md);
-  background: rgba(252, 163, 17, 0.1);
-  border: 1px solid var(--vox-warning);
-  border-radius: var(--vox-radius-md);
-  color: var(--vox-warning);
+  gap: 8px;
+  padding: 12px;
+  background: rgba(252, 163, 17, 0.08);
+  border: 1px solid rgba(252, 163, 17, 0.4);
+  border-radius: 4px;
+  color: #fca311;
   flex-wrap: wrap;
 }
-
 .vox-chronicle-recorder .recorder-warning i,
-.vox-chronicle-entity-preview .preview-warning i {
-  font-size: 1.2em;
-}
-
+.vox-chronicle-entity-preview .preview-warning i { font-size: 1.2em; }
 .vox-chronicle-recorder .recorder-warning span,
-.vox-chronicle-entity-preview .preview-warning span {
-  flex: 1;
-  min-width: 200px;
-}
+.vox-chronicle-entity-preview .preview-warning span { flex: 1; min-width: 200px; }
 
-.vox-chronicle-recorder .btn-settings {
-  background: var(--vox-primary);
-  color: white;
-  padding: var(--vox-spacing-xs) var(--vox-spacing-md);
-  border: none;
-  border-radius: var(--vox-radius-sm);
-  cursor: pointer;
-  transition: background-color var(--vox-transition);
-}
-
-.vox-chronicle-recorder .btn-settings:hover {
-  background: var(--vox-primary-dark);
-}
-
-/* Cancel button */
-.vox-chronicle-recorder .btn-cancel {
-  background: transparent;
-  color: var(--vox-text-dim);
-  border: 1px solid var(--vox-border);
-  min-width: auto;
-  padding: var(--vox-spacing-sm);
-}
-
-.vox-chronicle-recorder .btn-cancel:hover {
-  color: var(--vox-error);
-  border-color: var(--vox-error);
-}
-
-/* Error display */
 .vox-chronicle-recorder .recorder-error {
   display: flex;
   align-items: center;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: rgba(239, 35, 60, 0.1);
-  border: 1px solid var(--vox-error);
-  border-radius: var(--vox-radius-md);
-  color: var(--vox-error);
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(239, 35, 60, 0.08);
+  border: 1px solid rgba(239, 35, 60, 0.4);
+  border-radius: 4px;
+  color: #ef233c;
   font-size: 0.9em;
 }
+.vox-chronicle-recorder .recorder-error i { flex-shrink: 0; }
 
-.vox-chronicle-recorder .recorder-error i {
-  flex-shrink: 0;
-}
-
-/* Configuration status indicators */
 .vox-chronicle-recorder .recorder-config-status {
   display: flex;
-  gap: var(--vox-spacing-md);
+  gap: 16px;
   justify-content: center;
-  padding: var(--vox-spacing-sm);
-  background: var(--vox-bg-dark);
-  border-radius: var(--vox-radius-sm);
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
   font-size: 0.85em;
 }
 
-.vox-chronicle-recorder .config-item {
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-  color: var(--vox-text-dim);
-}
+.vox-chronicle-recorder .config-item { display: flex; align-items: center; gap: 4px; opacity: 0.7; }
+.vox-chronicle-recorder .config-item.configured { opacity: 1; color: #06d6a0; }
+.vox-chronicle-recorder .config-item.missing { opacity: 1; color: #ef233c; }
 
-.vox-chronicle-recorder .config-item.configured {
-  color: var(--vox-success);
-}
-
-.vox-chronicle-recorder .config-item.missing {
-  color: var(--vox-error);
-}
-
-.vox-chronicle-recorder .config-item.optional {
-  color: var(--vox-text-muted);
-}
-
-/* Session summary */
 .vox-chronicle-recorder .recorder-session-summary {
   display: flex;
-  gap: var(--vox-spacing-md);
+  gap: 16px;
   justify-content: center;
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-light);
-  border-radius: var(--vox-radius-sm);
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
   font-size: 0.9em;
 }
-
-.vox-chronicle-recorder .summary-item {
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-}
-
-.vox-chronicle-recorder .summary-label {
-  color: var(--vox-text-dim);
-}
-
-.vox-chronicle-recorder .summary-value {
-  color: var(--vox-accent);
-  font-weight: 600;
-}
+.vox-chronicle-recorder .summary-item { display: flex; align-items: center; gap: 4px; }
+.vox-chronicle-recorder .summary-label { opacity: 0.7; }
+.vox-chronicle-recorder .summary-value { font-weight: 600; }
 
 /* ==========================================================================
    Speaker Labeling Component
@@ -554,189 +249,75 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-speaker-labeling {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-md);
+  gap: 16px;
 }
 
 .vox-chronicle-speaker-labeling .form-description {
-  color: var(--vox-text-dim);
+  opacity: 0.7;
   font-size: 0.95em;
   line-height: 1.5;
-  padding-bottom: var(--vox-spacing-sm);
-  border-bottom: 1px solid var(--vox-border);
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+.vox-chronicle-speaker-labeling .form-description p { margin: 0; }
 
-.vox-chronicle-speaker-labeling .form-description p {
-  margin: 0;
-}
-
-/* Header row */
 .vox-chronicle-speaker-labeling .speaker-labels-header {
   display: grid;
   grid-template-columns: 140px 1fr auto;
-  gap: var(--vox-spacing-md);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-dark);
-  border-radius: var(--vox-radius-sm);
+  gap: 16px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
   font-weight: 600;
   font-size: 0.85em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--vox-text-dim);
+  opacity: 0.7;
 }
 
-/* Speaker list */
 .vox-chronicle-speaker-labeling .speaker-labels-list {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-sm);
+  gap: 8px;
 }
 
-/* Speaker row */
 .vox-chronicle-speaker-labeling .speaker-row {
   display: grid;
   grid-template-columns: 140px 1fr auto;
-  gap: var(--vox-spacing-md);
+  gap: 16px;
   align-items: center;
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-light);
-  border-radius: var(--vox-radius-sm);
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
   border-left: 3px solid transparent;
-  transition:
-    border-color var(--vox-transition),
-    background-color var(--vox-transition);
+  transition: border-color 0.2s, background-color 0.2s;
 }
+.vox-chronicle-speaker-labeling .speaker-row:hover { background: rgba(255, 255, 255, 0.08); }
+.vox-chronicle-speaker-labeling .speaker-row.known { border-left-color: #06d6a0; }
 
-.vox-chronicle-speaker-labeling .speaker-row:hover {
-  background: var(--vox-bg-hover);
-}
-
-.vox-chronicle-speaker-labeling .speaker-row.known {
-  border-left-color: var(--vox-success);
-}
-
-/* Speaker ID */
 .vox-chronicle-speaker-labeling .speaker-id {
   display: flex;
   align-items: center;
-  gap: var(--vox-spacing-xs);
-  font-family: 'Courier New', monospace;
-  font-size: 0.9em;
-  color: var(--vox-accent);
-}
-
-.vox-chronicle-speaker-labeling .speaker-id .known-indicator {
-  color: var(--vox-success);
+  gap: 4px;
+  font-family: monospace;
   font-size: 0.9em;
 }
+.vox-chronicle-speaker-labeling .speaker-id .known-indicator { color: #06d6a0; font-size: 0.9em; }
 
-/* Speaker label input */
 .vox-chronicle-speaker-labeling .speaker-label {
   display: flex;
   align-items: center;
-  gap: var(--vox-spacing-xs);
+  gap: 4px;
 }
 
-.vox-chronicle-speaker-labeling .speaker-label input {
-  flex: 1;
-  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
-  background: var(--vox-bg-dark);
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-sm);
-  color: var(--vox-text);
-  font-size: 1em;
-  transition: border-color var(--vox-transition);
-}
-
-.vox-chronicle-speaker-labeling .speaker-label input:focus {
-  outline: none;
-  border-color: var(--vox-primary);
-}
-
-.vox-chronicle-speaker-labeling .speaker-label input::placeholder {
-  color: var(--vox-text-muted);
-}
-
-.vox-chronicle-speaker-labeling .btn-clear {
-  background: none;
-  border: none;
-  color: var(--vox-text-muted);
-  cursor: pointer;
-  padding: var(--vox-spacing-xs);
-  transition: color var(--vox-transition);
-}
-
-.vox-chronicle-speaker-labeling .btn-clear:hover {
-  color: var(--vox-error);
-}
-
-/* Quick assign dropdown */
-.vox-chronicle-speaker-labeling .quick-assign select {
-  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
-  background: var(--vox-bg-dark);
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-sm);
-  color: var(--vox-text);
-  font-size: 0.9em;
-  cursor: pointer;
-  transition: border-color var(--vox-transition);
-}
-
-.vox-chronicle-speaker-labeling .quick-assign select:focus {
-  outline: none;
-  border-color: var(--vox-primary);
-}
-
-/* Form actions */
 .vox-chronicle-speaker-labeling .form-actions,
 .vox-chronicle-entity-preview .form-actions {
   display: flex;
-  gap: var(--vox-spacing-sm);
+  gap: 8px;
   justify-content: flex-end;
-  padding-top: var(--vox-spacing-md);
-  border-top: 1px solid var(--vox-border);
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   flex-wrap: wrap;
-}
-
-.vox-chronicle-speaker-labeling .form-actions button {
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  border: none;
-  border-radius: var(--vox-radius-sm);
-  font-size: 0.95em;
-  cursor: pointer;
-  transition: all var(--vox-transition);
-}
-
-.vox-chronicle-speaker-labeling .btn-auto-detect {
-  background: var(--vox-bg-light);
-  color: var(--vox-text);
-  border: 1px solid var(--vox-border) !important;
-}
-
-.vox-chronicle-speaker-labeling .btn-auto-detect:hover {
-  background: var(--vox-bg-hover);
-}
-
-.vox-chronicle-speaker-labeling .btn-reset {
-  background: transparent;
-  color: var(--vox-text-dim);
-  border: 1px solid var(--vox-border) !important;
-}
-
-.vox-chronicle-speaker-labeling .btn-reset:hover {
-  color: var(--vox-error);
-  border-color: var(--vox-error) !important;
-}
-
-.vox-chronicle-speaker-labeling .btn-save {
-  background: var(--vox-primary);
-  color: white;
-}
-
-.vox-chronicle-speaker-labeling .btn-save:hover {
-  background: var(--vox-primary-dark);
 }
 
 /* ==========================================================================
@@ -746,215 +327,110 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-entity-preview {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-md);
+  gap: 16px;
 }
 
 .vox-chronicle-entity-preview .preview-description {
-  color: var(--vox-text-dim);
+  opacity: 0.7;
   font-size: 0.95em;
   line-height: 1.5;
-  padding-bottom: var(--vox-spacing-sm);
-  border-bottom: 1px solid var(--vox-border);
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+.vox-chronicle-entity-preview .preview-description p { margin: 0; }
 
-.vox-chronicle-entity-preview .preview-description p {
-  margin: 0;
-}
-
-/* Progress section */
 .vox-chronicle-entity-preview .entity-preview-progress {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-md);
-  background: var(--vox-bg-light);
-  border-radius: var(--vox-radius-md);
+  gap: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
 }
+.vox-chronicle-entity-preview .progress-message { font-weight: 500; text-align: center; }
+.vox-chronicle-entity-preview .progress-count { text-align: center; opacity: 0.7; font-size: 0.9em; }
 
-.vox-chronicle-entity-preview .progress-message {
-  color: var(--vox-text);
-  font-weight: 500;
-  text-align: center;
-}
-
-.vox-chronicle-entity-preview .progress-count {
-  text-align: center;
-  color: var(--vox-text-dim);
-  font-size: 0.9em;
-}
-
-/* Results section */
-.vox-chronicle-entity-preview .entity-preview-results {
-  padding: var(--vox-spacing-md);
-  border-radius: var(--vox-radius-md);
-}
-
+.vox-chronicle-entity-preview .entity-preview-results { padding: 16px; border-radius: 4px; }
 .vox-chronicle-entity-preview .entity-preview-results.success {
-  background: rgba(6, 214, 160, 0.1);
-  border: 1px solid var(--vox-success);
+  background: rgba(6, 214, 160, 0.08);
+  border: 1px solid rgba(6, 214, 160, 0.4);
 }
-
 .vox-chronicle-entity-preview .entity-preview-results.error {
-  background: rgba(239, 35, 60, 0.1);
-  border: 1px solid var(--vox-error);
+  background: rgba(239, 35, 60, 0.08);
+  border: 1px solid rgba(239, 35, 60, 0.4);
 }
 
-.vox-chronicle-entity-preview .results-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vox-spacing-md);
-  margin-bottom: var(--vox-spacing-sm);
-}
-
-.vox-chronicle-entity-preview .created-count {
-  color: var(--vox-success);
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-}
-
-.vox-chronicle-entity-preview .failed-count {
-  color: var(--vox-error);
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-}
+.vox-chronicle-entity-preview .results-summary { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 8px; }
+.vox-chronicle-entity-preview .created-count { color: #06d6a0; display: flex; align-items: center; gap: 4px; }
+.vox-chronicle-entity-preview .failed-count { color: #ef233c; display: flex; align-items: center; gap: 4px; }
 
 .vox-chronicle-entity-preview .failed-entities {
-  margin-top: var(--vox-spacing-sm);
-  padding-top: var(--vox-spacing-sm);
-  border-top: 1px solid var(--vox-border);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
+.vox-chronicle-entity-preview .failed-entity { opacity: 0.7; font-size: 0.9em; padding: 4px 0; }
 
-.vox-chronicle-entity-preview .failed-entity {
-  color: var(--vox-text-dim);
-  font-size: 0.9em;
-  padding: var(--vox-spacing-xs) 0;
-}
-
-/* Entity sections */
-.vox-chronicle-entity-preview .entity-sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vox-spacing-md);
-}
-
+.vox-chronicle-entity-preview .entity-sections { display: flex; flex-direction: column; gap: 16px; }
 .vox-chronicle-entity-preview .entity-section {
-  background: var(--vox-bg-light);
-  border-radius: var(--vox-radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
   overflow: hidden;
 }
 
-/* Section header */
 .vox-chronicle-entity-preview .section-header {
   display: flex;
   align-items: center;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-dark);
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.2);
   cursor: pointer;
-  transition: background-color var(--vox-transition);
+  transition: background-color 0.2s;
 }
+.vox-chronicle-entity-preview .section-header:hover { background: rgba(255, 255, 255, 0.08); }
+.vox-chronicle-entity-preview .section-header i { opacity: 0.7; transition: transform 0.2s; }
+.vox-chronicle-entity-preview .entity-section.collapsed .section-header i { transform: rotate(-90deg); }
+.vox-chronicle-entity-preview .section-title { flex: 1; font-weight: 600; }
+.vox-chronicle-entity-preview .section-count { opacity: 0.7; font-size: 0.9em; }
 
-.vox-chronicle-entity-preview .section-header:hover {
-  background: var(--vox-bg-hover);
-}
-
-.vox-chronicle-entity-preview .section-header i {
-  color: var(--vox-text-dim);
-  transition: transform var(--vox-transition);
-}
-
-.vox-chronicle-entity-preview .entity-section.collapsed .section-header i {
-  transform: rotate(-90deg);
-}
-
-.vox-chronicle-entity-preview .section-title {
-  flex: 1;
-  font-weight: 600;
-  color: var(--vox-text);
-}
-
-.vox-chronicle-entity-preview .section-count {
-  color: var(--vox-text-dim);
-  font-size: 0.9em;
-}
-
-/* Section content */
 .vox-chronicle-entity-preview .section-content {
-  padding: var(--vox-spacing-sm);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-sm);
+  gap: 8px;
 }
+.vox-chronicle-entity-preview .entity-section.collapsed .section-content { display: none; }
 
-.vox-chronicle-entity-preview .entity-section.collapsed .section-content {
-  display: none;
-}
-
-/* Entity row */
 .vox-chronicle-entity-preview .entity-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: var(--vox-spacing-md);
+  gap: 16px;
   align-items: start;
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg);
-  border-radius: var(--vox-radius-sm);
+  padding: 8px 16px;
+  border-radius: 4px;
   border: 1px solid transparent;
-  transition:
-    border-color var(--vox-transition),
-    background-color var(--vox-transition);
+  transition: border-color 0.2s, background-color 0.2s;
 }
+.vox-chronicle-entity-preview .entity-row:hover { background: rgba(255, 255, 255, 0.04); }
 
-.vox-chronicle-entity-preview .entity-row:hover {
-  background: var(--vox-bg-hover);
-}
+.vox-chronicle-entity-preview .entity-select { display: flex; align-items: center; padding-top: 2px; }
 
-.vox-chronicle-entity-preview .entity-row.selected {
-  border-color: var(--vox-primary-light);
-}
-
-/* Entity select checkbox */
-.vox-chronicle-entity-preview .entity-select {
-  display: flex;
-  align-items: center;
-  padding-top: 2px;
-}
-
-.vox-chronicle-entity-preview .entity-select input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--vox-primary);
-  cursor: pointer;
-}
-
-/* Entity info */
 .vox-chronicle-entity-preview .entity-info {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-xs);
+  gap: 4px;
   min-width: 0;
 }
-
 .vox-chronicle-entity-preview .entity-name {
   font-weight: 600;
-  color: var(--vox-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.vox-chronicle-entity-preview .entity-type {
-  font-size: 0.85em;
-  color: var(--vox-accent);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
+.vox-chronicle-entity-preview .entity-type { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
 .vox-chronicle-entity-preview .entity-description {
   font-size: 0.9em;
-  color: var(--vox-text-dim);
+  opacity: 0.7;
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -963,173 +439,46 @@ form .form-group .vox-chronicle-validate-button {
   -webkit-box-orient: vertical;
 }
 
-/* Entity actions */
-.vox-chronicle-entity-preview .entity-actions {
-  display: flex;
-  gap: var(--vox-spacing-xs);
-}
+.vox-chronicle-entity-preview .entity-actions { display: flex; gap: 4px; }
 
-.vox-chronicle-entity-preview .entity-actions button {
-  background: none;
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-sm);
-  color: var(--vox-text-dim);
-  padding: var(--vox-spacing-xs);
-  cursor: pointer;
-  transition: all var(--vox-transition);
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.vox-chronicle-entity-preview .entity-actions button:hover {
-  color: var(--vox-primary-light);
-  border-color: var(--vox-primary-light);
-}
-
-.vox-chronicle-entity-preview .entity-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Entity preview image */
 .vox-chronicle-entity-preview .entity-preview-image {
   grid-column: 1 / -1;
-  margin-top: var(--vox-spacing-sm);
-  border-radius: var(--vox-radius-sm);
+  margin-top: 8px;
+  border-radius: 4px;
   overflow: hidden;
 }
+.vox-chronicle-entity-preview .entity-preview-image img { width: 100%; max-height: 150px; object-fit: cover; }
 
-.vox-chronicle-entity-preview .entity-preview-image img {
-  width: 100%;
-  max-height: 150px;
-  object-fit: cover;
-}
-
-/* Entity image loading placeholder */
 .vox-chronicle-entity-preview .entity-image-placeholder {
   grid-column: 1 / -1;
-  margin-top: var(--vox-spacing-sm);
+  margin-top: 8px;
   min-height: 150px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--vox-spacing-sm);
-  background: var(--vox-bg-dark);
-  border: 1px dashed var(--vox-border);
-  border-radius: var(--vox-radius-sm);
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
 }
+.vox-chronicle-entity-preview .entity-image-placeholder i { font-size: 48px; color: #4cc9f0; }
+.vox-chronicle-entity-preview .entity-image-placeholder .placeholder-text { font-size: 0.9em; opacity: 0.7; margin-top: 4px; }
 
-.vox-chronicle-entity-preview .entity-image-placeholder i {
-  font-size: 48px;
-  color: var(--vox-processing);
-}
-
-.vox-chronicle-entity-preview .entity-image-placeholder .placeholder-text {
-  font-size: 0.9em;
-  color: var(--vox-text-dim);
-  margin-top: var(--vox-spacing-xs);
-}
-
-/* No entities message */
 .vox-chronicle-entity-preview .no-entities {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--vox-spacing-sm);
-  padding: var(--vox-spacing-xl);
-  color: var(--vox-text-muted);
+  gap: 8px;
+  padding: 32px;
+  opacity: 0.5;
   text-align: center;
 }
 
-/* Selection actions */
 .vox-chronicle-entity-preview .selection-actions {
   display: flex;
-  gap: var(--vox-spacing-sm);
-  padding-bottom: var(--vox-spacing-md);
-}
-
-.vox-chronicle-entity-preview .selection-actions button {
-  background: var(--vox-bg-light);
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-sm);
-  color: var(--vox-text-dim);
-  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
-  font-size: 0.9em;
-  cursor: pointer;
-  transition: all var(--vox-transition);
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-}
-
-.vox-chronicle-entity-preview .selection-actions button:hover:not(:disabled) {
-  background: var(--vox-bg-hover);
-  color: var(--vox-text);
-}
-
-.vox-chronicle-entity-preview .selection-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Form action buttons */
-.vox-chronicle-entity-preview .form-actions button {
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  border: none;
-  border-radius: var(--vox-radius-sm);
-  font-size: 0.95em;
-  cursor: pointer;
-  transition: all var(--vox-transition);
-}
-
-.vox-chronicle-entity-preview .btn-skip {
-  background: transparent;
-  color: var(--vox-text-dim);
-  border: 1px solid var(--vox-border) !important;
-}
-
-.vox-chronicle-entity-preview .btn-skip:hover {
-  color: var(--vox-text);
-}
-
-.vox-chronicle-entity-preview .btn-confirm {
-  background: var(--vox-primary);
-  color: white;
-}
-
-.vox-chronicle-entity-preview .btn-confirm:hover:not(:disabled) {
-  background: var(--vox-primary-dark);
-}
-
-.vox-chronicle-entity-preview .btn-confirm:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.vox-chronicle-entity-preview .btn-retry {
-  background: var(--vox-warning);
-  color: var(--vox-bg-dark);
-}
-
-.vox-chronicle-entity-preview .btn-retry:hover {
-  background: #e5940e;
-}
-
-.vox-chronicle-entity-preview .btn-close {
-  background: var(--vox-bg-light);
-  color: var(--vox-text);
-  border: 1px solid var(--vox-border) !important;
-}
-
-.vox-chronicle-entity-preview .btn-close:hover {
-  background: var(--vox-bg-hover);
+  gap: 8px;
+  padding-bottom: 16px;
 }
 
 /* ==========================================================================
@@ -1139,270 +488,72 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-relationship-graph {
   display: flex;
   flex-direction: column;
-  gap: var(--vox-spacing-md);
+  gap: 16px;
   min-height: 400px;
 }
 
-/* Graph container */
 .vox-chronicle-relationship-graph .graph-container {
   position: relative;
   flex: 1;
-  background: var(--vox-bg-dark);
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
   overflow: hidden;
   min-height: 400px;
 }
 
-/* Graph legend */
 .vox-chronicle-relationship-graph .graph-legend {
   position: absolute;
-  bottom: var(--vox-spacing-md);
-  left: var(--vox-spacing-md);
-  background: var(--vox-bg-light);
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-md);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  box-shadow: var(--vox-shadow);
+  bottom: 16px;
+  left: 16px;
+  background: rgba(11, 10, 19, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 8px 16px;
   z-index: 10;
 }
+.vox-chronicle-relationship-graph .legend-title { font-weight: 600; font-size: 0.9em; margin-bottom: 4px; }
+.vox-chronicle-relationship-graph .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85em; opacity: 0.7; }
+.vox-chronicle-relationship-graph .legend-edge { width: 20px; height: 3px; border-radius: 2px; }
 
-.vox-chronicle-relationship-graph .legend-title {
-  font-weight: 600;
-  font-size: 0.9em;
-  color: var(--vox-text);
-  margin-bottom: var(--vox-spacing-xs);
-}
-
-.vox-chronicle-relationship-graph .legend-item {
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-sm);
-  font-size: 0.85em;
-  color: var(--vox-text-dim);
-}
-
-.vox-chronicle-relationship-graph .legend-edge {
-  width: 20px;
-  height: 3px;
-  border-radius: 2px;
-}
-
-/* Empty state */
 .vox-chronicle-relationship-graph .graph-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--vox-spacing-md);
-  padding: var(--vox-spacing-xl);
-  color: var(--vox-text-muted);
+  gap: 16px;
+  padding: 32px;
+  opacity: 0.5;
   text-align: center;
   min-height: 400px;
 }
+.vox-chronicle-relationship-graph .graph-empty i { font-size: 48px; opacity: 0.5; }
 
-.vox-chronicle-relationship-graph .graph-empty i {
-  font-size: 48px;
-  opacity: 0.5;
-}
-
-
-/* Graph statistics */
 .vox-chronicle-relationship-graph .graph-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--vox-spacing-md);
-  padding: var(--vox-spacing-sm) var(--vox-spacing-md);
-  background: var(--vox-bg-dark);
-  border-radius: var(--vox-radius-sm);
+  gap: 16px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
   font-size: 0.9em;
 }
-
-.vox-chronicle-relationship-graph .stat-item {
-  display: flex;
-  align-items: center;
-  gap: var(--vox-spacing-xs);
-  color: var(--vox-text-dim);
-}
-
-}
+.vox-chronicle-relationship-graph .stat-item { display: flex; align-items: center; gap: 4px; opacity: 0.7; }
 
 /* ==========================================================================
-   Edit Description Dialog
+   Main Panel — Foundry v13 Native Integration
    ========================================================================== */
 
-.vox-chronicle-edit-description {
-  padding: var(--vox-spacing-sm);
-}
-
-.vox-chronicle-edit-description .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vox-spacing-sm);
-}
-
-.vox-chronicle-edit-description label {
-  font-weight: 500;
-  color: var(--vox-text);
-}
-
-.vox-chronicle-edit-description textarea {
-  padding: var(--vox-spacing-sm);
-  background: var(--vox-bg-dark);
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-sm);
-  color: var(--vox-text);
-  font-family: inherit;
-  font-size: 1em;
-  resize: vertical;
-  transition: border-color var(--vox-transition);
-}
-
-.vox-chronicle-edit-description textarea:focus {
-  outline: none;
-  border-color: var(--vox-primary);
-}
-
-
-/* ==========================================================================
-   Common Form Elements
-   ========================================================================== */
-
-.vox-chronicle input[type='text'],
-.vox-chronicle input[type='password'],
-.vox-chronicle input[type='number'],
-.vox-chronicle textarea,
-.vox-chronicle select {
-  background: var(--vox-bg-dark);
-  border: 1px solid var(--vox-border);
-  border-radius: var(--vox-radius-sm);
-  color: var(--vox-text);
-  padding: var(--vox-spacing-xs) var(--vox-spacing-sm);
-  font-size: 1em;
-  transition: border-color var(--vox-transition);
-}
-
-.vox-chronicle input:focus,
-.vox-chronicle textarea:focus,
-.vox-chronicle select:focus {
-  outline: none;
-  border-color: var(--vox-primary);
-}
-
-.vox-chronicle input::placeholder,
-.vox-chronicle textarea::placeholder {
-  color: var(--vox-text-muted);
-}
-
-.vox-chronicle button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ==========================================================================
-   Scrollbar Styling
-   ========================================================================== */
-
-.vox-chronicle ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.vox-chronicle ::-webkit-scrollbar-track {
-  background: var(--vox-bg-dark);
-  border-radius: var(--vox-radius-sm);
-}
-
-.vox-chronicle ::-webkit-scrollbar-thumb {
-  background: var(--vox-border);
-  border-radius: var(--vox-radius-sm);
-}
-
-.vox-chronicle ::-webkit-scrollbar-thumb:hover {
-  background: var(--vox-border-light);
-}
-
-/* ==========================================================================
-   Animations
-   ========================================================================== */
-
-@keyframes vox-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 var(--vox-recording-pulse);
-  }
-  50% {
-    opacity: 0.8;
-    box-shadow: 0 0 0 8px transparent;
-  }
-}
-
-@keyframes vox-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes vox-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-
-/* ==========================================================================
-   Responsive Adjustments
-   ========================================================================== */
-
-@media (max-width: 500px) {
-  .vox-chronicle-speaker-labeling .speaker-labels-header,
-  .vox-chronicle-speaker-labeling .speaker-row {
-    grid-template-columns: 1fr;
-    gap: var(--vox-spacing-sm);
-  }
-
-  .vox-chronicle-speaker-labeling .header-quick-assign {
-    display: none;
-  }
-
-  .vox-chronicle-entity-preview .entity-row {
-    grid-template-columns: auto 1fr;
-  }
-
-  .vox-chronicle-entity-preview .entity-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-  }
-}
-
-/* ============================================================
-   Narrator Master Panel Styles (Merged)
-   ============================================================ */
-
-/* --- Panel Layout --- */
 .vox-chronicle-panel {
   display: flex;
   flex-direction: column;
-  font-family: var(--font-primary, 'Signika', sans-serif);
-  background: var(--color-bg, #1a1a2e);
-  color: var(--color-text, #e0e0e0);
-  border-radius: 8px;
   overflow: hidden;
 }
 
 .vox-chronicle-panel__warning {
-  background: rgba(231, 76, 60, 0.15);
-  border: 1px solid rgba(231, 76, 60, 0.4);
-  color: #e74c3c;
+  background: rgba(239, 35, 60, 0.08);
+  border: 1px solid rgba(239, 35, 60, 0.4);
+  color: #ef233c;
   padding: 8px 12px;
   margin: 8px;
   border-radius: 4px;
@@ -1412,7 +563,7 @@ form .form-group .vox-chronicle-validate-button {
   gap: 8px;
 }
 
-/* --- Panel Header & Controls --- */
+/* Header & Controls */
 .vox-chronicle-panel__header {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1428,7 +579,7 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-panel__duration {
   font-family: monospace;
   font-size: 0.9em;
-  color: rgba(255, 255, 255, 0.7);
+  opacity: 0.7;
   margin-left: auto;
 }
 
@@ -1446,31 +597,19 @@ form .form-group .vox-chronicle-validate-button {
   text-transform: uppercase;
   font-weight: 600;
 }
-
-.vox-chronicle-panel__mode-badge--api {
-  background: rgba(52, 152, 219, 0.2);
-  color: #3498db;
-}
-
-.vox-chronicle-panel__mode-badge--local {
-  background: rgba(46, 204, 113, 0.2);
-  color: #2ecc71;
-}
-
-.vox-chronicle-panel__mode-badge--auto {
-  background: rgba(155, 89, 182, 0.2);
-  color: #9b59b6;
-}
+.vox-chronicle-panel__mode-badge--api { background: rgba(76, 201, 240, 0.15); color: #4cc9f0; }
+.vox-chronicle-panel__mode-badge--local { background: rgba(6, 214, 160, 0.15); color: #06d6a0; }
+.vox-chronicle-panel__mode-badge--auto { background: rgba(155, 89, 182, 0.15); color: #9b59b6; }
 
 .vox-chronicle-panel__chapter {
-  color: rgba(255, 255, 255, 0.6);
+  opacity: 0.6;
   font-size: 0.85em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* --- Audio Level Meter --- */
+/* Audio Level Meter */
 .vox-chronicle-panel__level-meter {
   height: 4px;
   background: rgba(255, 255, 255, 0.1);
@@ -1478,55 +617,22 @@ form .form-group .vox-chronicle-validate-button {
   overflow: hidden;
   margin-bottom: 6px;
 }
-
 .vox-chronicle-panel__level-bar {
   height: 100%;
-  background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c);
+  background: linear-gradient(90deg, #06d6a0, #fca311, #ef233c);
   transition: width 0.1s ease;
   border-radius: 2px;
 }
 
-/* --- Buttons --- */
-.vox-chronicle-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #e0e0e0;
-  cursor: pointer;
-  font-size: 0.85em;
-  transition: background 0.2s, border-color 0.2s;
+/* Record Button — highlighted for visibility */
+.vox-chronicle-panel__controls button[data-action="toggle-recording"] {
+  color: #ef233c;
+}
+.vox-chronicle-panel__controls button[data-action="toggle-recording"]:hover {
+  background: rgba(239, 35, 60, 0.12);
 }
 
-.vox-chronicle-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
-.vox-chronicle-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.vox-chronicle-btn--record {
-  border-color: rgba(231, 76, 60, 0.5);
-  color: #e74c3c;
-}
-
-.vox-chronicle-btn--record:hover:not(:disabled) {
-  background: rgba(231, 76, 60, 0.15);
-}
-
-.vox-chronicle-btn--small {
-  padding: 3px 8px;
-  font-size: 0.8em;
-}
-
-
-/* --- Tab Navigation --- */
+/* Tab Navigation — Foundry native sheet-tabs pattern */
 .vox-chronicle-panel__tabs {
   display: flex;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1539,60 +645,48 @@ form .form-group .vox-chronicle-validate-button {
   padding: 8px 4px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: inherit;
+  opacity: 0.5;
   font-size: 0.75em;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  transition: color 0.2s, border-color 0.2s;
+  transition: opacity 0.2s;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
-  position: relative;
 }
-
-.vox-chronicle-tab:hover {
-  color: rgba(255, 255, 255, 0.8);
-}
-
+.vox-chronicle-tab:hover { opacity: 0.8; }
 .vox-chronicle-tab--active {
-  color: #9b59b6;
-  border-bottom-color: #9b59b6;
+  opacity: 1;
+  border-bottom-color: currentColor;
 }
 
-
-/* --- Tab Content --- */
+/* Tab Content */
 .vox-chronicle-panel__content {
   flex: 1;
   overflow-y: auto;
   padding: 12px;
 }
 
-.vox-chronicle-tab-pane.hidden {
-  display: none;
-}
+.vox-chronicle-tab-pane[hidden] { display: none; }
 
 .vox-chronicle-panel__empty {
-  color: rgba(255, 255, 255, 0.4);
+  opacity: 0.4;
   font-style: italic;
   text-align: center;
   padding: 24px 12px;
   font-size: 0.85em;
 }
 
-/* --- Suggestions --- */
-.vox-chronicle-panel__suggestions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+/* Suggestions */
+.vox-chronicle-panel__suggestions { display: flex; flex-direction: column; gap: 8px; }
 
 .vox-chronicle-suggestion {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 8px 12px;
 }
-
 .vox-chronicle-suggestion__type {
   display: inline-block;
   padding: 1px 6px;
@@ -1600,24 +694,14 @@ form .form-group .vox-chronicle-validate-button {
   font-size: 0.7em;
   text-transform: uppercase;
   font-weight: 600;
-  background: rgba(155, 89, 182, 0.2);
+  background: rgba(155, 89, 182, 0.15);
   color: #9b59b6;
   margin-bottom: 4px;
 }
+.vox-chronicle-suggestion p { margin: 4px 0 0; font-size: 0.85em; line-height: 1.4; }
 
-.vox-chronicle-suggestion p {
-  margin: 4px 0 0;
-  font-size: 0.85em;
-  line-height: 1.4;
-}
-
-
-/* --- Transcript Segments --- */
-.vox-chronicle-panel__transcript {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+/* Transcript Segments */
+.vox-chronicle-panel__transcript { display: flex; flex-direction: column; gap: 6px; }
 
 .vox-chronicle-segment {
   padding: 4px 0;
@@ -1625,61 +709,44 @@ form .form-group .vox-chronicle-validate-button {
   font-size: 0.85em;
   line-height: 1.5;
 }
-
 .vox-chronicle-segment__speaker {
   font-weight: 600;
   color: #9b59b6;
   cursor: pointer;
   margin-right: 4px;
 }
+.vox-chronicle-segment__speaker:hover { text-decoration: underline; }
 
-.vox-chronicle-segment__speaker:hover {
-  text-decoration: underline;
-}
-
-
-/* --- Image Gallery --- */
+/* Image Gallery */
 .vox-chronicle-panel__gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 8px;
   margin-top: 8px;
 }
-
 .vox-chronicle-panel__image-card {
   position: relative;
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+.vox-chronicle-panel__image-card img { width: 100%; height: auto; display: block; }
 
-.vox-chronicle-panel__image-card img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-
-/* --- Journal Picker --- */
-.vox-chronicle-journal-picker {
-  padding: 12px;
-}
-
+/* Journal Picker */
+.vox-chronicle-journal-picker { padding: 12px; }
 
 /* ==========================================================================
    RAG Status Component
    ========================================================================== */
 
-/* RAG Status Container */
 .vox-chronicle-rag-status {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 12px;
   margin-top: 16px;
 }
 
-/* RAG Status Header */
 .vox-chronicle-rag-status__header {
   display: flex;
   justify-content: space-between;
@@ -1688,20 +755,13 @@ form .form-group .vox-chronicle-validate-button {
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-
 .vox-chronicle-rag-status__header h4 {
   margin: 0;
   font-size: 0.9em;
   font-weight: 600;
-  color: var(--vox-text);
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.vox-chronicle-rag-status__header h4 i {
-  color: var(--vox-primary-light);
-  font-size: 0.95em;
 }
 
 /* RAG Status Badge */
@@ -1716,61 +776,48 @@ form .form-group .vox-chronicle-validate-button {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-
 .vox-chronicle-rag-status__badge--disabled {
-  background: rgba(239, 35, 60, 0.15);
-  color: var(--vox-error);
+  background: rgba(239, 35, 60, 0.1);
+  color: #ef233c;
   border: 1px solid rgba(239, 35, 60, 0.3);
 }
-
 .vox-chronicle-rag-status__badge--ready {
-  background: rgba(108, 117, 125, 0.15);
-  color: var(--vox-text-dim);
+  background: rgba(108, 117, 125, 0.1);
+  opacity: 0.7;
   border: 1px solid rgba(108, 117, 125, 0.3);
 }
-
 .vox-chronicle-rag-status__badge--indexing {
-  background: rgba(76, 201, 240, 0.15);
-  color: var(--vox-processing);
+  background: rgba(76, 201, 240, 0.1);
+  color: #4cc9f0;
   border: 1px solid rgba(76, 201, 240, 0.3);
 }
-
 .vox-chronicle-rag-status__badge--indexed {
-  background: rgba(6, 214, 160, 0.15);
-  color: var(--vox-success);
+  background: rgba(6, 214, 160, 0.1);
+  color: #06d6a0;
   border: 1px solid rgba(6, 214, 160, 0.3);
 }
 
 /* RAG Progress Bar */
-.vox-chronicle-rag-status__progress {
-  margin: 12px 0;
-  position: relative;
-}
-
+.vox-chronicle-rag-status__progress { margin: 12px 0; position: relative; }
 .vox-chronicle-rag-status__progress-bar {
   height: 6px;
-  background: linear-gradient(90deg, var(--vox-primary), var(--vox-primary-light));
+  background: linear-gradient(90deg, #4cc9f0, #06d6a0);
   border-radius: 3px;
   transition: width 0.3s ease;
-  box-shadow: 0 0 8px rgba(123, 44, 191, 0.3);
 }
-
 .vox-chronicle-rag-status__progress::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 6px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
-
 .vox-chronicle-rag-status__progress-text {
   display: block;
   text-align: center;
   font-size: 0.75em;
-  color: var(--vox-text-dim);
+  opacity: 0.7;
   margin-top: 6px;
 }
 
@@ -1781,7 +828,6 @@ form .form-group .vox-chronicle-validate-button {
   gap: 8px;
   margin: 12px 0;
 }
-
 .vox-chronicle-rag-status__stat {
   display: flex;
   flex-direction: column;
@@ -1792,25 +838,14 @@ form .form-group .vox-chronicle-validate-button {
   border-radius: 4px;
   text-align: center;
 }
-
-.vox-chronicle-rag-status__stat i {
-  color: var(--vox-primary-light);
-  font-size: 1em;
-  margin-bottom: 2px;
-}
-
+.vox-chronicle-rag-status__stat i { font-size: 1em; margin-bottom: 2px; }
 .vox-chronicle-rag-status__stat-label {
   font-size: 0.7em;
-  color: var(--vox-text-muted);
+  opacity: 0.5;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-
-.vox-chronicle-rag-status__stat-value {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: var(--vox-accent);
-}
+.vox-chronicle-rag-status__stat-value { font-size: 0.9em; font-weight: 600; }
 
 /* RAG Control Buttons */
 .vox-chronicle-rag-status__controls {
@@ -1822,15 +857,19 @@ form .form-group .vox-chronicle-validate-button {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.vox-chronicle-rag-status__controls .vox-chronicle-btn {
-  flex: 1;
-  max-width: 150px;
-  justify-content: center;
+/* Danger Button */
+.vox-chronicle-panel button.danger,
+button.vox-chronicle-btn--danger {
+  color: #ef233c;
+}
+.vox-chronicle-panel button.danger:hover,
+button.vox-chronicle-btn--danger:hover:not(:disabled) {
+  background: rgba(239, 35, 60, 0.12);
 }
 
 /* RAG Disabled Hint */
 .vox-chronicle-rag-status__disabled-hint {
-  color: var(--vox-text-muted);
+  opacity: 0.5;
   font-size: 0.85em;
   font-style: italic;
   text-align: center;
@@ -1838,39 +877,43 @@ form .form-group .vox-chronicle-validate-button {
   line-height: 1.4;
 }
 
-/* Danger Button Variant */
-.vox-chronicle-btn--danger {
-  border-color: rgba(239, 35, 60, 0.4);
-  color: var(--vox-error);
+/* ==========================================================================
+   Animations (functional — kept)
+   ========================================================================== */
+
+@keyframes vox-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(239, 35, 60, 0.5);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 8px transparent;
+  }
 }
 
-.vox-chronicle-btn--danger:hover:not(:disabled) {
-  background: rgba(239, 35, 60, 0.15);
-  border-color: rgba(239, 35, 60, 0.6);
+@keyframes vox-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.vox-chronicle-btn--danger:disabled {
-  opacity: 0.4;
-}
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
 
-/* Responsive adjustments for RAG Status */
-@media (max-width: 400px) {
-  .vox-chronicle-rag-status__header {
-    flex-direction: column;
-    align-items: flex-start;
+@media (max-width: 500px) {
+  .vox-chronicle-speaker-labeling .speaker-labels-header,
+  .vox-chronicle-speaker-labeling .speaker-row {
+    grid-template-columns: 1fr;
     gap: 8px;
   }
-
-  .vox-chronicle-rag-status__stats {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .vox-chronicle-rag-status__controls {
-    flex-direction: column;
-  }
-
-  .vox-chronicle-rag-status__controls .vox-chronicle-btn {
-    max-width: none;
-  }
+  .vox-chronicle-speaker-labeling .header-quick-assign { display: none; }
+  .vox-chronicle-entity-preview .entity-row { grid-template-columns: auto 1fr; }
+  .vox-chronicle-entity-preview .entity-actions { grid-column: 1 / -1; justify-content: flex-end; }
 }
 
+@media (max-width: 400px) {
+  .vox-chronicle-rag-status__header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .vox-chronicle-rag-status__stats { grid-template-columns: 1fr 1fr; }
+  .vox-chronicle-rag-status__controls { flex-direction: column; }
+}

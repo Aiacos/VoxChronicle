@@ -10,12 +10,12 @@
   {{!-- Header: Recording Controls --}}
   <div class="vox-chronicle-panel__header">
     <div class="vox-chronicle-panel__controls">
-      <button class="vox-chronicle-btn vox-chronicle-btn--record" data-action="toggle-recording" {{#if isProcessing}}disabled{{/if}}>
+      <button data-action="toggle-recording" {{#if isProcessing}}disabled{{/if}}>
         <i class="fas {{#if isRecording}}fa-stop{{else}}fa-circle{{/if}}"></i>
         {{#if isRecording}}{{localize "VOXCHRONICLE.Panel.Stop"}}{{else}}{{localize "VOXCHRONICLE.Panel.Record"}}{{/if}}
       </button>
       {{#if isRecording}}
-      <button class="vox-chronicle-btn" data-action="toggle-pause">
+      <button data-action="toggle-pause">
         <i class="fas {{#if isPaused}}fa-play{{else}}fa-pause{{/if}}"></i>
       </button>
       {{/if}}
@@ -50,7 +50,7 @@
 
   {{!-- Tab Content Panes --}}
   <div class="vox-chronicle-panel__content">
-    <div class="vox-chronicle-tab-pane {{#unless (eq activeTab 'live')}}hidden{{/unless}}" data-tab-pane="live">
+    <div class="vox-chronicle-tab-pane" data-tab-pane="live" {{#unless (eq activeTab 'live')}}hidden{{/unless}}>
       {{#if suggestions.length}}
       <div class="vox-chronicle-panel__suggestions">
         {{#each suggestions}}
@@ -115,10 +115,10 @@
 
           {{!-- RAG Control Buttons --}}
           <div class="vox-chronicle-rag-status__controls">
-            <button class="vox-chronicle-btn vox-chronicle-btn--small" data-action="rag-build-index" {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
+            <button data-action="rag-build-index" {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
               <i class="fas fa-hammer"></i> {{localize "VOXCHRONICLE.RAG.RebuildIndex"}}
             </button>
-            <button class="vox-chronicle-btn vox-chronicle-btn--small vox-chronicle-btn--danger" data-action="rag-clear-index" {{#unless ragVectorCount}}disabled{{/unless}} {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
+            <button class="danger" data-action="rag-clear-index" {{#unless ragVectorCount}}disabled{{/unless}} {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
               <i class="fas fa-trash-alt"></i> {{localize "VOXCHRONICLE.RAG.ClearIndex"}}
             </button>
           </div>
@@ -130,17 +130,17 @@
       </div>
     </div>
 
-    <div class="vox-chronicle-tab-pane {{#unless (eq activeTab 'chronicle')}}hidden{{/unless}}" data-tab-pane="chronicle">
-      <button class="vox-chronicle-btn" data-action="process-session" {{#unless hasTranscript}}disabled{{/unless}}>
+    <div class="vox-chronicle-tab-pane" data-tab-pane="chronicle" {{#unless (eq activeTab 'chronicle')}}hidden{{/unless}}>
+      <button data-action="process-session" {{#unless hasTranscript}}disabled{{/unless}}>
         <i class="fas fa-cogs"></i> {{localize "VOXCHRONICLE.Panel.ProcessSession"}}
       </button>
-      <button class="vox-chronicle-btn" data-action="publish-kanka" {{#unless hasEntities}}disabled{{/unless}}>
+      <button data-action="publish-kanka" {{#unless hasEntities}}disabled{{/unless}}>
         <i class="fas fa-upload"></i> {{localize "VOXCHRONICLE.Panel.PublishToKanka"}}
       </button>
     </div>
 
-    <div class="vox-chronicle-tab-pane {{#unless (eq activeTab 'images')}}hidden{{/unless}}" data-tab-pane="images">
-      <button class="vox-chronicle-btn" data-action="generate-image">
+    <div class="vox-chronicle-tab-pane" data-tab-pane="images" {{#unless (eq activeTab 'images')}}hidden{{/unless}}>
+      <button data-action="generate-image">
         <i class="fas fa-image"></i> {{localize "VOXCHRONICLE.Panel.GenerateImage"}}
       </button>
       <div class="vox-chronicle-panel__gallery">
@@ -152,7 +152,7 @@
       </div>
     </div>
 
-    <div class="vox-chronicle-tab-pane {{#unless (eq activeTab 'transcript')}}hidden{{/unless}}" data-tab-pane="transcript">
+    <div class="vox-chronicle-tab-pane" data-tab-pane="transcript" {{#unless (eq activeTab 'transcript')}}hidden{{/unless}}>
       <div class="vox-chronicle-panel__transcript">
         {{#each segments}}
         <div class="vox-chronicle-segment">
@@ -165,9 +165,9 @@
       </div>
     </div>
 
-    <div class="vox-chronicle-tab-pane {{#unless (eq activeTab 'entities')}}hidden{{/unless}}" data-tab-pane="entities">
+    <div class="vox-chronicle-tab-pane" data-tab-pane="entities" {{#unless (eq activeTab 'entities')}}hidden{{/unless}}>
       {{#if entities}}
-      <button class="vox-chronicle-btn" data-action="review-entities">
+      <button data-action="review-entities">
         <i class="fas fa-eye"></i> {{localize "VOXCHRONICLE.Panel.ReviewEntities"}}
       </button>
       {{else}}
@@ -175,7 +175,7 @@
       {{/if}}
     </div>
 
-    <div class="vox-chronicle-tab-pane {{#unless (eq activeTab 'analytics')}}hidden{{/unless}}" data-tab-pane="analytics">
+    <div class="vox-chronicle-tab-pane" data-tab-pane="analytics" {{#unless (eq activeTab 'analytics')}}hidden{{/unless}}>
       <p class="vox-chronicle-panel__empty">{{localize "VOXCHRONICLE.Panel.NoAnalytics"}}</p>
     </div>
   </div>
