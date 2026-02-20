@@ -1132,11 +1132,10 @@ describe('Settings', () => {
 
       Settings._onApiKeyChange('openai');
 
-      expect(ui.notifications.info).toHaveBeenCalledWith(
-        expect.stringContaining('OpenAI')
-      );
-      expect(ui.notifications.info).toHaveBeenCalledWith(
-        expect.stringContaining('API key updated')
+      expect(ui.notifications.info).toHaveBeenCalled();
+      expect(game.i18n.format).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Settings.ApiKeyUpdated',
+        { service: 'OpenAI' }
       );
     });
 
@@ -1145,11 +1144,10 @@ describe('Settings', () => {
 
       Settings._onApiKeyChange('kanka');
 
-      expect(ui.notifications.info).toHaveBeenCalledWith(
-        expect.stringContaining('Kanka')
-      );
-      expect(ui.notifications.info).toHaveBeenCalledWith(
-        expect.stringContaining('API key updated')
+      expect(ui.notifications.info).toHaveBeenCalled();
+      expect(game.i18n.format).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Settings.ApiKeyUpdated',
+        { service: 'Kanka' }
       );
     });
 
@@ -1169,6 +1167,46 @@ describe('Settings', () => {
       expect(() => Settings._onApiKeyChange('openai')).not.toThrow();
 
       ui.notifications = originalNotifications;
+    });
+
+    it('should use game.i18n.format when available', () => {
+      game.ready = true;
+      game.i18n.format.mockReturnValue('Translated: OpenAI key updated');
+
+      Settings._onApiKeyChange('openai');
+
+      expect(game.i18n.format).toHaveBeenCalledWith(
+        'VOXCHRONICLE.Settings.ApiKeyUpdated',
+        { service: 'OpenAI' }
+      );
+      expect(ui.notifications.info).toHaveBeenCalledWith('Translated: OpenAI key updated');
+    });
+
+    it('should fall back to English string when i18n is unavailable', () => {
+      game.ready = true;
+      const originalI18n = game.i18n;
+      game.i18n = undefined;
+
+      Settings._onApiKeyChange('openai');
+
+      expect(ui.notifications.info).toHaveBeenCalledWith(
+        expect.stringContaining('Re-initializing services')
+      );
+
+      game.i18n = originalI18n;
+    });
+
+    it('should attempt to reinitialize VoxChronicle services', async () => {
+      game.ready = true;
+
+      // The dynamic import of VoxChronicle.mjs will fail in test context,
+      // but _onApiKeyChange should catch the error without throwing
+      Settings._onApiKeyChange('openai');
+
+      // Give the async import().then().catch() chain time to settle
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // If we got here without error, the catch block handled it
     });
   });
 
@@ -1206,6 +1244,34 @@ describe('Settings', () => {
 
       expect(result).toBe(false);
       expect(ui.notifications.error).toHaveBeenCalled();
+    });
+
+    it('should remove loading notification even when import throws (no permanent spinner)', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'openaiApiKey') return 'sk-test-key';
+        return '';
+      });
+
+      // Make the loading notification mock track .remove() calls
+      const mockLoadingNotif = { remove: vi.fn() };
+      ui.notifications.info.mockReturnValue(mockLoadingNotif);
+
+      // The dynamic import will fail in test context, triggering catch + finally
+      await Settings.validateOpenAIKey();
+
+      // The finally block should always call loadingNotif.remove()
+      expect(mockLoadingNotif.remove).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not create loading notification when not configured (early return)', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation(() => '');
+
+      await Settings.validateOpenAIKey();
+
+      // info should not be called for loading (only error is called)
+      expect(ui.notifications.info).not.toHaveBeenCalled();
     });
   });
 
@@ -1256,6 +1322,35 @@ describe('Settings', () => {
 
       expect(result).toBe(false);
       expect(ui.notifications.error).toHaveBeenCalled();
+    });
+
+    it('should remove loading notification even when import throws (no permanent spinner)', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation((_module, key) => {
+        if (key === 'kankaApiToken') return 'test-token';
+        if (key === 'kankaCampaignId') return '12345';
+        return '';
+      });
+
+      // Make the loading notification mock track .remove() calls
+      const mockLoadingNotif = { remove: vi.fn() };
+      ui.notifications.info.mockReturnValue(mockLoadingNotif);
+
+      // The dynamic import will fail in test context, triggering catch + finally
+      await Settings.validateKankaToken();
+
+      // The finally block should always call loadingNotif.remove()
+      expect(mockLoadingNotif.remove).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not create loading notification when not configured (early return)', async () => {
+      Settings.registerSettings();
+      game.settings.get.mockImplementation(() => '');
+
+      await Settings.validateKankaToken();
+
+      // info should not be called for loading (only error is called)
+      expect(ui.notifications.info).not.toHaveBeenCalled();
     });
   });
 
