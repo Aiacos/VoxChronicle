@@ -125,6 +125,10 @@ class EntityProcessor {
       const extractionMs = Date.now() - extractionStart;
       this._logger.error(`Entity extraction failed after ${extractionMs}ms:`, error);
       // Don't throw - extraction failure shouldn't stop the workflow
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.EntityExtractionFailed') ||
+        'VoxChronicle: Entity extraction failed. Entities will not be available for this session.'
+      );
       return null;
     }
   }
@@ -190,6 +194,10 @@ class EntityProcessor {
       const relMs = Date.now() - relStart;
       this._logger.error(`Relationship extraction failed after ${relMs}ms:`, error);
       // Don't throw - relationship extraction failure shouldn't stop the workflow
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.RelationshipExtractionFailed') ||
+        'VoxChronicle: Relationship extraction failed.'
+      );
       return [];
     }
   }

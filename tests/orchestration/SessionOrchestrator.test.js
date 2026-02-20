@@ -1113,6 +1113,62 @@ describe('SessionOrchestrator', () => {
       expect(orchestrator.currentSession.errors.length).toBeGreaterThan(0);
     });
 
+    it('should notify user after 3 consecutive live cycle errors (H-1)', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('API error'));
+
+      // First two failures: no notification
+      await orchestrator._liveCycle();
+      await orchestrator._liveCycle();
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+
+      // Third failure: notification fires
+      await orchestrator._liveCycle();
+      expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+      expect(ui.notifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining('VOXCHRONICLE.Errors.LiveCycleRepeatedFailures')
+      );
+    });
+
+    it('should only notify once at exactly 3 consecutive errors', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('API error'));
+
+      // Trigger 5 errors
+      for (let i = 0; i < 5; i++) {
+        await orchestrator._liveCycle();
+      }
+
+      // Notification fires only once (at error #3)
+      expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reset consecutive error counter on success (H-1)', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+      // Trigger 2 errors
+      services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('fail'));
+      await orchestrator._liveCycle();
+      await orchestrator._liveCycle();
+      expect(orchestrator._consecutiveLiveCycleErrors).toBe(2);
+
+      // Successful cycle resets counter
+      services.audioRecorder.getLatestChunk.mockResolvedValue(
+        new Blob(['audio'], { type: 'audio/webm' })
+      );
+      services.transcriptionService.transcribe.mockResolvedValue({
+        text: 'Hello', segments: [{ text: 'Hello' }]
+      });
+      await orchestrator._liveCycle();
+      expect(orchestrator._consecutiveLiveCycleErrors).toBe(0);
+
+      // Now 2 more errors should not trigger notification (counter was reset)
+      services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('fail'));
+      await orchestrator._liveCycle();
+      await orchestrator._liveCycle();
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+    });
+
     it('should reschedule after successful cycle', async () => {
       await orchestrator.startLiveMode({ batchDuration: 999999 });
       // Clear timer set by startLiveMode
@@ -1261,6 +1317,29 @@ describe('SessionOrchestrator', () => {
 
       await orchestrator._runAIAnalysis({ text: 'test' });
       expect(onError).toHaveBeenCalledWith(expect.any(Error), 'ai_analysis');
+    });
+
+    it('should notify user once on AI analysis failure (H-2)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test' }];
+      services.aiAssistant.analyzeContext.mockRejectedValue(new Error('AI error'));
+
+      // First failure: notification fires
+      await orchestrator._runAIAnalysis({ text: 'test' });
+      expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+      expect(ui.notifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining('VOXCHRONICLE.Errors.AIAnalysisFailed')
+      );
+
+      // Second failure: no additional notification (once-only)
+      await orchestrator._runAIAnalysis({ text: 'test' });
+      expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reset AI analysis notification flag on startLiveMode (H-2)', async () => {
+      orchestrator._aiAnalysisErrorNotified = true;
+      await orchestrator.startLiveMode();
+      expect(orchestrator._aiAnalysisErrorNotified).toBe(false);
     });
   });
 

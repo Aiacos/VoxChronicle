@@ -637,7 +637,12 @@
       "RAGInvalidQuery": "[EN] Invalid search query",
       "RAGStorageFull": "[EN] RAG storage is full. Clear some data or increase limits.",
       "ApiError": "[EN] API error during {operation}: {error}",
-      "CompendiumNotCached": "[EN] Compendium not cached: {id}"
+      "CompendiumNotCached": "[EN] Compendium not cached: {id}",
+      "LiveCycleRepeatedFailures": "[EN] Live transcription is experiencing repeated errors. Check your API key and connection.",
+      "AIAnalysisFailed": "[EN] AI suggestions unavailable. Check your OpenAI API key.",
+      "EntityExtractionFailed": "[EN] Entity extraction failed. Entities will not be available for this session.",
+      "RelationshipExtractionFailed": "[EN] Relationship extraction failed.",
+      "ImageGenerationBatchFailed": "[EN] Image generation failed. Chronicle will be published without images."
     },
     "Warnings": {
       "ConfigIncomplete": "Configuration incomplète",

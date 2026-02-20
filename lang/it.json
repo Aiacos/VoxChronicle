@@ -637,7 +637,14 @@
       "RAGInvalidQuery": "Query di ricerca non valida",
       "RAGStorageFull": "Memoria RAG piena. Cancella alcuni dati o aumenta i limiti.",
       "ApiError": "Errore API durante {operation}: {error}",
-      "CompendiumNotCached": "Compendio non in cache: {id}"
+      "CompendiumNotCached": "Compendio non in cache: {id}",
+      "LiveCycleRepeatedFailures": "La trascrizione in tempo reale sta riscontrando errori ripetuti. Controlla la chiave API e la connessione.",
+      "AIAnalysisFailed": "Suggerimenti AI non disponibili. Controlla la tua chiave API OpenAI.",
+      "EntityExtractionFailed": "Estrazione entità fallita. Le entità non saranno disponibili per questa sessione.",
+      "RelationshipExtractionFailed": "Estrazione relazioni fallita.",
+      "ImageGenerationBatchFailed": "Generazione immagini fallita. La cronaca verrà pubblicata senza immagini.",
+      "RAGInitFailed": "VoxChronicle: Inizializzazione RAG fallita. I suggerimenti AI funzioneranno senza contesto della campagna.",
+      "RAGContextUnavailable": "VoxChronicle: Contesto RAG non disponibile. I suggerimenti potrebbero essere meno accurati."
     },
     "Warnings": {
       "ConfigIncomplete": "Configurazione incompleta",

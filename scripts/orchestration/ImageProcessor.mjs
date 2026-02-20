@@ -143,6 +143,10 @@ class ImageProcessor {
       const totalMs = Date.now() - totalStart;
       this._logger.error(`Image generation failed after ${totalMs}ms:`, error);
       onProgress(0, `Image generation failed: ${error.message}`);
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.ImageGenerationBatchFailed') ||
+        'VoxChronicle: Image generation failed. Chronicle will be published without images.'
+      );
       return [];
     }
   }

@@ -415,6 +415,19 @@ describe('EntityProcessor', () => {
         const p = new EntityProcessor({ entityExtractor: failingExtractor });
         await expect(p.extractEntities('text')).resolves.toBeNull();
       });
+
+      it('should notify user when extractAll fails (H-3)', async () => {
+        const failingExtractor = createMockEntityExtractor({
+          extractAll: vi.fn().mockRejectedValue(new Error('Extraction error'))
+        });
+
+        const p = new EntityProcessor({ entityExtractor: failingExtractor });
+        await p.extractEntities('text');
+        expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+        expect(ui.notifications.warn).toHaveBeenCalledWith(
+          expect.stringContaining('VOXCHRONICLE.Errors.EntityExtractionFailed')
+        );
+      });
     });
   });
 
@@ -605,6 +618,19 @@ describe('EntityProcessor', () => {
         const p = new EntityProcessor({ entityExtractor: nullExtractor });
         const result = await p.extractRelationships('text', sampleExtractionResult);
         expect(result).toEqual([]);
+      });
+
+      it('should notify user when extractRelationships fails (H-3b)', async () => {
+        const failingExtractor = createMockEntityExtractor({
+          extractRelationships: vi.fn().mockRejectedValue(new Error('Relationship error'))
+        });
+
+        const p = new EntityProcessor({ entityExtractor: failingExtractor });
+        await p.extractRelationships('text', sampleExtractionResult);
+        expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+        expect(ui.notifications.warn).toHaveBeenCalledWith(
+          expect.stringContaining('VOXCHRONICLE.Errors.RelationshipExtractionFailed')
+        );
       });
     });
   });

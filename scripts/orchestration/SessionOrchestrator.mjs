@@ -75,6 +75,8 @@ class SessionOrchestrator {
   // Live mode state
   _liveMode = false;
   _isStopping = false;
+  _consecutiveLiveCycleErrors = 0;
+  _aiAnalysisErrorNotified = false;
   _liveCycleTimer = null;
   _liveBatchDuration = 10000;
   _liveTranscript = [];
@@ -754,6 +756,8 @@ class SessionOrchestrator {
     this._silenceStartTime = null;
     this._lastAISuggestions = null;
     this._lastOffTrackStatus = null;
+    this._aiAnalysisErrorNotified = false;
+    this._consecutiveLiveCycleErrors = 0;
 
     if (!this._currentSession) {
       this._currentSession = {
@@ -1031,6 +1035,7 @@ class SessionOrchestrator {
         }
 
         if (result?.segments?.length > 0) {
+          this._consecutiveLiveCycleErrors = 0;
           const transcribeMs = Date.now() - transcribeStart;
           const textPreview = (result.text || '').substring(0, 120);
           this._logger.log(`Transcription result: ${result.segments.length} segments in ${transcribeMs}ms, text: "${textPreview}${(result.text || '').length > 120 ? '...' : ''}"`);
@@ -1063,6 +1068,7 @@ class SessionOrchestrator {
         this._handleSilence();
       }
     } catch (error) {
+      this._consecutiveLiveCycleErrors++;
       this._logger.error('Live cycle error:', error.message);
       if (this._currentSession) {
         this._currentSession.errors.push({
@@ -1073,6 +1079,12 @@ class SessionOrchestrator {
       }
       if (this._callbacks.onError) {
         this._callbacks.onError(error, 'live_cycle');
+      }
+      if (this._consecutiveLiveCycleErrors === 3) {
+        ui?.notifications?.warn(
+          game.i18n?.localize('VOXCHRONICLE.Errors.LiveCycleRepeatedFailures') ||
+          'VoxChronicle: Live transcription is experiencing repeated errors. Check your API key and connection.'
+        );
       }
     } finally {
       // Always reschedule and restore state if live mode is still active.
@@ -1162,6 +1174,13 @@ class SessionOrchestrator {
       this._logger.error(`AI analysis error: ${error.message}`);
       if (this._callbacks.onError) {
         this._callbacks.onError(error, 'ai_analysis');
+      }
+      if (!this._aiAnalysisErrorNotified) {
+        this._aiAnalysisErrorNotified = true;
+        ui?.notifications?.warn(
+          game.i18n?.localize('VOXCHRONICLE.Errors.AIAnalysisFailed') ||
+          'VoxChronicle: AI suggestions unavailable. Check your OpenAI API key.'
+        );
       }
     }
   }

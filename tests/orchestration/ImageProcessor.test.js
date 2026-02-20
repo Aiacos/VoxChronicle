@@ -422,6 +422,19 @@ describe('ImageProcessor', () => {
         expect(onProgress).toHaveBeenCalledWith(0, expect.stringContaining('API quota exceeded'));
       });
 
+      it('should notify user when generateBatch fails (H-4)', async () => {
+        const failingService = createMockImageGenerationService({
+          generateBatch: vi.fn().mockRejectedValue(new Error('Generation failed'))
+        });
+
+        const p = new ImageProcessor({ imageGenerationService: failingService });
+        await p.generateImages(createSampleMoments(1), {});
+        expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+        expect(ui.notifications.warn).toHaveBeenCalledWith(
+          expect.stringContaining('VOXCHRONICLE.Errors.ImageGenerationBatchFailed')
+        );
+      });
+
       it('should handle partial success in batch', async () => {
         mockService.generateBatch.mockResolvedValue([
           { success: true, imageData: 'data1' },

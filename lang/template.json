@@ -637,7 +637,14 @@
       "RAGInvalidQuery": "",
       "RAGStorageFull": "",
       "ApiError": "",
-      "CompendiumNotCached": ""
+      "CompendiumNotCached": "",
+      "LiveCycleRepeatedFailures": "",
+      "AIAnalysisFailed": "",
+      "EntityExtractionFailed": "",
+      "RelationshipExtractionFailed": "",
+      "ImageGenerationBatchFailed": "",
+      "RAGInitFailed": "",
+      "RAGContextUnavailable": ""
     },
     "Warnings": {
       "ConfigIncomplete": "",
