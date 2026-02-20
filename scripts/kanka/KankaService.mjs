@@ -1562,6 +1562,95 @@ class KankaService extends KankaClient {
     this._logger.debug(`batchCreate: completed in ${batchElapsed}ms — ${successCount} succeeded, ${errorCount} failed`);
     return results;
   }
+
+  /**
+   * Batch create relations for a source entity
+   *
+   * Creates multiple relations sequentially from a source entity to target entities.
+   * Follows the same pattern as batchCreate() with sequential processing, error handling,
+   * and progress tracking.
+   *
+   * IMPORTANT NOTES:
+   * - Relations are created sequentially (not parallel) to respect rate limits
+   * - Individual failures are caught and returned as error objects (with _error property)
+   * - Uses the Kanka relations endpoint: POST /campaigns/{campaignId}/entities/{sourceEntityId}/relations
+   *
+   * @param {string|number} sourceEntityId - Kanka entity ID that owns the relations
+   * @param {Array<object>} relations - Array of relation objects
+   * @param {string|number} relations[].target_id - Target entity ID
+   * @param {string} relations[].relation - Relationship type label (e.g., 'ally', 'enemy')
+   * @param {number} [relations[].attitude] - Attitude value (-3 to 3)
+   * @param {object} [options] - Batch options
+   * @param {boolean} [options.continueOnError=true] - Continue creating remaining relations on failure
+   * @param {Function} [options.onProgress] - Progress callback: (current, total) => void
+   * @returns {Promise<Array<object>>} Array of created relation objects (may include error objects with _error property)
+   *
+   * @example
+   * const results = await kankaService.batchCreateRelations(100, [
+   *   { target_id: 200, relation: 'ally', attitude: 1 },
+   *   { target_id: 300, relation: 'enemy', attitude: -2 }
+   * ], {
+   *   continueOnError: true,
+   *   onProgress: (current, total) => console.log(`${current}/${total}`)
+   * });
+   *
+   * // Check for errors
+   * const errors = results.filter(r => r._error);
+   */
+  async batchCreateRelations(sourceEntityId, relations, options = {}) {
+    this._logger.debug(`batchCreateRelations: sourceEntityId=${sourceEntityId}, count=${relations?.length || 0}`);
+
+    const continueOnError = options.continueOnError ?? true;
+    const onProgress = options.onProgress || (() => {});
+    const results = [];
+
+    if (!relations || relations.length === 0) {
+      return results;
+    }
+
+    const endpoint = `/campaigns/${this._campaignId}/entities/${sourceEntityId}/relations`;
+
+    for (let i = 0; i < relations.length; i++) {
+      const relation = relations[i];
+
+      try {
+        const payload = {
+          target_id: relation.target_id,
+          relation: relation.relation || 'unknown',
+          attitude: relation.attitude ?? 0
+        };
+
+        const response = await this.post(endpoint, payload);
+        results.push(response.data || response);
+
+        onProgress(i + 1, relations.length);
+      } catch (error) {
+        this._logger.error(
+          `Failed to create relation from ${sourceEntityId} to ${relation.target_id}: ${error.message}`
+        );
+
+        results.push({
+          _error: error.message,
+          relation: relation.relation,
+          target_id: relation.target_id
+        });
+
+        onProgress(i + 1, relations.length);
+
+        if (!continueOnError) {
+          break;
+        }
+      }
+    }
+
+    const successCount = results.filter(r => !r._error).length;
+    const errorCount = results.filter(r => r._error).length;
+    this._logger.debug(
+      `batchCreateRelations: completed — ${successCount} succeeded, ${errorCount} failed`
+    );
+
+    return results;
+  }
 }
 
 // Export all classes and enums

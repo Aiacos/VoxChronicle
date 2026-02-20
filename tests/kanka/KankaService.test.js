@@ -1484,4 +1484,158 @@ describe('KankaService', () => {
       expect(results[0]._error).toBeDefined();
     });
   });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // batchCreateRelations
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe('batchCreateRelations()', () => {
+    it('should return empty array for empty relations', async () => {
+      const results = await service.batchCreateRelations(100, []);
+      expect(results).toEqual([]);
+    });
+
+    it('should return empty array for null relations', async () => {
+      const results = await service.batchCreateRelations(100, null);
+      expect(results).toEqual([]);
+    });
+
+    it('should create relations sequentially via POST', async () => {
+      service.post = vi.fn()
+        .mockResolvedValueOnce({ data: { id: 1, relation: 'ally' } })
+        .mockResolvedValueOnce({ data: { id: 2, relation: 'enemy' } });
+
+      const relations = [
+        { target_id: 200, relation: 'ally', attitude: 1 },
+        { target_id: 300, relation: 'enemy', attitude: -2 }
+      ];
+
+      const results = await service.batchCreateRelations(100, relations);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual({ id: 1, relation: 'ally' });
+      expect(results[1]).toEqual({ id: 2, relation: 'enemy' });
+
+      // Verify endpoint includes campaign ID and source entity ID
+      expect(service.post).toHaveBeenCalledTimes(2);
+      expect(service.post).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/entities/100/relations`,
+        { target_id: 200, relation: 'ally', attitude: 1 }
+      );
+      expect(service.post).toHaveBeenCalledWith(
+        `/campaigns/${TEST_CAMPAIGN_ID}/entities/100/relations`,
+        { target_id: 300, relation: 'enemy', attitude: -2 }
+      );
+    });
+
+    it('should call onProgress callback for each relation', async () => {
+      service.post = vi.fn().mockResolvedValue({ data: { id: 1 } });
+
+      const onProgress = vi.fn();
+      const relations = [
+        { target_id: 200, relation: 'ally', attitude: 0 },
+        { target_id: 300, relation: 'enemy', attitude: 0 }
+      ];
+
+      await service.batchCreateRelations(100, relations, { onProgress });
+
+      expect(onProgress).toHaveBeenCalledTimes(2);
+      expect(onProgress).toHaveBeenCalledWith(1, 2);
+      expect(onProgress).toHaveBeenCalledWith(2, 2);
+    });
+
+    it('should continue on error by default', async () => {
+      service.post = vi.fn()
+        .mockRejectedValueOnce(new Error('First fails'))
+        .mockResolvedValueOnce({ data: { id: 2, relation: 'friend' } });
+
+      const relations = [
+        { target_id: 200, relation: 'ally', attitude: 0 },
+        { target_id: 300, relation: 'friend', attitude: 1 }
+      ];
+
+      const results = await service.batchCreateRelations(100, relations);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]._error).toBe('First fails');
+      expect(results[0].relation).toBe('ally');
+      expect(results[0].target_id).toBe(200);
+      expect(results[1]).toEqual({ id: 2, relation: 'friend' });
+    });
+
+    it('should stop on error when continueOnError is false', async () => {
+      service.post = vi.fn()
+        .mockRejectedValueOnce(new Error('Stop here'))
+        .mockResolvedValueOnce({ data: { id: 2 } });
+
+      const relations = [
+        { target_id: 200, relation: 'ally', attitude: 0 },
+        { target_id: 300, relation: 'friend', attitude: 1 }
+      ];
+
+      const results = await service.batchCreateRelations(100, relations, {
+        continueOnError: false
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0]._error).toBe('Stop here');
+      // Second relation should NOT have been attempted
+      expect(service.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('should default relation to "unknown" when not provided', async () => {
+      service.post = vi.fn().mockResolvedValue({ data: { id: 1 } });
+
+      await service.batchCreateRelations(100, [
+        { target_id: 200, attitude: 0 }
+      ]);
+
+      expect(service.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ relation: 'unknown' })
+      );
+    });
+
+    it('should default attitude to 0 when not provided', async () => {
+      service.post = vi.fn().mockResolvedValue({ data: { id: 1 } });
+
+      await service.batchCreateRelations(100, [
+        { target_id: 200, relation: 'ally' }
+      ]);
+
+      expect(service.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ attitude: 0 })
+      );
+    });
+
+    it('should call onProgress even for failed relations', async () => {
+      service.post = vi.fn().mockRejectedValue(new Error('fail'));
+
+      const onProgress = vi.fn();
+      await service.batchCreateRelations(100, [
+        { target_id: 200, relation: 'ally', attitude: 0 }
+      ], { onProgress });
+
+      expect(onProgress).toHaveBeenCalledWith(1, 1);
+    });
+
+    it('should use response.data when available, fall back to response otherwise', async () => {
+      // When response has .data property
+      service.post = vi.fn().mockResolvedValue({ data: { id: 1, relation: 'ally' } });
+
+      const results1 = await service.batchCreateRelations(100, [
+        { target_id: 200, relation: 'ally', attitude: 0 }
+      ]);
+      expect(results1[0]).toEqual({ id: 1, relation: 'ally' });
+
+      // When response has no .data property (falls back to full response)
+      service.post = vi.fn().mockResolvedValue({ id: 2, relation: 'enemy' });
+
+      const results2 = await service.batchCreateRelations(100, [
+        { target_id: 300, relation: 'enemy', attitude: 0 }
+      ]);
+      expect(results2[0]).toEqual({ id: 2, relation: 'enemy' });
+    });
+  });
 });
