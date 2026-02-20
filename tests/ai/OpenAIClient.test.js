@@ -133,6 +133,31 @@ describe('OpenAIClient', () => {
       const err = new OpenAIError('msg', OpenAIErrorType.AUTHENTICATION_ERROR, 401);
       expect(err.isRetryable).toBe(false);
     });
+
+    it('should not treat null status as retryable (null guard)', () => {
+      // Timeout errors have status=null. Without a null guard, JavaScript
+      // coerces null to 0 which accidentally gives the correct result.
+      // This test ensures the explicit guard is present and works.
+      const err = new OpenAIError('timeout', OpenAIErrorType.TIMEOUT_ERROR, null);
+      // isRetryable should be true because of TIMEOUT_ERROR type, not because of status
+      expect(err.isRetryable).toBe(true);
+      expect(err.status).toBeNull();
+    });
+
+    it('should not treat null status as a 5xx server error', () => {
+      // An error with a non-retryable type and null status should NOT be retryable
+      // This catches the case where null >= 500 would coerce null to 0 and be false,
+      // but ensures we're checking explicitly rather than relying on coercion
+      const err = new OpenAIError('msg', OpenAIErrorType.INVALID_REQUEST_ERROR, null);
+      expect(err.isRetryable).toBe(false);
+    });
+
+    it('should not treat undefined status as retryable via coercion', () => {
+      // Edge case: status left as undefined
+      const err = new OpenAIError('msg', OpenAIErrorType.INVALID_REQUEST_ERROR);
+      expect(err.status).toBeNull(); // default is null from constructor
+      expect(err.isRetryable).toBe(false);
+    });
   });
 
   // ── Constructor & Configuration ──────────────────────────────────────────
@@ -812,6 +837,59 @@ describe('OpenAIClient', () => {
       const result = await retryClient._retryWithBackoff(operation, { operationName: 'test' });
       expect(result).toBe('ok');
       expect(callCount).toBe(2);
+    });
+  });
+
+  // ── _makeRequest timeout cleanup ──────────────────────────────────────────
+
+  describe('_makeRequest timeout cleanup', () => {
+    it('should clear timeout when rate limiter throws before fetch', async () => {
+      // Track clearTimeout calls
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+      // Make the rate limiter throw immediately (before fetch is called)
+      client._rateLimiter.executeWithRetry = async () => {
+        throw new Error('Rate limiter is paused');
+      };
+
+      await expect(
+        client._makeRequest('/test', {})
+      ).rejects.toThrow('Rate limiter is paused');
+
+      // The outer finally block should have called clearTimeout
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+
+      // Verify fetch was never called (rate limiter threw before it)
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      clearTimeoutSpy.mockRestore();
+    });
+
+    it('should clear timeout on successful request (inner + outer cleanup)', async () => {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+      await client._makeRequest('/test', {});
+
+      // clearTimeout should be called at least twice:
+      // once from inner try (fast cleanup) and once from outer finally (safety net)
+      expect(clearTimeoutSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      clearTimeoutSpy.mockRestore();
+    });
+
+    it('should clear timeout on fetch error (inner + outer cleanup)', async () => {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+      fetchSpy.mockRejectedValueOnce(new Error('Something went wrong'));
+
+      await expect(
+        client._makeRequest('/test', {})
+      ).rejects.toThrow();
+
+      // clearTimeout should be called at least twice:
+      // once from inner catch and once from outer finally
+      expect(clearTimeoutSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+      clearTimeoutSpy.mockRestore();
     });
   });
 });

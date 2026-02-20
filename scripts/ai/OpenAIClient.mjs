@@ -79,7 +79,7 @@ class OpenAIError extends Error {
       this.type === OpenAIErrorType.RATE_LIMIT_ERROR ||
       this.type === OpenAIErrorType.NETWORK_ERROR ||
       this.type === OpenAIErrorType.TIMEOUT_ERROR ||
-      (this.status >= 500 && this.status < 600)
+      (this.status !== null && this.status >= 500 && this.status < 600)
     );
   }
 }
@@ -661,70 +661,77 @@ class OpenAIClient {
     this._logger.debug(`Making ${method} request to ${sanitizedUrl}`);
 
     // Execute request with rate limiting
-    return this._rateLimiter.executeWithRetry(async () => {
-      try {
-        const response = await fetch(url, fetchOptions);
+    // Outer try/finally guarantees timeout cleanup even if the rate limiter
+    // itself throws before fetch is called (e.g., limiter paused or errored).
+    try {
+      return await this._rateLimiter.executeWithRetry(async () => {
+        try {
+          const response = await fetch(url, fetchOptions);
 
-        // Clear timeout
-        clearTimeout(controller.timeoutId);
+          // Clear timeout
+          clearTimeout(controller.timeoutId);
 
-        // Handle error responses
-        if (!response.ok) {
-          this._logger.debug(`Request to ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`);
-          const error = await this._parseErrorResponse(response);
+          // Handle error responses
+          if (!response.ok) {
+            this._logger.debug(`Request to ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`);
+            const error = await this._parseErrorResponse(response);
 
-          // If rate limited, pause the rate limiter
-          if (error.type === OpenAIErrorType.RATE_LIMIT_ERROR) {
-            const pauseDuration = error.retryAfter || 60000;
-            this._rateLimiter.pause(pauseDuration);
+            // If rate limited, pause the rate limiter
+            if (error.type === OpenAIErrorType.RATE_LIMIT_ERROR) {
+              const pauseDuration = error.retryAfter || 60000;
+              this._rateLimiter.pause(pauseDuration);
+            }
+
+            throw error;
           }
 
-          throw error;
-        }
+          // Parse and return JSON response
+          const data = await response.json();
+          this._logger.debug(`Request to ${endpoint} completed successfully in ${Date.now() - t0}ms, status: ${response.status}`);
+          return data;
+        } catch (error) {
+          // Clear timeout
+          clearTimeout(controller.timeoutId);
 
-        // Parse and return JSON response
-        const data = await response.json();
-        this._logger.debug(`Request to ${endpoint} completed successfully in ${Date.now() - t0}ms, status: ${response.status}`);
-        return data;
-      } catch (error) {
-        // Clear timeout
-        clearTimeout(controller.timeoutId);
+          // Handle abort/timeout
+          if (error.name === 'AbortError') {
+            const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
+            throw new OpenAIError(
+              `Request to ${sanitizedEndpoint} timed out after ${this._timeout}ms`,
+              OpenAIErrorType.TIMEOUT_ERROR
+            );
+          }
 
-        // Handle abort/timeout
-        if (error.name === 'AbortError') {
-          const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
-          throw new OpenAIError(
-            `Request to ${sanitizedEndpoint} timed out after ${this._timeout}ms`,
-            OpenAIErrorType.TIMEOUT_ERROR
+          // Handle network errors
+          if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            const sanitizedError = SensitiveDataFilter.sanitizeString(error.message);
+            throw new OpenAIError(
+              'Network error. Please check your internet connection.',
+              OpenAIErrorType.NETWORK_ERROR,
+              null,
+              { originalError: sanitizedError }
+            );
+          }
+
+          // Re-throw OpenAI errors as-is
+          if (error instanceof OpenAIError) {
+            throw error;
+          }
+
+          // Wrap unknown errors
+          const sanitizedMessage = SensitiveDataFilter.sanitizeString(
+            error.message || 'Unknown error occurred'
           );
+          const sanitizedError = SensitiveDataFilter.sanitizeObject(error);
+          throw new OpenAIError(sanitizedMessage, OpenAIErrorType.API_ERROR, null, {
+            originalError: sanitizedError
+          });
         }
-
-        // Handle network errors
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          const sanitizedError = SensitiveDataFilter.sanitizeString(error.message);
-          throw new OpenAIError(
-            'Network error. Please check your internet connection.',
-            OpenAIErrorType.NETWORK_ERROR,
-            null,
-            { originalError: sanitizedError }
-          );
-        }
-
-        // Re-throw OpenAI errors as-is
-        if (error instanceof OpenAIError) {
-          throw error;
-        }
-
-        // Wrap unknown errors
-        const sanitizedMessage = SensitiveDataFilter.sanitizeString(
-          error.message || 'Unknown error occurred'
-        );
-        const sanitizedError = SensitiveDataFilter.sanitizeObject(error);
-        throw new OpenAIError(sanitizedMessage, OpenAIErrorType.API_ERROR, null, {
-          originalError: sanitizedError
-        });
-      }
-    });
+      });
+    } finally {
+      // Guarantee timeout cleanup even if rate limiter itself throws
+      clearTimeout(controller.timeoutId);
+    }
   }
 
   /**
