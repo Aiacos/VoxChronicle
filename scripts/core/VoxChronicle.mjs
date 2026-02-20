@@ -433,6 +433,10 @@ class VoxChronicle {
       });
     } catch (error) {
       logger.error('Failed to initialize RAG services:', error);
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.RAGInitFailed') ||
+        'VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.'
+      );
       // Don't throw - RAG is optional functionality
     }
   }

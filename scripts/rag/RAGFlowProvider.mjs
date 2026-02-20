@@ -426,7 +426,8 @@ export class RAGFlowProvider extends RAGProvider {
     try {
       const response = await this.#request(`/api/v1/datasets?id=${datasetId}`, { method: 'GET' });
       return response.data?.length > 0;
-    } catch {
+    } catch (error) {
+      this._logger.warn('Dataset validation failed:', error.message);
       return false;
     }
   }
@@ -468,7 +469,8 @@ export class RAGFlowProvider extends RAGProvider {
     try {
       const response = await this.#request(`/api/v1/chats?id=${chatId}`, { method: 'GET' });
       return response.data?.length > 0;
-    } catch {
+    } catch (error) {
+      this._logger.warn('Chat validation failed:', error.message);
       return false;
     }
   }

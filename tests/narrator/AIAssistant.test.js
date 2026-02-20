@@ -1265,4 +1265,136 @@ describe('AIAssistant', () => {
       expect(MAX_CONTEXT_TOKENS).toBe(8000);
     });
   });
+
+  // =========================================================================
+  // H-6: _getRAGContext consecutive failure tracking
+  // =========================================================================
+  describe('_getRAGContext consecutive failure tracking (H-6)', () => {
+    let ragProvider;
+
+    beforeEach(() => {
+      ragProvider = createMockRAGProvider();
+      assistant.setRAGProvider(ragProvider);
+      assistant.setUseRAG(true);
+    });
+
+    it('should notify user after 3 consecutive RAG failures', async () => {
+      ragProvider.query.mockRejectedValue(new Error('RAG unavailable'));
+
+      // Call _getRAGContext 3 times
+      await assistant._getRAGContext('test query 1');
+      await assistant._getRAGContext('test query 2');
+      await assistant._getRAGContext('test query 3');
+
+      expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+      expect(ui.notifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining('RAGContextUnavailable')
+      );
+    });
+
+    it('should not notify before 3 consecutive failures', async () => {
+      ragProvider.query.mockRejectedValue(new Error('RAG unavailable'));
+
+      await assistant._getRAGContext('test query 1');
+      await assistant._getRAGContext('test query 2');
+
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+    });
+
+    it('should not notify again after the 3rd failure (only once)', async () => {
+      ragProvider.query.mockRejectedValue(new Error('RAG unavailable'));
+
+      await assistant._getRAGContext('test query 1');
+      await assistant._getRAGContext('test query 2');
+      await assistant._getRAGContext('test query 3');
+      await assistant._getRAGContext('test query 4');
+      await assistant._getRAGContext('test query 5');
+
+      // Notification should fire exactly once (on the 3rd failure)
+      expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reset failure counter on successful RAG context retrieval', async () => {
+      // Fail twice
+      ragProvider.query.mockRejectedValueOnce(new Error('RAG unavailable'));
+      ragProvider.query.mockRejectedValueOnce(new Error('RAG unavailable'));
+
+      await assistant._getRAGContext('fail 1');
+      await assistant._getRAGContext('fail 2');
+
+      // Succeed once (resets counter)
+      ragProvider.query.mockResolvedValueOnce({
+        sources: [{ title: 'Test', excerpt: 'Content' }]
+      });
+      await assistant._getRAGContext('success');
+
+      // Fail twice more — should NOT trigger notification (counter was reset)
+      ragProvider.query.mockRejectedValueOnce(new Error('RAG unavailable'));
+      ragProvider.query.mockRejectedValueOnce(new Error('RAG unavailable'));
+
+      await assistant._getRAGContext('fail 3');
+      await assistant._getRAGContext('fail 4');
+
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+    });
+
+    it('should return empty context on failure', async () => {
+      ragProvider.query.mockRejectedValue(new Error('RAG unavailable'));
+
+      const result = await assistant._getRAGContext('test');
+
+      expect(result).toEqual({ context: '', sources: [] });
+    });
+  });
+
+  // =========================================================================
+  // H-7b: Parse methods log warnings with error messages
+  // =========================================================================
+  describe('parse methods log warnings with error details (H-7b)', () => {
+    it('_parseAnalysisResponse should log error.message on parse failure', () => {
+      const response = {
+        choices: [{ message: { content: 'not valid json {{{' } }]
+      };
+
+      const result = assistant._parseAnalysisResponse(response);
+
+      // Should return fallback result
+      expect(result.suggestions).toHaveLength(1);
+      expect(result.suggestions[0].type).toBe('narration');
+    });
+
+    it('_parseOffTrackResponse should log error.message on parse failure', () => {
+      const response = {
+        choices: [{ message: { content: '<<<not json>>>' } }]
+      };
+
+      const result = assistant._parseOffTrackResponse(response);
+
+      expect(result.isOffTrack).toBe(false);
+      expect(result.severity).toBe(0);
+    });
+
+    it('_parseSuggestionsResponse should log error.message on parse failure', () => {
+      const response = {
+        choices: [{ message: { content: '<<<broken json>>>' } }]
+      };
+
+      const result = assistant._parseSuggestionsResponse(response, 3);
+
+      // Should return fallback
+      expect(result).toHaveLength(1);
+      expect(result[0].confidence).toBe(0.3);
+    });
+
+    it('_parseNPCDialogueResponse should log error.message on parse failure', () => {
+      const response = {
+        choices: [{ message: { content: '<<<invalid>>>' } }]
+      };
+
+      const result = assistant._parseNPCDialogueResponse(response, 3);
+
+      // Should return fallback (the raw content as one option if non-empty)
+      expect(Array.isArray(result)).toBe(true);
+    });
+  });
 });

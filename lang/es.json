@@ -642,7 +642,9 @@
       "AIAnalysisFailed": "[EN] AI suggestions unavailable. Check your OpenAI API key.",
       "EntityExtractionFailed": "[EN] Entity extraction failed. Entities will not be available for this session.",
       "RelationshipExtractionFailed": "[EN] Relationship extraction failed.",
-      "ImageGenerationBatchFailed": "[EN] Image generation failed. Chronicle will be published without images."
+      "ImageGenerationBatchFailed": "[EN] Image generation failed. Chronicle will be published without images.",
+      "RAGInitFailed": "[EN] VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.",
+      "RAGContextUnavailable": "[EN] VoxChronicle: RAG context unavailable. Suggestions may be less accurate."
     },
     "Warnings": {
       "ConfigIncomplete": "Configuración incompleta",

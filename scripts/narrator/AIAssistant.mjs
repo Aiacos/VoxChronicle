@@ -98,6 +98,13 @@ class AIAssistant {
   _logger = Logger.createChild('AIAssistant');
 
   /**
+   * Consecutive RAG context retrieval failures counter
+   * @type {number}
+   * @private
+   */
+  _consecutiveRAGFailures = 0;
+
+  /**
    * Creates a new AIAssistant instance
    *
    * @param {Object} [options={}] - Configuration options
@@ -1404,8 +1411,8 @@ Respond in JSON format:
         summary: this._validateString(parsed.summary || '', 2000, 'summary'),
         rulesQuestions: []
       };
-    } catch {
-      this._logger.warn('Failed to parse analysis response as JSON, using fallback');
+    } catch (error) {
+      this._logger.warn('Failed to parse analysis response as JSON, using fallback:', error.message);
 
       const sanitizedContent = this._validateString(content, 5000, 'fallback.content');
 
@@ -1448,8 +1455,8 @@ Respond in JSON format:
           ? this._validateString(parsed.narrativeBridge, 2000, 'narrativeBridge')
           : undefined
       };
-    } catch {
-      this._logger.warn('Failed to parse off-track response, returning default');
+    } catch (error) {
+      this._logger.warn('Failed to parse off-track response, returning default:', error.message);
       return {
         isOffTrack: false,
         severity: 0,
@@ -1487,8 +1494,8 @@ Respond in JSON format:
         }));
 
       return validatedSuggestions;
-    } catch {
-      this._logger.warn('Failed to parse suggestions response');
+    } catch (error) {
+      this._logger.warn('Failed to parse suggestions response:', error.message);
 
       const sanitizedContent = this._validateString(content, 5000, 'fallback.content');
 
@@ -1523,8 +1530,8 @@ Respond in JSON format:
         .filter(option => option.length > 0);
 
       return validatedOptions;
-    } catch {
-      this._logger.warn('Failed to parse NPC dialogue response');
+    } catch (error) {
+      this._logger.warn('Failed to parse NPC dialogue response:', error.message);
 
       const sanitizedContent = this._validateString(content, 2000, 'fallback.dialogueOption');
 
@@ -1694,11 +1701,19 @@ Respond in JSON format:
       const result = { context, sources };
 
       this._cachedRAGContext = result;
+      this._consecutiveRAGFailures = 0;
       this._logger.debug(`_getRAGContext() — ${sources.length} sources, ${context.length} chars, ${(performance.now() - _ragStart).toFixed(1)}ms`);
 
       return result;
     } catch (error) {
       this._logger.warn(`_getRAGContext() failed after ${(performance.now() - _ragStart).toFixed(1)}ms:`, error.message);
+      this._consecutiveRAGFailures++;
+      if (this._consecutiveRAGFailures === 3) {
+        ui?.notifications?.warn(
+          game.i18n?.localize('VOXCHRONICLE.Errors.RAGContextUnavailable') ||
+          'VoxChronicle: RAG context unavailable. Suggestions may be less accurate.'
+        );
+      }
       return { context: '', sources: [] };
     }
   }

@@ -1050,4 +1050,85 @@ describe('RAGFlowProvider', () => {
         .rejects.toThrow(/RAGFlow error.*102/);
     });
   });
+
+  // ── H-8: #validateDataset and #validateChat log warnings on error ───
+  describe('#validateDataset and #validateChat logging (H-8)', () => {
+    it('should handle dataset validation failure and create new dataset', async () => {
+      // validate dataset: network error, then create dataset, then create chat
+      let callIndex = 0;
+      mockFetch.mockImplementation(() => {
+        callIndex++;
+        if (callIndex === 1) {
+          // validate dataset — network error
+          return Promise.resolve({
+            ok: false, status: 500,
+            json: () => Promise.resolve({}),
+            text: () => Promise.resolve('Internal Server Error')
+          });
+        }
+        if (callIndex === 2) {
+          // create new dataset
+          return Promise.resolve({
+            ok: true, status: 200,
+            json: () => Promise.resolve({ code: 0, data: { id: 'new-ds' } }),
+            text: () => Promise.resolve('')
+          });
+        }
+        // create chat
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: () => Promise.resolve({ code: 0, data: { id: CHAT_ID } }),
+          text: () => Promise.resolve('')
+        });
+      });
+
+      await provider.initialize({
+        baseUrl: BASE_URL,
+        apiKey: API_KEY,
+        datasetId: 'bad-ds'
+      });
+
+      // Should have created a new dataset
+      expect(provider.getDatasetId()).toBe('new-ds');
+    });
+
+    it('should handle chat validation failure and create new chat', async () => {
+      let callIndex = 0;
+      mockFetch.mockImplementation(() => {
+        callIndex++;
+        if (callIndex === 1) {
+          // validate dataset — valid
+          return Promise.resolve({
+            ok: true, status: 200,
+            json: () => Promise.resolve({ code: 0, data: [{ id: DATASET_ID }] }),
+            text: () => Promise.resolve('')
+          });
+        }
+        if (callIndex === 2) {
+          // validate chat — network error
+          return Promise.resolve({
+            ok: false, status: 500,
+            json: () => Promise.resolve({}),
+            text: () => Promise.resolve('Internal Server Error')
+          });
+        }
+        // create new chat
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: () => Promise.resolve({ code: 0, data: { id: 'new-chat' } }),
+          text: () => Promise.resolve('')
+        });
+      });
+
+      await provider.initialize({
+        baseUrl: BASE_URL,
+        apiKey: API_KEY,
+        datasetId: DATASET_ID,
+        chatId: 'bad-chat'
+      });
+
+      // Should have created a new chat
+      expect(provider.getChatId()).toBe('new-chat');
+    });
+  });
 });

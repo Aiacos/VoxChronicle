@@ -1335,4 +1335,32 @@ describe('OpenAIFileSearchProvider', () => {
       expect(result.sources[0].score).toBe(0.5);
     });
   });
+
+  // ── H-7: #validateVectorStore logs warning on error ─────────────────
+  describe('#validateVectorStore logging (H-7)', () => {
+    it('should log warning when vector store validation throws', async () => {
+      const client = createMockClient();
+      // Validate vector store: throws an error
+      client.request.mockRejectedValueOnce(new Error('Network timeout'));
+      // Create new store after failed validation
+      client.post.mockResolvedValueOnce({ id: 'vs_fallback' });
+
+      const provider = new OpenAIFileSearchProvider();
+      await provider.initialize({ client, vectorStoreId: 'vs_bad' });
+
+      // Provider should have fallen back to creating a new store
+      expect(provider.getVectorStoreId()).toBe('vs_fallback');
+    });
+
+    it('should create new vector store when validation returns expired status', async () => {
+      const client = createMockClient();
+      client.request.mockResolvedValueOnce({ status: 'expired' });
+      client.post.mockResolvedValueOnce({ id: 'vs_new' });
+
+      const provider = new OpenAIFileSearchProvider();
+      await provider.initialize({ client, vectorStoreId: 'vs_expired' });
+
+      expect(provider.getVectorStoreId()).toBe('vs_new');
+    });
+  });
 });

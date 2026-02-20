@@ -384,7 +384,8 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     try {
       const vs = await this.#client.request(`/vector_stores/${vectorStoreId}`, { method: 'GET' });
       return vs.status !== 'expired';
-    } catch {
+    } catch (error) {
+      this._logger.warn('Vector store validation failed:', error.message);
       return false;
     }
   }

@@ -1304,6 +1304,24 @@ describe('VoxChronicle', () => {
       );
     });
 
+    it('should notify user via ui.notifications.warn when RAG init fails (H-5)', async () => {
+      mockRAGProviderFactoryCreate.mockImplementationOnce(() => {
+        throw new Error('RAG factory broken');
+      });
+
+      mockSettingsModule.getRAGSettings.mockReturnValue({
+        enabled: true,
+        provider: 'openai-file-search'
+      });
+
+      const instance = VoxChronicle.getInstance();
+      await instance._initializeRAGServices('sk-test-key');
+
+      expect(ui.notifications.warn).toHaveBeenCalledWith(
+        expect.stringContaining('RAGInitFailed')
+      );
+    });
+
     it('should handle RAG provider.initialize() rejection gracefully', async () => {
       const failingProvider = {
         initialize: vi.fn().mockRejectedValue(new Error('Vector store creation failed')),
