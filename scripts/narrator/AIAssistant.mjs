@@ -1696,7 +1696,10 @@ Respond in JSON format:
       const ragResult = await this._ragProvider.query(query, { maxResults });
 
       // Convert RAGQueryResult to internal format
-      const context = ragResult.sources.map(s => s.excerpt).join('\n\n');
+      // Use the synthesized answer as primary context (OpenAI Responses API returns
+      // RAG-augmented answer text, while individual source excerpts may be empty)
+      const excerpts = ragResult.sources.map(s => s.excerpt).filter(Boolean).join('\n\n');
+      const context = excerpts || ragResult.answer || '';
       const sources = ragResult.sources.map(s => s.title);
       const result = { context, sources };
 
