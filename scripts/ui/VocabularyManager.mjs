@@ -556,13 +556,25 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
                   game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopiedToClipboard') ||
                     'Dictionary copied to clipboard'
                 );
-              } catch {
-                // Fallback for older browsers
-                document.execCommand('copy');
-                ui.notifications.info(
-                  game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopiedToClipboard') ||
-                    'Dictionary copied to clipboard'
-                );
+              } catch (clipboardError) {
+                this._logger.debug('Clipboard API failed, trying fallback:', clipboardError.message);
+                try {
+                  const textarea = document.createElement('textarea');
+                  textarea.value = json;
+                  document.body.appendChild(textarea);
+                  textarea.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(textarea);
+                  ui.notifications.info(
+                    game.i18n?.localize('VOXCHRONICLE.Vocabulary.CopiedToClipboard') ||
+                      'Dictionary copied to clipboard'
+                  );
+                } catch (fallbackError) {
+                  this._logger.error('Clipboard write failed:', fallbackError.message);
+                  ui?.notifications?.error(
+                    game.i18n?.localize('VOXCHRONICLE.Errors.ClipboardFailed') || 'Failed to copy to clipboard.'
+                  );
+                }
               }
             }
           },

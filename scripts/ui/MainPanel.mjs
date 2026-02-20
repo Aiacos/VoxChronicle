@@ -273,8 +273,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     let ragEnabled = false;
     try {
       ragEnabled = game?.settings?.get(MODULE_ID, 'ragEnabled') ?? false;
-    } catch {
-      // Settings not available
+    } catch (error) {
+      this._logger.debug('Could not read ragEnabled setting:', error.message);
     }
 
     return {
@@ -317,7 +317,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch {
+    } catch (error) {
+      this._logger.debug('Could not format timestamp:', error.message);
       return '';
     }
   }
@@ -524,8 +525,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
         metadata.lastIndexed = new Date().toISOString();
         await game?.settings?.set(MODULE_ID, 'ragIndexMetadata', metadata);
-      } catch {
-        // Settings update failed, not critical
+      } catch (error) {
+        this._logger.debug('Could not update ragIndexMetadata setting:', error.message);
       }
 
       ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexComplete') || 'RAG index built successfully');
@@ -571,8 +572,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
         delete metadata.lastIndexed;
         await game?.settings?.set(MODULE_ID, 'ragIndexMetadata', metadata);
-      } catch {
-        // Settings update failed, not critical
+      } catch (error) {
+        this._logger.debug('Could not clear ragIndexMetadata setting:', error.message);
       }
 
       ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexCleared') || 'RAG index cleared');

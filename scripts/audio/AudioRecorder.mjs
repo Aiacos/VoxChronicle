@@ -909,7 +909,7 @@ class AudioRecorder {
       // Non-fatal: recording continues without level metering
       // Close the AudioContext to prevent resource leak before nullifying
       if (this._audioContext) {
-        try { this._audioContext.close(); } catch (_) { /* ignore close error */ }
+        try { this._audioContext.close(); } catch (closeErr) { this._logger.debug('audioContext.close during analysis cleanup:', closeErr.message); }
       }
       this._audioContext = null;
       this._analyserNode = null;
@@ -1099,8 +1099,8 @@ class AudioRecorder {
     if (this._sourceNode) {
       try {
         this._sourceNode.disconnect();
-      } catch {
-        // Ignore disconnect errors (node may already be disconnected)
+      } catch (error) {
+        this._logger.debug('sourceNode.disconnect cleanup:', error.message);
       }
       this._sourceNode = null;
     }
@@ -1112,8 +1112,8 @@ class AudioRecorder {
         if (this._audioContext.state !== 'closed') {
           this._audioContext.close();
         }
-      } catch {
-        // Ignore close errors (context may already be closed)
+      } catch (error) {
+        this._logger.debug('audioContext.close cleanup:', error.message);
       }
       this._audioContext = null;
     }

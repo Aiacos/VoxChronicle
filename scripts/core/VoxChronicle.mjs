@@ -278,8 +278,8 @@ class VoxChronicle {
   _getSetting(key) {
     try {
       return game.settings.get(MODULE_ID, key);
-    } catch {
-      // Setting not registered yet or doesn't exist
+    } catch (error) {
+      logger.debug(`Failed to get setting '${key}':`, error.message);
       return null;
     }
   }
