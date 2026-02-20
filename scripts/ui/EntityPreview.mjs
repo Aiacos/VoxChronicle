@@ -15,6 +15,7 @@ import { Logger } from '../utils/Logger.mjs';
 import { Settings } from '../core/Settings.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 import { RelationshipGraph } from './RelationshipGraph.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -1171,7 +1172,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
           <form class="vox-chronicle-edit-description">
             <div class="form-group">
               <label>${game.i18n?.localize('VOXCHRONICLE.EntityPreview.Description') || 'Description'}</label>
-              <textarea name="description" rows="6" style="width: 100%;">${currentDescription || ''}</textarea>
+              <textarea name="description" rows="6" style="width: 100%;">${escapeHtml(currentDescription || '')}</textarea>
             </div>
           </form>
         `,
