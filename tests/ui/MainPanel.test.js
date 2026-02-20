@@ -1055,4 +1055,182 @@ describe('MainPanel', () => {
       expect(spy).toHaveBeenCalled();
     });
   });
+
+  // ─── Real-time UI updates ─────────────────────────────────────
+
+  describe('_startRealtimeUpdates / _stopRealtimeUpdates', () => {
+    let panel;
+    let mockLevelBar;
+    let mockDurationSpan;
+    let rafCallbacks;
+    let originalRaf;
+    let originalCaf;
+    let originalSetInterval;
+    let originalClearInterval;
+
+    beforeEach(() => {
+      rafCallbacks = [];
+      originalRaf = globalThis.requestAnimationFrame;
+      originalCaf = globalThis.cancelAnimationFrame;
+      originalSetInterval = globalThis.setInterval;
+      originalClearInterval = globalThis.clearInterval;
+
+      globalThis.requestAnimationFrame = vi.fn((cb) => {
+        rafCallbacks.push(cb);
+        return rafCallbacks.length; // return ID
+      });
+      globalThis.cancelAnimationFrame = vi.fn();
+      globalThis.setInterval = vi.fn(() => 42);
+      globalThis.clearInterval = vi.fn();
+
+      mockLevelBar = { style: { width: '' } };
+      mockDurationSpan = { textContent: '' };
+
+      panel = MainPanel.getInstance(mockOrchestrator);
+      Object.defineProperty(panel, 'element', {
+        get: () => ({
+          querySelectorAll: vi.fn((sel) => {
+            if (sel === '.vox-chronicle-tab') return [];
+            return [];
+          }),
+          querySelector: vi.fn((sel) => {
+            if (sel === '.vox-chronicle-panel__level-bar') return mockLevelBar;
+            if (sel === '.vox-chronicle-panel__duration') return mockDurationSpan;
+            return null;
+          })
+        }),
+        configurable: true
+      });
+    });
+
+    afterEach(() => {
+      globalThis.requestAnimationFrame = originalRaf;
+      globalThis.cancelAnimationFrame = originalCaf;
+      globalThis.setInterval = originalSetInterval;
+      globalThis.clearInterval = originalClearInterval;
+    });
+
+    it('should start rAF loop for level bar when recording', () => {
+      mockOrchestrator.state = 'recording';
+      panel._onRender({ isRecording: true }, {});
+
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
+    });
+
+    it('should start interval for duration when recording', () => {
+      mockOrchestrator.state = 'recording';
+      panel._onRender({ isRecording: true }, {});
+
+      expect(globalThis.setInterval).toHaveBeenCalledWith(expect.any(Function), 1000);
+    });
+
+    it('should NOT start loops when not recording', () => {
+      mockOrchestrator.state = 'idle';
+      panel._onRender({ isRecording: false }, {});
+
+      expect(globalThis.requestAnimationFrame).not.toHaveBeenCalled();
+      expect(globalThis.setInterval).not.toHaveBeenCalled();
+    });
+
+    it('should update level bar DOM directly in rAF callback', () => {
+      mockOrchestrator.state = 'recording';
+
+      VoxChronicle.getInstance.mockReturnValue({
+        ragProvider: null,
+        audioRecorder: {
+          isRecording: true,
+          getAudioLevel: vi.fn(() => 0.65)
+        }
+      });
+
+      panel._onRender({ isRecording: true }, {});
+
+      // Execute the rAF callback
+      expect(rafCallbacks.length).toBeGreaterThan(0);
+      rafCallbacks[0]();
+
+      expect(mockLevelBar.style.width).toBe('65%');
+    });
+
+    it('should update duration span text directly in interval', () => {
+      mockOrchestrator.state = 'recording';
+      mockOrchestrator.currentSession = {
+        startTime: Date.now() - 125000, // 2 min 5 sec ago
+        endTime: null
+      };
+
+      panel._onRender({ isRecording: true }, {});
+
+      // The immediate call in _startRealtimeUpdates should have updated it
+      expect(mockDurationSpan.textContent).toBe('02:05');
+    });
+
+    it('should stop loops on _stopRealtimeUpdates', () => {
+      mockOrchestrator.state = 'recording';
+      panel._onRender({ isRecording: true }, {});
+
+      panel._stopRealtimeUpdates();
+
+      expect(globalThis.cancelAnimationFrame).toHaveBeenCalled();
+      expect(globalThis.clearInterval).toHaveBeenCalled();
+    });
+
+    it('should stop loops on close', async () => {
+      mockOrchestrator.state = 'recording';
+      panel._onRender({ isRecording: true }, {});
+
+      await panel.close();
+
+      expect(globalThis.cancelAnimationFrame).toHaveBeenCalled();
+      expect(globalThis.clearInterval).toHaveBeenCalled();
+    });
+
+    it('should stop previous loops before starting new ones on re-render', () => {
+      mockOrchestrator.state = 'recording';
+      panel._onRender({ isRecording: true }, {});
+      panel._onRender({ isRecording: true }, {});
+
+      // cancelAnimationFrame and clearInterval called during cleanup
+      expect(globalThis.cancelAnimationFrame).toHaveBeenCalled();
+      expect(globalThis.clearInterval).toHaveBeenCalled();
+    });
+
+    it('should start updates for live_listening state', () => {
+      mockOrchestrator.state = 'live_listening';
+      panel._onRender({ isRecording: true }, {});
+
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
+      expect(globalThis.setInterval).toHaveBeenCalled();
+    });
+
+    it('should start updates for paused state', () => {
+      mockOrchestrator.state = 'paused';
+      panel._onRender({ isRecording: true }, {});
+
+      expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
+      expect(globalThis.setInterval).toHaveBeenCalled();
+    });
+
+    it('should handle missing level bar element gracefully', () => {
+      mockOrchestrator.state = 'recording';
+
+      Object.defineProperty(panel, 'element', {
+        get: () => ({
+          querySelectorAll: vi.fn(() => []),
+          querySelector: vi.fn(() => null) // both elements missing
+        }),
+        configurable: true
+      });
+
+      expect(() => panel._onRender({ isRecording: true }, {})).not.toThrow();
+      expect(globalThis.requestAnimationFrame).not.toHaveBeenCalled();
+      expect(globalThis.setInterval).not.toHaveBeenCalled();
+    });
+
+    it('should be safe to call _stopRealtimeUpdates when no loops are running', () => {
+      expect(() => panel._stopRealtimeUpdates()).not.toThrow();
+      expect(globalThis.cancelAnimationFrame).not.toHaveBeenCalled();
+      expect(globalThis.clearInterval).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -34,6 +34,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {AbortController|null} */
   #listenerController = null;
 
+  /** @type {number|null} */
+  #levelRafId = null;
+
+  /** @type {number|null} */
+  #durationIntervalId = null;
+
   /** @type {{vectorCount: number, lastIndexed: string|null, indexing: boolean, progress: number, progressText: string}} */
   #ragCachedStatus = { vectorCount: 0, lastIndexed: null, indexing: false, progress: 0, progressText: '' };
 
@@ -175,6 +181,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
 
+    // Clean up previous real-time loops
+    this._stopRealtimeUpdates();
+
     // Tab switching (uses data-tab attribute, not data-action)
     this.element?.querySelectorAll('.vox-chronicle-tab').forEach(el => {
       el.addEventListener('click', (event) => {
@@ -182,6 +191,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         if (tab) this.switchTab(tab);
       }, { signal });
     });
+
+    // Start real-time updates if recording is active
+    if (this._isRecordingActive()) {
+      this._startRealtimeUpdates();
+    }
   }
 
   // ─── Static action handlers (called with `this` = app instance) ────
@@ -254,6 +268,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async close(options = {}) {
     this._logger.debug('MainPanel closing');
+    this._stopRealtimeUpdates();
     this.#listenerController?.abort();
     return super.close(options);
   }
@@ -669,6 +684,50 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const seconds = (elapsed % 60).toString().padStart(2, '0');
     return `${minutes}:${seconds}`;
+  }
+
+  /**
+   * Start real-time DOM updates for audio level bar and duration timer.
+   * Uses direct DOM manipulation to avoid expensive full re-renders.
+   * @private
+   */
+  _startRealtimeUpdates() {
+    const levelBar = this.element?.querySelector('.vox-chronicle-panel__level-bar');
+    const durationSpan = this.element?.querySelector('.vox-chronicle-panel__duration');
+
+    // Audio level: rAF loop for smooth ~60fps updates
+    if (levelBar) {
+      const updateLevel = () => {
+        const level = this._getAudioLevel();
+        levelBar.style.width = `${level}%`;
+        this.#levelRafId = requestAnimationFrame(updateLevel);
+      };
+      this.#levelRafId = requestAnimationFrame(updateLevel);
+    }
+
+    // Duration timer: 1-second interval
+    if (durationSpan) {
+      const updateDuration = () => {
+        durationSpan.textContent = this._formatDuration();
+      };
+      updateDuration(); // immediate first update
+      this.#durationIntervalId = setInterval(updateDuration, 1000);
+    }
+  }
+
+  /**
+   * Stop real-time DOM update loops.
+   * @private
+   */
+  _stopRealtimeUpdates() {
+    if (this.#levelRafId !== null) {
+      cancelAnimationFrame(this.#levelRafId);
+      this.#levelRafId = null;
+    }
+    if (this.#durationIntervalId !== null) {
+      clearInterval(this.#durationIntervalId);
+      this.#durationIntervalId = null;
+    }
   }
 
   /**
