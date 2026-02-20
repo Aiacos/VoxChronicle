@@ -410,7 +410,8 @@
       "ConfidenceLabel": "Confidenza:",
       "EditDialogTitle": "Modifica Descrizione: {name}",
       "ViewGraph": "Visualizza Grafo Relazioni",
-      "FailedCount": "{count} fallite"
+      "FailedCount": "{count} fallite",
+      "CreatingEntity": "Creazione {type}: {name}"
     },
     "ImageGeneration": {
       "Title": "Generazione Immagini",
@@ -644,7 +645,13 @@
       "RelationshipExtractionFailed": "Estrazione relazioni fallita.",
       "ImageGenerationBatchFailed": "Generazione immagini fallita. La cronaca verrà pubblicata senza immagini.",
       "RAGInitFailed": "VoxChronicle: Inizializzazione RAG fallita. I suggerimenti AI funzioneranno senza contesto della campagna.",
-      "RAGContextUnavailable": "VoxChronicle: Contesto RAG non disponibile. I suggerimenti potrebbero essere meno accurati."
+      "RAGContextUnavailable": "VoxChronicle: Contesto RAG non disponibile. I suggerimenti potrebbero essere meno accurati.",
+      "FailedToOpenPanel": "VoxChronicle: Impossibile aprire il pannello. Controlla la console.",
+      "FailedToOpenSpeakerLabeling": "VoxChronicle: Impossibile aprire l'etichettatura altoparlanti. Controlla la console.",
+      "FailedToOpenVocabularyManager": "VoxChronicle: Impossibile aprire il gestore vocabolario. Controlla la console.",
+      "FailedToOpenRelationshipGraph": "VoxChronicle: Impossibile aprire il grafico relazioni. Controlla la console.",
+      "FailedToInitialize": "VoxChronicle: Impossibile inizializzare il modulo. Controlla la console per i dettagli.",
+      "ClipboardFailed": "Impossibile copiare negli appunti."
     },
     "Warnings": {
       "ConfigIncomplete": "Configurazione incompleta",

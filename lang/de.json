@@ -410,7 +410,8 @@
       "ConfidenceLabel": "[EN] Confidence:",
       "EditDialogTitle": "[EN] Edit Description: {name}",
       "ViewGraph": "[EN] View Relationship Graph",
-      "FailedCount": "[EN] {count} failed"
+      "FailedCount": "[EN] {count} failed",
+      "CreatingEntity": "[EN] Creating {type}: {name}"
     },
     "ImageGeneration": {
       "Title": "[EN] Image Generation",
@@ -644,7 +645,13 @@
       "RelationshipExtractionFailed": "[EN] Relationship extraction failed.",
       "ImageGenerationBatchFailed": "[EN] Image generation failed. Chronicle will be published without images.",
       "RAGInitFailed": "[EN] VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.",
-      "RAGContextUnavailable": "[EN] VoxChronicle: RAG context unavailable. Suggestions may be less accurate."
+      "RAGContextUnavailable": "[EN] VoxChronicle: RAG context unavailable. Suggestions may be less accurate.",
+      "FailedToOpenPanel": "[EN] VoxChronicle: Failed to open panel. Check console.",
+      "FailedToOpenSpeakerLabeling": "[EN] VoxChronicle: Failed to open speaker labeling. Check console.",
+      "FailedToOpenVocabularyManager": "[EN] VoxChronicle: Failed to open vocabulary manager. Check console.",
+      "FailedToOpenRelationshipGraph": "[EN] VoxChronicle: Failed to open relationship graph. Check console.",
+      "FailedToInitialize": "[EN] VoxChronicle: Failed to initialize module. Check console for details.",
+      "ClipboardFailed": "[EN] Failed to copy to clipboard."
     },
     "Warnings": {
       "ConfigIncomplete": "Konfiguration unvollständig",

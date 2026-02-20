@@ -410,7 +410,8 @@
       "ConfidenceLabel": "",
       "EditDialogTitle": "",
       "ViewGraph": "",
-      "FailedCount": ""
+      "FailedCount": "",
+      "CreatingEntity": ""
     },
     "ImageGeneration": {
       "Title": "",
@@ -644,7 +645,13 @@
       "RelationshipExtractionFailed": "",
       "ImageGenerationBatchFailed": "",
       "RAGInitFailed": "",
-      "RAGContextUnavailable": ""
+      "RAGContextUnavailable": "",
+      "FailedToOpenPanel": "",
+      "FailedToOpenSpeakerLabeling": "",
+      "FailedToOpenVocabularyManager": "",
+      "FailedToOpenRelationshipGraph": "",
+      "FailedToInitialize": "",
+      "ClipboardFailed": ""
     },
     "Warnings": {
       "ConfigIncomplete": "",
