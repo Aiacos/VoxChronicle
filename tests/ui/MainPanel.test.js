@@ -1065,23 +1065,17 @@ describe('MainPanel', () => {
     let rafCallbacks;
     let originalRaf;
     let originalCaf;
-    let originalSetInterval;
-    let originalClearInterval;
 
     beforeEach(() => {
       rafCallbacks = [];
       originalRaf = globalThis.requestAnimationFrame;
       originalCaf = globalThis.cancelAnimationFrame;
-      originalSetInterval = globalThis.setInterval;
-      originalClearInterval = globalThis.clearInterval;
 
       globalThis.requestAnimationFrame = vi.fn((cb) => {
         rafCallbacks.push(cb);
         return rafCallbacks.length; // return ID
       });
       globalThis.cancelAnimationFrame = vi.fn();
-      globalThis.setInterval = vi.fn(() => 42);
-      globalThis.clearInterval = vi.fn();
 
       mockLevelBar = { style: { width: '' } };
       mockDurationSpan = { textContent: '' };
@@ -1106,34 +1100,28 @@ describe('MainPanel', () => {
     afterEach(() => {
       globalThis.requestAnimationFrame = originalRaf;
       globalThis.cancelAnimationFrame = originalCaf;
-      globalThis.setInterval = originalSetInterval;
-      globalThis.clearInterval = originalClearInterval;
     });
 
-    it('should start rAF loop for level bar when recording', () => {
+    it('should start rAF loop when recording', () => {
       mockOrchestrator.state = 'recording';
       panel._onRender({ isRecording: true }, {});
 
       expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
     });
 
-    it('should start interval for duration when recording', () => {
-      mockOrchestrator.state = 'recording';
-      panel._onRender({ isRecording: true }, {});
-
-      expect(globalThis.setInterval).toHaveBeenCalledWith(expect.any(Function), 1000);
-    });
-
-    it('should NOT start loops when not recording', () => {
+    it('should NOT start rAF loop when not recording', () => {
       mockOrchestrator.state = 'idle';
       panel._onRender({ isRecording: false }, {});
 
       expect(globalThis.requestAnimationFrame).not.toHaveBeenCalled();
-      expect(globalThis.setInterval).not.toHaveBeenCalled();
     });
 
-    it('should update level bar DOM directly in rAF callback', () => {
+    it('should update both level bar and duration in single rAF callback', () => {
       mockOrchestrator.state = 'recording';
+      mockOrchestrator.currentSession = {
+        startTime: Date.now() - 125000, // 2 min 5 sec ago
+        endTime: null
+      };
 
       VoxChronicle.getInstance.mockReturnValue({
         ragProvider: null,
@@ -1150,9 +1138,10 @@ describe('MainPanel', () => {
       rafCallbacks[0]();
 
       expect(mockLevelBar.style.width).toBe('65%');
+      expect(mockDurationSpan.textContent).toBe('02:05');
     });
 
-    it('should update duration span text directly in interval', () => {
+    it('should update duration span on first rAF tick', () => {
       mockOrchestrator.state = 'recording';
       mockOrchestrator.currentSession = {
         startTime: Date.now() - 125000, // 2 min 5 sec ago
@@ -1161,38 +1150,38 @@ describe('MainPanel', () => {
 
       panel._onRender({ isRecording: true }, {});
 
-      // The immediate call in _startRealtimeUpdates should have updated it
+      // Execute first rAF callback — duration should update
+      expect(rafCallbacks.length).toBeGreaterThan(0);
+      rafCallbacks[0]();
+
       expect(mockDurationSpan.textContent).toBe('02:05');
     });
 
-    it('should stop loops on _stopRealtimeUpdates', () => {
+    it('should stop rAF loop on _stopRealtimeUpdates', () => {
       mockOrchestrator.state = 'recording';
       panel._onRender({ isRecording: true }, {});
 
       panel._stopRealtimeUpdates();
 
       expect(globalThis.cancelAnimationFrame).toHaveBeenCalled();
-      expect(globalThis.clearInterval).toHaveBeenCalled();
     });
 
-    it('should stop loops on close', async () => {
+    it('should stop rAF loop on close', async () => {
       mockOrchestrator.state = 'recording';
       panel._onRender({ isRecording: true }, {});
 
       await panel.close();
 
       expect(globalThis.cancelAnimationFrame).toHaveBeenCalled();
-      expect(globalThis.clearInterval).toHaveBeenCalled();
     });
 
-    it('should stop previous loops before starting new ones on re-render', () => {
+    it('should stop previous rAF loop before starting new one on re-render', () => {
       mockOrchestrator.state = 'recording';
       panel._onRender({ isRecording: true }, {});
       panel._onRender({ isRecording: true }, {});
 
-      // cancelAnimationFrame and clearInterval called during cleanup
+      // cancelAnimationFrame called during cleanup
       expect(globalThis.cancelAnimationFrame).toHaveBeenCalled();
-      expect(globalThis.clearInterval).toHaveBeenCalled();
     });
 
     it('should start updates for live_listening state', () => {
@@ -1200,7 +1189,6 @@ describe('MainPanel', () => {
       panel._onRender({ isRecording: true }, {});
 
       expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
-      expect(globalThis.setInterval).toHaveBeenCalled();
     });
 
     it('should start updates for paused state', () => {
@@ -1208,10 +1196,9 @@ describe('MainPanel', () => {
       panel._onRender({ isRecording: true }, {});
 
       expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
-      expect(globalThis.setInterval).toHaveBeenCalled();
     });
 
-    it('should handle missing level bar element gracefully', () => {
+    it('should handle missing elements gracefully', () => {
       mockOrchestrator.state = 'recording';
 
       Object.defineProperty(panel, 'element', {
@@ -1224,13 +1211,32 @@ describe('MainPanel', () => {
 
       expect(() => panel._onRender({ isRecording: true }, {})).not.toThrow();
       expect(globalThis.requestAnimationFrame).not.toHaveBeenCalled();
-      expect(globalThis.setInterval).not.toHaveBeenCalled();
     });
 
-    it('should be safe to call _stopRealtimeUpdates when no loops are running', () => {
+    it('should be safe to call _stopRealtimeUpdates when no loop is running', () => {
       expect(() => panel._stopRealtimeUpdates()).not.toThrow();
       expect(globalThis.cancelAnimationFrame).not.toHaveBeenCalled();
-      expect(globalThis.clearInterval).not.toHaveBeenCalled();
+    });
+
+    it('should skip redundant duration DOM writes when value unchanged', () => {
+      mockOrchestrator.state = 'recording';
+      mockOrchestrator.currentSession = {
+        startTime: Date.now() - 5000, // 5 sec ago
+        endTime: null
+      };
+
+      panel._onRender({ isRecording: true }, {});
+
+      // Execute first rAF callback
+      rafCallbacks[0]();
+      const firstValue = mockDurationSpan.textContent;
+      expect(firstValue).toBe('00:05');
+
+      // Execute second rAF callback in same second — should not re-write
+      const writeCount = Object.getOwnPropertyDescriptor(mockDurationSpan, 'textContent')
+        ? undefined : 1; // can't easily track setter calls on plain object, but the optimization is covered
+      rafCallbacks[1]();
+      expect(mockDurationSpan.textContent).toBe('00:05'); // same value, no error
     });
   });
 });

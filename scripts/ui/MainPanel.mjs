@@ -35,10 +35,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   #listenerController = null;
 
   /** @type {number|null} */
-  #levelRafId = null;
-
-  /** @type {number|null} */
-  #durationIntervalId = null;
+  #realtimeRafId = null;
 
   /** @type {{vectorCount: number, lastIndexed: string|null, indexing: boolean, progress: number, progressText: string}} */
   #ragCachedStatus = { vectorCount: 0, lastIndexed: null, indexing: false, progress: 0, progressText: '' };
@@ -688,31 +685,39 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Start real-time DOM updates for audio level bar and duration timer.
-   * Uses direct DOM manipulation to avoid expensive full re-renders.
+   * Uses a single rAF loop for both: level updates every frame (~60fps),
+   * duration updates once per second (throttled).
    * @private
    */
   _startRealtimeUpdates() {
     const levelBar = this.element?.querySelector('.vox-chronicle-panel__level-bar');
     const durationSpan = this.element?.querySelector('.vox-chronicle-panel__duration');
 
-    // Audio level: rAF loop for smooth ~60fps updates
-    if (levelBar) {
-      const updateLevel = () => {
+    if (!levelBar && !durationSpan) return;
+
+    let lastDurationSec = -1;
+
+    const update = () => {
+      // Level bar: every frame for smooth animation
+      if (levelBar) {
         const level = this._getAudioLevel();
         levelBar.style.width = `${level}%`;
-        this.#levelRafId = requestAnimationFrame(updateLevel);
-      };
-      this.#levelRafId = requestAnimationFrame(updateLevel);
-    }
+      }
 
-    // Duration timer: 1-second interval
-    if (durationSpan) {
-      const updateDuration = () => {
-        durationSpan.textContent = this._formatDuration();
-      };
-      updateDuration(); // immediate first update
-      this.#durationIntervalId = setInterval(updateDuration, 1000);
-    }
+      // Duration: only when the second changes (avoids redundant DOM writes)
+      if (durationSpan) {
+        const formatted = this._formatDuration();
+        // Compare against last written value to skip no-op writes
+        if (formatted !== lastDurationSec) {
+          durationSpan.textContent = formatted;
+          lastDurationSec = formatted;
+        }
+      }
+
+      this.#realtimeRafId = requestAnimationFrame(update);
+    };
+
+    this.#realtimeRafId = requestAnimationFrame(update);
   }
 
   /**
@@ -720,13 +725,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   _stopRealtimeUpdates() {
-    if (this.#levelRafId !== null) {
-      cancelAnimationFrame(this.#levelRafId);
-      this.#levelRafId = null;
-    }
-    if (this.#durationIntervalId !== null) {
-      clearInterval(this.#durationIntervalId);
-      this.#durationIntervalId = null;
+    if (this.#realtimeRafId !== null) {
+      cancelAnimationFrame(this.#realtimeRafId);
+      this.#realtimeRafId = null;
     }
   }
 
