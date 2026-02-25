@@ -563,6 +563,29 @@ form .form-group .vox-chronicle-validate-button {
   gap: 8px;
 }
 
+.vox-chronicle-panel__badges {
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vox-chronicle-badge {
+  font-size: 0.65em;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vox-chronicle-badge.active { background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3); }
+.vox-chronicle-badge.inactive { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); }
+
 /* Header & Controls */
 .vox-chronicle-panel__header {
   padding: 10px 12px;

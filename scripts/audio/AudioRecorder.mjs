@@ -36,10 +36,11 @@ const CaptureSource = {
 };
 
 /**
- * Default timeslice for data chunks (10 seconds)
+ * Default timeslice for data chunks (1 second)
+ * Smaller interval improves real-time metering and header capture.
  * @constant {number}
  */
-const DEFAULT_TIMESLICE = 10000;
+const GAPLESS_CHUNK_INTERVAL = 1000;
 
 /**
  * Default maximum recording duration (5 minutes in milliseconds)
@@ -792,7 +793,7 @@ class AudioRecorder {
 
     // Start recording with timeslice for periodic data chunks
     // 1000ms timeslice ensures we get frequent data for live mode without gaps
-    const effectiveTimeslice = timeslice || 1000; 
+    const effectiveTimeslice = timeslice || GAPLESS_CHUNK_INTERVAL; 
     this._mediaRecorder.start(effectiveTimeslice);
 
     this._logger.debug(`MediaRecorder started with ${effectiveTimeslice}ms timeslice`);

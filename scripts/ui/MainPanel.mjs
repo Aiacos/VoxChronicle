@@ -13,6 +13,7 @@
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { debounce } from '../utils/DomUtils.mjs';
+import { stripHtml } from '../utils/HtmlUtils.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -152,6 +153,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<object>} Template data
    */
   async _prepareContext(options) {
+    const voxChronicle = VoxChronicle.getInstance();
+    const status = voxChronicle.getServicesStatus();
     const session = this._orchestrator?.currentSession;
     const ragData = this._getRAGData();
 
@@ -170,7 +173,6 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Generate/Update chronicle draft ONLY if segments changed
     const currentSegmentCount = session?.transcript?.segments?.length || 0;
     if (currentSegmentCount > 0 && currentSegmentCount !== this.#lastDraftSegmentCount) {
-      const voxChronicle = VoxChronicle.getInstance();
       const exporter = voxChronicle?.narrativeExporter;
       if (exporter) {
         try {
@@ -193,7 +195,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     return {
-      isConfigured: true,
+      isConfigured: status.settings.openaiConfigured,
+      kankaConfigured: status.settings.kankaConfigured,
+      hasTranscription: status.services.transcription,
+      hasRAG: status.services.ragProvider,
       isRecording: this._isRecordingActive(),
       isPaused: this._orchestrator?.state === 'paused',
       isProcessing: this._orchestrator?.state === 'processing',
@@ -201,7 +206,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       progressPercent: this.#progressPercent,
       duration: this._formatDuration(),
       audioLevel: this._getAudioLevel(),
-      transcriptionMode: 'auto',
+      transcriptionMode: voxChronicle._getSetting('transcriptionMode') || 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
       activeTab: this._activeTab,
       suggestions: this._orchestrator?.getAISuggestions?.() || [],
@@ -413,41 +418,6 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Format bytes to human-readable storage size
-   * @param {number} bytes - Size in bytes
-   * @returns {string} Formatted size string
-   * @private
-   */
-  _formatStorageSize(bytes) {
-    if (bytes === 0) return '0 KB';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    const size = (bytes / Math.pow(1024, i)).toFixed(1);
-    return `${size} ${units[i]}`;
-  }
-
-  /**
-   * Format timestamp to localized date/time string
-   * @param {string|number|Date} timestamp - Timestamp to format
-   * @returns {string} Formatted timestamp
-   * @private
-   */
-  _formatTimestamp(timestamp) {
-    try {
-      const date = new Date(timestamp);
-      return date.toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      this._logger.debug('Could not format timestamp:', error.message);
-      return '';
-    }
-  }
-
-  /**
    * Toggle recording on/off based on current state
    * @private
    */
@@ -622,14 +592,6 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       // Collect journal entries as RAGDocuments
       const documents = [];
       const journals = game?.journal ?? [];
-      
-      // Helper to strip HTML
-      const stripHtml = (html) => {
-        if (!html) return '';
-        const tmp = document.createElement('div');
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || '';
-      };
 
       for (const journal of journals) {
         const pages = journal.pages?.contents ?? [];

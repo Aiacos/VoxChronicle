@@ -7,6 +7,19 @@
   </div>
   {{/unless}}
 
+  {{!-- Status Badges --}}
+  <div class="vox-chronicle-panel__badges">
+    <span class="vox-chronicle-badge {{#if isConfigured}}active{{else}}inactive{{/if}}" title="OpenAI API">
+      <i class="fas fa-robot"></i> AI
+    </span>
+    <span class="vox-chronicle-badge {{#if hasRAG}}active{{else}}inactive{{/if}}" title="RAG Knowledge Base">
+      <i class="fas fa-database"></i> RAG
+    </span>
+    <span class="vox-chronicle-badge {{#if kankaConfigured}}active{{else}}inactive{{/if}}" title="Kanka Integration">
+      <i class="fas fa-cloud-upload-alt"></i> KANKA
+    </span>
+  </div>
+
   {{!-- Header: Recording Controls --}}
   <div class="vox-chronicle-panel__header">
     <div class="vox-chronicle-panel__controls">

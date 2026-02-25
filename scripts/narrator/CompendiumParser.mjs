@@ -12,6 +12,7 @@
 
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
+import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * @typedef {Object} ParsedCompendiumEntry
@@ -635,34 +636,6 @@ export class CompendiumParser {
   }
 
   // ---------------------------------------------------------------------------
-  // HTML stripping (public utility)
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Strips HTML tags from content while preserving text.
-   * Uses DOMParser for safe parsing without script execution (XSS prevention).
-   *
-   * @param {string} html - The HTML content to strip
-   * @returns {string} Plain text content with normalized whitespace
-   */
-  stripHtml(html) {
-    if (!html || typeof html !== 'string') {
-      return '';
-    }
-
-    // Use DOMParser to safely parse HTML without executing scripts
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    let text = doc.body.textContent || '';
-
-    // Normalize whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-
-    return text;
-  }
-
-  // ---------------------------------------------------------------------------
   // Private: pack parsing
   // ---------------------------------------------------------------------------
 
@@ -781,7 +754,7 @@ export class CompendiumParser {
         // Try to extract name and any description field
         text = doc.name || '';
         if (doc.system?.description?.value) {
-          text += '\n' + this.stripHtml(doc.system.description.value);
+          text += '\n' + stripHtml(doc.system.description.value);
         }
     }
 
@@ -819,7 +792,7 @@ export class CompendiumParser {
       for (const page of journal.pages) {
         if (page.type === 'text' && page.text?.content) {
           parts.push(`## ${page.name}`);
-          parts.push(this.stripHtml(page.text.content));
+          parts.push(stripHtml(page.text.content));
         }
       }
     }
@@ -843,7 +816,7 @@ export class CompendiumParser {
 
     // Description (most systems use system.description.value)
     if (item.system?.description?.value) {
-      parts.push(this.stripHtml(item.system.description.value));
+      parts.push(stripHtml(item.system.description.value));
     }
 
     // Additional system-specific fields
@@ -865,7 +838,7 @@ export class CompendiumParser {
     const parts = [table.name];
 
     if (table.description) {
-      parts.push(this.stripHtml(table.description));
+      parts.push(stripHtml(table.description));
     }
 
     // Include table results
@@ -899,7 +872,7 @@ export class CompendiumParser {
 
     // Biography/description
     if (actor.system?.details?.biography?.value) {
-      parts.push(this.stripHtml(actor.system.details.biography.value));
+      parts.push(stripHtml(actor.system.details.biography.value));
     }
 
     return parts.join('\n');

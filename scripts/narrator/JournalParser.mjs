@@ -10,6 +10,7 @@
 
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
+import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Represents a parsed journal page with extracted content
@@ -225,35 +226,6 @@ export class JournalParser {
     const totalPages = results.reduce((sum, j) => sum + j.pages.length, 0);
     this._logger.debug(`parseAll() exit — ${results.length} journals, ${totalPages} pages total, ${(performance.now() - _startTime).toFixed(1)}ms`);
     return results;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Public API — HTML stripping
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Strips HTML tags from content while preserving text.
-   * Uses DOMParser for safe parsing without script execution (XSS prevention).
-   *
-   * @param {string} html - The HTML content to strip
-   * @returns {string} Plain text content with normalized whitespace
-   */
-  stripHtml(html) {
-    if (!html || typeof html !== 'string') {
-      return '';
-    }
-
-    // Use DOMParser to safely parse HTML without executing scripts
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    // Get text content from the parsed document body
-    let text = doc.body.textContent || '';
-
-    // Normalize whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-
-    return text;
   }
 
   // ---------------------------------------------------------------------------
@@ -807,7 +779,7 @@ export class JournalParser {
     }
 
     const rawContent = page.text?.content || '';
-    const plainText = this.stripHtml(rawContent);
+    const plainText = stripHtml(rawContent);
 
     // Skip empty pages
     if (!plainText.trim()) {

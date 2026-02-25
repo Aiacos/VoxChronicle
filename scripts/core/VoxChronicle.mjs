@@ -120,6 +120,33 @@ class VoxChronicle {
   }
 
   /**
+   * Reset and re-initialize all services.
+   * Useful when settings change (e.g. API key updated).
+   * @returns {Promise<void>}
+   */
+  async reinitialize() {
+    this.isInitialized = false;
+    return this.initialize();
+  }
+
+  /**
+   * Mark initialized and register settings change hook
+   * @private
+   */
+  _registerHooks() {
+    Hooks.on('updateSetting', (setting) => {
+      if (setting.key.startsWith(`${MODULE_ID}.`)) {
+        const aiSettings = ['openaiApiKey', 'ragEnabled', 'transcriptionMode', 'kankaApiToken'];
+        const key = setting.key.split('.')[1];
+        if (aiSettings.includes(key)) {
+          logger.info(`Setting '${key}' updated, reinitializing services...`);
+          this.reinitialize();
+        }
+      }
+    });
+  }
+
+  /**
    * Initialize all module services
    * Called from the 'ready' hook when Foundry VTT is fully loaded
    *
@@ -127,18 +154,20 @@ class VoxChronicle {
    * @throws {Error} If initialization fails
    */
   async initialize() {
-    if (this.isInitialized) {
-      logger.warn('VoxChronicle already initialized');
-      return;
+    logger.info('Initializing VoxChronicle services...');
+    
+    // Register settings monitor on first init
+    if (!VoxChronicle._hooksRegistered) {
+      this._registerHooks();
+      VoxChronicle._hooksRegistered = true;
     }
 
-    logger.info('Initializing VoxChronicle services...');
-
     try {
-      // Get API keys from settings
-      const openaiApiKey = this._getSetting('openaiApiKey');
-      const kankaApiToken = this._getSetting('kankaApiToken');
-      const kankaCampaignId = this._getSetting('kankaCampaignId');
+      // Get and TRIM API keys from settings
+      const openaiApiKey = this._getSetting('openaiApiKey')?.trim();
+      const kankaApiToken = this._getSetting('kankaApiToken')?.trim();
+      const kankaCampaignId = this._getSetting('kankaCampaignId')?.trim();
+      
       const audioSettings = {
         echoCancellation: this._getSetting('echoCancellation') ?? true,
         noiseSuppression: this._getSetting('noiseSuppression') ?? true
@@ -149,17 +178,11 @@ class VoxChronicle {
       const whisperBackendUrl = this._getSetting('whisperBackendUrl');
       const transcriptionLanguage = this._getSetting('transcriptionLanguage');
 
-      // Validate and warn about missing settings
-      if (!openaiApiKey && transcriptionMode !== 'local') {
-        logger.warn('OpenAI API key not configured');
+      // Initialize audio recorder (if not exists)
+      if (!this.audioRecorder) {
+        logger.debug('Creating AudioRecorder...');
+        this.audioRecorder = new AudioRecorder(audioSettings);
       }
-      if (!kankaApiToken || !kankaCampaignId) {
-        logger.warn('Kanka API settings not configured');
-      }
-
-      // Initialize audio recorder (always available)
-      logger.debug('Creating AudioRecorder...');
-      this.audioRecorder = new AudioRecorder(audioSettings);
 
       // Initialize transcription service using factory
       try {
@@ -168,100 +191,100 @@ class VoxChronicle {
           openaiApiKey: openaiApiKey,
           whisperBackendUrl: whisperBackendUrl
         });
-        logger.info(`Transcription service initialized with mode: ${transcriptionMode}`);
+        logger.info(`Transcription service ready (mode: ${transcriptionMode})`);
       } catch (error) {
-        logger.warn(`Failed to create transcription service: ${error.message}`);
+        logger.warn(`Transcription service unavailable: ${error.message}`);
+        this.transcriptionService = null;
       }
 
       // Initialize other OpenAI services (if API key configured)
       if (openaiApiKey) {
-        logger.debug('Creating ImageGenerationService and EntityExtractor...');
         this.imageGenerationService = new ImageGenerationService(openaiApiKey);
         this.entityExtractor = new EntityExtractor(openaiApiKey);
+        this.aiAssistant = new AIAssistant({
+          openaiClient: new OpenAIClient(openaiApiKey),
+          primaryLanguage: transcriptionLanguage || 'en'
+        });
+      } else {
+        this.imageGenerationService = null;
+        this.entityExtractor = null;
+        this.aiAssistant = null;
       }
 
       // Initialize Kanka services (if configured)
       if (kankaApiToken && kankaCampaignId) {
-        logger.debug('Creating KankaService and NarrativeExporter...');
         this.kankaService = new KankaService(kankaApiToken, kankaCampaignId);
         this.narrativeExporter = new NarrativeExporter();
-        // Set OpenAI client on narrative exporter for AI summaries
-        if (this.transcriptionService) {
+        if (openaiApiKey) {
           this.narrativeExporter.setOpenAIClient(openaiApiKey);
         }
+      } else {
+        this.kankaService = null;
+        this.narrativeExporter = null;
       }
 
-      // Initialize session orchestrator with available services
-      logger.debug('Creating SessionOrchestrator...');
-      this.sessionOrchestrator = new SessionOrchestrator({
+      // Initialize or UPDATE session orchestrator
+      const services = {
         audioRecorder: this.audioRecorder,
         transcriptionService: this.transcriptionService,
         entityExtractor: this.entityExtractor,
         imageGenerationService: this.imageGenerationService,
         kankaService: this.kankaService,
-        narrativeExporter: this.narrativeExporter
-      });
+        narrativeExporter: this.narrativeExporter,
+        aiAssistant: this.aiAssistant
+      };
 
-      // Set transcription config for auto-mode fallback support
+      if (!this.sessionOrchestrator) {
+        logger.debug('Creating SessionOrchestrator...');
+        this.sessionOrchestrator = new SessionOrchestrator(services);
+      } else {
+        logger.debug('Updating SessionOrchestrator services...');
+        this.sessionOrchestrator.setServices(services);
+      }
+
+      // Sync transcription config
       this.sessionOrchestrator.setTranscriptionConfig({
         mode: transcriptionMode,
         openaiApiKey: openaiApiKey,
         whisperBackendUrl: whisperBackendUrl
       });
 
-      // Check Kanka API token expiration
-      await this._checkKankaTokenExpiration();
-
-      // Initialize vocabulary dictionary with default D&D terms if empty
-      const vocabularyDictionary = new VocabularyDictionary();
-      await vocabularyDictionary.initialize();
-
-      // Initialize Narrator Master services
-      logger.debug('Creating Narrator services (JournalParser, CompendiumParser, ChapterTracker, SceneDetector, SessionAnalytics)...');
-      this.journalParser = new JournalParser();
-      this.compendiumParser = new CompendiumParser();
-      this.chapterTracker = new ChapterTracker({ journalParser: this.journalParser });
-      this.sceneDetector = new SceneDetector();
-      this.sessionAnalytics = new SessionAnalytics();
-
-      // Initialize AI-dependent narrator services (if OpenAI configured)
-      if (openaiApiKey) {
-        logger.debug('Creating AIAssistant with OpenAI client...');
-        this.aiAssistant = new AIAssistant({
-          openaiClient: new OpenAIClient(openaiApiKey),
-          primaryLanguage: transcriptionLanguage || 'en'
-        });
+      // Initialize Narrator Master services (once)
+      if (!this.journalParser) {
+        this.journalParser = new JournalParser();
+        this.compendiumParser = new CompendiumParser();
+        this.chapterTracker = new ChapterTracker({ journalParser: this.journalParser });
+        this.sceneDetector = new SceneDetector();
+        this.sessionAnalytics = new SessionAnalytics();
       }
 
-      // Initialize rules reference (if enabled)
-      const rulesDetection = this._getSetting('rulesDetection');
-      if (rulesDetection !== false) {
-        this.rulesReference = new RulesReference({
-          language: transcriptionLanguage || 'en'
-        });
-      }
-
-      // Connect narrator services to orchestrator for live mode
+      // Connect narrator services to orchestrator
       this.sessionOrchestrator.setNarratorServices({
-        aiAssistant: this.aiAssistant || null,
+        aiAssistant: this.aiAssistant,
         chapterTracker: this.chapterTracker,
         sceneDetector: this.sceneDetector,
         sessionAnalytics: this.sessionAnalytics,
         journalParser: this.journalParser
       });
 
-      // Initialize RAG services (if enabled and OpenAI configured)
-      await this._initializeRAGServices(openaiApiKey);
-
-      // Connect debug mode
-      const debugMode = this._getSetting('debugMode');
-      if (debugMode) {
-        Logger.setDebugMode(true);
+      // Initialize rules reference
+      if (this._getSetting('rulesDetection') !== false) {
+        this.rulesReference = new RulesReference({ language: transcriptionLanguage || 'en' });
       }
 
-      // Mark as initialized
+      // Initialize RAG services
+      await this._initializeRAGServices(openaiApiKey);
+
+      // Final status check
       this.isInitialized = true;
-      logger.info('VoxChronicle services initialized successfully');
+      logger.info('VoxChronicle services stabilized');
+      
+      // Notify UI to refresh badges
+      if (ui.windows) {
+        Object.values(ui.windows).forEach(w => {
+          if (w.constructor.name === 'MainPanel') w.render();
+        });
+      }
     } catch (error) {
       logger.error('Failed to initialize services:', error);
       throw error;
@@ -478,18 +501,6 @@ class VoxChronicle {
         ragEnabled: !!this._getSetting('ragEnabled')
       }
     };
-  }
-
-  /**
-   * Reset the singleton instance (primarily for testing)
-   *
-   * @static
-   */
-  static resetInstance() {
-    if (VoxChronicle.instance) {
-      VoxChronicle.instance.isInitialized = false;
-    }
-    VoxChronicle.instance = null;
   }
 }
 

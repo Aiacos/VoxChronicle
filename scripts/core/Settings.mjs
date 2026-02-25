@@ -644,16 +644,6 @@ class Settings {
         game.i18n?.format('VOXCHRONICLE.Settings.ApiKeyUpdated', { service: serviceName }) ||
         `VoxChronicle: ${serviceName} API key updated. Re-initializing services...`
       );
-
-      // Actually reinitialize services with new credentials
-      import('./VoxChronicle.mjs').then(({ VoxChronicle }) => {
-        VoxChronicle.resetInstance();
-        VoxChronicle.getInstance().initialize().catch(err => {
-          logger.error(`Failed to reinitialize after ${serviceName} key change:`, err);
-        });
-      }).catch(err => {
-        logger.error('Failed to import VoxChronicle for reinitialization:', err);
-      });
     }
   }
 

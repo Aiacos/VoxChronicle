@@ -39,3 +39,28 @@ export function escapeHtml(text) {
 
   return String(text).replace(/[&<>"']/g, (char) => escapeMap[char]);
 }
+
+/**
+ * Strips HTML tags from content while preserving text.
+ * Uses DOMParser for safe parsing without script execution (XSS prevention).
+ *
+ * @param {string} html - The HTML content to strip
+ * @returns {string} Plain text content with normalized whitespace
+ */
+export function stripHtml(html) {
+  if (!html || typeof html !== 'string') {
+    return '';
+  }
+
+  // Use DOMParser to safely parse HTML without executing scripts
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Get text content from the parsed document body
+  let text = doc.body.textContent || '';
+
+  // Normalize whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+
+  return text;
+}

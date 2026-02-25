@@ -14,6 +14,7 @@
 
 import { Logger } from '../utils/Logger.mjs';
 import { MODULE_ID } from '../constants.mjs';
+import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Default search result limit
@@ -652,7 +653,7 @@ export class RulesReference {
           content = textPages
             .map(page => {
               const rawContent = page.text?.content || '';
-              return this._stripHtml(rawContent);
+              return stripHtml(rawContent);
             })
             .join(' ');
         }
@@ -661,20 +662,20 @@ export class RulesReference {
       // Handle Item documents (spells, equipment, etc.)
       else if (pack.documentName === 'Item') {
         content = doc.system?.description?.value || '';
-        content = this._stripHtml(content);
+        content = stripHtml(content);
         category = doc.type || 'item';
       }
       // Handle Actor documents
       else if (pack.documentName === 'Actor') {
         content = doc.system?.details?.biography?.value || '';
-        content = this._stripHtml(content);
+        content = stripHtml(content);
         category = 'creature';
       }
       // Generic fallback
       else {
         content = doc.system?.description?.value || doc.data?.description || '';
         if (typeof content === 'string') {
-          content = this._stripHtml(content);
+          content = stripHtml(content);
         }
       }
 
@@ -695,30 +696,6 @@ export class RulesReference {
       this._logger.warn(`Error extracting compendium entry ${indexEntry._id}`, error);
       return null;
     }
-  }
-
-  /**
-   * Strips HTML tags from content while preserving text
-   * @param {string} html - The HTML content to strip
-   * @returns {string} Plain text content
-   * @private
-   */
-  _stripHtml(html) {
-    if (!html || typeof html !== 'string') {
-      return '';
-    }
-
-    // Create a temporary DOM element to parse HTML
-    const div = document.createElement('div');
-    div.innerHTML = html;
-
-    // Get text content, handling nested elements
-    let text = div.textContent || div.innerText || '';
-
-    // Normalize whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-
-    return text;
   }
 
   /**
