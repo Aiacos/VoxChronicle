@@ -168,6 +168,12 @@ class VoxChronicle {
       const kankaApiToken = this._getSetting('kankaApiToken')?.trim();
       const kankaCampaignId = this._getSetting('kankaCampaignId')?.trim();
       
+      if (openaiApiKey) {
+        logger.info(`OpenAI API key loaded (${openaiApiKey.substring(0, 5)}...)`);
+      } else {
+        logger.warn('OpenAI API key is empty or not configured');
+      }
+
       const audioSettings = {
         echoCancellation: this._getSetting('echoCancellation') ?? true,
         noiseSuppression: this._getSetting('noiseSuppression') ?? true

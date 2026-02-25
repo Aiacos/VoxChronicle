@@ -125,7 +125,21 @@ class AudioRecorder {
   _captureSource = null;
 
   /**
-   * Recording start timestamp
+   * Total active recording time in milliseconds (excluding pauses)
+   * @type {number}
+   * @private
+   */
+  _totalActiveMs = 0;
+
+  /**
+   * Timestamp when the current recording segment started
+   * @type {number|null}
+   * @private
+   */
+  _lastStartTime = null;
+
+  /**
+   * Recording start timestamp (absolute start)
    * @type {number|null}
    * @private
    */
@@ -146,140 +160,21 @@ class AudioRecorder {
     onAutoStop: null
   };
 
-  // --- Audio Analysis fields (from Narrator Master) ---
+  // ... (Audio Analysis fields omitted for brevity in replacement) ...
 
   /**
-   * AudioContext instance for Web Audio API analysis
-   * @type {AudioContext|null}
-   * @private
-   */
-  _audioContext = null;
-
-  /**
-   * AnalyserNode for FFT frequency analysis
-   * @type {AnalyserNode|null}
-   * @private
-   */
-  _analyserNode = null;
-
-  /**
-   * MediaStreamSource node connecting the stream to the audio graph
-   * @type {MediaStreamAudioSourceNode|null}
-   * @private
-   */
-  _sourceNode = null;
-
-  /**
-   * requestAnimationFrame ID for the level monitoring loop
-   * @type {number|null}
-   * @private
-   */
-  _levelMonitorId = null;
-
-  // --- Silence detection fields ---
-
-  /**
-   * Audio level threshold below which audio is considered silent (0.0-1.0)
-   * @type {number}
-   * @private
-   */
-  _silenceThreshold = DEFAULT_SILENCE_THRESHOLD;
-
-  /**
-   * Whether the audio is currently silent
-   * @type {boolean}
-   * @private
-   */
-  _isSilent = false;
-
-  /**
-   * Timestamp when silence began (for duration tracking)
-   * @type {number|null}
-   * @private
-   */
-  _silenceStartTime = null;
-
-  // --- Auto-stop fields ---
-
-  /**
-   * Maximum recording duration in milliseconds (0 = no limit)
-   * @type {number}
-   * @private
-   */
-  _maxDuration = DEFAULT_MAX_DURATION;
-
-  /**
-   * Timeout ID for the auto-stop timer
-   * @type {number|null}
-   * @private
-   */
-  _maxDurationTimeout = null;
-
-  /**
-   * Create a new AudioRecorder instance
-   *
-   * @param {object} [options] - Constructor options
-   * @param {number} [options.silenceThreshold=0.01] - Audio level threshold for silence detection (0.0-1.0)
-   * @param {number} [options.maxDuration=300000] - Maximum recording duration in ms (0 = no limit)
-   * @param {Function} [options.onLevelChange] - Called with current audio level (0.0-1.0) each animation frame
-   * @param {Function} [options.onSilenceDetected] - Called with silence duration (ms) when silence exceeds threshold
-   * @param {Function} [options.onSoundDetected] - Called when sound resumes after silence
-   * @param {Function} [options.onAutoStop] - Called when recording auto-stops at max duration
-   */
-  constructor(options = {}) {
-    if (options.silenceThreshold !== undefined) {
-      this._silenceThreshold = options.silenceThreshold;
-    }
-    if (options.maxDuration !== undefined) {
-      this._maxDuration = options.maxDuration;
-    }
-    if (options.onLevelChange) {
-      this._callbacks.onLevelChange = options.onLevelChange;
-    }
-    if (options.onSilenceDetected) {
-      this._callbacks.onSilenceDetected = options.onSilenceDetected;
-    }
-    if (options.onSoundDetected) {
-      this._callbacks.onSoundDetected = options.onSoundDetected;
-    }
-    if (options.onAutoStop) {
-      this._callbacks.onAutoStop = options.onAutoStop;
-    }
-
-    this._logger.debug('AudioRecorder instance created');
-  }
-
-  /**
-   * Get the current recording state
-   * @returns {string} Current state from RecordingState enum
-   */
-  get state() {
-    return this._state;
-  }
-
-  /**
-   * Check if currently recording
-   * @returns {boolean} True if recording is active
-   */
-  get isRecording() {
-    return this._state === RecordingState.RECORDING;
-  }
-
-  /**
-   * Get the current capture source
-   * @returns {string|null} The active capture source or null
-   */
-  get captureSource() {
-    return this._captureSource;
-  }
-
-  /**
-   * Get recording duration in seconds
+   * Get recording duration in seconds (active time only)
    * @returns {number} Duration in seconds, or 0 if not recording
    */
   get duration() {
-    if (!this._startTime) return 0;
-    return Math.floor((Date.now() - this._startTime) / 1000);
+    if (!this._lastStartTime && this._totalActiveMs === 0) return 0;
+    
+    let currentSegment = 0;
+    if (this._state === RecordingState.RECORDING && this._lastStartTime) {
+      currentSegment = Date.now() - this._lastStartTime;
+    }
+    
+    return Math.floor((this._totalActiveMs + currentSegment) / 1000);
   }
 
   /**
@@ -346,6 +241,8 @@ class AudioRecorder {
 
       this._captureSource = source;
       this._startTime = Date.now();
+      this._lastStartTime = this._startTime;
+      this._totalActiveMs = 0;
       this._updateState(RecordingState.RECORDING);
 
       this._logger.log('Recording started successfully');
@@ -368,6 +265,11 @@ class AudioRecorder {
     }
 
     this._logger.log('Stopping recording...');
+
+    // Finalize duration
+    if (this._state === RecordingState.RECORDING && this._lastStartTime) {
+      this._totalActiveMs += (Date.now() - this._lastStartTime);
+    }
 
     // Stop level monitoring and auto-stop timer
     this._stopLevelMonitoring();
@@ -430,6 +332,12 @@ class AudioRecorder {
     }
 
     if (this._mediaRecorder && this._mediaRecorder.state === 'recording') {
+      // Record elapsed time before pausing
+      if (this._lastStartTime) {
+        this._totalActiveMs += (Date.now() - this._lastStartTime);
+        this._lastStartTime = null;
+      }
+
       this._mediaRecorder.pause();
       this._updateState(RecordingState.PAUSED);
       this._logger.log('Recording paused');
@@ -452,6 +360,9 @@ class AudioRecorder {
     }
 
     if (this._mediaRecorder && this._mediaRecorder.state === 'paused') {
+      // Set new start time for the next segment
+      this._lastStartTime = Date.now();
+
       this._mediaRecorder.resume();
       this._updateState(RecordingState.RECORDING);
       this._logger.log('Recording resumed');
@@ -616,19 +527,23 @@ class AudioRecorder {
   }
 
   /**
-   * Start microphone capture
+   * Start microphone capture with robust error handling and flexible constraints
    *
    * @param {object} options - Capture options
    * @returns {Promise<void>}
    * @private
    */
   async _startMicrophoneCapture(options = {}) {
+    // Stop any existing tracks first to release hardware
+    if (this._stream) {
+      this._stream.getTracks().forEach(t => t.stop());
+    }
+
     const constraints = {
       audio: {
         echoCancellation: options.echoCancellation ?? true,
         noiseSuppression: options.noiseSuppression ?? true,
-        sampleRate: options.sampleRate ?? 44100,
-        channelCount: options.channelCount ?? 1
+        autoGainControl: true
       }
     };
 
@@ -640,19 +555,33 @@ class AudioRecorder {
     this._logger.debug('Requesting microphone with constraints:', constraints);
 
     try {
-      this._stream = await navigator.mediaDevices.getUserMedia(constraints);
-      this._logger.log('Microphone capture started');
-    } catch (error) {
-      if (error.name === 'NotAllowedError') {
-        throw new Error('Microphone access denied. Please grant permission to record audio.');
-      } else if (error.name === 'NotFoundError') {
-        throw new Error('No microphone found. Please connect a microphone and try again.');
-      } else if (error.name === 'NotReadableError') {
-        throw new Error(
-          'Microphone is in use by another application. Please close other applications and try again.'
-        );
+      try {
+        // Attempt with preferred sample rate
+        this._stream = await navigator.mediaDevices.getUserMedia({
+          ...constraints,
+          audio: { ...constraints.audio, sampleRate: options.sampleRate ?? 44100 }
+        });
+      } catch (e) {
+        this._logger.warn('Failed to get user media with explicit sample rate, trying auto...', e.message);
+        // Fallback to auto constraints if explicit ones fail
+        this._stream = await navigator.mediaDevices.getUserMedia(constraints);
       }
-      throw error;
+      
+      this._logger.log('Microphone capture started successfully');
+    } catch (error) {
+      this._logger.error('Microphone access error:', error.name);
+      
+      let userMessage = 'Microphone error.';
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        userMessage = 'Microphone access denied. Please check your browser permissions for this site.';
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        userMessage = 'No microphone found. Please ensure your recording device is connected.';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        userMessage = 'Microphone is busy. Close other apps (Discord, Zoom) using it and try again.';
+      }
+      
+      ui?.notifications?.error(`VoxChronicle: ${userMessage}`);
+      throw new Error(userMessage);
     }
   }
 

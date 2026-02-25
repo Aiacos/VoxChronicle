@@ -644,6 +644,16 @@ class Settings {
         game.i18n?.format('VOXCHRONICLE.Settings.ApiKeyUpdated', { service: serviceName }) ||
         `VoxChronicle: ${serviceName} API key updated. Re-initializing services...`
       );
+
+      // CRITICAL: Explicitly trigger reinitialization.
+      // updateSetting hook doesn't fire for client-scope settings (OpenAI key).
+      import('./VoxChronicle.mjs').then(({ VoxChronicle }) => {
+        VoxChronicle.getInstance().reinitialize().then(() => {
+          logger.info(`${serviceName} services re-initialized successfully.`);
+        }).catch(err => {
+          logger.error(`Failed to re-initialize ${serviceName} services:`, err);
+        });
+      });
     }
   }
 
