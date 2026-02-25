@@ -787,17 +787,20 @@ class Settings {
    * Validate OpenAI API key
    * Makes a test request to verify the API key is valid
    *
+   * @param {string} [overrideKey] - Optional key to validate instead of the saved one
    * @returns {Promise<boolean>} True if validation succeeds, false otherwise
    * @static
    */
-  static async validateOpenAIKey() {
+  static async validateOpenAIKey(overrideKey = null) {
+    const apiKey = overrideKey || Settings.get('openaiApiKey');
+    
     // Check if API key is configured
-    if (!Settings.isOpenAIConfigured()) {
+    if (!apiKey || apiKey.trim().length === 0) {
       ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.OpenAIKeyNotConfigured'));
       return false;
     }
 
-    // Show loading notification before try so finally always cleans it up
+    // Show loading notification
     const loadingNotif = ui.notifications?.info(
       game.i18n.localize('VOXCHRONICLE.Validation.ValidatingOpenAI'),
       { permanent: true }
@@ -809,12 +812,10 @@ class Settings {
       const voxChronicle = VoxChronicle.getInstance();
 
       let isValid;
-      // Check if transcription service is initialized
-      if (!voxChronicle.transcriptionService) {
-        // Try to get the API key and create a temporary client
+      // If we have an override key, always create a temporary client
+      if (overrideKey || !voxChronicle.transcriptionService) {
         const { OpenAIClient } = await import('../ai/OpenAIClient.mjs');
-        const apiKey = Settings.get('openaiApiKey');
-        const tempClient = new OpenAIClient(apiKey);
+        const tempClient = new OpenAIClient(apiKey.trim());
         isValid = await tempClient.validateApiKey();
       } else {
         // Use existing service to validate
@@ -843,19 +844,22 @@ class Settings {
    * Validate Kanka API token
    * Makes a test request to verify the API token is valid
    *
+   * @param {string} [overrideToken] - Optional token to validate instead of the saved one
    * @returns {Promise<boolean>} True if validation succeeds, false otherwise
    * @static
    */
-  static async validateKankaToken() {
+  static async validateKankaToken(overrideToken = null) {
+    const apiToken = overrideToken || Settings.get('kankaApiToken');
+
     // Check if API token is configured
-    if (!Settings.isKankaConfigured()) {
+    if (!apiToken || apiToken.trim().length === 0) {
       ui.notifications?.error(
         game.i18n.localize('VOXCHRONICLE.Validation.KankaTokenNotConfigured')
       );
       return false;
     }
 
-    // Show loading notification before try so finally always cleans it up
+    // Show loading notification
     const loadingNotif = ui.notifications?.info(
       game.i18n.localize('VOXCHRONICLE.Validation.ValidatingKanka'),
       { permanent: true }
@@ -867,12 +871,10 @@ class Settings {
       const voxChronicle = VoxChronicle.getInstance();
 
       let isValid;
-      // Check if Kanka service is initialized
-      if (!voxChronicle.kankaService) {
-        // Try to get the API token and create a temporary client
+      // If override provided or service not init, create temporary client
+      if (overrideToken || !voxChronicle.kankaService) {
         const { KankaClient } = await import('../kanka/KankaClient.mjs');
-        const apiToken = Settings.get('kankaApiToken');
-        const tempClient = new KankaClient(apiToken);
+        const tempClient = new KankaClient(apiToken.trim());
         isValid = await tempClient.validateApiToken();
       } else {
         // Use existing service to validate

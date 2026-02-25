@@ -339,13 +339,15 @@ Hooks.on('renderSettingsConfig', (app, html) => {
   const container = resolveHtmlElement(html);
   if (!container?.querySelector) return;
 
-  injectValidationButton(container, `${MODULE_ID}.openaiApiKey`, 'openai', () =>
-    Settings.validateOpenAIKey()
-  );
+  injectValidationButton(container, `${MODULE_ID}.openaiApiKey`, 'openai', () => {
+    const input = container.querySelector(`input[name="${MODULE_ID}.openaiApiKey"]`);
+    return Settings.validateOpenAIKey(input?.value);
+  });
 
-  injectValidationButton(container, `${MODULE_ID}.kankaApiToken`, 'kanka', () =>
-    Settings.validateKankaToken()
-  );
+  injectValidationButton(container, `${MODULE_ID}.kankaApiToken`, 'kanka', () => {
+    const input = container.querySelector(`input[name="${MODULE_ID}.kankaApiToken"]`);
+    return Settings.validateKankaToken(input?.value);
+  });
 
   // Inject dynamic campaign dropdown to replace text input for kankaCampaignId
   const campaignInput = container.querySelector(`input[name="${MODULE_ID}.kankaCampaignId"]`);
