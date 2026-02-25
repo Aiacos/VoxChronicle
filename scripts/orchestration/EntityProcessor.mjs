@@ -275,6 +275,17 @@ class EntityProcessor {
   hasKankaService() {
     return !!this._kankaService;
   }
+
+  /**
+   * Extract both entities and salient moments in one call (wrapper)
+   *
+   * @param {string} transcriptText - The full transcription text
+   * @param {object} [options] - Extraction options
+   * @returns {Promise<ExtractionResult|null>} Extracted entities and moments
+   */
+  async extractAll(transcriptText, options = {}) {
+    return this.extractEntities(transcriptText, options);
+  }
 }
 
 export { EntityProcessor };

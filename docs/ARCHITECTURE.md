@@ -211,8 +211,8 @@ Hooks.on('getSceneControlButtons', (controls) => { /* v13 object format */ });
 
 ### Layer 3: Audio (`audio/`)
 
-- **AudioRecorder** — MediaRecorder wrapper with WebRTC/microphone capture, level metering, and dual-buffer architecture (full session + live chunks)
-- **AudioChunker** — Splits audio >25MB for OpenAI API limit
+- **AudioRecorder** — MediaRecorder wrapper using **Header Injection** strategy for gapless capture. Prepends the EBML header to live chunks to ensure standalone validity without stopping the stream.
+- **AudioChunker** — Splits audio >25MB for OpenAI API limit.
 
 ### Layer 4: AI Services (`ai/`)
 

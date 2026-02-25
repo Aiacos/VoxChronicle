@@ -64,6 +64,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     main: { template: `modules/${MODULE_ID}/templates/main-panel.hbs` }
   };
 
+  /** @type {string|null} */
+  #statusMessage = null;
+
+  /** @type {number} */
+  #progressPercent = 0;
+
   /**
    * Create a new MainPanel instance
    * @param {object} orchestrator - The SessionOrchestrator instance
@@ -76,10 +82,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._logger = Logger.createChild('MainPanel');
     this._debouncedRender = debounce(() => this.render(), 150);
 
-    // Register callback so UI updates immediately when suggestions arrive
+    // Register callbacks so UI updates immediately on state and progress changes
     if (this._orchestrator?.setCallbacks) {
       this._orchestrator.setCallbacks({
-        onStateChange: () => this._debouncedRender()
+        onStateChange: () => this._debouncedRender(),
+        onProgress: (data) => {
+          this.#statusMessage = data.message;
+          this.#progressPercent = data.progress;
+          this.render();
+        }
       });
     }
   }
@@ -129,6 +140,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     return this.rendered;
   }
 
+  /** @type {string|null} */
+  #cachedChronicleDraft = null;
+
+  /** @type {number} */
+  #lastDraftSegmentCount = 0;
+
   /**
    * Prepare context data for the template
    * @param {object} options - Render options
@@ -138,24 +155,65 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const session = this._orchestrator?.currentSession;
     const ragData = this._getRAGData();
 
+    // Map images to include a displayable src
+    const images = (session?.images || []).map(img => {
+      if (img.src) return img;
+      if (img.base64 || img.b64_json) {
+        return {
+          ...img,
+          src: `data:image/png;base64,${img.base64 || img.b64_json}`
+        };
+      }
+      return img;
+    });
+
+    // Generate/Update chronicle draft ONLY if segments changed
+    const currentSegmentCount = session?.transcript?.segments?.length || 0;
+    if (currentSegmentCount > 0 && currentSegmentCount !== this.#lastDraftSegmentCount) {
+      const voxChronicle = VoxChronicle.getInstance();
+      const exporter = voxChronicle?.narrativeExporter;
+      if (exporter) {
+        try {
+          const exportData = exporter.export({
+            title: session.title,
+            date: session.date,
+            segments: session.transcript.segments,
+            entities: session.entities,
+            moments: session.moments
+          }, { format: 'summary' });
+          this.#cachedChronicleDraft = exportData.entry;
+          this.#lastDraftSegmentCount = currentSegmentCount;
+        } catch (err) {
+          this._logger.debug('Failed to generate chronicle draft:', err.message);
+        }
+      }
+    } else if (currentSegmentCount === 0) {
+      this.#cachedChronicleDraft = null;
+      this.#lastDraftSegmentCount = 0;
+    }
+
     return {
       isConfigured: true,
       isRecording: this._isRecordingActive(),
       isPaused: this._orchestrator?.state === 'paused',
       isProcessing: this._orchestrator?.state === 'processing',
+      statusMessage: this.#statusMessage,
+      progressPercent: this.#progressPercent,
       duration: this._formatDuration(),
       audioLevel: this._getAudioLevel(),
       transcriptionMode: 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
       activeTab: this._activeTab,
       suggestions: this._orchestrator?.getAISuggestions?.() || [],
-      images: session?.images || [],
-      imageCount: session?.images?.length || 0,
+      images: images,
+      imageCount: images.length,
       segments: session?.transcript?.segments || [],
       hasTranscript: !!session?.transcript,
       entities: session?.entities || null,
       entityCount: this._countEntities(session?.entities),
       hasEntities: !!session?.entities,
+      chronicleDraft: this.#cachedChronicleDraft,
+      hasChronicleDraft: !!this.#cachedChronicleDraft,
       // RAG indexing status data
       ragEnabled: ragData.enabled,
       ragStatus: ragData.status,
@@ -192,6 +250,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Start real-time updates if recording is active
     if (this._isRecordingActive()) {
       this._startRealtimeUpdates();
+    }
+
+    // Auto-scroll transcript to bottom
+    if (this._activeTab === 'transcript') {
+      const container = this.element.querySelector('.vox-chronicle-panel__transcript');
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
     }
   }
 
@@ -556,12 +622,22 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       // Collect journal entries as RAGDocuments
       const documents = [];
       const journals = game?.journal ?? [];
+      
+      // Helper to strip HTML
+      const stripHtml = (html) => {
+        if (!html) return '';
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
+      };
+
       for (const journal of journals) {
         const pages = journal.pages?.contents ?? [];
         const content = pages
-          .map(p => p.text?.content || '')
+          .map(p => stripHtml(p.text?.content || ''))
           .filter(Boolean)
           .join('\n\n');
+        
         if (content) {
           documents.push({
             id: journal.id,

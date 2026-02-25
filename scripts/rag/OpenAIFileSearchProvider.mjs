@@ -99,6 +99,10 @@ export class OpenAIFileSearchProvider extends RAGProvider {
         this.#vectorStoreId = config.vectorStoreId;
         this._logger.info(`Reusing vector store: ${this.#vectorStoreId}`);
         this.#initialized = true;
+        
+        // Load persisted state (file mapping)
+        await this._loadState();
+        
         this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms (reused store)`);
         return;
       }
@@ -110,7 +114,52 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     this.#vectorStoreId = await this.#createVectorStore(storeName);
     this._logger.info(`Created vector store: ${this.#vectorStoreId}`);
     this.#initialized = true;
+    
+    // Load persisted state (file mapping)
+    await this._loadState();
+    
     this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms (new store)`);
+  }
+
+  /**
+   * Load provider state (file mapping) from settings
+   * @private
+   */
+  async _loadState() {
+    try {
+      const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
+      
+      // Load file mapping if it exists and matches current vector store
+      if (metadata.vectorStoreId === this.#vectorStoreId && metadata.fileMap) {
+        this.#fileIds = new Map(Object.entries(metadata.fileMap));
+        this._logger.debug(`Loaded ${this.#fileIds.size} file mappings from settings`);
+      } else if (metadata.vectorStoreId && metadata.vectorStoreId !== this.#vectorStoreId) {
+        this._logger.warn(`Vector store mismatch in settings (stored: ${metadata.vectorStoreId}, current: ${this.#vectorStoreId}). Clearing file map.`);
+        this.#fileIds.clear();
+        await this._saveState();
+      }
+    } catch (err) {
+      this._logger.error('Failed to load RAG state:', err);
+    }
+  }
+
+  /**
+   * Save provider state (file mapping) to settings
+   * @private
+   */
+  async _saveState() {
+    try {
+      const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
+      
+      metadata.vectorStoreId = this.#vectorStoreId;
+      metadata.fileMap = Object.fromEntries(this.#fileIds);
+      metadata.lastUpdated = new Date().toISOString();
+      
+      await game?.settings?.set(MODULE_ID, 'ragIndexMetadata', metadata);
+      this._logger.debug('Saved RAG state to settings');
+    } catch (err) {
+      this._logger.error('Failed to save RAG state:', err);
+    }
   }
 
   /**
@@ -207,6 +256,11 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     }
 
     onProgress?.(documents.length, documents.length, `Done: ${indexed} indexed, ${failed} failed`);
+    
+    if (indexed > 0) {
+      await this._saveState();
+    }
+    
     this._logger.info(`Indexing complete: ${indexed} indexed, ${failed} failed in ${Date.now() - startTime}ms`);
     return { indexed, failed };
   }
@@ -232,6 +286,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
       await this.#removeFileFromVectorStore(fileId);
       await this.#deleteFile(fileId);
       this.#fileIds.delete(documentId);
+      await this._saveState();
       this._logger.debug(`Removed document: "${documentId}" in ${Date.now() - startTime}ms`);
       return true;
     } catch (err) {
@@ -259,6 +314,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
       }
     }
     this.#fileIds.clear();
+    await this._saveState();
 
     if (errors.length > 0) {
       this._logger.warn(`Cleared index with ${errors.length} errors in ${Date.now() - startTime}ms: ${errors.join('; ')}`);

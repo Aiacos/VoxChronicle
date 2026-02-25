@@ -493,116 +493,39 @@ class AudioRecorder {
   }
 
   /**
+   * First chunk of the recording containing the WebM/EBML header.
+   * Required to make subsequent chunks playable/transcribable.
+   * @type {Blob|null}
+   * @private
+   */
+  _headerChunk = null;
+
+  /**
    * Get the latest audio chunk(s) accumulated since the last call.
-   * Rotates the MediaRecorder (stop + restart on same stream) so that each
-   * returned Blob is a complete, valid audio file with proper container headers.
+   * Returns a valid WebM blob by prepending the session header to the new data.
+   * This allows gapless recording (no stop/start required).
    *
-   * WebM/Matroska containers require EBML + Tracks headers at the start of the
-   * file. A running MediaRecorder only emits these headers in its very first
-   * ondataavailable event. Subsequent chunks are headerless cluster data that
-   * cannot be decoded on their own. By stopping and restarting the recorder we
-   * guarantee every Blob begins with valid headers.
-   *
-   * @returns {Promise<Blob|null>} A self-contained audio Blob, or null if no data
+   * @returns {Promise<Blob|null>} A self-contained audio Blob, or null if no new data
    */
   async getLatestChunk() {
-    if (this._state !== RecordingState.RECORDING || !this._mediaRecorder) {
-      this._logger.debug('getLatestChunk: no active recording, returning null');
+    if (this._state !== RecordingState.RECORDING) {
       return null;
     }
 
-    // Rotate: stop current recorder → collect valid blob → start fresh recorder
-    const blob = await this._rotateRecorder();
-    this._logger.debug(`getLatestChunk result: ${blob ? `${(blob.size / 1024).toFixed(1)}KB` : 'null'}`);
+    if (this._liveChunks.length === 0) {
+      return null;
+    }
+
+    // Create a blob from the accumulated live chunks
+    // IMPORTANT: Prepend the header chunk so this blob is a valid, standalone WebM file
+    const parts = this._headerChunk ? [this._headerChunk, ...this._liveChunks] : [...this._liveChunks];
+    const blob = new Blob(parts, { type: this._mediaRecorder.mimeType });
+
+    // Clear buffer but DO NOT clear header
+    this._liveChunks = [];
+
+    this._logger.debug(`getLatestChunk: emitted ${(blob.size / 1024).toFixed(1)}KB (header included)`);
     return blob;
-  }
-
-  /**
-   * Stop the current MediaRecorder, collect its output as a valid audio file,
-   * then immediately start a new recorder on the same stream.
-   *
-   * @returns {Promise<Blob|null>} Complete audio blob or null if empty
-   * @private
-   */
-  _rotateRecorder() {
-    return new Promise((resolve) => {
-      const oldRecorder = this._mediaRecorder;
-      const mimeType = oldRecorder.mimeType;
-
-      oldRecorder.onstop = () => {
-        // At this point all ondataavailable events have fired (including the
-        // final flush triggered by stop()), so _liveChunks is complete.
-        if (this._liveChunks.length === 0) {
-          this._startFreshRecorder(mimeType);
-          resolve(null);
-          return;
-        }
-
-        const chunk = new Blob(this._liveChunks, { type: mimeType });
-        this._liveChunks = [];
-
-        this._logger.debug(`Rotated recorder, flushed ${(chunk.size / 1024).toFixed(1)}KB`);
-
-        // Start a fresh recorder on the same stream
-        this._startFreshRecorder(mimeType);
-        resolve(chunk);
-      };
-
-      oldRecorder.onerror = (event) => {
-        this._logger.error('Rotation error:', event.error);
-        // Still try to start fresh recorder so live mode can continue
-        this._startFreshRecorder(mimeType);
-        resolve(null);
-      };
-
-      try {
-        if (oldRecorder.state === 'recording' || oldRecorder.state === 'paused') {
-          // stop() triggers: final ondataavailable → onstop
-          oldRecorder.stop();
-        } else {
-          this._logger.warn(`Rotation skipped: recorder in '${oldRecorder.state}' state`);
-          resolve(null);
-        }
-      } catch (error) {
-        this._logger.error('Failed to stop recorder during rotation:', error);
-        resolve(null);
-      }
-    });
-  }
-
-  /**
-   * Create and start a new MediaRecorder on the existing stream.
-   * Used after rotating the recorder for live mode.
-   *
-   * @param {string} _mimeType - (unused) kept for future use
-   * @private
-   */
-  _startFreshRecorder(_mimeType) {
-    if (!this._stream) return;
-
-    const recorderOptions = AudioUtils.getRecorderOptions();
-    this._mediaRecorder = new MediaRecorder(this._stream, recorderOptions);
-
-    this._mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        this._audioChunks.push(event.data);
-        this._liveChunks.push(event.data);
-        this._logger.debug(`Audio chunk received: ${(event.data.size / 1024).toFixed(2)}KB`);
-        if (this._callbacks.onDataAvailable) {
-          this._callbacks.onDataAvailable(event.data, this._audioChunks.length);
-        }
-      }
-    };
-
-    this._mediaRecorder.onerror = (event) => {
-      this._logger.error('MediaRecorder error:', event.error);
-      if (this._callbacks.onError) {
-        this._callbacks.onError(event.error);
-      }
-    };
-
-    this._mediaRecorder.start(DEFAULT_TIMESLICE);
-    this._logger.debug('Fresh MediaRecorder started for next live cycle');
   }
 
   /**
@@ -835,6 +758,8 @@ class AudioRecorder {
 
     // Reset audio chunks
     this._audioChunks = [];
+    this._liveChunks = [];
+    this._headerChunk = null;
 
     // Create MediaRecorder
     this._mediaRecorder = new MediaRecorder(this._stream, recorderOptions);
@@ -842,11 +767,15 @@ class AudioRecorder {
     // Handle data available events
     this._mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
+        // The first chunk is usually the header (metadata)
+        if (!this._headerChunk) {
+          this._headerChunk = event.data;
+          this._logger.debug('Captured WebM header chunk');
+        }
+
         this._audioChunks.push(event.data);
         this._liveChunks.push(event.data);
-        this._logger.debug(`Audio chunk received: ${(event.data.size / 1024).toFixed(2)}KB`);
-
-        // Call user callback if set
+        // Do not log every chunk to avoid spamming console in live mode
         if (this._callbacks.onDataAvailable) {
           this._callbacks.onDataAvailable(event.data, this._audioChunks.length);
         }
@@ -862,7 +791,8 @@ class AudioRecorder {
     };
 
     // Start recording with timeslice for periodic data chunks
-    const effectiveTimeslice = timeslice || DEFAULT_TIMESLICE;
+    // 1000ms timeslice ensures we get frequent data for live mode without gaps
+    const effectiveTimeslice = timeslice || 1000; 
     this._mediaRecorder.start(effectiveTimeslice);
 
     this._logger.debug(`MediaRecorder started with ${effectiveTimeslice}ms timeslice`);

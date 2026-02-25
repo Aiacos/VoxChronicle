@@ -418,11 +418,14 @@ class SessionOrchestrator {
       return null;
     }
 
-    this._logger.log(`Extracting entities (text: ${this._currentSession.transcript.text.length} chars)...`);
+    this._logger.log(`Extracting entities and moments (text: ${this._currentSession.transcript.text.length} chars)...`);
     this._updateState(SessionState.EXTRACTING);
 
     const extractionStart = Date.now();
-    const extractionResult = await this._entityProcessor.extractEntities(
+    
+    // Use consolidated extraction (Entities + Moments in one call)
+    // This reduces API calls and cost by 50% compared to separate calls
+    const extractionResult = await this._entityProcessor.extractAll(
       this._currentSession.transcript.text,
       {
         ...options,
@@ -1117,7 +1120,14 @@ class SessionOrchestrator {
     }
 
     try {
-      const fullText = this._liveTranscript.map(s => s.text).join(' ');
+      // Implement sliding window for context: keep last ~15,000 characters
+      // Format as structured dialogue (Speaker: Text) to allow AI to distinguish roles
+      const fullText = this._liveTranscript.map(s => `${s.speaker || 'Unknown'}: ${s.text}`).join('\n');
+      const windowSize = 15000;
+      const contextText = fullText.length > windowSize 
+        ? '... ' + fullText.slice(-windowSize) 
+        : fullText;
+
       const currentChapter = this._chapterTracker?.getCurrentChapter?.() || null;
 
       // Update chapter context on AIAssistant if chapter has changed
@@ -1134,12 +1144,12 @@ class SessionOrchestrator {
         });
       }
 
-      this._logger.log(`Running AI analysis (transcript: ${fullText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
+      this._logger.log(`Running AI analysis (context: ${contextText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
 
       // Use single analyzeContext() call instead of separate generateSuggestions + detectOffTrack
       // This halves latency by making one API call instead of two
       const analysisStart = Date.now();
-      const analysis = await this._aiAssistant.analyzeContext(fullText, {
+      const analysis = await this._aiAssistant.analyzeContext(contextText, {
         includeSuggestions: true,
         checkOffTrack: true,
         detectRules: false
@@ -1201,6 +1211,8 @@ class SessionOrchestrator {
       this._logger.debug(`Silence threshold reached: ${(silenceDuration / 1000).toFixed(1)}s`);
       if (this._callbacks.onSilenceDetected) {
         this._callbacks.onSilenceDetected(silenceDuration);
+        // Reset silence timer to prevent repeated triggers every cycle
+        this._silenceStartTime = Date.now();
       }
     }
   }

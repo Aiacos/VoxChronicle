@@ -174,6 +174,11 @@ class KankaPublisher {
         await this._createChronicle(sessionData, results);
       }
 
+      // Upload generated session images to the chronicle journal
+      if (uploadImages && sessionData.images?.length > 0 && results.journal) {
+        await this._uploadSessionImages(sessionData.images, results.journal.id, results);
+      }
+
       // Create entities (characters as sub-journals, validated locations/items)
       if (createEntities && sessionData.entities) {
         await this._createEntities(sessionData, results, uploadImages);
@@ -489,13 +494,9 @@ class KankaPublisher {
    * @private
    */
   _isEntityInJournal(sessionData, entityName) {
-    // If no journal text is available, allow creation (graceful fallback)
-    if (!sessionData.journalText) {
-      return true;
-    }
-
-    // Case-insensitive search for the entity name in the journal text
-    return sessionData.journalText.toLowerCase().includes(entityName.toLowerCase());
+    // Strict validation disabled to allow improvised entities
+    // The GM can always edit or delete unwanted entities in Kanka
+    return true;
   }
 
   /**

@@ -877,6 +877,57 @@ button.vox-chronicle-btn--danger:hover:not(:disabled) {
   line-height: 1.4;
 }
 
+/* Chronicle Preview */
+.vox-chronicle-panel__actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.vox-chronicle-panel__preview {
+  margin-top: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.vox-chronicle-panel__preview h4 {
+  margin: 0 0 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 5px;
+  font-size: 1em;
+}
+
+.vox-chronicle-preview-content {
+  font-size: 0.9em;
+  line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.vox-chronicle-preview-content h2, 
+.vox-chronicle-preview-content h3 { border-bottom: none; margin-top: 1em; }
+.vox-chronicle-preview-content p { margin-bottom: 0.8em; }
+.vox-chronicle-preview-content ul { padding-left: 1.5em; margin-bottom: 1em; }
+
+.vox-chronicle-panel__status-msg {
+  font-size: 0.8em;
+  color: #4cc9f0;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-style: italic;
+  animation: vox-fade-in 0.3s ease;
+}
+
+@keyframes vox-fade-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ==========================================================================
    Animations (functional — kept)
    ========================================================================== */

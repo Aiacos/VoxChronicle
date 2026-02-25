@@ -26,6 +26,12 @@
       <div class="vox-chronicle-panel__level-bar" style="width: {{audioLevel}}%"></div>
     </div>
     {{/if}}
+
+    {{#if statusMessage}}
+    <div class="vox-chronicle-panel__status-msg">
+      <i class="fas fa-circle-notch fa-spin"></i> {{statusMessage}}
+    </div>
+    {{/if}}
     <div class="vox-chronicle-panel__status">
       <span class="vox-chronicle-panel__mode-badge vox-chronicle-panel__mode-badge--{{transcriptionMode}}">
         {{transcriptionMode}}
@@ -131,12 +137,27 @@
     </div>
 
     <div class="vox-chronicle-tab-pane" data-tab-pane="chronicle" {{#unless (eq activeTab 'chronicle')}}hidden{{/unless}}>
-      <button data-action="process-session" {{#unless hasTranscript}}disabled{{/unless}}>
-        <i class="fas fa-cogs"></i> {{localize "VOXCHRONICLE.Panel.ProcessSession"}}
-      </button>
-      <button data-action="publish-kanka" {{#unless hasEntities}}disabled{{/unless}}>
-        <i class="fas fa-upload"></i> {{localize "VOXCHRONICLE.Panel.PublishToKanka"}}
-      </button>
+      <div class="vox-chronicle-panel__actions">
+        <button data-action="process-session" {{#unless hasTranscript}}disabled{{/unless}} {{#if isProcessing}}disabled{{/if}}>
+          {{#if isProcessing}}
+            <i class="fas fa-spinner fa-spin"></i> {{localize "VOXCHRONICLE.Panel.Processing"}}
+          {{else}}
+            <i class="fas fa-cogs"></i> {{localize "VOXCHRONICLE.Panel.ProcessSession"}}
+          {{/if}}
+        </button>
+        <button data-action="publish-kanka" {{#unless hasEntities}}disabled{{/unless}}>
+          <i class="fas fa-upload"></i> {{localize "VOXCHRONICLE.Panel.PublishToKanka"}}
+        </button>
+      </div>
+
+      {{#if hasChronicleDraft}}
+      <div class="vox-chronicle-panel__preview">
+        <h4>{{localize "VOXCHRONICLE.Panel.ChroniclePreview"}}</h4>
+        <div class="vox-chronicle-preview-content">
+          {{{chronicleDraft}}}
+        </div>
+      </div>
+      {{/if}}
     </div>
 
     <div class="vox-chronicle-tab-pane" data-tab-pane="images" {{#unless (eq activeTab 'images')}}hidden{{/unless}}>
