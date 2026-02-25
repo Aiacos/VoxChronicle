@@ -315,6 +315,9 @@ class TranscriptionService extends OpenAIClient {
     try {
       const response = await this.postFormData('/audio/transcriptions', formData);
 
+      // Debug log for troubleshooting empty segments
+      this._logger.debug('OpenAI raw response:', response);
+
       // Map speakers to names
       const mappedResult = this._mapSpeakersToNames(response, speakerMap);
 

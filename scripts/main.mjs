@@ -210,7 +210,6 @@ Hooks.on('getSceneControlButtons', (controls) => {
     name: MODULE_ID,
     icon: 'fa-solid fa-microphone',
     title: 'VOXCHRONICLE.Controls.Title',
-    activeTool: 'panel',
     order: 100,
     visible: true,
     tools: {
@@ -220,7 +219,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Panel',
         order: 0,
         button: true,
-        onChange: toolHandlers.panel
+        onClick: toolHandlers.panel
       },
       speakerLabels: {
         name: 'speakerLabels',
@@ -228,7 +227,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.SpeakerLabels',
         order: 1,
         button: true,
-        onChange: toolHandlers.speakerLabels
+        onClick: toolHandlers.speakerLabels
       },
       vocabulary: {
         name: 'vocabulary',
@@ -236,7 +235,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Vocabulary',
         order: 2,
         button: true,
-        onChange: toolHandlers.vocabulary
+        onClick: toolHandlers.vocabulary
       },
       relationshipGraph: {
         name: 'relationshipGraph',
@@ -244,7 +243,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.RelationshipGraph',
         order: 3,
         button: true,
-        onChange: toolHandlers.relationshipGraph
+        onClick: toolHandlers.relationshipGraph
       },
       settings: {
         name: 'settings',

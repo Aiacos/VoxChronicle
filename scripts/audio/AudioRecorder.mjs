@@ -697,15 +697,22 @@ class AudioRecorder {
     // Handle data available events
     this._mediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
-        // The first chunk is usually the header (metadata)
+        // The first chunk of a MediaRecorder stream contains the WebM/EBML header
+        // and initial metadata. We store this to make subsequent slices valid files.
         if (!this._headerChunk) {
           this._headerChunk = event.data;
-          this._logger.debug('Captured WebM header chunk');
+          this._logger.debug(`Captured session header (${(event.data.size / 1024).toFixed(1)}KB)`);
+          
+          // Optimization: the first chunk also contains audio. 
+          // To avoid repeating this audio in the first live cycle, 
+          // we don't push it to _liveChunks if it's the header.
+          this._audioChunks.push(event.data);
+          return; 
         }
 
         this._audioChunks.push(event.data);
         this._liveChunks.push(event.data);
-        // Do not log every chunk to avoid spamming console in live mode
+        
         if (this._callbacks.onDataAvailable) {
           this._callbacks.onDataAvailable(event.data, this._audioChunks.length);
         }

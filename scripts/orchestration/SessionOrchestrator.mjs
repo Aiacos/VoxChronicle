@@ -1040,13 +1040,24 @@ class SessionOrchestrator {
         if (result?.segments?.length > 0) {
           this._consecutiveLiveCycleErrors = 0;
           const transcribeMs = Date.now() - transcribeStart;
-          const textPreview = (result.text || '').substring(0, 120);
-          this._logger.log(`Transcription result: ${result.segments.length} segments in ${transcribeMs}ms, text: "${textPreview}${(result.text || '').length > 120 ? '...' : ''}"`);
+          
+          // Offset segment timestamps based on existing transcript duration
+          // Each chunk starts at 0.0, so we shift it to maintain chronological order
+          const offset = this._liveTranscript.length > 0 
+            ? this._liveTranscript[this._liveTranscript.length - 1].end 
+            : 0;
 
-          this._liveTranscript.push(...result.segments);
+          const offsetSegments = result.segments.map(s => ({
+            ...s,
+            start: s.start + offset,
+            end: s.end + offset
+          }));
+
+          this._liveTranscript.push(...offsetSegments);
+          this._silenceStartTime = null; // Reset silence since we got speech
 
           if (this._sessionAnalytics) {
-            for (const segment of result.segments) {
+            for (const segment of offsetSegments) {
               this._sessionAnalytics.addSegment(segment);
             }
           }
