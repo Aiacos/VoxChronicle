@@ -25,7 +25,7 @@ export const DEFAULT_BUCKET_SIZE = 60;
  */
 export const MAX_HISTORY_SIZE = 100;
 
-/** @type {ReturnType<typeof Logger.createChild>} */
+/** @deprecated Use this._logger in class methods instead */
 const log = Logger.createChild('SessionAnalytics');
 
 /**
@@ -93,6 +93,9 @@ export class SessionAnalytics {
    * @param {number} [options.maxHistorySize=100] - Maximum sessions to keep in history
    */
   constructor(options = {}) {
+    /** @type {ReturnType<typeof Logger.createChild>} */
+    this._logger = Logger.createChild('SessionAnalytics');
+
     /**
      * Timeline bucket size in seconds
      * @type {number}
@@ -157,11 +160,11 @@ export class SessionAnalytics {
    * @returns {string} The session ID
    */
   startSession(sessionId = null) {
-    log.debug(`startSession() entry — sessionId="${sessionId || '(auto)'}", bucketSize=${this._bucketSize}`);
+    this._logger.debug(`startSession() entry — sessionId="${sessionId || '(auto)'}", bucketSize=${this._bucketSize}`);
 
     // End any active session first
     if (this._currentSession && this._currentSession.status === 'active') {
-      log.info('Ending previous active session before starting new one');
+      this._logger.info('Ending previous active session before starting new one');
       this.endSession();
     }
 
@@ -180,7 +183,7 @@ export class SessionAnalytics {
     this._speakerMetrics = {};
     this._segments = [];
 
-    log.debug(`startSession() exit — session "${id}" active`);
+    this._logger.debug(`startSession() exit — session "${id}" active`);
     return id;
   }
 
@@ -192,7 +195,7 @@ export class SessionAnalytics {
   endSession() {
     if (!this._currentSession ||
         (this._currentSession.status !== 'active' && this._currentSession.status !== 'paused')) {
-      log.warn('No active session to end');
+      this._logger.warn('No active session to end');
       return null;
     }
 
@@ -215,7 +218,7 @@ export class SessionAnalytics {
       this._sessionHistory = this._sessionHistory.slice(0, this._maxHistorySize);
     }
 
-    log.debug(`endSession() — session "${this._currentSession.sessionId}": duration=${this._currentSession.duration.toFixed(1)}s, speakers=${summary.speakerCount}, segments=${this._segments.length}, dominant="${summary.dominantSpeaker || 'none'}"`);
+    this._logger.debug(`endSession() — session "${this._currentSession.sessionId}": duration=${this._currentSession.duration.toFixed(1)}s, speakers=${summary.speakerCount}, segments=${this._segments.length}, dominant="${summary.dominantSpeaker || 'none'}"`);
 
     // Reset current session
     this._currentSession = null;
@@ -230,7 +233,7 @@ export class SessionAnalytics {
   pauseSession() {
     if (this._currentSession && this._currentSession.status === 'active') {
       this._currentSession.status = 'paused';
-      log.info('Session paused');
+      this._logger.info('Session paused');
     }
   }
 
@@ -240,7 +243,7 @@ export class SessionAnalytics {
   resumeSession() {
     if (this._currentSession && this._currentSession.status === 'paused') {
       this._currentSession.status = 'active';
-      log.info('Session resumed');
+      this._logger.info('Session resumed');
     }
   }
 
@@ -259,7 +262,7 @@ export class SessionAnalytics {
    */
   addSegment(segment) {
     if (!this._currentSession) {
-      log.warn('Cannot add segment without active session');
+      this._logger.warn('Cannot add segment without active session');
       return;
     }
 
@@ -269,12 +272,12 @@ export class SessionAnalytics {
       typeof segment.start !== 'number' ||
       typeof segment.end !== 'number'
     ) {
-      log.warn('Invalid segment data', segment);
+      this._logger.warn('Invalid segment data', segment);
       return;
     }
 
     this._segments.push(segment);
-    log.debug(`addSegment() — speaker="${segment.speaker}", duration=${(segment.end - segment.start).toFixed(1)}s, total segments: ${this._segments.length}`);
+    this._logger.debug(`addSegment() — speaker="${segment.speaker}", duration=${(segment.end - segment.start).toFixed(1)}s, total segments: ${this._segments.length}`);
 
     // Initialize speaker metrics if this is a new speaker
     if (!this._speakerMetrics[segment.speaker]) {
@@ -403,7 +406,7 @@ export class SessionAnalytics {
    */
   getSessionSummary() {
     if (!this._currentSession) {
-      log.debug('getSessionSummary() — no current session');
+      this._logger.debug('getSessionSummary() — no current session');
       return null;
     }
 
@@ -423,7 +426,7 @@ export class SessionAnalytics {
       timeline: this.getTimeline()
     };
 
-    log.debug(`getSessionSummary() — speakers=${summary.speakerCount}, totalSpeakingTime=${totalSpeakingTime.toFixed(1)}s, timeline buckets=${summary.timeline.length}`);
+    this._logger.debug(`getSessionSummary() — speakers=${summary.speakerCount}, totalSpeakingTime=${totalSpeakingTime.toFixed(1)}s, timeline buckets=${summary.timeline.length}`);
     return summary;
   }
 
@@ -472,7 +475,7 @@ export class SessionAnalytics {
   reset() {
     this.clearCurrentSession();
     this.clearHistory();
-    log.info('SessionAnalytics reset');
+    this._logger.info('SessionAnalytics reset');
   }
 
   // ---------------------------------------------------------------------------

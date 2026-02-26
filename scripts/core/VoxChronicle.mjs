@@ -42,7 +42,7 @@ const logger = Logger.createChild('VoxChronicle');
  */
 class VoxChronicle {
   /** @type {VoxChronicle|null} Singleton instance */
-  static instance = null;
+  static #instance = null;
 
   /**
    * Private constructor - use getInstance() to access
@@ -113,10 +113,21 @@ class VoxChronicle {
    * @static
    */
   static getInstance() {
-    if (!VoxChronicle.instance) {
-      VoxChronicle.instance = new VoxChronicle();
+    if (!VoxChronicle.#instance) {
+      VoxChronicle.#instance = new VoxChronicle();
     }
-    return VoxChronicle.instance;
+    return VoxChronicle.#instance;
+  }
+
+  /**
+   * Reset the singleton instance. Used for testing.
+   * @static
+   */
+  static resetInstance() {
+    if (VoxChronicle.#instance) {
+      VoxChronicle.#instance.isInitialized = false;
+    }
+    VoxChronicle.#instance = null;
   }
 
   /**
@@ -287,6 +298,9 @@ class VoxChronicle {
 
       // Initialize RAG services
       await this._initializeRAGServices(openaiApiKey);
+
+      // Check Kanka token expiration and warn user
+      await this._checkKankaTokenExpiration();
 
       // Final status check
       this.isInitialized = true;

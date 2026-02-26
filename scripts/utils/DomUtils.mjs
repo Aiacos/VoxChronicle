@@ -65,34 +65,3 @@ export function debounce(func, delay) {
     return debounced;
 }
 
-/**
- * Creates a throttled version of a function that only executes at most
- * once per specified interval, regardless of how many times it's called.
- *
- * Unlike debounce, throttle guarantees execution at regular intervals
- * during continuous invocation, making it ideal for scroll handlers or
- * animations where you want consistent updates without overwhelming the system.
- *
- * @example
- * // Throttle a scroll handler to execute at most once per 100ms
- * const throttledScroll = throttle(() => {
- *   updateScrollPosition();
- * }, 100);
- *
- * window.addEventListener('scroll', throttledScroll);
- *
- * @param {Function} func - The function to throttle
- * @param {number} interval - The minimum interval in milliseconds between executions
- * @returns {Function} A throttled version of the function
- */
-export function throttle(func, interval) {
-    let lastCall = 0;
-
-    return function(...args) {
-        const now = Date.now();
-        if (now - lastCall >= interval) {
-            lastCall = now;
-            func.apply(this, args);
-        }
-    };
-}

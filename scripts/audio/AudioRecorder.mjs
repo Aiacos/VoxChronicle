@@ -521,7 +521,12 @@ class AudioRecorder {
       this._logger.debug(`Found ${audioInputs.length} audio input devices`);
       return audioInputs;
     } catch (error) {
-      this._logger.error('Error enumerating devices:', error);
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        this._logger.warn('Microphone permission denied during device enumeration');
+        ui?.notifications?.warn('VoxChronicle: Microphone permission denied. Check browser settings.');
+      } else {
+        this._logger.error('Error enumerating audio devices:', error);
+      }
       return [];
     }
   }

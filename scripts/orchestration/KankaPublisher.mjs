@@ -392,13 +392,6 @@ class KankaPublisher {
     let deduplicated = 0;
 
     for (const location of locations) {
-      // Only create if entity exists in the adventure journal
-      if (!this._isEntityInJournal(sessionData, location.name)) {
-        this._logger.debug(`Skipping location "${location.name}" - not found in adventure journal`);
-        skipped++;
-        continue;
-      }
-
       try {
         const journalDescription = this._findJournalDescription(
           sessionData, location.name, 'location'
@@ -446,13 +439,6 @@ class KankaPublisher {
     let deduplicated = 0;
 
     for (const item of items) {
-      // Only create if entity exists in the adventure journal
-      if (!this._isEntityInJournal(sessionData, item.name)) {
-        this._logger.debug(`Skipping item "${item.name}" - not found in adventure journal`);
-        skipped++;
-        continue;
-      }
-
       try {
         const journalDescription = this._findJournalDescription(
           sessionData, item.name, 'item'
@@ -485,20 +471,6 @@ class KankaPublisher {
   // Private - Journal Validation & Description Extraction
   // ============================================================================
 
-  /**
-   * Check if an entity name appears in the Foundry adventure journal.
-   * If no journal text is available in sessionData, allows creation (graceful fallback).
-   *
-   * @param {SessionData} sessionData - Session data with optional journalText
-   * @param {string} entityName - Entity name to search for
-   * @returns {boolean} True if entity is found in journal or no journal is available
-   * @private
-   */
-  _isEntityInJournal(sessionData, entityName) {
-    // Strict validation disabled to allow improvised entities
-    // The GM can always edit or delete unwanted entities in Kanka
-    return true;
-  }
 
   /**
    * Find an entity's description from the Foundry adventure journal.

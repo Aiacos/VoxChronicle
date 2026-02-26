@@ -493,9 +493,13 @@ describe('EntityExtractor', () => {
       expect(result.moments).toBeDefined();
     });
 
-    it('should propagate errors', async () => {
+    it('should return empty results when sub-extractions fail', async () => {
       fetchSpy.mockRejectedValue(new Error('API error'));
-      await expect(extractor.extractAll('test')).rejects.toThrow();
+      const result = await extractor.extractAll('test');
+      expect(result.characters).toEqual([]);
+      expect(result.locations).toEqual([]);
+      expect(result.items).toEqual([]);
+      expect(result.moments).toEqual([]);
     });
   });
 

@@ -129,7 +129,8 @@ class Settings {
       scope: 'world',
       config: true,
       type: String,
-      default: 'http://localhost:8080'
+      default: 'http://localhost:8080',
+      onChange: (value) => Settings._validateServerUrl(value, 'whisperBackendUrl')
     });
 
     // Show Transcription Mode Indicator (client-side)
@@ -510,7 +511,8 @@ class Settings {
       scope: 'world',
       config: true,
       type: String,
-      default: 'http://localhost:9380'
+      default: 'http://localhost:9380',
+      onChange: (value) => Settings._validateServerUrl(value, 'ragflowBaseUrl')
     });
 
     // RAGFlow API Key (client-side, per user)
@@ -654,6 +656,29 @@ class Settings {
           logger.error(`Failed to re-initialize ${serviceName} services:`, err);
         });
       });
+    }
+  }
+
+  /**
+   * Validate that a server URL uses an allowed scheme (http/https).
+   * Warns the user and resets to default if an invalid scheme is used.
+   *
+   * @param {string} value - The URL to validate
+   * @param {string} settingKey - The setting key (for reset)
+   * @private
+   * @static
+   */
+  static _validateServerUrl(value, settingKey) {
+    if (!value) return;
+    try {
+      const url = new URL(value);
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        ui?.notifications?.error(`VoxChronicle: Invalid URL scheme "${url.protocol}" — only http/https allowed.`);
+        const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
+        game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '');
+      }
+    } catch {
+      ui?.notifications?.warn(`VoxChronicle: "${value}" is not a valid URL.`);
     }
   }
 

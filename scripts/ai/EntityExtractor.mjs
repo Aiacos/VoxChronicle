@@ -384,10 +384,17 @@ class EntityExtractor extends OpenAIClient {
     this._logger.debug('extractAll called', { textLength: transcriptText?.length });
     const t0 = Date.now();
 
-    const [entities, moments] = await Promise.all([
+    const results = await Promise.allSettled([
       this.extractEntities(transcriptText, options),
       this.identifySalientMoments(transcriptText, options)
     ]);
+
+    const entities = results[0].status === 'fulfilled'
+      ? results[0].value
+      : (() => { this._logger.error('Entity extraction failed:', results[0].reason); return { characters: [], locations: [], items: [] }; })();
+    const moments = results[1].status === 'fulfilled'
+      ? results[1].value
+      : (() => { this._logger.error('Moment extraction failed:', results[1].reason); return []; })();
 
     this._logger.debug(`extractAll completed in ${Date.now() - t0}ms`, {
       characters: entities.characters.length,

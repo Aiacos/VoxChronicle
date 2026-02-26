@@ -384,11 +384,13 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
-      // Create download link
+      // Create download link — must append to DOM for Firefox compatibility
       const a = document.createElement('a');
       a.href = url;
       a.download = `relationship-graph-${Date.now()}.json`;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
 
       URL.revokeObjectURL(url);
 

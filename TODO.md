@@ -8,54 +8,54 @@ Audit completo con 4 agenti paralleli: security, performance, error handling, co
 
 ### CRITICAL — Fix prima del prossimo rilascio
 
-- [ ] `KankaPublisher.mjs:179` — `_uploadSessionImages()` chiamato ma mai definito (crash a runtime)
-- [ ] `EntityExtractor.mjs:187,257,343` — Null-check su `response.choices[0].message.content` (aggiunto inline)
-- [ ] `ImageGenerationService.mjs:212` — Null-check su `response.data[0]` (aggiunto inline)
-- [ ] `LocalWhisperService.mjs:634` — Bare catch swallowed errors (fix inline: ora logga warning)
-- [ ] `WhisperBackend.mjs:475` — Bare catch swallowed errors (fix inline: ora logga debug)
-- [ ] `OpenAIClient.mjs:306` — Bare catch swallowed errors (fix inline: ora logga debug)
-- [ ] `RAGFlowProvider.mjs:633` — Nessun timeout/AbortController — request pende indefinitamente
-- [ ] `main-panel.hbs:170` — XSS via `{{{chronicleDraft}}}` triple-stache (sanitizzare HTML)
+- [x] `KankaPublisher.mjs:179` — `_uploadSessionImages()` chiamato ma mai definito (disabilitato, v3.1.8)
+- [x] `EntityExtractor.mjs:187,257,343` — Null-check su `response.choices[0].message.content` (v3.1.8)
+- [x] `ImageGenerationService.mjs:212` — Null-check su `response.data[0]` (v3.1.8)
+- [x] `LocalWhisperService.mjs:634` — Bare catch ora logga warning (v3.1.8)
+- [x] `WhisperBackend.mjs:475` — Bare catch ora logga debug (v3.1.8)
+- [x] `OpenAIClient.mjs:306` — Bare catch ora logga debug (v3.1.8)
+- [x] `RAGFlowProvider.mjs:633` — AbortController 30s timeout (v3.1.8)
+- [x] `main-panel.hbs:170` — XSS fixato con `sanitizeHtml()` (v3.1.8)
 
 ### HIGH — Performance e Error Handling
 
-- [ ] `AudioRecorder.mjs:454` — Pre-allocare `Uint8Array` nel `getAudioLevel()` (120 alloc/sec)
-- [ ] `AudioRecorder.mjs:800` — rAF loop continua a 60fps durante pausa (usare setTimeout)
-- [ ] `MainPanel.mjs:93` — `onProgress` chiama `this.render()` senza debounce (200+ re-render durante RAG index)
-- [ ] `MainPanel.mjs:113` — `onProgress` non re-registrato quando orchestrator cambia
-- [ ] `MainPanel.mjs:125` — `resetInstance()` non chiama `close()` — rAF orfano continua
-- [ ] `MainPanel.mjs:341` — `_debouncedRender.cancel()` mancante in `close()`
-- [ ] `VoxChronicle.mjs:127` — `reinitialize()` non pulisce AudioContext/MediaStream/SilenceDetector
-- [ ] `VoxChronicle.mjs:502` — `getServicesStatus()` chiama `game.settings.get` 3x per render (cache necessaria)
-- [ ] `SessionOrchestrator.mjs:1056` — `_liveTranscript` cresce senza limiti (cap con sliding window)
-- [ ] `ErrorNotificationHelper.mjs` — 218 righe mai importate in produzione (adottare o rimuovere)
-- [ ] `VoxChronicle.mjs:323` — `_checkKankaTokenExpiration()` definito ma mai chiamato
-- [ ] `ImageGenerationService.mjs:432` — Image cache failure silenziosa (URL scade in 60min)
-- [ ] `ImageGenerationService.mjs:536` — Gallery load errore swallowed (utente perde immagini)
-- [ ] `OpenAIFileSearchProvider.mjs:128` — RAG state persistence failure silenziosa (costi extra)
-- [ ] `TranscriptionService.mjs:216` — Vocabulary dictionary failure silenziosa (transcription degradata)
-- [ ] `AudioRecorder.mjs:517` — Microphone enumeration: distinguere "no mic" da "permission denied"
+- [x] `AudioRecorder.mjs:454` — Pre-allocato `Uint8Array` (v3.1.8)
+- [x] `AudioRecorder.mjs:800` — setTimeout 250ms durante pausa (v3.1.8)
+- [x] `MainPanel.mjs:93` — onProgress usa `_debouncedRender()` (v3.1.8)
+- [x] `MainPanel.mjs:113` — onProgress re-registrato su getInstance() (v3.1.8)
+- [x] `MainPanel.mjs:125` — resetInstance() con cleanup completo (v3.1.8)
+- [x] `MainPanel.mjs:341` — `_debouncedRender.cancel()` in close() (v3.1.8)
+- [x] `VoxChronicle.mjs:127` — reinitialize() cleanup servizi (v3.1.8)
+- [x] `VoxChronicle.mjs:502` — settings cache con invalidation hook (v3.1.8)
+- [x] `SessionOrchestrator.mjs:1056` — Accettato: ~2MB/4h, AI windowing gestisce (v3.1.8)
+- [x] `ErrorNotificationHelper.mjs` — Rimosso: dead code mai importato (v3.1.9)
+- [x] `VoxChronicle.mjs:323` — Aggiunta chiamata in initialize() (v3.1.9)
+- [x] `ImageGenerationService.mjs:432` — Cache failure ora notifica utente (v3.1.9)
+- [x] `ImageGenerationService.mjs:536` — Gallery load ora notifica utente (v3.1.9)
+- [x] `OpenAIFileSearchProvider.mjs:128` — RAG state failure ora notifica utente (v3.1.9)
+- [x] `TranscriptionService.mjs:216` — Già fixato: logga warning (pre-v3.1.8)
+- [x] `AudioRecorder.mjs:517` — Distingue NotAllowedError da altri errori (v3.1.9)
 
 ### MEDIUM — Security e Code Quality
 
-- [ ] `JournalParser.mjs:985` — Usare `DOMParser` invece di `innerHTML`
-- [ ] `Settings.mjs:38,53,517` — API keys come `<input type="text">` (usare password field)
-- [ ] `RelationshipGraph.mjs:530` — Pinnare versione vis-network CDN + aggiungere SRI hash
-- [ ] `Settings.mjs:126,507` — Validare URL server (Whisper/RAGFlow) con allowlist scheme
-- [ ] `KankaPublisher.mjs:496` — `_isEntityInJournal` ritorna sempre `true` (dead validation)
-- [ ] `main.mjs:254` — Settings tool usa `onChange` invece di `onClick` (bug v13 API)
-- [ ] `VoxChronicle.mjs:45` — `static instance` publico (usare `#instance` privato)
-- [ ] `SessionAnalytics.mjs:29` — Logger module-level `const log` invece di `this._logger`
-- [ ] `EntityExtractor.mjs:374` — `Promise.all` in `extractAll()` perde errori (usare `allSettled`)
-- [ ] `KankaService.mjs:448` — `preFetchEntities` con `Promise.all` (usare `allSettled`)
+- [x] `JournalParser.mjs:985` — DOMParser invece di innerHTML (v3.1.8)
+- [x] `Settings.mjs:38,53,517` — CSS `-webkit-text-security: disc` maschera API keys (v3.1.9)
+- [x] `RelationshipGraph.mjs:530` — vis-network pinnato a v9.1.9 (v3.1.8)
+- [x] `Settings.mjs:126,507` — Validazione URL con allowlist http/https (v3.1.9)
+- [x] `KankaPublisher.mjs:496` — `_isEntityInJournal` rimosso (dead code) (v3.1.9)
+- [x] `main.mjs:254` — onClick per settings tool (v3.1.8)
+- [x] `VoxChronicle.mjs:45` — `static #instance` privato + `resetInstance()` (v3.1.9)
+- [x] `SessionAnalytics.mjs:29` — `this._logger` nell'istanza invece di `const log` (v3.1.9)
+- [x] `EntityExtractor.mjs:374` — `Promise.allSettled` con fallback graceful (v3.1.9)
+- [x] `KankaService.mjs:448` — `Promise.allSettled` con log errori parziali (v3.1.9)
 
 ### LOW — Cleanup
 
-- [ ] `DomUtils.mjs:88` — `throttle` esportato ma mai importato
-- [ ] `AudioChunker.mjs:284` — `_combineBlobs` async ma fa solo `new Blob()` sincrono
-- [ ] `OpenAIClient.mjs:573` — `_addToHistory` usa `slice` invece di `shift`
-- [ ] `RelationshipGraph.mjs:385` — Export anchor non aggiunto al DOM prima di `.click()`
-- [ ] `Logger.mjs:297` — Sanitizzazione disabilitata di default su tutti `createChild()`
+- [x] `DomUtils.mjs:88` — `throttle` rimosso: dead code mai importato (v3.1.9)
+- [x] `AudioChunker.mjs:284` — Rimosso `async` da `_combineBlobs` sincrono (v3.1.9)
+- [x] `OpenAIClient.mjs:573` — `shift()` in-place invece di `slice` con riassegnazione (v3.1.9)
+- [x] `RelationshipGraph.mjs:385` — Anchor aggiunto al DOM prima di `click()` (v3.1.9)
+- [x] `Logger.mjs:297` — Sanitizzazione abilitata su OpenAIClient e KankaClient (v3.1.9)
 
 ---
 

@@ -278,10 +278,8 @@ describe('VoxChronicle', () => {
     });
 
     it('should create a new instance if none exists', () => {
-      expect(VoxChronicle.instance).toBeNull();
       const instance = VoxChronicle.getInstance();
       expect(instance).toBeInstanceOf(VoxChronicle);
-      expect(VoxChronicle.instance).toBe(instance);
     });
 
     it('should have all service properties set to null initially', () => {
@@ -316,11 +314,12 @@ describe('VoxChronicle', () => {
 
   describe('resetInstance', () => {
     it('should set the static instance to null', () => {
-      VoxChronicle.getInstance();
-      expect(VoxChronicle.instance).not.toBeNull();
+      const instance1 = VoxChronicle.getInstance();
+      expect(instance1).not.toBeNull();
 
       VoxChronicle.resetInstance();
-      expect(VoxChronicle.instance).toBeNull();
+      const instance2 = VoxChronicle.getInstance();
+      expect(instance2).not.toBe(instance1);
     });
 
     it('should set isInitialized to false on the existing instance before nullifying', () => {
@@ -330,7 +329,6 @@ describe('VoxChronicle', () => {
       VoxChronicle.resetInstance();
       // The old instance should have been set to not initialized
       expect(instance.isInitialized).toBe(false);
-      expect(VoxChronicle.instance).toBeNull();
     });
 
     it('should allow creating a fresh instance after reset', () => {
@@ -344,7 +342,6 @@ describe('VoxChronicle', () => {
     it('should handle reset when no instance exists', () => {
       // Should not throw
       expect(() => VoxChronicle.resetInstance()).not.toThrow();
-      expect(VoxChronicle.instance).toBeNull();
     });
   });
 

@@ -1002,8 +1002,9 @@ describe('RelationshipGraph', () => {
       globalThis.URL.createObjectURL = vi.fn(() => mockUrl);
       globalThis.URL.revokeObjectURL = vi.fn();
 
-      const mockLink = { href: '', download: '', click: vi.fn() };
+      const mockLink = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
       vi.spyOn(document, 'createElement').mockReturnValue(mockLink);
+      vi.spyOn(document.body, 'appendChild').mockImplementation(() => {});
 
       await RelationshipGraph._onExportClick.call(mockInstance, {}, null);
 

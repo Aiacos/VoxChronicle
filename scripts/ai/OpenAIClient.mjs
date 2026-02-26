@@ -107,7 +107,7 @@ class OpenAIClient {
    * @type {object}
    * @private
    */
-  _logger = Logger.createChild('OpenAIClient');
+  _logger = Logger.createChild('OpenAIClient', { sanitize: true });
 
   /**
    * OpenAI API key
@@ -576,9 +576,9 @@ class OpenAIClient {
       timestamp: new Date()
     });
 
-    // Trim history if exceeds max size
-    if (this._history.length > this._maxHistorySize) {
-      this._history = this._history.slice(-this._maxHistorySize);
+    // Trim oldest entry if exceeds max size
+    while (this._history.length > this._maxHistorySize) {
+      this._history.shift();
     }
   }
 

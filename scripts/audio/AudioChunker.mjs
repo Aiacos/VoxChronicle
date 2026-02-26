@@ -281,7 +281,7 @@ class AudioChunker {
    * @returns {Promise<Blob>} Combined blob
    * @private
    */
-  async _combineBlobs(blobs, mimeType) {
+  _combineBlobs(blobs, mimeType) {
     return new Blob(blobs, { type: mimeType });
   }
 

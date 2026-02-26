@@ -9,6 +9,16 @@
  */
 
 /* ==========================================================================
+   Settings — Mask API key inputs as password fields
+   ========================================================================== */
+
+input[name="vox-chronicle.openaiApiKey"],
+input[name="vox-chronicle.kankaApiToken"],
+input[name="vox-chronicle.ragflowApiKey"] {
+  -webkit-text-security: disc;
+}
+
+/* ==========================================================================
    Settings Validation Button (shown in Foundry settings dialog)
    ========================================================================== */
 

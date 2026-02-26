@@ -454,6 +454,7 @@ class ImageGenerationService extends OpenAIClient {
       return base64;
     } catch (error) {
       this._logger.warn('Failed to cache image as base64:', error.message);
+      ui?.notifications?.warn('VoxChronicle: Image cached failed — URL expires in 60 minutes.');
       return null;
     }
   }
@@ -544,8 +545,8 @@ class ImageGenerationService extends OpenAIClient {
       this._logger.debug(`loadGallery completed, ${this._gallery.length} images loaded`);
       return this._gallery;
     } catch (error) {
-      // Setting may not be registered yet (Task 18)
-      this._logger.debug('Gallery setting not available yet, using empty gallery');
+      this._logger.warn('Failed to load image gallery:', error.message);
+      ui?.notifications?.warn('VoxChronicle: Could not load image gallery from settings.');
       this._gallery = [];
       return this._gallery;
     }

@@ -444,24 +444,22 @@ class KankaService extends KankaClient {
       fetchPromises.push(fetchPromise);
     }
 
-    // Fetch all in parallel
+    // Fetch all in parallel — use allSettled so one failure doesn't block others
     if (fetchPromises.length > 0) {
-      try {
-        const results = await Promise.all(fetchPromises);
+      const settled = await Promise.allSettled(fetchPromises);
 
-        // Populate result object
-        for (const { type, entities } of results) {
-          result[type] = entities;
+      for (const entry of settled) {
+        if (entry.status === 'fulfilled') {
+          result[entry.value.type] = entry.value.entities;
+        } else {
+          this._logger.error('Pre-fetch entity type failed:', entry.reason);
         }
-
-        this._logger.log(
-          `Pre-fetched ${fetchPromises.length} entity types ` +
-            `(${Object.values(result).flat().length} total entities)`
-        );
-      } catch (error) {
-        this._logger.error('Pre-fetch entities failed:', error);
-        throw error;
       }
+
+      this._logger.log(
+        `Pre-fetched ${fetchPromises.length} entity types ` +
+          `(${Object.values(result).flat().length} total entities)`
+      );
     } else {
       this._logger.debug('All requested types already cached');
     }

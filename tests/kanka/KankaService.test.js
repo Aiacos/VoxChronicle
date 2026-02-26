@@ -433,11 +433,10 @@ describe('KankaService', () => {
       expect(result.characters).toEqual([]);
     });
 
-    it('should throw on API errors', async () => {
+    it('should return empty result on API errors (allSettled)', async () => {
       mockEntityManager.list.mockRejectedValue(new Error('API error'));
-      await expect(service.preFetchEntities({ types: ['characters'] })).rejects.toThrow(
-        'API error'
-      );
+      const result = await service.preFetchEntities({ types: ['characters'] });
+      expect(result.characters).toBeUndefined();
     });
 
     it('should populate cache for fetched types', async () => {

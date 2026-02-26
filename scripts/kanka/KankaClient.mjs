@@ -122,7 +122,7 @@ class KankaClient {
    * @type {object}
    * @private
    */
-  _logger = Logger.createChild('KankaClient');
+  _logger = Logger.createChild('KankaClient', { sanitize: true });
 
   /**
    * Kanka API token
