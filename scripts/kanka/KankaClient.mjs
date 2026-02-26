@@ -99,7 +99,7 @@ class KankaError extends Error {
       this.type === KankaErrorType.RATE_LIMIT_ERROR ||
       this.type === KankaErrorType.NETWORK_ERROR ||
       this.type === KankaErrorType.TIMEOUT_ERROR ||
-      (this.status >= 500 && this.status < 600)
+      (this.status !== null && this.status >= 500 && this.status < 600)
     );
   }
 }

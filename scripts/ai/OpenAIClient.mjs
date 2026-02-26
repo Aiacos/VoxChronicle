@@ -660,11 +660,11 @@ class OpenAIClient {
     const sanitizedUrl = SensitiveDataFilter.sanitizeUrl(url);
     this._logger.debug(`Making ${method} request to ${sanitizedUrl}`);
 
-    // Execute request with rate limiting
-    // Outer try/finally guarantees timeout cleanup even if the rate limiter
-    // itself throws before fetch is called (e.g., limiter paused or errored).
+    // Execute request with rate limiting (throttle only — retry is handled
+    // by the outer _retryWithBackoff wrapper in request(), so using
+    // executeWithRetry here would cause double-retry amplification).
     try {
-      return await this._rateLimiter.executeWithRetry(async () => {
+      return await this._rateLimiter.throttle(async () => {
         try {
           const response = await fetch(url, fetchOptions);
 

@@ -107,6 +107,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       MainPanel.#instance = new MainPanel(orchestrator);
     } else if (orchestrator && MainPanel.#instance._orchestrator !== orchestrator) {
       MainPanel.#instance._orchestrator = orchestrator;
+      // Reset stale RAG status cache so the new provider's status gets fetched
+      MainPanel.#instance.#ragStatusFetched = false;
       // Re-register callbacks on the new orchestrator
       if (orchestrator.setCallbacks) {
         orchestrator.setCallbacks({
@@ -419,7 +421,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         if (metadata.lastIndexed) {
           this.#ragCachedStatus.lastIndexed = new Date(metadata.lastIndexed).toLocaleString();
         }
-      } catch { /* ignore */ }
+      } catch (e) {
+        this._logger.warn('Failed to read ragIndexMetadata:', e.message);
+      }
 
       this._logger.debug(`RAG status refreshed: ${this.#ragCachedStatus.vectorCount} docs`);
       if (this.rendered) this.render();
@@ -744,7 +748,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     if (!levelBar && !durationSpan) return;
 
-    let lastDurationSec = -1;
+    let lastDurationStr = '';
 
     const update = () => {
       // Level bar: every frame for smooth animation
@@ -757,9 +761,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       if (durationSpan) {
         const formatted = this._formatDuration();
         // Compare against last written value to skip no-op writes
-        if (formatted !== lastDurationSec) {
+        if (formatted !== lastDurationStr) {
           durationSpan.textContent = formatted;
-          lastDurationSec = formatted;
+          lastDurationStr = formatted;
         }
       }
 

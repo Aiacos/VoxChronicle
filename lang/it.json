@@ -310,6 +310,7 @@
       "LabelsReset": "Etichette parlanti reimpostate",
       "NoGameUsers": "Nessun utente di gioco disponibile per il rilevamento automatico",
       "SaveFailed": "Salvataggio etichette parlanti fallito",
+      "RenameFailed": "Impossibile rinominare il parlante. Riprova.",
       "Clear": "Cancella",
       "DetectedInSession": "Rilevato nella sessione",
       "HelpTitle": "Aiuto",
@@ -370,6 +371,7 @@
       "SelectAll": "Seleziona Tutto",
       "AddSelected": "Aggiungi Selezionati",
       "SuggestAddedCount": "Aggiunti {count} termine/i",
+      "SuggestPartialFailure": "Alcuni dati di Foundry non sono stati letti. I suggerimenti potrebbero essere incompleti.",
       "NoTermsSelected": "Nessun termine selezionato"
     },
     "EntityExtraction": {
@@ -648,6 +650,7 @@
       "RelationshipExtractionFailed": "Estrazione relazioni fallita.",
       "ImageGenerationBatchFailed": "Generazione immagini fallita. La cronaca verrà pubblicata senza immagini.",
       "GalleryClearFailed": "Impossibile cancellare la galleria immagini.",
+      "AISummaryFailed": "Riepilogo AI fallito. Verrà usato un riepilogo di base.",
       "RAGInitFailed": "VoxChronicle: Inizializzazione RAG fallita. I suggerimenti AI funzioneranno senza contesto della campagna.",
       "RAGContextUnavailable": "VoxChronicle: Contesto RAG non disponibile. I suggerimenti potrebbero essere meno accurati.",
       "FailedToOpenPanel": "VoxChronicle: Impossibile aprire il pannello. Controlla la console.",

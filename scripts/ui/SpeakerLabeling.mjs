@@ -582,6 +582,10 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
       return renameCount;
     } catch (error) {
       logger.error('Failed to rename speaker:', error);
+      ui?.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.SpeakerLabeling.RenameFailed') ||
+        'Failed to rename speaker. Please try again.'
+      );
       return 0;
     }
   }

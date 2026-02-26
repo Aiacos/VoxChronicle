@@ -68,7 +68,7 @@ vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({
 // Mock RateLimiter
 vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
   const mockRateLimiterInstance = {
-    throttle: vi.fn().mockResolvedValue(undefined),
+    throttle: vi.fn((fn) => fn()),
     executeWithRetry: vi.fn((fn) => fn()),
     pause: vi.fn(),
     reset: vi.fn(),
@@ -77,7 +77,7 @@ vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
   class MockRateLimiter {
     constructor() {
       Object.assign(this, {
-        throttle: vi.fn().mockResolvedValue(undefined),
+        throttle: vi.fn((fn) => fn()),
         executeWithRetry: vi.fn((fn) => fn()),
         pause: vi.fn(),
         reset: vi.fn(),

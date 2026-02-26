@@ -35,7 +35,7 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
 vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
   class MockRateLimiter {
     constructor() {
-      this.throttle = vi.fn().mockResolvedValue(undefined);
+      this.throttle = vi.fn((fn) => fn ? fn() : undefined);
       this.executeWithRetry = vi.fn((fn) => fn());
       this.pause = vi.fn();
       this.reset = vi.fn();

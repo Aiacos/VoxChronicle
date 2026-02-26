@@ -358,6 +358,10 @@ class NarrativeExporter {
       };
     } catch (error) {
       this._logger.error('AI summary generation failed:', error.message);
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.AISummaryFailed') ||
+        'VoxChronicle: AI summary failed. Using basic summary instead.'
+      );
 
       // Fall back to basic summary on error
       const fallbackSummary = this.generateSummary(segments, { maxLength });
@@ -491,24 +495,29 @@ class NarrativeExporter {
    */
   exportBatch(sessions, options = {}) {
     if (!sessions || !Array.isArray(sessions)) {
-      return [];
+      return { results: [], errors: [] };
     }
 
     this._logger.log(`Exporting batch of ${sessions.length} sessions`);
 
-    const results = sessions
-      .map((session, index) => {
-        try {
-          return this.export(session, options);
-        } catch (error) {
-          this._logger.error(`Failed to export session ${index}: ${error.message}`);
-          return null;
-        }
-      })
-      .filter(Boolean);
+    const results = [];
+    const errors = [];
+
+    sessions.forEach((session, index) => {
+      try {
+        results.push(this.export(session, options));
+      } catch (error) {
+        this._logger.error(`Failed to export session ${index}: ${error.message}`);
+        errors.push({ index, error: error.message });
+      }
+    });
+
+    if (errors.length > 0) {
+      this._logger.warn(`exportBatch: ${errors.length}/${sessions.length} sessions failed`);
+    }
 
     this._logger.debug(`exportBatch: exported ${results.length}/${sessions.length} sessions`);
-    return results;
+    return { results, errors };
   }
 
   // ============================================================================

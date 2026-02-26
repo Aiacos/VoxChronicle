@@ -455,8 +455,10 @@ class SessionOrchestrator {
         `${this._currentSession.moments.length} salient moments in ${extractionMs}ms`
     );
 
-    if (this._options.autoExtractRelationships) {
+    if (this._options.autoExtractRelationships && !extractionResult.warnings?.length) {
       await this._extractRelationships(extractionResult);
+    } else if (extractionResult.warnings?.length) {
+      this._logger.warn('Skipping relationship extraction due to partial entity extraction failure');
     }
 
     return extractionResult;

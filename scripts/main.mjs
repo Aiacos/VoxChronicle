@@ -22,23 +22,15 @@ import { Logger } from './utils/Logger.mjs';
 const logger = Logger.createChild('main');
 
 /**
- * Singleton reference to the MainPanel Application
- * Lazy-loaded when first needed
- * @type {MainPanel|null}
- */
-let mainPanelApp = null;
-
-/**
- * Get or create the MainPanel application instance
+ * Get or create the MainPanel application instance.
+ * Delegates to MainPanel.getInstance() which handles singleton caching
+ * and orchestrator replacement internally.
  * @returns {Promise<MainPanel>} The main panel application
  */
 async function getMainPanel() {
-  if (!mainPanelApp) {
-    const { MainPanel } = await import('./ui/MainPanel.mjs');
-    const voxChronicle = VoxChronicle.getInstance();
-    mainPanelApp = MainPanel.getInstance(voxChronicle.sessionOrchestrator);
-  }
-  return mainPanelApp;
+  const { MainPanel } = await import('./ui/MainPanel.mjs');
+  const voxChronicle = VoxChronicle.getInstance();
+  return MainPanel.getInstance(voxChronicle.sessionOrchestrator);
 }
 
 /**

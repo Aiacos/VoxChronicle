@@ -1399,16 +1399,18 @@ describe('NarrativeExporter', () => {
   // ════════════════════════════════════════════════════════════════════════
 
   describe('exportBatch()', () => {
-    it('should return empty array for null sessions', () => {
-      expect(exporter.exportBatch(null)).toEqual([]);
+    it('should return empty results and errors for null sessions', () => {
+      expect(exporter.exportBatch(null)).toEqual({ results: [], errors: [] });
     });
 
-    it('should return empty array for non-array', () => {
-      expect(exporter.exportBatch('not-array')).toEqual([]);
+    it('should return empty results and errors for non-array', () => {
+      expect(exporter.exportBatch('not-array')).toEqual({ results: [], errors: [] });
     });
 
-    it('should return empty array for empty sessions', () => {
-      expect(exporter.exportBatch([])).toEqual([]);
+    it('should return empty results for empty sessions', () => {
+      const batch = exporter.exportBatch([]);
+      expect(batch.results).toEqual([]);
+      expect(batch.errors).toEqual([]);
     });
 
     it('should export multiple sessions', () => {
@@ -1418,29 +1420,30 @@ describe('NarrativeExporter', () => {
         makeSessionData({ title: 'Session 3' })
       ];
 
-      const results = exporter.exportBatch(sessions);
-      expect(results).toHaveLength(3);
-      expect(results[0].name).toBe('Session 1');
-      expect(results[1].name).toBe('Session 2');
-      expect(results[2].name).toBe('Session 3');
+      const batch = exporter.exportBatch(sessions);
+      expect(batch.results).toHaveLength(3);
+      expect(batch.results[0].name).toBe('Session 1');
+      expect(batch.results[1].name).toBe('Session 2');
+      expect(batch.results[2].name).toBe('Session 3');
+      expect(batch.errors).toHaveLength(0);
     });
 
-    it('should filter out failed exports', () => {
+    it('should report failed exports in errors array', () => {
       const sessions = [
         makeSessionData({ title: 'Good Session' }),
         null, // This will throw
         makeSessionData({ title: 'Another Good' })
       ];
 
-      const results = exporter.exportBatch(sessions);
-      // null session should be filtered out
-      expect(results.length).toBeLessThanOrEqual(3);
+      const batch = exporter.exportBatch(sessions);
+      expect(batch.results.length).toBeLessThanOrEqual(3);
+      expect(batch.errors.length + batch.results.length).toBe(3);
     });
 
     it('should apply options to all sessions', () => {
       const sessions = [makeSessionData({ title: 'Session 1' })];
-      const results = exporter.exportBatch(sessions, { location_id: 100 });
-      expect(results[0].location_id).toBe(100);
+      const batch = exporter.exportBatch(sessions, { location_id: 100 });
+      expect(batch.results[0].location_id).toBe(100);
     });
   });
 

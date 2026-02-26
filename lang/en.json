@@ -310,6 +310,7 @@
       "LabelsReset": "Speaker labels reset",
       "NoGameUsers": "No game users available for auto-detection",
       "SaveFailed": "Failed to save speaker labels",
+      "RenameFailed": "Failed to rename speaker. Please try again.",
       "Clear": "Clear",
       "DetectedInSession": "Detected in session",
       "HelpTitle": "Help",
@@ -370,6 +371,7 @@
       "SelectAll": "Select All",
       "AddSelected": "Add Selected",
       "SuggestAddedCount": "Added {count} term(s)",
+      "SuggestPartialFailure": "Some Foundry data could not be read. Suggestions may be incomplete.",
       "NoTermsSelected": "No terms selected"
     },
     "EntityExtraction": {
@@ -648,6 +650,7 @@
       "RelationshipExtractionFailed": "Relationship extraction failed.",
       "ImageGenerationBatchFailed": "Image generation failed. Chronicle will be published without images.",
       "GalleryClearFailed": "Failed to clear image gallery.",
+      "AISummaryFailed": "AI summary failed. Using basic summary instead.",
       "RAGInitFailed": "VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.",
       "RAGContextUnavailable": "VoxChronicle: RAG context unavailable. Suggestions may be less accurate.",
       "FailedToOpenPanel": "VoxChronicle: Failed to open panel. Check console.",

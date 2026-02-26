@@ -103,6 +103,8 @@ class VoxChronicle {
     // State tracking
     /** @type {boolean} Whether the module is fully initialized */
     this.isInitialized = false;
+    /** @type {boolean} Whether reinitialize is deferred until session ends */
+    this._reinitializePending = false;
   }
 
   /**
@@ -140,11 +142,19 @@ class VoxChronicle {
    * @returns {Promise<void>}
    */
   async reinitialize() {
+    // Defer reinitialization if a session is active to prevent data loss
+    if (this.sessionOrchestrator?.isSessionActive) {
+      logger.warn('Reinitialize deferred — a recording session is active. Changes will apply after the session ends.');
+      this._reinitializePending = true;
+      return;
+    }
+
     // Clean up existing services to prevent resource leaks
     this.audioRecorder?.cancel();
     this.silenceDetector?.stop?.();
     this.sessionOrchestrator?.reset?.();
     this.isInitialized = false;
+    this._reinitializePending = false;
     return this.initialize();
   }
 
@@ -160,7 +170,7 @@ class VoxChronicle {
 
         const aiSettings = ['ragEnabled', 'transcriptionMode'];
         const key = setting.key.split('.')[1];
-        if (aiSettings.includes(key)) {
+        if (aiSettings.includes(key) || this._reinitializePending) {
           logger.info(`Setting '${key}' updated, reinitializing services...`);
           this.reinitialize().catch(err => {
             logger.error(`Reinitialization after '${key}' change failed:`, err);

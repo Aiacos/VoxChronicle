@@ -645,6 +645,10 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
       return suggestions;
     } catch (error) {
       this._logger.error('Failed to collect Foundry suggestions:', error);
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestPartialFailure') ||
+        'Some Foundry data could not be read. Suggestions may be incomplete.'
+      );
       return suggestions;
     }
   }

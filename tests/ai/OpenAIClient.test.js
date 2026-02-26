@@ -858,7 +858,7 @@ describe('OpenAIClient', () => {
       const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
 
       // Make the rate limiter throw immediately (before fetch is called)
-      client._rateLimiter.executeWithRetry = async () => {
+      client._rateLimiter.throttle = async () => {
         throw new Error('Rate limiter is paused');
       };
 

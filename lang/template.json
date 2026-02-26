@@ -310,6 +310,7 @@
       "LabelsReset": "",
       "NoGameUsers": "",
       "SaveFailed": "",
+      "RenameFailed": "",
       "Clear": "",
       "DetectedInSession": "",
       "HelpTitle": "",
@@ -370,6 +371,7 @@
       "SelectAll": "",
       "AddSelected": "",
       "SuggestAddedCount": "",
+      "SuggestPartialFailure": "",
       "NoTermsSelected": ""
     },
     "EntityExtraction": {
@@ -648,6 +650,7 @@
       "RelationshipExtractionFailed": "",
       "ImageGenerationBatchFailed": "",
       "GalleryClearFailed": "",
+      "AISummaryFailed": "",
       "RAGInitFailed": "",
       "RAGContextUnavailable": "",
       "FailedToOpenPanel": "",
