@@ -677,13 +677,17 @@ class Settings {
       if (!['http:', 'https:'].includes(url.protocol)) {
         ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrlScheme', { protocol: url.protocol }) || `Invalid URL scheme "${url.protocol}"`);
         const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
-        game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '');
+        game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '').catch(e =>
+          logger.warn(`Failed to reset ${settingKey}:`, e.message)
+        );
       }
     } catch (error) {
       logger.warn('URL validation failed:', error.message);
       ui?.notifications?.warn(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrl', { url: value }) || `"${value}" is not a valid URL.`);
       const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
-      game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '');
+      game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '').catch(e =>
+        logger.warn(`Failed to reset ${settingKey}:`, e.message)
+      );
     }
   }
 

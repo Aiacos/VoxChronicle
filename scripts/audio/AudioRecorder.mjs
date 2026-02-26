@@ -70,6 +70,7 @@ class AudioRecorder {
   _pendingOldRecorder = null;
   _rotationStopTimeoutId = null;
   _rotationRejectTimeoutId = null;
+  _rotationResolve = null;
 
   /** @type {object} */
   _options = {};
@@ -197,6 +198,7 @@ class AudioRecorder {
 
     try {
       return await new Promise((resolve, reject) => {
+        this._rotationResolve = resolve;
         const oldRecorder = this._mediaRecorder;
         const chunkBuffer = [...this._liveBuffer];
         this._liveBuffer = [];
@@ -231,6 +233,7 @@ class AudioRecorder {
 
         this._rotationRejectTimeoutId = setTimeout(() => {
           this._pendingOldRecorder = null;
+          this._rotationResolve = null;
           try { oldRecorder.stop(); } catch (_) { /* best effort */ }
           reject(new Error('Chunk rotation timed out'));
         }, 5000);
@@ -239,6 +242,7 @@ class AudioRecorder {
           clearTimeout(this._rotationRejectTimeoutId);
           this._rotationRejectTimeoutId = null;
           this._pendingOldRecorder = null;
+          this._rotationResolve = null;
           const blob = new Blob(chunkBuffer, { type: oldRecorder.mimeType });
           resolve(blob.size > 0 ? blob : null);
         };
@@ -247,6 +251,7 @@ class AudioRecorder {
           clearTimeout(this._rotationRejectTimeoutId);
           this._rotationRejectTimeoutId = null;
           this._pendingOldRecorder = null;
+          this._rotationResolve = null;
           this._logger.error('Old recorder error during rotation:', event.error);
           this._callbacks.onError?.(event.error || new Error('MediaRecorder error during rotation'));
           resolve(null);
@@ -259,6 +264,7 @@ class AudioRecorder {
             clearTimeout(this._rotationRejectTimeoutId);
             this._rotationRejectTimeoutId = null;
             this._pendingOldRecorder = null;
+            this._rotationResolve = null;
             this._logger.warn('Failed to stop old recorder:', e.message);
             this._callbacks.onError?.(e);
             resolve(null);
@@ -268,6 +274,7 @@ class AudioRecorder {
     } finally {
       this._isRotating = false;
       this._rotationStopTimeoutId = null;
+      this._rotationResolve = null;
     }
   }
 
@@ -361,6 +368,12 @@ class AudioRecorder {
    * @private
    */
   _abortPendingRotation() {
+    // Settle any pending rotation Promise BEFORE destroying handlers,
+    // otherwise the Promise hangs forever and `finally` never runs.
+    if (this._rotationResolve) {
+      this._rotationResolve(null);
+      this._rotationResolve = null;
+    }
     if (this._rotationStopTimeoutId) {
       clearTimeout(this._rotationStopTimeoutId);
       this._rotationStopTimeoutId = null;

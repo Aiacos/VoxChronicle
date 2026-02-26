@@ -644,6 +644,7 @@
       "LiveCycleRepeatedFailures": "",
       "AIAnalysisFailed": "",
       "EntityExtractionFailed": "",
+      "PartialExtractionFailure": "",
       "RelationshipExtractionFailed": "",
       "ImageGenerationBatchFailed": "",
       "RAGInitFailed": "",

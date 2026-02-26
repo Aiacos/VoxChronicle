@@ -120,6 +120,16 @@ class EntityProcessor {
           `${extractionResult.moments?.length || 0} moments in ${extractionMs}ms`
       );
 
+      if (extractionResult.warnings?.length > 0) {
+        for (const warning of extractionResult.warnings) {
+          this._logger.warn('Extraction warning:', warning);
+        }
+        ui?.notifications?.warn(
+          game.i18n?.localize('VOXCHRONICLE.Errors.PartialExtractionFailure') ||
+          'VoxChronicle: Some extraction steps failed. Results may be incomplete.'
+        );
+      }
+
       return extractionResult;
     } catch (error) {
       const extractionMs = Date.now() - extractionStart;

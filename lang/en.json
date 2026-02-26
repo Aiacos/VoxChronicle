@@ -644,6 +644,7 @@
       "LiveCycleRepeatedFailures": "Live transcription is experiencing repeated errors. Check your API key and connection.",
       "AIAnalysisFailed": "AI suggestions unavailable. Check your OpenAI API key.",
       "EntityExtractionFailed": "Entity extraction failed. Entities will not be available for this session.",
+      "PartialExtractionFailure": "Some extraction steps failed. Results may be incomplete.",
       "RelationshipExtractionFailed": "Relationship extraction failed.",
       "ImageGenerationBatchFailed": "Image generation failed. Chronicle will be published without images.",
       "RAGInitFailed": "VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.",

@@ -911,7 +911,7 @@ describe('AudioRecorder', () => {
   // ── 10a. Rotation + cancel/stop interplay ────────────────────────────
 
   describe('rotation interplay with cancel and stop', () => {
-    it('cancel during rotation cleans up pending old recorder', async () => {
+    it('cancel during rotation settles the rotation Promise (no dangling Promise)', async () => {
       await recorder.startRecording();
       const mr1 = recorderInstances[0];
       mr1.ondataavailable({ data: new Blob(['data']) });
@@ -923,16 +923,16 @@ describe('AudioRecorder', () => {
 
       // Cancel while rotation is in-flight
       recorder.cancel();
-      vi.advanceTimersByTime(200);
 
+      // The chunk promise MUST settle (resolve to null) — not hang forever
+      const result = await chunkPromise;
+      expect(result).toBeNull();
       expect(recorder.state).toBe(RecordingState.INACTIVE);
-      // The chunk promise should resolve (not hang forever)
-      // since _abortPendingRotation nulls the onstop handler,
-      // the 5s timeout will fire or it was already cleared
-      vi.advanceTimersByTime(5000);
+      expect(recorder._isRotating).toBe(false);
+      expect(recorder._rotationResolve).toBeNull();
     });
 
-    it('stopRecording during rotation aborts rotation first', async () => {
+    it('stopRecording during rotation settles rotation Promise and returns session blob', async () => {
       await recorder.startRecording();
       const mr1 = recorderInstances[0];
       mr1.ondataavailable({ data: new Blob(['data']) });
@@ -940,7 +940,7 @@ describe('AudioRecorder', () => {
       // Don't complete rotation immediately
       mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
 
-      recorder.getLatestChunk();
+      const chunkPromise = recorder.getLatestChunk();
 
       // Now stop the full session while rotation is pending
       const mr2 = recorderInstances[1];
@@ -952,6 +952,10 @@ describe('AudioRecorder', () => {
       const fullBlob = await recorder.stopRecording();
       expect(fullBlob).toBeInstanceOf(Blob);
       expect(recorder.state).toBe(RecordingState.INACTIVE);
+
+      // The rotation promise must also have settled
+      const chunkResult = await chunkPromise;
+      expect(chunkResult).toBeNull();
     });
   });
 
@@ -1043,11 +1047,13 @@ describe('AudioRecorder', () => {
       expect(ctx.close).toHaveBeenCalled();
     });
 
-    it('nulls _stream, _mediaRecorder, _analyserNode, _sourceNode', async () => {
+    it('nulls _stream, _mediaRecorder, _audioContext, _analyserNode, _sourceNode', async () => {
       await recorder.startRecording();
+      expect(recorder._audioContext).not.toBeNull();
       recorder._cleanup();
       expect(recorder._stream).toBeNull();
       expect(recorder._mediaRecorder).toBeNull();
+      expect(recorder._audioContext).toBeNull();
       expect(recorder._analyserNode).toBeNull();
       expect(recorder._sourceNode).toBeNull();
     });
