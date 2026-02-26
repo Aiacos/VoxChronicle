@@ -65,6 +65,12 @@ class AudioRecorder {
   _sourceNode = null;
   _levelMonitorId = null;
 
+  // Rotation state — guards against concurrent getLatestChunk() calls
+  _isRotating = false;
+  _pendingOldRecorder = null;
+  _rotationStopTimeoutId = null;
+  _rotationRejectTimeoutId = null;
+
   /** @type {object} */
   _options = {};
 
@@ -183,42 +189,86 @@ class AudioRecorder {
    */
   async getLatestChunk() {
     if (this._state !== RecordingState.RECORDING) return null;
+    if (this._isRotating) {
+      this._logger.warn('Rotation already in progress, skipping');
+      return null;
+    }
+    this._isRotating = true;
 
-    return new Promise((resolve, reject) => {
-      const oldRecorder = this._mediaRecorder;
-      const chunkBuffer = this._liveBuffer; // snapshot current buffer
-      this._liveBuffer = []; // new recorder gets a fresh buffer
+    try {
+      return await new Promise((resolve, reject) => {
+        const oldRecorder = this._mediaRecorder;
+        const chunkBuffer = [...this._liveBuffer];
+        this._liveBuffer = [];
+        this._pendingOldRecorder = oldRecorder;
 
-      oldRecorder.ondataavailable = null; // prevent cross-contamination
+        // Redirect old recorder's final data flush to chunk buffer.
+        // W3C spec: stop() fires one last ondataavailable BEFORE the stop event.
+        oldRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunkBuffer.push(e.data);
+            this._audioChunks.push(e.data);
+          }
+        };
 
-      this._startNewRecorder();
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Chunk rotation timed out'));
-      }, 5000);
-
-      oldRecorder.onstop = () => {
-        clearTimeout(timeout);
-        const blob = new Blob(chunkBuffer, { type: oldRecorder.mimeType });
-        resolve(blob.size > 0 ? blob : null);
-      };
-
-      oldRecorder.onerror = (event) => {
-        clearTimeout(timeout);
-        this._logger.error('Old recorder error during rotation:', event.error);
-        resolve(null);
-      };
-
-      setTimeout(() => {
         try {
-          oldRecorder.stop();
+          this._startNewRecorder();
         } catch (e) {
-          clearTimeout(timeout);
-          this._logger.warn('Failed to stop old recorder:', e.message);
-          resolve(null);
+          this._logger.error('Failed to start new recorder during rotation:', e);
+          this._callbacks.onError?.(e);
+          // Restore old recorder so recording can continue
+          oldRecorder.ondataavailable = (ev) => {
+            if (ev.data.size > 0) {
+              this._audioChunks.push(ev.data);
+              this._liveBuffer.push(ev.data);
+            }
+          };
+          this._mediaRecorder = oldRecorder;
+          this._pendingOldRecorder = null;
+          reject(new Error(`Recorder rotation failed: ${e.message}`));
+          return;
         }
-      }, 100);
-    });
+
+        this._rotationRejectTimeoutId = setTimeout(() => {
+          this._pendingOldRecorder = null;
+          try { oldRecorder.stop(); } catch (_) { /* best effort */ }
+          reject(new Error('Chunk rotation timed out'));
+        }, 5000);
+
+        oldRecorder.onstop = () => {
+          clearTimeout(this._rotationRejectTimeoutId);
+          this._rotationRejectTimeoutId = null;
+          this._pendingOldRecorder = null;
+          const blob = new Blob(chunkBuffer, { type: oldRecorder.mimeType });
+          resolve(blob.size > 0 ? blob : null);
+        };
+
+        oldRecorder.onerror = (event) => {
+          clearTimeout(this._rotationRejectTimeoutId);
+          this._rotationRejectTimeoutId = null;
+          this._pendingOldRecorder = null;
+          this._logger.error('Old recorder error during rotation:', event.error);
+          this._callbacks.onError?.(event.error || new Error('MediaRecorder error during rotation'));
+          resolve(null);
+        };
+
+        this._rotationStopTimeoutId = setTimeout(() => {
+          try {
+            oldRecorder.stop();
+          } catch (e) {
+            clearTimeout(this._rotationRejectTimeoutId);
+            this._rotationRejectTimeoutId = null;
+            this._pendingOldRecorder = null;
+            this._logger.warn('Failed to stop old recorder:', e.message);
+            this._callbacks.onError?.(e);
+            resolve(null);
+          }
+        }, 100);
+      });
+    } finally {
+      this._isRotating = false;
+      this._rotationStopTimeoutId = null;
+    }
   }
 
   /**
@@ -229,6 +279,9 @@ class AudioRecorder {
    */
   async stopRecording() {
     if (this._state === RecordingState.INACTIVE) return null;
+
+    // Abort any in-flight rotation first to prevent data loss
+    this._abortPendingRotation();
 
     this._stopLevelMonitoring();
     if (this._lastStartTime) this._totalActiveMs += (Date.now() - this._lastStartTime);
@@ -295,8 +348,36 @@ class AudioRecorder {
   cancel() {
     if (this._state === RecordingState.INACTIVE) return;
     this._stopLevelMonitoring();
-    try { this._mediaRecorder?.stop(); } catch (_) { /* already stopped */ }
+    this._abortPendingRotation();
+    try { this._mediaRecorder?.stop(); } catch (e) {
+      this._logger.debug('MediaRecorder.stop() during cancel:', e.message);
+    }
     this._cleanup();
+  }
+
+  /**
+   * Abort any in-flight chunk rotation, stopping the old recorder
+   * and clearing associated timers.
+   * @private
+   */
+  _abortPendingRotation() {
+    if (this._rotationStopTimeoutId) {
+      clearTimeout(this._rotationStopTimeoutId);
+      this._rotationStopTimeoutId = null;
+    }
+    if (this._rotationRejectTimeoutId) {
+      clearTimeout(this._rotationRejectTimeoutId);
+      this._rotationRejectTimeoutId = null;
+    }
+    if (this._pendingOldRecorder) {
+      this._pendingOldRecorder.onstop = null;
+      this._pendingOldRecorder.onerror = null;
+      try { this._pendingOldRecorder.stop(); } catch (e) {
+        this._logger.debug('Pending old recorder stop during abort:', e.message);
+      }
+      this._pendingOldRecorder = null;
+    }
+    this._isRotating = false;
   }
 
   /**
@@ -306,22 +387,31 @@ class AudioRecorder {
    */
   _cleanup() {
     this._stopLevelMonitoring();
+    this._abortPendingRotation();
 
     if (this._mediaRecorder?.state !== 'inactive') {
-      try { this._mediaRecorder.stop(); } catch (_) { /* already stopped */ }
+      try { this._mediaRecorder.stop(); } catch (e) {
+        this._logger.debug('MediaRecorder.stop() during cleanup:', e.message);
+      }
     }
 
     if (this._stream) this._stream.getTracks().forEach(t => t.stop());
     if (this._audioContext) {
-      try { this._audioContext.close(); } catch (_) { /* can throw if already closed */ }
+      try { this._audioContext.close(); } catch (e) {
+        this._logger.debug('AudioContext.close() during cleanup:', e.message);
+      }
     }
 
     this._stream = null;
     this._mediaRecorder = null;
+    this._audioContext = null;
     this._analyserNode = null;
     this._sourceNode = null;
     this._audioChunks = [];
     this._liveBuffer = [];
+    this._totalActiveMs = 0;
+    this._lastStartTime = null;
+    this._startTime = null;
     this._state = RecordingState.INACTIVE;
     this._callbacks.onStateChange?.(this._state);
   }

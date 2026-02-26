@@ -500,6 +500,10 @@ describe('EntityExtractor', () => {
       expect(result.locations).toEqual([]);
       expect(result.items).toEqual([]);
       expect(result.moments).toEqual([]);
+      expect(result.warnings).toEqual([
+        'Entity extraction failed; results may be incomplete',
+        'Moment extraction failed; results may be incomplete'
+      ]);
     });
   });
 

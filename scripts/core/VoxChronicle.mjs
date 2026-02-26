@@ -129,6 +129,7 @@ class VoxChronicle {
       VoxChronicle.#instance.silenceDetector?.stop?.();
       VoxChronicle.#instance.sessionOrchestrator?.reset?.();
       VoxChronicle.#instance.isInitialized = false;
+      VoxChronicle._hooksRegistered = false;
     }
     VoxChronicle.#instance = null;
   }
@@ -161,7 +162,9 @@ class VoxChronicle {
         const key = setting.key.split('.')[1];
         if (aiSettings.includes(key)) {
           logger.info(`Setting '${key}' updated, reinitializing services...`);
-          this.reinitialize();
+          this.reinitialize().catch(err => {
+            logger.error(`Reinitialization after '${key}' change failed:`, err);
+          });
         }
       }
     });
@@ -335,7 +338,7 @@ class VoxChronicle {
     try {
       return game.settings.get(MODULE_ID, key);
     } catch (error) {
-      logger.debug(`Failed to get setting '${key}':`, error.message);
+      logger.warn(`Failed to read setting '${key}': ${error.message}`);
       return null;
     }
   }
@@ -443,11 +446,11 @@ class VoxChronicle {
         // Persist dataset + chat IDs for reuse across sessions
         if (this.ragProvider.getDatasetId) {
           const dsId = this.ragProvider.getDatasetId();
-          if (dsId) Settings.set('ragflowDatasetId', dsId);
+          if (dsId) Settings.set('ragflowDatasetId', dsId).catch(e => logger.warn('Failed to persist RAGFlow dataset ID:', e.message));
         }
         if (this.ragProvider.getChatId) {
           const chatId = this.ragProvider.getChatId();
-          if (chatId) Settings.set('ragflowChatId', chatId);
+          if (chatId) Settings.set('ragflowChatId', chatId).catch(e => logger.warn('Failed to persist RAGFlow chat ID:', e.message));
         }
       } else {
         // OpenAI File Search provider requires OpenAI API key
@@ -466,7 +469,7 @@ class VoxChronicle {
         // Persist vector store ID for reuse across sessions
         if (this.ragProvider.getVectorStoreId) {
           const vsId = this.ragProvider.getVectorStoreId();
-          if (vsId) Settings.setRAGVectorStoreId(vsId);
+          if (vsId) Settings.setRAGVectorStoreId(vsId).catch(e => logger.warn('Failed to persist RAG vector store ID:', e.message));
         }
       }
 

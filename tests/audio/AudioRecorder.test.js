@@ -786,19 +786,24 @@ describe('AudioRecorder', () => {
       expect(blob).toBeNull(); // empty blob => null
     });
 
-    it('nulls ondataavailable on old recorder to prevent cross-contamination', async () => {
+    it('redirects ondataavailable on old recorder to chunk buffer during rotation', async () => {
       await recorder.startRecording();
       const mr1 = recorderInstances[0];
-      mr1.ondataavailable({ data: new Blob(['data']) });
+      mr1.ondataavailable({ data: new Blob(['initial']) });
 
       mr1.stop.mockImplementation(function () {
+        // Simulate final data flush per W3C spec: stop() fires ondataavailable then onstop
+        if (mr1.ondataavailable) mr1.ondataavailable({ data: new Blob(['final-flush']) });
         mr1.state = 'inactive';
         if (mr1.onstop) mr1.onstop();
       });
 
-      recorder.getLatestChunk();
-      expect(mr1.ondataavailable).toBeNull();
+      const chunkPromise = recorder.getLatestChunk();
       vi.advanceTimersByTime(100);
+      const blob = await chunkPromise;
+      // Blob should contain both the initial snapshot AND the final flush data
+      expect(blob).not.toBeNull();
+      expect(blob.size).toBeGreaterThan(0);
     });
 
     it('rejects on timeout if old recorder never fires onstop', async () => {
@@ -844,6 +849,109 @@ describe('AudioRecorder', () => {
       vi.advanceTimersByTime(100);
       const result = await chunkPromise;
       expect(result).toBeNull();
+    });
+
+    it('returns null when rotation already in progress (concurrent guard)', async () => {
+      await recorder.startRecording();
+      const mr1 = recorderInstances[0];
+      mr1.ondataavailable({ data: new Blob(['data']) });
+
+      // First rotation: don't let onstop fire immediately
+      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+
+      const p1 = recorder.getLatestChunk();
+      // Second call while first is in-flight
+      const p2 = recorder.getLatestChunk();
+
+      expect(await p2).toBeNull(); // should skip due to rotation lock
+
+      // Complete first rotation
+      if (mr1.onstop) mr1.onstop();
+      vi.advanceTimersByTime(100);
+      await p1;
+    });
+
+    it('fires onError callback when old recorder encounters error during rotation', async () => {
+      const onError = vi.fn();
+      recorder.setCallbacks({ onError });
+      await recorder.startRecording();
+      const mr1 = recorderInstances[0];
+      mr1.ondataavailable({ data: new Blob(['data']) });
+
+      mr1.stop.mockImplementation(function () {
+        mr1.state = 'inactive';
+        if (mr1.onerror) mr1.onerror({ error: new Error('codec failure') });
+      });
+
+      const chunkPromise = recorder.getLatestChunk();
+      vi.advanceTimersByTime(100);
+      await chunkPromise;
+      expect(onError).toHaveBeenCalled();
+    });
+
+    it('recovers when _startNewRecorder throws during rotation', async () => {
+      await recorder.startRecording();
+      const mr1 = recorderInstances[0];
+      mr1.ondataavailable({ data: new Blob(['data']) });
+
+      // Make next MediaRecorder constructor throw
+      vi.spyOn(globalThis, 'MediaRecorder').mockImplementationOnce(() => {
+        throw new Error('MIME not supported');
+      });
+
+      const chunkPromise = recorder.getLatestChunk();
+      vi.advanceTimersByTime(100);
+
+      await expect(chunkPromise).rejects.toThrow('Recorder rotation failed');
+      // Old recorder should be restored
+      expect(recorder.state).toBe(RecordingState.RECORDING);
+    });
+  });
+
+  // ── 10a. Rotation + cancel/stop interplay ────────────────────────────
+
+  describe('rotation interplay with cancel and stop', () => {
+    it('cancel during rotation cleans up pending old recorder', async () => {
+      await recorder.startRecording();
+      const mr1 = recorderInstances[0];
+      mr1.ondataavailable({ data: new Blob(['data']) });
+
+      // Don't let old recorder stop — simulate slow onstop
+      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+
+      const chunkPromise = recorder.getLatestChunk();
+
+      // Cancel while rotation is in-flight
+      recorder.cancel();
+      vi.advanceTimersByTime(200);
+
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
+      // The chunk promise should resolve (not hang forever)
+      // since _abortPendingRotation nulls the onstop handler,
+      // the 5s timeout will fire or it was already cleared
+      vi.advanceTimersByTime(5000);
+    });
+
+    it('stopRecording during rotation aborts rotation first', async () => {
+      await recorder.startRecording();
+      const mr1 = recorderInstances[0];
+      mr1.ondataavailable({ data: new Blob(['data']) });
+
+      // Don't complete rotation immediately
+      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+
+      recorder.getLatestChunk();
+
+      // Now stop the full session while rotation is pending
+      const mr2 = recorderInstances[1];
+      mr2.stop.mockImplementation(function () {
+        mr2.state = 'inactive';
+        if (mr2.onstop) mr2.onstop();
+      });
+
+      const fullBlob = await recorder.stopRecording();
+      expect(fullBlob).toBeInstanceOf(Blob);
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
     });
   });
 
@@ -1249,14 +1357,8 @@ describe('AudioRecorder', () => {
       await recorder.startRecording();
       vi.advanceTimersByTime(5000);
       recorder._cleanup();
-      // After cleanup, _totalActiveMs is still set but _lastStartTime is null
-      // and state is inactive. duration getter checks _lastStartTime and _totalActiveMs
-      // _cleanup resets _audioChunks/_liveBuffer but NOT _totalActiveMs directly
-      // However, if _state is INACTIVE and _lastStartTime is null, current = 0
-      // so duration = floor(_totalActiveMs / 1000) which could still be nonzero
-      // But _cleanup does NOT reset _totalActiveMs
-      // The design shows that after cleanup, the instance is essentially dead
-      // and a new startRecording() call resets everything
+      // _cleanup now resets _totalActiveMs, _lastStartTime, and _startTime
+      expect(recorder.duration).toBe(0);
     });
 
     it('stopRecording from paused state includes accumulated time', async () => {

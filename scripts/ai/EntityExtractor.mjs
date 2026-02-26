@@ -390,31 +390,42 @@ class EntityExtractor extends OpenAIClient {
     ]);
 
     let entities;
+    let entitiesFailed = false;
     if (results[0].status === 'fulfilled') {
       entities = results[0].value;
     } else {
       this._logger.error('Entity extraction failed:', results[0].reason);
       entities = { characters: [], locations: [], items: [], summary: '', totalCount: 0 };
+      entitiesFailed = true;
     }
 
     let moments;
+    let momentsFailed = false;
     if (results[1].status === 'fulfilled') {
       moments = results[1].value;
     } else {
       this._logger.error('Moment extraction failed:', results[1].reason);
       moments = [];
+      momentsFailed = true;
     }
 
     this._logger.debug(`extractAll completed in ${Date.now() - t0}ms`, {
       characters: entities.characters.length,
       locations: entities.locations.length,
       items: entities.items.length,
-      moments: moments.length
+      moments: moments.length,
+      partialFailure: entitiesFailed || momentsFailed
     });
 
     return {
       ...entities,
-      moments
+      moments,
+      ...(entitiesFailed || momentsFailed ? {
+        warnings: [
+          ...(entitiesFailed ? ['Entity extraction failed; results may be incomplete'] : []),
+          ...(momentsFailed ? ['Moment extraction failed; results may be incomplete'] : [])
+        ]
+      } : {})
     };
   }
 

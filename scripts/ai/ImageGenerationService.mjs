@@ -559,11 +559,12 @@ class ImageGenerationService extends OpenAIClient {
    */
   async clearGallery() {
     try {
-      this._gallery = [];
       await game.settings.set(MODULE_ID, 'imageGallery', []);
+      this._gallery = [];
       this._logger.info('Gallery cleared');
     } catch (error) {
       this._logger.error('Failed to clear gallery:', error.message);
+      ui?.notifications?.warn('VoxChronicle: Failed to clear image gallery.');
     }
   }
 

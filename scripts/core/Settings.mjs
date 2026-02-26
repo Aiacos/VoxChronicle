@@ -655,6 +655,8 @@ class Settings {
         }).catch(err => {
           logger.error(`Failed to re-initialize ${serviceName} services:`, err);
         });
+      }).catch(err => {
+        logger.error(`Failed to import VoxChronicle for ${serviceName} reinitialization:`, err);
       });
     }
   }
@@ -673,13 +675,15 @@ class Settings {
     try {
       const url = new URL(value);
       if (!['http:', 'https:'].includes(url.protocol)) {
-        ui?.notifications?.error(game.i18n.format('VOXCHRONICLE.Settings.InvalidUrlScheme', { protocol: url.protocol }));
+        ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrlScheme', { protocol: url.protocol }) || `Invalid URL scheme "${url.protocol}"`);
         const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
         game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '');
       }
     } catch (error) {
       logger.warn('URL validation failed:', error.message);
-      ui?.notifications?.warn(game.i18n.format('VOXCHRONICLE.Settings.InvalidUrl', { url: value }));
+      ui?.notifications?.warn(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrl', { url: value }) || `"${value}" is not a valid URL.`);
+      const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
+      game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '');
     }
   }
 
@@ -765,7 +769,8 @@ class Settings {
   static getSpeakerLabels() {
     try {
       return Settings.get('speakerLabels') || {};
-    } catch {
+    } catch (error) {
+      logger.warn('Failed to load speaker labels:', error.message);
       return {};
     }
   }
