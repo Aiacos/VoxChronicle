@@ -1,0 +1,13 @@
+{
+  "session": "2026-02-26-audit",
+  "started": "2026-02-26T08:40:00Z",
+  "total": 39,
+  "resolved": 39,
+  "remaining": 0,
+  "remaining_items": [],
+  "phase": "complete",
+  "test_baseline": 151,
+  "test_current": 79,
+  "tests_fixed": 72,
+  "new_regressions": 0
+}
