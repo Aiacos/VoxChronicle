@@ -211,7 +211,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Panel',
         order: 0,
         button: true,
-        onClick: toolHandlers.panel
+        onChange: toolHandlers.panel
       },
       speakerLabels: {
         name: 'speakerLabels',
@@ -219,7 +219,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.SpeakerLabels',
         order: 1,
         button: true,
-        onClick: toolHandlers.speakerLabels
+        onChange: toolHandlers.speakerLabels
       },
       vocabulary: {
         name: 'vocabulary',
@@ -227,7 +227,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Vocabulary',
         order: 2,
         button: true,
-        onClick: toolHandlers.vocabulary
+        onChange: toolHandlers.vocabulary
       },
       relationshipGraph: {
         name: 'relationshipGraph',
@@ -235,7 +235,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.RelationshipGraph',
         order: 3,
         button: true,
-        onClick: toolHandlers.relationshipGraph
+        onChange: toolHandlers.relationshipGraph
       },
       settings: {
         name: 'settings',
@@ -243,7 +243,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Settings',
         order: 4,
         button: true,
-        onClick: toolHandlers.settings
+        onChange: toolHandlers.settings
       }
     }
   };

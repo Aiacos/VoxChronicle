@@ -460,6 +460,14 @@ class Settings {
       default: 'openai-file-search'
     });
 
+    // Internal: RAG index metadata (vector store ID, file mappings)
+    game.settings.register(MODULE_ID, 'ragIndexMetadata', {
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {}
+    });
+
     // Maximum number of source results per query
     game.settings.register(MODULE_ID, 'ragMaxResults', {
       name: 'VOXCHRONICLE.Settings.RAGMaxResults',
