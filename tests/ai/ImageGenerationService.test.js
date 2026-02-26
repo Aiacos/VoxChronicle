@@ -552,6 +552,15 @@ describe('ImageGenerationService', () => {
       expect(service.getGallery()).toEqual([]);
     });
 
+    it('should warn user when clearGallery persist fails', async () => {
+      await service.saveToGallery({ prompt: 'test' });
+      game.settings.set.mockRejectedValueOnce(new Error('storage full'));
+      await service.clearGallery();
+      expect(ui.notifications.warn).toHaveBeenCalled();
+      // Gallery should NOT be cleared in memory since persist failed
+      expect(service.getGallery().length).toBeGreaterThan(0);
+    });
+
     it('should return copy of gallery', () => {
       const gallery = service.getGallery();
       gallery.push({ id: 'fake' });

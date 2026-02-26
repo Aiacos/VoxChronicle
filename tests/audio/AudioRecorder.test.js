@@ -1110,6 +1110,31 @@ describe('AudioRecorder', () => {
       mr.state = 'inactive';
       expect(() => recorder._cleanup()).not.toThrow();
     });
+
+    it('cleanup during active rotation aborts rotation and resets all state', async () => {
+      await recorder.startRecording();
+      const mr1 = recorderInstances[0];
+      mr1.ondataavailable({ data: new Blob(['data']) });
+
+      // Start rotation but don't let old recorder stop
+      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+      const chunkPromise = recorder.getLatestChunk();
+
+      // Cleanup while rotation is in-flight
+      recorder._cleanup();
+
+      // The rotation promise must settle (not hang)
+      const result = await chunkPromise;
+      expect(result).toBeNull();
+
+      // All rotation state must be cleared
+      expect(recorder._isRotating).toBe(false);
+      expect(recorder._rotationResolve).toBeNull();
+      expect(recorder._pendingOldRecorder).toBeNull();
+      expect(recorder._rotationStopTimeoutId).toBeNull();
+      expect(recorder._rotationRejectTimeoutId).toBeNull();
+      expect(recorder.state).toBe(RecordingState.INACTIVE);
+    });
   });
 
   // ── 14. _setupAudioAnalysis ─────────────────────────────────────────

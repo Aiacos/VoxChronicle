@@ -647,6 +647,7 @@
       "PartialExtractionFailure": "",
       "RelationshipExtractionFailed": "",
       "ImageGenerationBatchFailed": "",
+      "GalleryClearFailed": "",
       "RAGInitFailed": "",
       "RAGContextUnavailable": "",
       "FailedToOpenPanel": "",

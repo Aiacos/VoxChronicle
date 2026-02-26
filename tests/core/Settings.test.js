@@ -1411,4 +1411,41 @@ describe('Settings', () => {
       expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'speakerLabels', { a: 'b' });
     });
   });
+
+  // ── _validateServerUrl ─────────────────────────────────────────────────
+
+  describe('_validateServerUrl', () => {
+    it('should accept valid http URL', () => {
+      Settings._validateServerUrl('http://localhost:8080', 'whisperBackendUrl');
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+    });
+
+    it('should accept valid https URL', () => {
+      Settings._validateServerUrl('https://example.com/api', 'ragflowBaseUrl');
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+    });
+
+    it('should reject non-http/https scheme and reset to default', () => {
+      Settings._validateServerUrl('ftp://evil.com', 'whisperBackendUrl');
+      expect(ui.notifications.error).toHaveBeenCalled();
+      expect(game.settings.set).toHaveBeenCalledWith(
+        MODULE_ID, 'whisperBackendUrl', 'http://localhost:8080'
+      );
+    });
+
+    it('should warn on unparseable URL and reset to default', () => {
+      Settings._validateServerUrl('not a url at all', 'ragflowBaseUrl');
+      expect(ui.notifications.warn).toHaveBeenCalled();
+      expect(game.settings.set).toHaveBeenCalledWith(
+        MODULE_ID, 'ragflowBaseUrl', 'http://localhost:9380'
+      );
+    });
+
+    it('should do nothing for empty/null value', () => {
+      Settings._validateServerUrl('', 'whisperBackendUrl');
+      Settings._validateServerUrl(null, 'whisperBackendUrl');
+      expect(ui.notifications.error).not.toHaveBeenCalled();
+      expect(ui.notifications.warn).not.toHaveBeenCalled();
+    });
+  });
 });

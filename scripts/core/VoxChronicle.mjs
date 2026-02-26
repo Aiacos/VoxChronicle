@@ -158,7 +158,7 @@ class VoxChronicle {
         // Invalidate cached settings status on any module setting change
         this._cachedSettingsStatus = null;
 
-        const aiSettings = ['openaiApiKey', 'ragEnabled', 'transcriptionMode'];
+        const aiSettings = ['ragEnabled', 'transcriptionMode'];
         const key = setting.key.split('.')[1];
         if (aiSettings.includes(key)) {
           logger.info(`Setting '${key}' updated, reinitializing services...`);

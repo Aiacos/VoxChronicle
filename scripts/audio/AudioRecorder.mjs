@@ -234,7 +234,11 @@ class AudioRecorder {
         this._rotationRejectTimeoutId = setTimeout(() => {
           this._pendingOldRecorder = null;
           this._rotationResolve = null;
-          try { oldRecorder.stop(); } catch (_) { /* best effort */ }
+          oldRecorder.onstop = null;
+          oldRecorder.onerror = null;
+          try { oldRecorder.stop(); } catch (e) {
+            this._logger.debug('Best-effort stop during rotation timeout:', e.message);
+          }
           reject(new Error('Chunk rotation timed out'));
         }, 5000);
 
@@ -273,7 +277,10 @@ class AudioRecorder {
       });
     } finally {
       this._isRotating = false;
-      this._rotationStopTimeoutId = null;
+      if (this._rotationStopTimeoutId) {
+        clearTimeout(this._rotationStopTimeoutId);
+        this._rotationStopTimeoutId = null;
+      }
       this._rotationResolve = null;
     }
   }

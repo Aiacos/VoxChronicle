@@ -455,7 +455,7 @@ describe('EntityProcessor', () => {
         expect(ui.notifications.warn).not.toHaveBeenCalled();
       });
 
-      it('should log each warning individually', async () => {
+      it('should show warning notification when multiple warnings present', async () => {
         const warningExtractor = createMockEntityExtractor({
           extractAll: vi.fn().mockResolvedValue({
             characters: [], locations: [], items: [], moments: [], totalCount: 0,
@@ -465,11 +465,6 @@ describe('EntityProcessor', () => {
 
         const p = new EntityProcessor({ entityExtractor: warningExtractor });
         await p.extractEntities('text');
-        // Logger.warn is called for each warning
-        // We check that at least 2 warn calls were made (from the loop)
-        const loggerModule = await import('../../scripts/utils/Logger.mjs');
-        const loggerChild = loggerModule.Logger.createChild();
-        // Since Logger is mocked, we just verify the notification was sent
         expect(ui.notifications.warn).toHaveBeenCalled();
       });
     });

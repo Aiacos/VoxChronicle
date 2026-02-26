@@ -564,7 +564,10 @@ class ImageGenerationService extends OpenAIClient {
       this._logger.info('Gallery cleared');
     } catch (error) {
       this._logger.error('Failed to clear gallery:', error.message);
-      ui?.notifications?.warn('VoxChronicle: Failed to clear image gallery.');
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.GalleryClearFailed') ||
+        'VoxChronicle: Failed to clear image gallery.'
+      );
     }
   }
 

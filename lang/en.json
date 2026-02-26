@@ -647,6 +647,7 @@
       "PartialExtractionFailure": "Some extraction steps failed. Results may be incomplete.",
       "RelationshipExtractionFailed": "Relationship extraction failed.",
       "ImageGenerationBatchFailed": "Image generation failed. Chronicle will be published without images.",
+      "GalleryClearFailed": "Failed to clear image gallery.",
       "RAGInitFailed": "VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.",
       "RAGContextUnavailable": "VoxChronicle: RAG context unavailable. Suggestions may be less accurate.",
       "FailedToOpenPanel": "VoxChronicle: Failed to open panel. Check console.",
