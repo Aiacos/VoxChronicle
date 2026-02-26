@@ -757,30 +757,6 @@ describe('RulesReference', () => {
     });
   });
 
-  // =========================================================================
-  // _stripHtml
-  // =========================================================================
-  describe('_stripHtml', () => {
-    it('should strip HTML tags', () => {
-      expect(rules._stripHtml('<p>Hello <strong>world</strong></p>')).toBe('Hello world');
-    });
-
-    it('should return empty string for null', () => {
-      expect(rules._stripHtml(null)).toBe('');
-    });
-
-    it('should return empty string for non-string', () => {
-      expect(rules._stripHtml(42)).toBe('');
-    });
-
-    it('should normalize whitespace', () => {
-      expect(rules._stripHtml('<p>Hello</p>  <p>World</p>')).toBe('Hello World');
-    });
-
-    it('should handle empty string', () => {
-      expect(rules._stripHtml('')).toBe('');
-    });
-  });
 
   // =========================================================================
   // _extractTags

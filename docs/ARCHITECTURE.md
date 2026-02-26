@@ -615,14 +615,27 @@ _onRender(context, options) {
 
 ### 1. Singleton (VoxChronicle, MainPanel)
 
+Both singletons use private `#instance` fields. Always access via `getInstance()` — never reference the instance field directly.
+
 ```javascript
 class VoxChronicle {
-  static instance = null;
+  static #instance = null;
+
   static getInstance() {
-    if (!VoxChronicle.instance) VoxChronicle.instance = new VoxChronicle();
-    return VoxChronicle.instance;
+    if (!VoxChronicle.#instance) {
+      VoxChronicle.#instance = new VoxChronicle();
+    }
+    return VoxChronicle.#instance;
   }
-  static resetInstance() { VoxChronicle.instance = null; }
+
+  static resetInstance() {
+    if (VoxChronicle.#instance) {
+      VoxChronicle.#instance.audioRecorder?.cancel?.();
+      VoxChronicle.#instance.silenceDetector?.stop?.();
+      VoxChronicle.#instance.isInitialized = false;
+    }
+    VoxChronicle.#instance = null;
+  }
 }
 ```
 

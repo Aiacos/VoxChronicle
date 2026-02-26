@@ -514,45 +514,6 @@ describe('CompendiumParser', () => {
       expect(stats.cachedCompendiums).toBeGreaterThan(0);
     });
   });
-
-  // =========================================================================
-  // stripHtml()
-  // =========================================================================
-  describe('stripHtml()', () => {
-    it('returns empty string for null/undefined', () => {
-      expect(parser.stripHtml(null)).toBe('');
-      expect(parser.stripHtml(undefined)).toBe('');
-      expect(parser.stripHtml('')).toBe('');
-    });
-
-    it('returns empty for non-string', () => {
-      expect(parser.stripHtml(123)).toBe('');
-    });
-
-    it('strips HTML tags', () => {
-      expect(parser.stripHtml('<p>Hello <strong>World</strong></p>')).toBe('Hello World');
-    });
-
-    it('normalizes whitespace', () => {
-      expect(parser.stripHtml('<p>Hello    World</p>')).toBe('Hello World');
-    });
-
-    it('should safely handle XSS-dangerous input in stripHtml', () => {
-      const xssInput = '<img src=x onerror="alert(1)"><p>Safe text</p>';
-      const result = parser.stripHtml(xssInput);
-      expect(result).toBe('Safe text');
-      expect(result).not.toContain('onerror');
-      expect(result).not.toContain('alert');
-    });
-
-    it('should handle script tags in stripHtml', () => {
-      const scriptInput = '<script>alert("xss")</script><p>Content</p>';
-      const result = parser.stripHtml(scriptInput);
-      expect(result).toContain('Content');
-      expect(result).not.toContain('<script>');
-    });
-  });
-
   // =========================================================================
   // Text chunking
   // =========================================================================

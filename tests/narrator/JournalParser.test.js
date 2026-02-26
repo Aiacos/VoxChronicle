@@ -191,25 +191,6 @@ describe('JournalParser', () => {
       expect(result).toHaveLength(1); // Only j1 succeeds
     });
   });
-
-  // =========================================================================
-  // stripHtml()
-  // =========================================================================
-  describe('stripHtml()', () => {
-    it('returns empty for null/undefined', () => {
-      expect(parser.stripHtml(null)).toBe('');
-      expect(parser.stripHtml(undefined)).toBe('');
-    });
-
-    it('returns empty for non-string', () => {
-      expect(parser.stripHtml(123)).toBe('');
-    });
-
-    it('strips HTML tags and normalizes whitespace', () => {
-      expect(parser.stripHtml('<p>Hello   <strong>World</strong></p>')).toBe('Hello World');
-    });
-  });
-
   // =========================================================================
   // searchByKeywords()
   // =========================================================================

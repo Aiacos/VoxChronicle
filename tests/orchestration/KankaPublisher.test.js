@@ -2,10 +2,9 @@
  * Tests for KankaPublisher
  *
  * Covers exports, constructor, publishSession (happy path, chronicle creation,
- * entity creation, journal validation, error handling, progress reporting),
- * private helpers (_isEntityInJournal, _findJournalDescription,
- * _extractContextFromText, _formatBasicChronicle) via public API,
- * and edge cases across all code paths.
+ * entity creation, journal description extraction, error handling, progress reporting),
+ * private helpers (_findJournalDescription, _extractContextFromText,
+ * _formatBasicChronicle) via public API, and edge cases across all code paths.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -567,15 +566,15 @@ describe('KankaPublisher', () => {
         expect(result.items).toHaveLength(1);
       });
 
-      it('should skip location not found in journal text', async () => {
+      it('should create location even when entity name is not in journal text', async () => {
         const sessionData = createSessionData({
           journalText: 'This adventure takes place in Mordor.'
         });
 
         const result = await publisher.publishSession(sessionData);
-        // Shire is not in journalText
-        expect(result.locations).toHaveLength(0);
-        expect(mockKankaService.createIfNotExists).not.toHaveBeenCalledWith(
+        // Since v3.1.9 journal-based entity filtering was removed; all locations are created
+        expect(result.locations).toHaveLength(1);
+        expect(mockKankaService.createIfNotExists).toHaveBeenCalledWith(
           'locations',
           expect.objectContaining({ name: 'Shire' })
         );
@@ -590,14 +589,14 @@ describe('KankaPublisher', () => {
         expect(result.locations).toHaveLength(1);
       });
 
-      it('should skip item not found in journal text', async () => {
+      it('should create item even when entity name is not in journal text', async () => {
         const sessionData = createSessionData({
           journalText: 'The party finds a magical sword.'
         });
 
         const result = await publisher.publishSession(sessionData);
-        // Ring of Power is not in journalText
-        expect(result.items).toHaveLength(0);
+        // Since v3.1.9 journal-based entity filtering was removed; all items are created
+        expect(result.items).toHaveLength(1);
       });
 
       it('should create item found in journal text', async () => {

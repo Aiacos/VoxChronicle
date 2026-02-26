@@ -157,7 +157,9 @@
       "RAGFlowApiKey": "",
       "RAGFlowApiKeyHint": "",
       "RAGFlowModelName": "",
-      "RAGFlowModelNameHint": ""
+      "RAGFlowModelNameHint": "",
+      "InvalidUrlScheme": "",
+      "InvalidUrl": ""
     },
     "Panel": {
       "Title": "",

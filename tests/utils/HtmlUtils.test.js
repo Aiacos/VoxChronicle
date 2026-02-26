@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { escapeHtml } from '../../scripts/utils/HtmlUtils.mjs';
+import { escapeHtml, stripHtml } from '../../scripts/utils/HtmlUtils.mjs';
 
 describe('escapeHtml', () => {
   it('should escape ampersand', () => {
@@ -85,5 +85,55 @@ describe('escapeHtml', () => {
     // 123 is truthy, so String(123) = '123', no special chars
     // Actually 0 is falsy so returns '', but 123 is truthy
     expect(result).toBe('123');
+  });
+});
+
+describe('stripHtml', () => {
+  it('should return empty string for null', () => {
+    expect(stripHtml(null)).toBe('');
+  });
+
+  it('should return empty string for undefined', () => {
+    expect(stripHtml(undefined)).toBe('');
+  });
+
+  it('should return empty string for empty string', () => {
+    expect(stripHtml('')).toBe('');
+  });
+
+  it('should return empty string for non-string', () => {
+    expect(stripHtml(123)).toBe('');
+    expect(stripHtml(42)).toBe('');
+  });
+
+  it('should strip HTML tags', () => {
+    expect(stripHtml('<p>Hello <strong>World</strong></p>')).toBe('Hello World');
+  });
+
+  it('should normalize whitespace', () => {
+    expect(stripHtml('<p>Hello    World</p>')).toBe('Hello World');
+  });
+
+  it('should strip tags and normalize whitespace together', () => {
+    expect(stripHtml('<p>Hello   <strong>World</strong></p>')).toBe('Hello World');
+  });
+
+  it('should handle multiple block elements', () => {
+    expect(stripHtml('<p>Hello</p>  <p>World</p>')).toBe('Hello World');
+  });
+
+  it('should safely handle XSS-dangerous input', () => {
+    const xssInput = '<img src=x onerror="alert(1)"><p>Safe text</p>';
+    const result = stripHtml(xssInput);
+    expect(result).toBe('Safe text');
+    expect(result).not.toContain('onerror');
+    expect(result).not.toContain('alert');
+  });
+
+  it('should handle script tags', () => {
+    const scriptInput = '<script>alert("xss")</script><p>Content</p>';
+    const result = stripHtml(scriptInput);
+    expect(result).toContain('Content');
+    expect(result).not.toContain('<script>');
   });
 });

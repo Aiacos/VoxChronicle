@@ -25,9 +25,6 @@ export const DEFAULT_BUCKET_SIZE = 60;
  */
 export const MAX_HISTORY_SIZE = 100;
 
-/** @deprecated Use this._logger in class methods instead */
-const log = Logger.createChild('SessionAnalytics');
-
 /**
  * @typedef {Object} SpeakerMetrics
  * @property {string} speakerId - The speaker identifier

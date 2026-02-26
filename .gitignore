@@ -15,6 +15,9 @@ logs/security/
 # Test coverage
 coverage/
 
+# Transient session files
+fix-todos/
+
 # Dependencies
 node_modules/
 package-lock.json

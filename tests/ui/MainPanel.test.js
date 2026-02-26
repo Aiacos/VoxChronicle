@@ -52,11 +52,47 @@ vi.mock('../../scripts/utils/DomUtils.mjs', () => ({
   })
 }));
 
+vi.mock('../../scripts/utils/HtmlUtils.mjs', () => ({
+  stripHtml: vi.fn((str) => str || ''),
+  sanitizeHtml: vi.fn((str) => str || '')
+}));
+
 vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({
   VoxChronicle: {
     getInstance: vi.fn(() => ({
       ragProvider: null,
-      audioRecorder: null
+      audioRecorder: null,
+      narrativeExporter: null,
+      getServicesStatus: vi.fn(() => ({
+        initialized: true,
+        services: {
+          audioRecorder: true,
+          transcription: true,
+          imageGeneration: true,
+          kanka: true,
+          entityExtractor: true,
+          narrativeExporter: true,
+          sessionOrchestrator: true,
+          journalParser: true,
+          compendiumParser: true,
+          chapterTracker: true,
+          sceneDetector: true,
+          aiAssistant: true,
+          rulesReference: true,
+          sessionAnalytics: true,
+          ragProvider: false,
+          silenceDetector: false
+        },
+        settings: {
+          openaiConfigured: true,
+          kankaConfigured: true,
+          ragEnabled: false
+        }
+      })),
+      _getSetting: vi.fn((key) => {
+        if (key === 'transcriptionMode') return 'auto';
+        return null;
+      })
     }))
   }
 }));
@@ -861,47 +897,8 @@ describe('MainPanel', () => {
     });
   });
 
-  // ─── _formatStorageSize ─────────────────────────────────────────
-
-  describe('_formatStorageSize', () => {
-    it('should format 0 bytes', () => {
-      const panel = MainPanel.getInstance(mockOrchestrator);
-      expect(panel._formatStorageSize(0)).toBe('0 KB');
-    });
-
-    it('should format bytes', () => {
-      const panel = MainPanel.getInstance(mockOrchestrator);
-      expect(panel._formatStorageSize(500)).toBe('500.0 B');
-    });
-
-    it('should format kilobytes', () => {
-      const panel = MainPanel.getInstance(mockOrchestrator);
-      expect(panel._formatStorageSize(2048)).toBe('2.0 KB');
-    });
-
-    it('should format megabytes', () => {
-      const panel = MainPanel.getInstance(mockOrchestrator);
-      expect(panel._formatStorageSize(1048576)).toBe('1.0 MB');
-    });
-  });
-
-  // ─── _formatTimestamp ───────────────────────────────────────────
-
-  describe('_formatTimestamp', () => {
-    it('should format a valid timestamp', () => {
-      const panel = MainPanel.getInstance(mockOrchestrator);
-      const result = panel._formatTimestamp('2024-01-15T10:30:00Z');
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should return empty string for invalid timestamp', () => {
-      const panel = MainPanel.getInstance(mockOrchestrator);
-      const result = panel._formatTimestamp('invalid');
-      // Invalid date may or may not throw depending on implementation
-      expect(typeof result).toBe('string');
-    });
-  });
+  // ─── _formatStorageSize (removed — method no longer exists on MainPanel) ──
+  // ─── _formatTimestamp (removed — method no longer exists on MainPanel) ────
 
   // ─── _handleRAGBuildIndex ───────────────────────────────────────
 

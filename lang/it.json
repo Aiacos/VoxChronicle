@@ -157,7 +157,9 @@
       "RAGFlowApiKey": "Chiave API RAGFlow",
       "RAGFlowApiKeyHint": "Chiave API per la tua istanza RAGFlow (dal pannello di amministrazione)",
       "RAGFlowModelName": "Modello LLM RAGFlow",
-      "RAGFlowModelNameHint": "Nome del modello LLM configurato in RAGFlow (lascia vuoto per il default)"
+      "RAGFlowModelNameHint": "Nome del modello LLM configurato in RAGFlow (lascia vuoto per il default)",
+      "InvalidUrlScheme": "Schema URL non valido \"{protocol}\" — sono consentiti solo http/https.",
+      "InvalidUrl": "\"{url}\" non e un URL valido."
     },
     "Panel": {
       "Title": "VoxChronicle",

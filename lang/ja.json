@@ -157,7 +157,9 @@
       "RAGFlowApiKey": "[EN] RAGFlow API Key",
       "RAGFlowApiKeyHint": "[EN] API key for your RAGFlow instance (from RAGFlow admin panel)",
       "RAGFlowModelName": "[EN] RAGFlow LLM Model",
-      "RAGFlowModelNameHint": "[EN] Name of the LLM model configured in RAGFlow (leave empty for default)"
+      "RAGFlowModelNameHint": "[EN] Name of the LLM model configured in RAGFlow (leave empty for default)",
+      "InvalidUrlScheme": "無効なURLスキーム「{protocol}」— http/httpsのみ許可されています。",
+      "InvalidUrl": "「{url}」は有効なURLではありません。"
     },
     "Panel": {
       "Title": "VoxChronicle",

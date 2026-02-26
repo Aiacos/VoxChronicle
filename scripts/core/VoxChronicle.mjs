@@ -125,6 +125,9 @@ class VoxChronicle {
    */
   static resetInstance() {
     if (VoxChronicle.#instance) {
+      VoxChronicle.#instance.audioRecorder?.cancel?.();
+      VoxChronicle.#instance.silenceDetector?.stop?.();
+      VoxChronicle.#instance.sessionOrchestrator?.reset?.();
       VoxChronicle.#instance.isInitialized = false;
     }
     VoxChronicle.#instance = null;
@@ -181,6 +184,9 @@ class VoxChronicle {
     }
 
     try {
+      // Validate server URLs at init (catches invalid URLs saved from previous sessions)
+      Settings.validateServerUrls?.();
+
       // Get and TRIM API keys from settings
       const openaiApiKey = this._getSetting('openaiApiKey')?.trim();
       const kankaApiToken = this._getSetting('kankaApiToken')?.trim();

@@ -454,7 +454,7 @@ class ImageGenerationService extends OpenAIClient {
       return base64;
     } catch (error) {
       this._logger.warn('Failed to cache image as base64:', error.message);
-      ui?.notifications?.warn('VoxChronicle: Image cached failed — URL expires in 60 minutes.');
+      ui?.notifications?.warn('VoxChronicle: Image caching failed — URL expires in 60 minutes.');
       return null;
     }
   }

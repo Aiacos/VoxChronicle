@@ -12,6 +12,9 @@
    Settings — Mask API key inputs as password fields
    ========================================================================== */
 
+/* Cosmetic API key masking — prevents casual shoulder-surfing only.
+   Non-standard WebKit property; works in Chromium (Foundry's runtime).
+   Does not prevent DOM inspection or copy-paste of actual values. */
 input[name="vox-chronicle.openaiApiKey"],
 input[name="vox-chronicle.kankaApiToken"],
 input[name="vox-chronicle.ragflowApiKey"] {

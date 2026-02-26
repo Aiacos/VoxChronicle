@@ -152,13 +152,22 @@ The main module class follows singleton pattern:
 
 ```javascript
 class VoxChronicle {
-  static instance = null;
+  static #instance = null;
 
   static getInstance() {
-    if (!VoxChronicle.instance) {
-      VoxChronicle.instance = new VoxChronicle();
+    if (!VoxChronicle.#instance) {
+      VoxChronicle.#instance = new VoxChronicle();
     }
-    return VoxChronicle.instance;
+    return VoxChronicle.#instance;
+  }
+
+  static resetInstance() {
+    if (VoxChronicle.#instance) {
+      VoxChronicle.#instance.audioRecorder?.cancel?.();
+      VoxChronicle.#instance.silenceDetector?.stop?.();
+      VoxChronicle.#instance.isInitialized = false;
+    }
+    VoxChronicle.#instance = null;
   }
 }
 ```

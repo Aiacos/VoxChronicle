@@ -673,13 +673,27 @@ class Settings {
     try {
       const url = new URL(value);
       if (!['http:', 'https:'].includes(url.protocol)) {
-        ui?.notifications?.error(`VoxChronicle: Invalid URL scheme "${url.protocol}" — only http/https allowed.`);
+        ui?.notifications?.error(game.i18n.format('VOXCHRONICLE.Settings.InvalidUrlScheme', { protocol: url.protocol }));
         const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
         game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '');
       }
-    } catch {
-      ui?.notifications?.warn(`VoxChronicle: "${value}" is not a valid URL.`);
+    } catch (error) {
+      logger.warn('URL validation failed:', error.message);
+      ui?.notifications?.warn(game.i18n.format('VOXCHRONICLE.Settings.InvalidUrl', { url: value }));
     }
+  }
+
+  /**
+   * Validate all server URL settings at initialization time.
+   * Called during module init to catch invalid URLs saved from previous sessions.
+   *
+   * @static
+   */
+  static validateServerUrls() {
+    const whisperUrl = Settings.get('whisperBackendUrl');
+    if (whisperUrl) Settings._validateServerUrl(whisperUrl, 'whisperBackendUrl');
+    const ragflowUrl = Settings.get('ragflowBaseUrl');
+    if (ragflowUrl) Settings._validateServerUrl(ragflowUrl, 'ragflowBaseUrl');
   }
 
   /**
