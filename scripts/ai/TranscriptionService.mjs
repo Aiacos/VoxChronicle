@@ -319,7 +319,21 @@ class TranscriptionService extends OpenAIClient {
       this._logger.debug('OpenAI raw response:', response);
 
       // Map speakers to names
-      const mappedResult = this._mapSpeakersToNames(response, speakerMap);
+      let mappedResult = this._mapSpeakersToNames(response, speakerMap);
+
+      // FAIL-SAFE: If text is present but segments are empty (diarization failed),
+      // create a single synthetic segment so the transcript is not lost.
+      if (mappedResult.text && mappedResult.segments.length === 0) {
+        this._logger.warn('Diarization returned 0 segments despite having text. Creating synthetic segment.');
+        mappedResult.segments.push({
+          speaker: speakerMap['Unknown'] || 'Unknown',
+          originalSpeaker: 'Unknown',
+          text: mappedResult.text,
+          start: 0,
+          end: response.duration || 0
+        });
+        mappedResult.speakers.push({ id: 'Unknown', name: 'Unknown', isMapped: false });
+      }
 
       this._logger.log(`Transcription completed successfully in ${Date.now() - t0}ms`);
       this._logger.debug('_transcribeSingle result', {
