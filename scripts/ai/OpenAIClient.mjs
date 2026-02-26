@@ -303,8 +303,8 @@ class OpenAIClient {
           }
         }
       }
-    } catch {
-      this._logger.debug('Could not parse error response as JSON');
+    } catch (parseError) {
+      this._logger.debug('Could not parse error response as JSON:', parseError.message);
     }
 
     // Map HTTP status codes to error types

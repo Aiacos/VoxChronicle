@@ -184,7 +184,10 @@ class EntityExtractor extends OpenAIClient {
         temperature: this._extractionTemperature
       });
 
-      const content = response.choices[0].message.content;
+      const content = response?.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error(`Entity extraction received empty response. choices: ${response?.choices?.length ?? 'undefined'}`);
+      }
       const extracted = JSON.parse(content);
 
       // Validate and normalize the response
@@ -254,7 +257,10 @@ class EntityExtractor extends OpenAIClient {
         temperature: this._momentTemperature
       });
 
-      const content = response.choices[0].message.content;
+      const content = response?.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error(`Moment extraction received empty response. choices: ${response?.choices?.length ?? 'undefined'}`);
+      }
       const parsed = JSON.parse(content);
 
       // Extract moments array
@@ -340,7 +346,10 @@ class EntityExtractor extends OpenAIClient {
         temperature: this._extractionTemperature
       });
 
-      const content = response.choices[0].message.content;
+      const content = response?.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error(`Relationship extraction received empty response. choices: ${response?.choices?.length ?? 'undefined'}`);
+      }
       const extracted = JSON.parse(content);
 
       // Validate and normalize the response

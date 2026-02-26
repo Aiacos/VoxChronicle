@@ -1,6 +1,63 @@
 # TODO - VoxChronicle
 
-Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-19.
+Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-26 (v3.1.7 audit).
+
+## V3.1.7 AUDIT — 2026-02-26
+
+Audit completo con 4 agenti paralleli: security, performance, error handling, code quality.
+
+### CRITICAL — Fix prima del prossimo rilascio
+
+- [ ] `KankaPublisher.mjs:179` — `_uploadSessionImages()` chiamato ma mai definito (crash a runtime)
+- [ ] `EntityExtractor.mjs:187,257,343` — Null-check su `response.choices[0].message.content` (aggiunto inline)
+- [ ] `ImageGenerationService.mjs:212` — Null-check su `response.data[0]` (aggiunto inline)
+- [ ] `LocalWhisperService.mjs:634` — Bare catch swallowed errors (fix inline: ora logga warning)
+- [ ] `WhisperBackend.mjs:475` — Bare catch swallowed errors (fix inline: ora logga debug)
+- [ ] `OpenAIClient.mjs:306` — Bare catch swallowed errors (fix inline: ora logga debug)
+- [ ] `RAGFlowProvider.mjs:633` — Nessun timeout/AbortController — request pende indefinitamente
+- [ ] `main-panel.hbs:170` — XSS via `{{{chronicleDraft}}}` triple-stache (sanitizzare HTML)
+
+### HIGH — Performance e Error Handling
+
+- [ ] `AudioRecorder.mjs:454` — Pre-allocare `Uint8Array` nel `getAudioLevel()` (120 alloc/sec)
+- [ ] `AudioRecorder.mjs:800` — rAF loop continua a 60fps durante pausa (usare setTimeout)
+- [ ] `MainPanel.mjs:93` — `onProgress` chiama `this.render()` senza debounce (200+ re-render durante RAG index)
+- [ ] `MainPanel.mjs:113` — `onProgress` non re-registrato quando orchestrator cambia
+- [ ] `MainPanel.mjs:125` — `resetInstance()` non chiama `close()` — rAF orfano continua
+- [ ] `MainPanel.mjs:341` — `_debouncedRender.cancel()` mancante in `close()`
+- [ ] `VoxChronicle.mjs:127` — `reinitialize()` non pulisce AudioContext/MediaStream/SilenceDetector
+- [ ] `VoxChronicle.mjs:502` — `getServicesStatus()` chiama `game.settings.get` 3x per render (cache necessaria)
+- [ ] `SessionOrchestrator.mjs:1056` — `_liveTranscript` cresce senza limiti (cap con sliding window)
+- [ ] `ErrorNotificationHelper.mjs` — 218 righe mai importate in produzione (adottare o rimuovere)
+- [ ] `VoxChronicle.mjs:323` — `_checkKankaTokenExpiration()` definito ma mai chiamato
+- [ ] `ImageGenerationService.mjs:432` — Image cache failure silenziosa (URL scade in 60min)
+- [ ] `ImageGenerationService.mjs:536` — Gallery load errore swallowed (utente perde immagini)
+- [ ] `OpenAIFileSearchProvider.mjs:128` — RAG state persistence failure silenziosa (costi extra)
+- [ ] `TranscriptionService.mjs:216` — Vocabulary dictionary failure silenziosa (transcription degradata)
+- [ ] `AudioRecorder.mjs:517` — Microphone enumeration: distinguere "no mic" da "permission denied"
+
+### MEDIUM — Security e Code Quality
+
+- [ ] `JournalParser.mjs:985` — Usare `DOMParser` invece di `innerHTML`
+- [ ] `Settings.mjs:38,53,517` — API keys come `<input type="text">` (usare password field)
+- [ ] `RelationshipGraph.mjs:530` — Pinnare versione vis-network CDN + aggiungere SRI hash
+- [ ] `Settings.mjs:126,507` — Validare URL server (Whisper/RAGFlow) con allowlist scheme
+- [ ] `KankaPublisher.mjs:496` — `_isEntityInJournal` ritorna sempre `true` (dead validation)
+- [ ] `main.mjs:254` — Settings tool usa `onChange` invece di `onClick` (bug v13 API)
+- [ ] `VoxChronicle.mjs:45` — `static instance` publico (usare `#instance` privato)
+- [ ] `SessionAnalytics.mjs:29` — Logger module-level `const log` invece di `this._logger`
+- [ ] `EntityExtractor.mjs:374` — `Promise.all` in `extractAll()` perde errori (usare `allSettled`)
+- [ ] `KankaService.mjs:448` — `preFetchEntities` con `Promise.all` (usare `allSettled`)
+
+### LOW — Cleanup
+
+- [ ] `DomUtils.mjs:88` — `throttle` esportato ma mai importato
+- [ ] `AudioChunker.mjs:284` — `_combineBlobs` async ma fa solo `new Blob()` sincrono
+- [ ] `OpenAIClient.mjs:573` — `_addToHistory` usa `slice` invece di `shift`
+- [ ] `RelationshipGraph.mjs:385` — Export anchor non aggiunto al DOM prima di `.click()`
+- [ ] `Logger.mjs:297` — Sanitizzazione disabilitata di default su tutti `createChild()`
+
+---
 
 ## V3.0 REWRITE — ✅ COMPLETED (2026-02-19)
 

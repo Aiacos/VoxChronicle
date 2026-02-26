@@ -630,24 +630,38 @@ export class RAGFlowProvider extends RAGProvider {
       headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(url, {
-      ...fetchOptions,
-      headers: { ...headers, ...fetchOptions.headers }
-    });
+    const controller = new AbortController();
+    const timeoutMs = 30000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(`RAGFlow API error ${response.status}: ${errorText}`);
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        headers: { ...headers, ...fetchOptions.headers },
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`RAGFlow API error ${response.status}: ${errorText}`);
+      }
+
+      const json = await response.json();
+
+      // RAGFlow uses code: 0 for success
+      if (json.code !== undefined && json.code !== 0) {
+        throw new Error(`RAGFlow error (code ${json.code}): ${json.message || 'Unknown error'}`);
+      }
+
+      return json;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error(`RAGFlow request timed out after ${timeoutMs / 1000}s: ${path}`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const json = await response.json();
-
-    // RAGFlow uses code: 0 for success
-    if (json.code !== undefined && json.code !== 0) {
-      throw new Error(`RAGFlow error (code ${json.code}): ${json.message || 'Unknown error'}`);
-    }
-
-    return json;
   }
 
   // ─── Private: Helpers ──────────────────────────────────────────────

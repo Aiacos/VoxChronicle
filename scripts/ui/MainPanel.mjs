@@ -13,7 +13,7 @@
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { debounce } from '../utils/DomUtils.mjs';
-import { stripHtml } from '../utils/HtmlUtils.mjs';
+import { stripHtml, sanitizeHtml } from '../utils/HtmlUtils.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -90,7 +90,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         onProgress: (data) => {
           this.#statusMessage = data.message;
           this.#progressPercent = data.progress;
-          this.render();
+          this._debouncedRender();
         }
       });
     }
@@ -110,7 +110,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       // Re-register callbacks on the new orchestrator
       if (orchestrator.setCallbacks) {
         orchestrator.setCallbacks({
-          onStateChange: () => MainPanel.#instance._debouncedRender()
+          onStateChange: () => MainPanel.#instance._debouncedRender(),
+          onProgress: (data) => {
+            MainPanel.#instance.#statusMessage = data.message;
+            MainPanel.#instance.#progressPercent = data.progress;
+            MainPanel.#instance._debouncedRender();
+          }
         });
       }
     }
@@ -122,6 +127,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static resetInstance() {
+    if (MainPanel.#instance) {
+      MainPanel.#instance._stopRealtimeUpdates();
+      MainPanel.#instance.#listenerController?.abort();
+      MainPanel.#instance._debouncedRender?.cancel?.();
+    }
     MainPanel.#instance = null;
   }
 
@@ -183,7 +193,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
             entities: session.entities,
             moments: session.moments
           }, { format: 'summary' });
-          this.#cachedChronicleDraft = exportData.entry;
+          this.#cachedChronicleDraft = sanitizeHtml(exportData.entry);
           this.#lastDraftSegmentCount = currentSegmentCount;
         } catch (err) {
           this._logger.debug('Failed to generate chronicle draft:', err.message);
@@ -338,6 +348,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._logger.debug('MainPanel closing');
     this._stopRealtimeUpdates();
     this.#listenerController?.abort();
+    this._debouncedRender?.cancel?.();
     return super.close(options);
   }
 

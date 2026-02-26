@@ -631,8 +631,8 @@ class LocalWhisperService {
 
       this._logger.debug(`Backend diarization support: ${this._supportsDiarization}`);
       return this._supportsDiarization;
-    } catch {
-      this._logger.debug('Could not determine diarization support, assuming false');
+    } catch (error) {
+      this._logger.warn('Diarization support check failed, assuming false:', error.message);
       this._supportsDiarization = false;
       return false;
     }

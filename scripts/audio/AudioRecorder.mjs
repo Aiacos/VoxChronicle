@@ -451,15 +451,15 @@ class AudioRecorder {
       return 0;
     }
 
-    const dataArray = new Uint8Array(this._analyserNode.frequencyBinCount);
-    this._analyserNode.getByteFrequencyData(dataArray);
+    const data = this._frequencyData;
+    this._analyserNode.getByteFrequencyData(data);
 
     // Calculate RMS (Root Mean Square) of frequency data
     let sum = 0;
-    for (let i = 0; i < dataArray.length; i++) {
-      sum += dataArray[i] * dataArray[i];
+    for (let i = 0; i < data.length; i++) {
+      sum += data[i] * data[i];
     }
-    const rms = Math.sqrt(sum / dataArray.length);
+    const rms = Math.sqrt(sum / data.length);
 
     // Normalize to 0.0-1.0 range (byte frequency data max is ~255, /128 gives ~2 max, clamped to 1)
     return Math.min(1, rms / 128);
@@ -769,6 +769,7 @@ class AudioRecorder {
       this._analyserNode = this._audioContext.createAnalyser();
       this._analyserNode.fftSize = 256;
       this._sourceNode.connect(this._analyserNode);
+      this._frequencyData = new Uint8Array(this._analyserNode.frequencyBinCount);
 
       this._logger.debug('Audio analysis pipeline initialized');
     } catch (error) {
@@ -781,6 +782,7 @@ class AudioRecorder {
       this._audioContext = null;
       this._analyserNode = null;
       this._sourceNode = null;
+      this._frequencyData = null;
     }
   }
 
@@ -796,9 +798,9 @@ class AudioRecorder {
     }
 
     const monitor = () => {
-      // Only monitor while recording (not paused or inactive)
       if (this._state !== RecordingState.RECORDING) {
-        this._levelMonitorId = requestAnimationFrame(monitor);
+        // Low-frequency poll during pause — avoids 60fps rAF doing nothing
+        this._levelMonitorId = setTimeout(monitor, 250);
         return;
       }
 
@@ -826,7 +828,9 @@ class AudioRecorder {
    */
   _stopLevelMonitoring() {
     if (this._levelMonitorId !== null) {
+      // Cancel both rAF and setTimeout since monitor switches between them
       cancelAnimationFrame(this._levelMonitorId);
+      clearTimeout(this._levelMonitorId);
       this._levelMonitorId = null;
       this._logger.debug('Level monitoring stopped');
     }

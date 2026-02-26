@@ -167,6 +167,7 @@
       <div class="vox-chronicle-panel__preview">
         <h4>{{localize "VOXCHRONICLE.Panel.ChroniclePreview"}}</h4>
         <div class="vox-chronicle-preview-content">
+          {{!-- Safe: chronicleDraft is sanitized via sanitizeHtml() in MainPanel._prepareContext --}}
           {{{chronicleDraft}}}
         </div>
       </div>

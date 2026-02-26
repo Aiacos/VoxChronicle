@@ -41,6 +41,45 @@ export function escapeHtml(text) {
 }
 
 /**
+ * Sanitize HTML by removing dangerous elements (script, iframe, event handlers)
+ * while preserving safe formatting tags used in chronicle drafts.
+ *
+ * @param {string} html - The HTML content to sanitize
+ * @returns {string} Sanitized HTML with dangerous elements removed
+ */
+export function sanitizeHtml(html) {
+  if (!html || typeof html !== 'string') {
+    return '';
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Remove dangerous elements
+  const dangerous = doc.querySelectorAll('script, iframe, object, embed, form, input, textarea, select, button');
+  for (const el of dangerous) {
+    el.remove();
+  }
+
+  // Remove event handler attributes from all elements
+  const allElements = doc.body.querySelectorAll('*');
+  for (const el of allElements) {
+    const attrs = [...el.attributes];
+    for (const attr of attrs) {
+      if (attr.name.startsWith('on') || attr.name === 'srcdoc') {
+        el.removeAttribute(attr.name);
+      }
+      // Remove javascript: URLs
+      if (['href', 'src', 'action'].includes(attr.name) && attr.value.trim().toLowerCase().startsWith('javascript:')) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  }
+
+  return doc.body.innerHTML;
+}
+
+/**
  * Strips HTML tags from content while preserving text.
  * Uses DOMParser for safe parsing without script execution (XSS prevention).
  *

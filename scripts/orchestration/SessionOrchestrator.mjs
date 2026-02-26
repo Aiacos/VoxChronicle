@@ -1053,6 +1053,7 @@ class SessionOrchestrator {
             end: s.end + offset
           }));
 
+          // Full array needed at stopLiveMode for final transcript; AI context uses text-level windowing
           this._liveTranscript.push(...offsetSegments);
           this._silenceStartTime = null; // Reset silence since we got speech
 

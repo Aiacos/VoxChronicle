@@ -472,7 +472,8 @@ class WhisperBackend {
         const text = await response.text();
         return { message: text || response.statusText };
       }
-    } catch {
+    } catch (parseError) {
+      this._logger.debug('Could not parse error response body:', parseError.message);
       return { message: response.statusText };
     }
   }

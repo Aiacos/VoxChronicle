@@ -251,7 +251,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
         title: 'VOXCHRONICLE.Controls.Settings',
         order: 4,
         button: true,
-        onChange: toolHandlers.settings
+        onClick: toolHandlers.settings
       }
     }
   };

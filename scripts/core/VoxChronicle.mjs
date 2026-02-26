@@ -125,6 +125,10 @@ class VoxChronicle {
    * @returns {Promise<void>}
    */
   async reinitialize() {
+    // Clean up existing services to prevent resource leaks
+    this.audioRecorder?.cancel();
+    this.silenceDetector?.stop?.();
+    this.sessionOrchestrator?.reset?.();
     this.isInitialized = false;
     return this.initialize();
   }
@@ -136,6 +140,9 @@ class VoxChronicle {
   _registerHooks() {
     Hooks.on('updateSetting', (setting) => {
       if (setting.key.startsWith(`${MODULE_ID}.`)) {
+        // Invalidate cached settings status on any module setting change
+        this._cachedSettingsStatus = null;
+
         const aiSettings = ['openaiApiKey', 'ragEnabled', 'transcriptionMode', 'kankaApiToken'];
         const key = setting.key.split('.')[1];
         if (aiSettings.includes(key)) {
@@ -499,14 +506,26 @@ class VoxChronicle {
         ragProvider: !!this.ragProvider,
         silenceDetector: !!this.silenceDetector
       },
-      settings: {
+      settings: this._getCachedSettingsStatus()
+    };
+  }
+
+  /**
+   * Get cached settings status, rebuilding only when invalidated by updateSetting hook
+   * @returns {object} Settings configuration status
+   * @private
+   */
+  _getCachedSettingsStatus() {
+    if (!this._cachedSettingsStatus) {
+      this._cachedSettingsStatus = {
         openaiConfigured: !!this._getSetting('openaiApiKey'),
         kankaConfigured: !!(
           this._getSetting('kankaApiToken') && this._getSetting('kankaCampaignId')
         ),
         ragEnabled: !!this._getSetting('ragEnabled')
-      }
-    };
+      };
+    }
+    return this._cachedSettingsStatus;
   }
 }
 

@@ -209,6 +209,9 @@ class ImageGenerationService extends OpenAIClient {
       const response = await this.post('/images/generations', requestBody);
 
       // IMPORTANT: URL expires in 60 minutes - cache immediately
+      if (!response?.data?.[0]) {
+        throw new Error(`Image generation returned no data. Keys: ${Object.keys(response || {}).join(', ')}`);
+      }
       const imageData = response.data[0];
 
       const result = {

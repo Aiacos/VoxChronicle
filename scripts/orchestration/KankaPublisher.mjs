@@ -174,10 +174,11 @@ class KankaPublisher {
         await this._createChronicle(sessionData, results);
       }
 
-      // Upload generated session images to the chronicle journal
-      if (uploadImages && sessionData.images?.length > 0 && results.journal) {
-        await this._uploadSessionImages(sessionData.images, results.journal.id, results);
-      }
+      // TODO: Implement image upload to Kanka journals (gpt-image-1 base64 → Kanka image API)
+      // Disabled: _uploadSessionImages was never implemented and would throw TypeError at runtime.
+      // if (uploadImages && sessionData.images?.length > 0 && results.journal) {
+      //   await this._uploadSessionImages(sessionData.images, results.journal.id, results);
+      // }
 
       // Create entities (characters as sub-journals, validated locations/items)
       if (createEntities && sessionData.entities) {

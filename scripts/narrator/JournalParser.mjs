@@ -980,12 +980,11 @@ export class JournalParser {
 
     const headings = [];
 
-    // Create a temporary DOM element to parse HTML
-    const div = document.createElement('div');
-    div.innerHTML = html;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
 
     // Find all heading elements (h1-h6)
-    const headingElements = div.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const headingElements = doc.body.querySelectorAll('h1, h2, h3, h4, h5, h6');
 
     for (let i = 0; i < headingElements.length; i++) {
       const heading = headingElements[i];
@@ -1015,7 +1014,7 @@ export class JournalParser {
     }
 
     // Also detect section markers (hr, dividers, etc.)
-    const sectionMarkers = this._extractSectionMarkers(div, pageId, pageName);
+    const sectionMarkers = this._extractSectionMarkers(doc.body, pageId, pageName);
 
     // Merge section markers with headings, maintaining position order
     const allSections = [...headings, ...sectionMarkers];
