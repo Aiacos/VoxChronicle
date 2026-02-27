@@ -5,3 +5,6 @@ tests/utils/SensitiveDataFilter.test.js:generic-api-key:471
 tests/utils/SensitiveDataFilter.test.js:generic-api-key:474
 tests/kanka/KankaService.cache.test.js:generic-api-key:111
 tests/utils/SensitiveDataFilter.test.js:generic-api-key:9
+
+# vis-network minified bundle - method name falsely flagged as API key
+scripts/vendor/vis-network.min.js:generic-api-key:33

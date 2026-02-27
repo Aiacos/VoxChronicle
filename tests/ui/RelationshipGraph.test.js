@@ -961,7 +961,7 @@ describe('RelationshipGraph', () => {
       delete globalThis.vis;
     });
 
-    it('should reject when CDN load fails', async () => {
+    it('should reject when local bundle load fails', async () => {
       delete globalThis.vis;
       RelationshipGraph._resetVisLoadState?.();
 
@@ -969,7 +969,7 @@ describe('RelationshipGraph', () => {
         script.onerror();
       });
 
-      await expect(graph._loadVisLibrary()).rejects.toThrow('vis-network library failed to load from CDN');
+      await expect(graph._loadVisLibrary()).rejects.toThrow('vis-network library failed to load from local bundle');
 
       appendChildSpy.mockRestore();
     });

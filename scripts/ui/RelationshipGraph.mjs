@@ -100,7 +100,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   #listenerController = null;
 
   /**
-   * Whether vis-network CDN script has been loaded
+   * Whether vis-network library script has been loaded
    * @type {boolean}
    * @private
    * @static
@@ -108,7 +108,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   static #visLoaded = false;
 
   /**
-   * Shared promise for vis-network CDN load (prevents duplicate script injection)
+   * Shared promise for vis-network load (prevents duplicate script injection)
    * @type {Promise<void>|null}
    * @private
    * @static
@@ -426,7 +426,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
         this._network = null;
       }
 
-      // Load vis-network library once via CDN (guarded by static flag)
+      // Load vis-network library once from local vendor bundle (guarded by static flag)
       if (typeof vis === 'undefined') {
         await this._loadVisLibrary();
       }
@@ -514,7 +514,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Load vis-network library from CDN exactly once.
+   * Load vis-network library from local vendor bundle exactly once.
    * Uses a static promise so concurrent calls share the same load.
    * @returns {Promise<void>}
    * @private
@@ -527,17 +527,15 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Share a single load promise across all instances
     if (!RelationshipGraph.#visLoadPromise) {
-      this._logger.debug('Loading vis-network library from CDN...');
+      this._logger.debug('Loading vis-network library from local bundle...');
       RelationshipGraph.#visLoadPromise = new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = 'https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js';
-        script.integrity = 'sha384-yxKDWWf0wwdUj/gPeuL11czrnKFQROnLgY8ll7En9NYoXibgg3C6NK/UDHNtUgWJ';
-        script.crossOrigin = 'anonymous';
+        script.src = `modules/${MODULE_ID}/scripts/vendor/vis-network.min.js`;
         script.onload = () => {
           RelationshipGraph.#visLoaded = true;
           resolve();
         };
-        script.onerror = () => reject(new Error('vis-network library failed to load from CDN'));
+        script.onerror = () => reject(new Error('vis-network library failed to load from local bundle'));
         document.head.appendChild(script);
       });
     }
