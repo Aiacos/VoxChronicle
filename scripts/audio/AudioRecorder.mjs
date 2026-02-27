@@ -277,6 +277,10 @@ class AudioRecorder {
       });
     } finally {
       this._isRotating = false;
+      if (this._rotationRejectTimeoutId) {
+        clearTimeout(this._rotationRejectTimeoutId);
+        this._rotationRejectTimeoutId = null;
+      }
       if (this._rotationStopTimeoutId) {
         clearTimeout(this._rotationStopTimeoutId);
         this._rotationStopTimeoutId = null;

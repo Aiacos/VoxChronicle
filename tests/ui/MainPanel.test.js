@@ -54,7 +54,8 @@ vi.mock('../../scripts/utils/DomUtils.mjs', () => ({
 
 vi.mock('../../scripts/utils/HtmlUtils.mjs', () => ({
   stripHtml: vi.fn((str) => str || ''),
-  sanitizeHtml: vi.fn((str) => str || '')
+  sanitizeHtml: vi.fn((str) => str || ''),
+  escapeHtml: vi.fn((str) => str || '')
 }));
 
 vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({

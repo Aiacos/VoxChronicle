@@ -141,6 +141,13 @@ export class SessionAnalytics {
      * @private
      */
     this._sessionStartOffset = null;
+
+    /**
+     * Whether speaker metrics need recalculation
+     * @type {boolean}
+     * @private
+     */
+    this._metricsDirty = false;
   }
 
   // ---------------------------------------------------------------------------

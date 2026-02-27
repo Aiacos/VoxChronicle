@@ -502,8 +502,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
             } catch (error) {
               this._logger.error('Failed to import dictionary:', error);
               ui.notifications.error(
-                game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-                  `Error: ${error.message}`
+                game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
+                  `Error: ${escapeHtml(error.message)}`
               );
             }
           }

@@ -13,7 +13,7 @@
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { debounce } from '../utils/DomUtils.mjs';
-import { stripHtml, sanitizeHtml } from '../utils/HtmlUtils.mjs';
+import { stripHtml, sanitizeHtml, escapeHtml } from '../utils/HtmlUtils.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -459,7 +459,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.render();
     } catch (error) {
       this._logger.error('Toggle recording failed:', error);
-      ui?.notifications?.error(error.message);
+      ui?.notifications?.error(escapeHtml(error.message));
     }
   }
 
@@ -479,7 +479,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.render();
     } catch (error) {
       this._logger.error('Toggle pause failed:', error);
-      ui?.notifications?.error(error.message);
+      ui?.notifications?.error(escapeHtml(error.message));
     }
   }
 
@@ -498,7 +498,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.render();
     } catch (error) {
       this._logger.error('Process session failed:', error);
-      ui?.notifications?.error(error.message);
+      ui?.notifications?.error(escapeHtml(error.message));
     }
   }
 
@@ -517,7 +517,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.render();
     } catch (error) {
       this._logger.error('Publish to Kanka failed:', error);
-      ui?.notifications?.error(error.message);
+      ui?.notifications?.error(escapeHtml(error.message));
     }
   }
 
@@ -533,7 +533,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.render();
     } catch (error) {
       this._logger.error('Generate image failed:', error);
-      ui?.notifications?.error(error.message);
+      ui?.notifications?.error(escapeHtml(error.message));
     }
   }
 
@@ -548,7 +548,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       preview.render(true);
     } catch (error) {
       this._logger.error('Review entities failed:', error);
-      ui?.notifications?.error(error.message);
+      ui?.notifications?.error(escapeHtml(error.message));
     }
   }
 
