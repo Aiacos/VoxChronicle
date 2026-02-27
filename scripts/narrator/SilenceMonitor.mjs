@@ -303,7 +303,7 @@ class SilenceMonitor {
         }
       }
     } catch (error) {
-      this._logger.error('Failed to generate autonomous suggestion:', error.message);
+      this._logger.error('Failed to generate autonomous suggestion:', error);
     }
   }
 }

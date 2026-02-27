@@ -97,21 +97,18 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('German');
     });
 
-    it('setSensitivity accepts valid values', () => {
+    it('setSensitivity accepts valid values and includes them in prompt', () => {
       builder.setSensitivity('high');
-      // Sensitivity doesn't appear in prompt text directly, but is stored.
-      // buildSystemPrompt references it via sensitivityGuide but only uses it
-      // in the chapterSection (not in current implementation actually).
-      // Testing that invalid values are rejected:
-      builder.setSensitivity('invalid');
-      // After invalid set, should still be 'high' (the last valid one)
+      const prompt = builder.buildSystemPrompt();
+      expect(prompt).toContain('OFF-TRACK SENSITIVITY');
+      expect(prompt).toContain('Closely monitor');
     });
 
-    it('setSensitivity ignores invalid values', () => {
+    it('setSensitivity ignores invalid values and keeps previous', () => {
       builder.setSensitivity('low');
       builder.setSensitivity('garbage');
-      // Internal state should still be 'low'
-      // We can verify by checking another prompt builder that uses sensitivity
+      const prompt = builder.buildSystemPrompt();
+      expect(prompt).toContain('Be tolerant of minor deviations');
     });
 
     it('setConversationHistory with null defaults to empty array', () => {
@@ -169,6 +166,12 @@ describe('PromptBuilder', () => {
         builder.setPrimaryLanguage(code);
         expect(builder.buildSystemPrompt()).toContain(name);
       }
+    });
+
+    it('includes OFF-TRACK SENSITIVITY in default prompt without chapter context', () => {
+      const prompt = builder.buildSystemPrompt();
+      expect(prompt).toContain('OFF-TRACK SENSITIVITY');
+      expect(prompt).toContain('Balance tolerance');
     });
 
     it('includes chapter context and sensitivity in system prompt', () => {
@@ -513,6 +516,14 @@ describe('PromptBuilder', () => {
       const longText = 'abc'.repeat(MAX_CONTEXT_TOKENS * 2);
       const result = builder.truncateContext(longText);
       expect(result.startsWith('abc')).toBe(true);
+    });
+
+    it('returns empty string for null input', () => {
+      expect(builder.truncateContext(null)).toBe('');
+    });
+
+    it('returns empty string for undefined input', () => {
+      expect(builder.truncateContext(undefined)).toBe('');
     });
   });
 

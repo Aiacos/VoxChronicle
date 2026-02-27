@@ -673,6 +673,7 @@
       "FailedToOpenVocabularyManager": "VoxChronicle: Vokabelverwaltung konnte nicht geöffnet werden. Überprüfen Sie die Konsole.",
       "FailedToOpenRelationshipGraph": "VoxChronicle: Beziehungsgraph konnte nicht geöffnet werden. Überprüfen Sie die Konsole.",
       "FailedToInitialize": "VoxChronicle: Modul konnte nicht initialisiert werden. Überprüfen Sie die Konsole für Details.",
+      "ReinitializeFailed": "VoxChronicle: Dienst-Reinitialisierung nach Einstellungsänderung fehlgeschlagen. Überprüfen Sie die Konsole.",
       "ClipboardFailed": "Kopieren in die Zwischenablage fehlgeschlagen."
     },
     "Warnings": {

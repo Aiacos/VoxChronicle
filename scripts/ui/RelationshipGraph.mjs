@@ -538,15 +538,19 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
           resolve();
         };
         script.onerror = () => {
-          RelationshipGraph.#visLoadPromise = null;
           reject(new Error('vis-network library failed to load from local bundle'));
         };
         document.head.appendChild(script);
       });
     }
 
-    await RelationshipGraph.#visLoadPromise;
-    this._logger.debug('vis-network library loaded');
+    try {
+      await RelationshipGraph.#visLoadPromise;
+      this._logger.debug('vis-network library loaded');
+    } catch (err) {
+      RelationshipGraph.#visLoadPromise = null;
+      throw err;
+    }
   }
 
   /**

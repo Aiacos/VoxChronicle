@@ -9,6 +9,7 @@
  */
 
 import { escapeHtml } from './HtmlUtils.mjs';
+import { Logger } from './Logger.mjs';
 
 /**
  * Maximum length for error messages displayed to users
@@ -44,8 +45,7 @@ class ErrorNotificationHelper {
       notifyFn.call(globalThis.ui?.notifications, message);
     } else {
       // Fallback when UI not yet initialized (e.g., during module init)
-      // eslint-disable-next-line no-console
-      console.error(`[VoxChronicle] ${message}`);
+      Logger.error(message);
     }
   }
 }

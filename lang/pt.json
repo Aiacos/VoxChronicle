@@ -673,6 +673,7 @@
       "FailedToOpenVocabularyManager": "[EN] VoxChronicle: Failed to open vocabulary manager. Check console.",
       "FailedToOpenRelationshipGraph": "[EN] VoxChronicle: Failed to open relationship graph. Check console.",
       "FailedToInitialize": "[EN] VoxChronicle: Failed to initialize module. Check console for details.",
+      "ReinitializeFailed": "[EN] VoxChronicle: Service reinitialization failed after settings change. Check console.",
       "ClipboardFailed": "[EN] Failed to copy to clipboard."
     },
     "Warnings": {

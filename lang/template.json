@@ -673,6 +673,7 @@
       "FailedToOpenVocabularyManager": "",
       "FailedToOpenRelationshipGraph": "",
       "FailedToInitialize": "",
+      "ReinitializeFailed": "",
       "ClipboardFailed": ""
     },
     "Warnings": {

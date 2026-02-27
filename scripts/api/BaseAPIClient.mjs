@@ -160,7 +160,19 @@ class BaseAPIClient {
    */
   getRateLimiterStats() {
     if (!this._rateLimiter) {
-      return { requests: 0, remaining: 0, resetAt: null };
+      return {
+        name: 'none',
+        requestsPerMinute: 0,
+        currentWindowRequests: 0,
+        remainingRequests: 0,
+        queueLength: 0,
+        isPaused: false,
+        pausedUntil: null,
+        totalRequests: 0,
+        averageWaitTime: 0,
+        peakQueueLength: 0,
+        retryCount: 0
+      };
     }
     return this._rateLimiter.getStats();
   }

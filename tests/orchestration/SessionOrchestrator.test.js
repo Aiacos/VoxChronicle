@@ -1492,6 +1492,11 @@ describe('SessionOrchestrator', () => {
       orchestrator.reset();
       expect(orchestrator._isStopping).toBe(false);
     });
+
+    it('should stop silence monitoring on reset', () => {
+      orchestrator.reset();
+      expect(services.aiAssistant.stopSilenceMonitoring).toHaveBeenCalled();
+    });
   });
 
   // ── _isLiveState ──────────────────────────────────────────────────────

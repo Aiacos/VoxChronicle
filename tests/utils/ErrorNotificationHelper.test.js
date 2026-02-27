@@ -27,11 +27,16 @@ describe('ErrorNotificationHelper', () => {
       expect(game.i18n.format).toHaveBeenCalled();
     });
 
-    it('should handle missing ui object gracefully', () => {
+    it('should fall back to Logger when ui.notifications is unavailable', () => {
       delete globalThis.ui;
-      expect(() => {
-        ErrorNotificationHelper.notify('test', new Error('fail'));
-      }).not.toThrow();
+      const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      ErrorNotificationHelper.notify('test', new Error('fail'));
+      expect(logSpy).toHaveBeenCalled();
+      // Logger.error passes prefix as first arg, message as second
+      const allArgs = logSpy.mock.calls[0].join(' ');
+      expect(allArgs.toLowerCase()).toContain('vox');
+      expect(allArgs).toContain('fail');
+      logSpy.mockRestore();
     });
 
     it('should truncate very long error messages', () => {

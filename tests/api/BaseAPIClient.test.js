@@ -221,6 +221,16 @@ describe('BaseAPIClient', () => {
       const client = new TestClient('key', { baseUrl: 'https://example.com/api' });
       expect(client._buildUrl('/data')).toBe('https://example.com/api/data');
     });
+
+    it('should strip trailing slash from baseUrl to prevent double-slash', () => {
+      const client = new TestClient('key', { baseUrl: 'https://example.com/api/' });
+      expect(client._buildUrl('/data')).toBe('https://example.com/api/data');
+    });
+
+    it('should strip multiple trailing slashes from baseUrl', () => {
+      const client = new TestClient('key', { baseUrl: 'https://example.com/api///' });
+      expect(client._buildUrl('/data')).toBe('https://example.com/api/data');
+    });
   });
 
   // ════════════════════════════════════════════════════════════════════════
@@ -313,6 +323,15 @@ describe('BaseAPIClient', () => {
       });
     });
 
+    it('should return safe defaults when no rate limiter is configured', () => {
+      const client = new BaseAPIClient({ apiKey: 'key' });
+      const stats = client.getRateLimiterStats();
+      expect(stats.name).toBe('none');
+      expect(stats.requestsPerMinute).toBe(0);
+      expect(stats.isPaused).toBe(false);
+      expect(stats.queueLength).toBe(0);
+    });
+
     it('should return fresh stats on each call', () => {
       const rateLimiter = createMockRateLimiter();
       rateLimiter.getStats
@@ -342,6 +361,11 @@ describe('BaseAPIClient', () => {
 
     it('should not throw', () => {
       const client = new TestClient('key');
+      expect(() => client.resetRateLimiter()).not.toThrow();
+    });
+
+    it('should be a no-op when no rate limiter is configured', () => {
+      const client = new BaseAPIClient({ apiKey: 'key' });
       expect(() => client.resetRateLimiter()).not.toThrow();
     });
   });

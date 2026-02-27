@@ -969,6 +969,7 @@ class AIAssistant {
    * @private
    */
   _buildSystemPrompt() {
+    this._syncPromptBuilderState();
     return this._promptBuilder.buildSystemPrompt();
   }
 
