@@ -684,7 +684,7 @@ class Settings {
     try {
       const url = new URL(value);
       if (!['http:', 'https:'].includes(url.protocol)) {
-        ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrlScheme', { protocol: url.protocol }) || `Invalid URL scheme "${url.protocol}"`);
+        ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrlScheme', { protocol: escapeHtml(url.protocol) }) || `Invalid URL scheme "${escapeHtml(url.protocol)}"`);
         const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
         game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '').catch(e =>
           logger.warn(`Failed to reset ${settingKey}:`, e.message)
@@ -692,7 +692,7 @@ class Settings {
       }
     } catch (error) {
       logger.warn('URL validation failed:', error.message);
-      ui?.notifications?.warn(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrl', { url: value }) || `"${value}" is not a valid URL.`);
+      ui?.notifications?.warn(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrl', { url: escapeHtml(value) }) || `"${escapeHtml(value)}" is not a valid URL.`);
       const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
       game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '').catch(e =>
         logger.warn(`Failed to reset ${settingKey}:`, e.message)
