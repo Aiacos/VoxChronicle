@@ -466,3 +466,6 @@ Hooks.on('renderSettingsConfig', (app, html) => {
   }
 });
 
+// Export for testing
+export { resolveHtmlElement, injectValidationButton, VALIDATION_RESET_DELAY_MS };
+
