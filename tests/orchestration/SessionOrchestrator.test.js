@@ -92,6 +92,10 @@ function createMockAIAssistant(overrides = {}) {
     }),
     setAdventureContext: vi.fn(),
     setChapterContext: vi.fn(),
+    setOnAutonomousSuggestionCallback: vi.fn(),
+    startSilenceMonitoring: vi.fn().mockReturnValue(true),
+    stopSilenceMonitoring: vi.fn(),
+    recordActivityForSilenceDetection: vi.fn().mockReturnValue(true),
     ...overrides
   };
 }
@@ -1705,6 +1709,99 @@ describe('SessionOrchestrator', () => {
       const error = new Error('test');
       orchestrator._handleError(error, 'stage');
       expect(onError).toHaveBeenCalledWith(error, 'stage');
+    });
+  });
+
+  // ── Silence monitoring wiring ─────────────────────────────────────────
+
+  describe('silence monitoring wiring', () => {
+    it('should call setOnAutonomousSuggestionCallback during startLiveMode', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      expect(services.aiAssistant.setOnAutonomousSuggestionCallback).toHaveBeenCalledWith(
+        expect.any(Function)
+      );
+    });
+
+    it('should call startSilenceMonitoring during startLiveMode', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      expect(services.aiAssistant.startSilenceMonitoring).toHaveBeenCalled();
+    });
+
+    it('should call stopSilenceMonitoring during stopLiveMode', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      await orchestrator.stopLiveMode();
+      expect(services.aiAssistant.stopSilenceMonitoring).toHaveBeenCalled();
+    });
+
+    it('should call stopSilenceMonitoring during cancelSession', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      orchestrator.cancelSession();
+      expect(services.aiAssistant.stopSilenceMonitoring).toHaveBeenCalled();
+    });
+
+    it('should call recordActivityForSilenceDetection when segments received in _liveCycle', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      services.audioRecorder.getLatestChunk.mockResolvedValue(
+        new Blob(['audio'], { type: 'audio/webm' })
+      );
+
+      await orchestrator._liveCycle();
+      expect(services.aiAssistant.recordActivityForSilenceDetection).toHaveBeenCalled();
+    });
+
+    it('should NOT call recordActivityForSilenceDetection when no segments (silence)', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      services.audioRecorder.getLatestChunk.mockResolvedValue(null);
+
+      await orchestrator._liveCycle();
+      expect(services.aiAssistant.recordActivityForSilenceDetection).not.toHaveBeenCalled();
+    });
+
+    it('should skip silence monitoring if aiAssistant is null', async () => {
+      const o = new SessionOrchestrator({
+        audioRecorder: createMockAudioRecorder(),
+        transcriptionService: createMockTranscriptionService()
+      });
+      // Should not throw — gracefully skip
+      await o.startLiveMode({ batchDuration: 999999 });
+      expect(o.isLiveMode).toBe(true);
+    });
+
+    it('should route autonomous suggestion to onAISuggestion callback', async () => {
+      const onAISuggestion = vi.fn();
+      orchestrator.setCallbacks({ onAISuggestion });
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+      // Extract the callback that was registered
+      const registeredCallback = services.aiAssistant.setOnAutonomousSuggestionCallback.mock.calls[0][0];
+      expect(registeredCallback).toBeTypeOf('function');
+
+      // Simulate an autonomous suggestion
+      const suggestionData = {
+        suggestion: { type: 'narration', content: 'The tavern falls silent...' },
+        silenceEvent: { duration: 30000 }
+      };
+      registeredCallback(suggestionData);
+
+      expect(onAISuggestion).toHaveBeenCalledWith(
+        suggestionData.suggestion,
+        suggestionData.silenceEvent
+      );
+      expect(orchestrator._lastAISuggestions).toEqual([suggestionData.suggestion]);
+    });
+
+    it('should handle autonomous suggestion when no onAISuggestion callback is set', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+      const registeredCallback = services.aiAssistant.setOnAutonomousSuggestionCallback.mock.calls[0][0];
+
+      // Should not throw when no callback is set
+      const suggestionData = {
+        suggestion: { type: 'narration', content: 'The air grows cold...' },
+        silenceEvent: { duration: 30000 }
+      };
+      expect(() => registeredCallback(suggestionData)).not.toThrow();
+      expect(orchestrator._lastAISuggestions).toEqual([suggestionData.suggestion]);
     });
   });
 });

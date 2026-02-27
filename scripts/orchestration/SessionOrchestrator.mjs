@@ -62,7 +62,8 @@ class SessionOrchestrator {
     onProgress: null,
     onError: null,
     onSessionComplete: null,
-    onSilenceDetected: null
+    onSilenceDetected: null,
+    onAISuggestion: null
   };
 
   // Live mode services
@@ -344,6 +345,12 @@ class SessionOrchestrator {
       this._liveCycleTimer = null;
     }
     this._liveMode = false;
+
+    // Stop silence monitoring
+    if (this._aiAssistant) {
+      this._aiAssistant.stopSilenceMonitoring();
+      this._logger.debug('Silence monitoring stopped');
+    }
 
     if (this._audioRecorder?.cancel) {
       this._audioRecorder.cancel();
@@ -804,6 +811,21 @@ class SessionOrchestrator {
       await this._audioRecorder.startRecording(options.recordingOptions || {});
       this._updateState(SessionState.LIVE_LISTENING);
       this._scheduleLiveCycle();
+
+      // Start silence monitoring for autonomous AI suggestions
+      if (this._aiAssistant) {
+        this._aiAssistant.setOnAutonomousSuggestionCallback((data) => {
+          this._logger.info(`Autonomous suggestion received: ${data.suggestion.type}`);
+          if (this._callbacks.onAISuggestion) {
+            this._callbacks.onAISuggestion(data.suggestion, data.silenceEvent);
+          }
+          this._lastAISuggestions = [data.suggestion];
+          this._updateState(SessionState.LIVE_LISTENING);
+        });
+        this._aiAssistant.startSilenceMonitoring();
+        this._logger.debug('Silence monitoring started for autonomous suggestions');
+      }
+
       this._logger.log('Live mode started');
     } catch (error) {
       this._liveMode = false;
@@ -961,6 +983,12 @@ class SessionOrchestrator {
     }
 
     try {
+      // Stop silence monitoring
+      if (this._aiAssistant) {
+        this._aiAssistant.stopSilenceMonitoring();
+        this._logger.debug('Silence monitoring stopped');
+      }
+
       // End analytics session before stopping recording
       if (this._sessionAnalytics) {
         this._sessionAnalytics.endSession();
@@ -1062,6 +1090,11 @@ class SessionOrchestrator {
           // Full array needed at stopLiveMode for final transcript; AI context uses text-level windowing
           this._liveTranscript.push(...offsetSegments);
           this._silenceStartTime = null; // Reset silence since we got speech
+
+          // Reset silence detector timer since we got speech
+          if (this._aiAssistant) {
+            this._aiAssistant.recordActivityForSilenceDetection();
+          }
 
           if (this._sessionAnalytics) {
             for (const segment of offsetSegments) {
