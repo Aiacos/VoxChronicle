@@ -199,6 +199,38 @@ class SessionOrchestrator {
   }
 
   /**
+   * Creates a new session data object with standard defaults.
+   *
+   * @param {Object} [overrides={}] - Values to override defaults
+   * @param {string} [overrides.title] - Session title
+   * @param {string} [overrides.date] - Session date (YYYY-MM-DD)
+   * @param {Object} [overrides.speakerMap] - Speaker ID to name mapping
+   * @param {string} [overrides.language] - Session language code
+   * @returns {Object} The session object
+   * @private
+   */
+  _createSessionObject(overrides = {}) {
+    return {
+      id: this._generateSessionId(),
+      title: overrides.title || `Session ${new Date().toLocaleDateString()}`,
+      date: overrides.date || new Date().toISOString().split('T')[0],
+      startTime: Date.now(),
+      endTime: null,
+      speakerMap: overrides.speakerMap || {},
+      language: overrides.language || null,
+      audioBlob: null,
+      transcript: null,
+      entities: null,
+      relationships: null,
+      moments: null,
+      images: [],
+      chronicle: null,
+      kankaResults: null,
+      errors: []
+    };
+  }
+
+  /**
    * Start a new recording session
    *
    * @param {object} [sessionOptions={}] - Session configuration (title, date, speakerMap, language, recordingOptions)
@@ -216,24 +248,12 @@ class SessionOrchestrator {
     this._logger.log('Starting new session...');
 
     try {
-      this._currentSession = {
-        id: this._generateSessionId(),
-        title: sessionOptions.title || `Session ${new Date().toLocaleDateString()}`,
-        date: sessionOptions.date || new Date().toISOString().split('T')[0],
-        startTime: Date.now(),
-        endTime: null,
-        speakerMap: sessionOptions.speakerMap || {},
-        language: sessionOptions.language || null,
-        audioBlob: null,
-        transcript: null,
-        entities: null,
-        relationships: null,
-        moments: null,
-        images: [],
-        chronicle: null,
-        kankaResults: null,
-        errors: []
-      };
+      this._currentSession = this._createSessionObject({
+        title: sessionOptions.title,
+        date: sessionOptions.date,
+        speakerMap: sessionOptions.speakerMap,
+        language: sessionOptions.language
+      });
 
       await this._audioRecorder.startRecording(sessionOptions.recordingOptions || {});
       this._updateState(SessionState.RECORDING, { session: this._currentSession });
@@ -776,24 +796,11 @@ class SessionOrchestrator {
     this._consecutiveLiveCycleErrors = 0;
 
     if (!this._currentSession) {
-      this._currentSession = {
-        id: this._generateSessionId(),
+      this._currentSession = this._createSessionObject({
         title: options.title || `Live Session ${new Date().toLocaleDateString()}`,
-        date: new Date().toISOString().split('T')[0],
-        startTime: Date.now(),
-        endTime: null,
-        speakerMap: options.speakerMap || {},
-        language: options.language || null,
-        audioBlob: null,
-        transcript: null,
-        entities: null,
-        relationships: null,
-        moments: null,
-        images: [],
-        chronicle: null,
-        kankaResults: null,
-        errors: []
-      };
+        speakerMap: options.speakerMap,
+        language: options.language
+      });
     }
 
     try {

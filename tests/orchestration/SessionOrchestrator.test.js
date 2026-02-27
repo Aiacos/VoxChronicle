@@ -1522,6 +1522,74 @@ describe('SessionOrchestrator', () => {
     });
   });
 
+  // ── _createSessionObject ─────────────────────────────────────────────
+
+  describe('_createSessionObject', () => {
+    it('should create session object with defaults', () => {
+      const session = orchestrator._createSessionObject({});
+      expect(session.id).toBeTruthy();
+      expect(session.startTime).toBeGreaterThan(0);
+      expect(session.endTime).toBeNull();
+      expect(session.audioBlob).toBeNull();
+      expect(session.transcript).toBeNull();
+      expect(session.entities).toBeNull();
+      expect(session.relationships).toBeNull();
+      expect(session.moments).toBeNull();
+      expect(session.images).toEqual([]);
+      expect(session.chronicle).toBeNull();
+      expect(session.kankaResults).toBeNull();
+      expect(session.errors).toEqual([]);
+      expect(session.speakerMap).toEqual({});
+      expect(session.language).toBeNull();
+    });
+
+    it('should generate a default title with date', () => {
+      const session = orchestrator._createSessionObject({});
+      expect(session.title).toMatch(/^Session /);
+    });
+
+    it('should generate a default date in YYYY-MM-DD format', () => {
+      const session = orchestrator._createSessionObject({});
+      expect(session.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('should apply title override', () => {
+      const session = orchestrator._createSessionObject({ title: 'Custom Title' });
+      expect(session.title).toBe('Custom Title');
+    });
+
+    it('should apply date override', () => {
+      const session = orchestrator._createSessionObject({ date: '2025-12-25' });
+      expect(session.date).toBe('2025-12-25');
+    });
+
+    it('should apply speakerMap override', () => {
+      const map = { 'SPEAKER_00': 'GM' };
+      const session = orchestrator._createSessionObject({ speakerMap: map });
+      expect(session.speakerMap).toBe(map);
+    });
+
+    it('should apply language override', () => {
+      const session = orchestrator._createSessionObject({ language: 'it' });
+      expect(session.language).toBe('it');
+    });
+
+    it('should generate unique IDs', () => {
+      const s1 = orchestrator._createSessionObject({});
+      const s2 = orchestrator._createSessionObject({});
+      expect(s1.id).not.toBe(s2.id);
+    });
+
+    it('should return independent arrays for images and errors', () => {
+      const s1 = orchestrator._createSessionObject({});
+      const s2 = orchestrator._createSessionObject({});
+      s1.images.push('img.png');
+      s1.errors.push('err');
+      expect(s2.images).toEqual([]);
+      expect(s2.errors).toEqual([]);
+    });
+  });
+
   // ── _getSessionDuration ───────────────────────────────────────────────
 
   describe('_getSessionDuration', () => {
