@@ -13,6 +13,7 @@
 
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 // Create logger instance for Settings
 const logger = Logger.createChild('Settings');
@@ -897,7 +898,7 @@ class Settings {
       return isValid;
     } catch (error) {
       ui.notifications?.error(
-        game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', { error: error.message })
+        game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', { error: escapeHtml(error.message) })
       );
       logger.error('OpenAI API key validation error:', error);
       return false;
@@ -956,7 +957,7 @@ class Settings {
       return isValid;
     } catch (error) {
       ui.notifications?.error(
-        game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', { error: error.message })
+        game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', { error: escapeHtml(error.message) })
       );
       logger.error('Kanka API token validation error:', error);
       return false;

@@ -332,6 +332,10 @@ class SessionOrchestrator {
 
   cancelSession() {
     if (!this.isSessionActive) return;
+    if (this._isStopping) {
+      this._logger.warn('cancelSession called while stop in progress, ignoring');
+      return;
+    }
     this._logger.log(`Cancelling session (from state: ${this._state})...`);
 
     // Clear live cycle timer to prevent orphaned cycles

@@ -72,6 +72,8 @@ class AudioRecorder {
   _rotationRejectTimeoutId = null;
   _rotationResolve = null;
 
+  _lastAudioLevel = 0;
+
   /** @type {object} */
   _options = {};
 
@@ -436,6 +438,7 @@ class AudioRecorder {
     this._totalActiveMs = 0;
     this._lastStartTime = null;
     this._startTime = null;
+    this._lastAudioLevel = 0;
     this._state = RecordingState.INACTIVE;
     this._callbacks.onStateChange?.(this._state);
   }

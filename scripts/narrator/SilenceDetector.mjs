@@ -400,7 +400,10 @@ class SilenceDetector {
           lastActivityTime: this._lastActivityTime,
           silenceCount: this._silenceCount
         };
-        this._onSilenceCallback(event);
+        const result = this._onSilenceCallback(event);
+        if (result && typeof result.catch === 'function') {
+          result.catch(err => this._logger.error('Error in async silence callback:', err.message));
+        }
       } catch (error) {
         this._logger.error('Error in silence callback:', error.message);
       }

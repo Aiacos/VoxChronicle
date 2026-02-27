@@ -661,7 +661,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.#ragCachedStatus.progress = 0;
       this.#ragCachedStatus.progressText = '';
       this._logger.error('RAG index build failed:', error);
-      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.IndexFailed', { error: error.message }) || `RAG index failed: ${error.message}`);
+      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.IndexFailed', { error: escapeHtml(error.message) }) || `RAG index failed: ${escapeHtml(error.message)}`);
       this.render();
     }
   }
@@ -713,7 +713,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.render();
     } catch (error) {
       this._logger.error('RAG index clear failed:', error);
-      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.ClearFailed', { error: error.message }) || `Failed to clear RAG index: ${error.message}`);
+      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.ClearFailed', { error: escapeHtml(error.message) }) || `Failed to clear RAG index: ${escapeHtml(error.message)}`);
     }
   }
 
