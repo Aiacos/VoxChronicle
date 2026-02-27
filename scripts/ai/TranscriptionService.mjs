@@ -551,8 +551,8 @@ class TranscriptionService extends OpenAIClient {
         speaker: mappedName,
         originalSpeaker: originalSpeaker,
         text: segment.text || '',
-        start: segment.start || 0,
-        end: segment.end || 0
+        start: segment.start ?? 0,
+        end: segment.end ?? 0
       };
 
       // Preserve per-segment language if present (used by multi-language mode)

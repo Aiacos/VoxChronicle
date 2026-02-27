@@ -401,9 +401,9 @@ export class SceneDetector {
    * @private
    */
   _initializePatterns() {
-    // Location change patterns (Italian)
+    // Location change patterns (Italian + English)
     this._locationPatterns = [
-      // Entering locations
+      // Entering locations — Italian
       {
         pattern: /\b(entrat[eio]|entrano|entri)\s+(nel|nella|in|al|alla)\s+\w+/i,
         sceneType: SCENE_TYPES.EXPLORATION,
@@ -429,9 +429,35 @@ export class SceneDetector {
         sceneType: SCENE_TYPES.EXPLORATION,
         weight: 0.7
       },
+      // Entering locations — English
+      {
+        pattern: /\b(you\s+)?(enter|entered|entering)\s+(the|a|an)\s+\w+/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.9
+      },
+      {
+        pattern: /\b(you\s+)?(arrive|arrived|arriving)\s+(at|in|to)\s+(the|a|an)?\s*\w+/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.9
+      },
+      {
+        pattern: /\b(you\s+)?(reach|reached)\s+(the|a|an)\s+\w+/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.8
+      },
+      {
+        pattern: /\b(you find yoursel(f|ves)|you are)\s+(in|at)\s+(the|a|an)?\s*\w+/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.8
+      },
+      {
+        pattern: /\b(you\s+)?(cross|crossed|crossing|traverse|traversed)\s+(the|a|an)?\s*\w+/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.7
+      },
       // Social locations
       {
-        pattern: /\b(taverna|locanda|inn|osteria|bar)/i,
+        pattern: /\b(taverna|locanda|inn|osteria|bar|tavern|pub)/i,
         sceneType: SCENE_TYPES.SOCIAL,
         weight: 0.8
       },
@@ -441,7 +467,17 @@ export class SceneDetector {
         weight: 0.7
       },
       {
+        pattern: /\b(you\s+)?(meet|encounter|greet)\s+(a|an|the)?\s*\w+/i,
+        sceneType: SCENE_TYPES.SOCIAL,
+        weight: 0.7
+      },
+      {
         pattern: /\b(parl(ate|ano|i)|parla|conversazione|dialogo)\s+con\s+\w+/i,
+        sceneType: SCENE_TYPES.SOCIAL,
+        weight: 0.7
+      },
+      {
+        pattern: /\b(you\s+)?(speak|talk|converse)\s+(with|to)\s+\w+/i,
         sceneType: SCENE_TYPES.SOCIAL,
         weight: 0.7
       },
@@ -455,11 +491,17 @@ export class SceneDetector {
         pattern: /\b(vi riposat[eio]|ti riposi|ci riposiamo)/i,
         sceneType: SCENE_TYPES.REST,
         weight: 0.9
+      },
+      {
+        pattern: /\b(camp|campsite|you\s+rest|set up camp|make camp)/i,
+        sceneType: SCENE_TYPES.REST,
+        weight: 0.8
       }
     ];
 
-    // Time skip patterns (Italian)
+    // Time skip patterns (Italian + English)
     this._timePatterns = [
+      // Italian
       {
         pattern: /\b(il giorno dopo|l'indomani|il mattino seguente|la mattina dopo)/i,
         sceneType: SCENE_TYPES.REST,
@@ -489,13 +531,45 @@ export class SceneDetector {
         pattern: /\b(dopo un riposo|dopo aver riposato|al risveglio)/i,
         sceneType: SCENE_TYPES.EXPLORATION,
         weight: 0.8
+      },
+      // English
+      {
+        pattern: /\b(the next (day|morning)|the following (day|morning))/i,
+        sceneType: SCENE_TYPES.REST,
+        weight: 0.9
+      },
+      {
+        pattern: /\b(after\s+(hours|days|weeks|months))/i,
+        sceneType: SCENE_TYPES.UNKNOWN,
+        weight: 0.8
+      },
+      {
+        pattern: /\b(hours later|some time later|later that (day|night|evening))/i,
+        sceneType: SCENE_TYPES.UNKNOWN,
+        weight: 0.7
+      },
+      {
+        pattern: /\b(in the morning|in the afternoon|in the evening|at night|at dawn|at dusk)/i,
+        sceneType: SCENE_TYPES.UNKNOWN,
+        weight: 0.6
+      },
+      {
+        pattern: /\b(time passes|as time goes by|after some time)/i,
+        sceneType: SCENE_TYPES.UNKNOWN,
+        weight: 0.7
+      },
+      {
+        pattern: /\b(after (a|your) rest|upon waking|when you wake)/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.8
       }
     ];
 
-    // Combat start patterns (Italian)
+    // Combat start patterns (Italian + English)
     this._combatPatterns = [
+      // Italian
       {
-        pattern: /\b(tira(te)? l'iniziativa|roll initiative|iniziativa)/i,
+        pattern: /\b(tira(te)? l'iniziativa|iniziativa)/i,
         sceneType: SCENE_TYPES.COMBAT,
         weight: 1.0
       },
@@ -518,11 +592,33 @@ export class SceneDetector {
         pattern: /\b(il nemico|i nemici|il mostro|i mostri)\s+(attacc(a|ano)|si avvicin(a|ano))/i,
         sceneType: SCENE_TYPES.COMBAT,
         weight: 0.9
+      },
+      // English
+      {
+        pattern: /\b(roll(ing)?\s+(for\s+)?initiative)/i,
+        sceneType: SCENE_TYPES.COMBAT,
+        weight: 1.0
+      },
+      {
+        pattern: /\b(enter(ing)?\s+combat|combat\s+begins|battle\s+begins)/i,
+        sceneType: SCENE_TYPES.COMBAT,
+        weight: 1.0
+      },
+      {
+        pattern: /\b(attack(s|ed|ing)?)\s+(the|a|an)\s+\w+/i,
+        sceneType: SCENE_TYPES.COMBAT,
+        weight: 0.9
+      },
+      {
+        pattern: /\b(the\s+)?(enemy|enemies|monster|monsters|creature|creatures)\s+(attack|approach|charge)/i,
+        sceneType: SCENE_TYPES.COMBAT,
+        weight: 0.9
       }
     ];
 
-    // Combat end patterns (Italian)
+    // Combat end patterns (Italian + English)
     this._combatEndPatterns = [
+      // Italian
       {
         pattern: /\b(fine del combattimento|combattimento terminato|battaglia finita)/i,
         sceneType: SCENE_TYPES.EXPLORATION,
@@ -537,30 +633,57 @@ export class SceneDetector {
         pattern: /\b(il nemico è morto|i nemici sono morti|tutti i nemici sono)/i,
         sceneType: SCENE_TYPES.EXPLORATION,
         weight: 0.9
+      },
+      // English
+      {
+        pattern: /\b(combat\s+(ends|is\s+over)|battle\s+(ends|is\s+over)|end\s+of\s+combat)/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 1.0
+      },
+      {
+        pattern: /\b(you\s+)?(win|victory|defeated|vanquished)/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.8
+      },
+      {
+        pattern: /\b(the\s+)?(enemy|enemies|monster|monsters)\s+(is|are)\s+(dead|defeated|slain)/i,
+        sceneType: SCENE_TYPES.EXPLORATION,
+        weight: 0.9
       }
     ];
 
-    // Scene type keywords for classification
+    // Scene type keywords for classification (Italian + English)
     this._sceneTypeKeywords = {
       [SCENE_TYPES.EXPLORATION]: [
         { pattern: /\b(esplor(are|ate|ano|a)|scoprire|cercare|investigare)/i, weight: 0.7 },
+        { pattern: /\b(explore|search|investigate|look around|examine)/i, weight: 0.7 },
         { pattern: /\b(dungeon|caverna|foresta|montagna|sentiero|strada)/i, weight: 0.6 },
-        { pattern: /\b(trova(te|no|re)|scopr(ite|ono|ire))/i, weight: 0.6 }
+        { pattern: /\b(cave|forest|mountain|path|road|corridor|chamber)/i, weight: 0.6 },
+        { pattern: /\b(trova(te|no|re)|scopr(ite|ono|ire))/i, weight: 0.6 },
+        { pattern: /\b(you\s+)?(find|discover|uncover|notice)/i, weight: 0.6 }
       ],
       [SCENE_TYPES.COMBAT]: [
         { pattern: /\b(danno|danni|colp(ire|isce|ito)|tiro per colpire)/i, weight: 0.8 },
+        { pattern: /\b(damage|hit|attack roll|to hit)/i, weight: 0.8 },
         { pattern: /\b(arm(atura|i|a)|scudo|spada|arco|magia)/i, weight: 0.5 },
-        { pattern: /\b(punt[oi] ferita|hp|salute)/i, weight: 0.7 }
+        { pattern: /\b(armor|shield|sword|bow|spell|weapon)/i, weight: 0.5 },
+        { pattern: /\b(punt[oi] ferita|hp|salute)/i, weight: 0.7 },
+        { pattern: /\b(hit points|hp|health|saving throw)/i, weight: 0.7 }
       ],
       [SCENE_TYPES.SOCIAL]: [
         { pattern: /\b(conversazione|dialogo|negoziare|persuadere|ingannare)/i, weight: 0.8 },
+        { pattern: /\b(conversation|dialogue|negotiate|persuade|deceive)/i, weight: 0.8 },
         { pattern: /\b(mercante|venditore|PNG|personaggio|villico)/i, weight: 0.6 },
-        { pattern: /\b(compra(re|te)|vende(re|te)|commercio|scambio)/i, weight: 0.7 }
+        { pattern: /\b(merchant|vendor|NPC|shopkeeper|villager)/i, weight: 0.6 },
+        { pattern: /\b(compra(re|te)|vende(re|te)|commercio|scambio)/i, weight: 0.7 },
+        { pattern: /\b(buy|sell|trade|barter|haggle)/i, weight: 0.7 }
       ],
       [SCENE_TYPES.REST]: [
         { pattern: /\b(riposo|dormire|sonno|ripristinare|guarire)/i, weight: 0.9 },
+        { pattern: /\b(rest|sleep|recuperate|heal)/i, weight: 0.9 },
         { pattern: /\b(lungo riposo|riposo breve|short rest|long rest)/i, weight: 1.0 },
-        { pattern: /\b(recuperare|recupero|rigenerare)/i, weight: 0.7 }
+        { pattern: /\b(recuperare|recupero|rigenerare)/i, weight: 0.7 },
+        { pattern: /\b(recover|regenerate|regain)/i, weight: 0.7 }
       ]
     };
   }

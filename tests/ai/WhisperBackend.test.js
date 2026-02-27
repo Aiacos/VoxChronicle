@@ -31,10 +31,12 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
   }
 }));
 
-// Mock RateLimiter
+// Mock RateLimiter — capture constructor args for assertion
+const rateLimiterConstructorArgs = [];
 vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
   class MockRateLimiter {
-    constructor() {
+    constructor(options) {
+      rateLimiterConstructorArgs.push(options);
       this.throttle = vi.fn((fn) => fn ? fn() : undefined);
       this.executeWithRetry = vi.fn((fn) => fn());
       this.pause = vi.fn();
@@ -78,6 +80,7 @@ describe('WhisperBackend', () => {
   let fetchSpy;
 
   beforeEach(() => {
+    rateLimiterConstructorArgs.length = 0;
     fetchSpy = vi.fn().mockResolvedValue(mockResponse({ text: 'Hello' }));
     globalThis.fetch = fetchSpy;
 
@@ -209,6 +212,19 @@ describe('WhisperBackend', () => {
     it('should initialize lastHealthStatus as null', () => {
       const b = new WhisperBackend();
       expect(b.lastHealthStatus).toBe(null);
+    });
+
+    it('should create RateLimiter with correct options object shape', () => {
+      rateLimiterConstructorArgs.length = 0;
+      const b = new WhisperBackend('http://localhost:8080', { maxRetries: 2 });
+      // The last constructor call should be from this WhisperBackend instantiation
+      const lastArgs = rateLimiterConstructorArgs[rateLimiterConstructorArgs.length - 1];
+      expect(lastArgs).toBeDefined();
+      expect(typeof lastArgs).toBe('object');
+      expect(lastArgs).not.toBeInstanceOf(Array);
+      expect(lastArgs.requestsPerMinute).toBe(100);
+      expect(lastArgs.name).toBe('WhisperBackend');
+      expect(lastArgs.maxRetries).toBe(2);
     });
   });
 

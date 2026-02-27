@@ -863,6 +863,46 @@ describe('EntityExtractor', () => {
       );
       expect(result[0].confidence).toBe(5);
     });
+
+    it('should clamp confidence=0 to 1, not promote to 5', () => {
+      const result = extractor._normalizeRelationshipResult(
+        {
+          relationships: [
+            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 0, description: 'zero confidence' }
+          ]
+        },
+        validNames,
+        { minConfidence: 1 }
+      );
+      // confidence=0 is a valid number, so it should NOT default to 5.
+      // Instead it should be clamped to minimum of 1 by Math.max(1, 0).
+      expect(result).toHaveLength(1);
+      expect(result[0].confidence).toBe(1);
+    });
+
+    it('should default NaN confidence to 5', () => {
+      const result = extractor._normalizeRelationshipResult(
+        {
+          relationships: [
+            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: NaN, description: 'nan confidence' }
+          ]
+        },
+        validNames
+      );
+      expect(result[0].confidence).toBe(5);
+    });
+
+    it('should default undefined confidence to 5', () => {
+      const result = extractor._normalizeRelationshipResult(
+        {
+          relationships: [
+            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'no confidence field' }
+          ]
+        },
+        validNames
+      );
+      expect(result[0].confidence).toBe(5);
+    });
   });
 
   // ── Temperature settings ───────────────────────────────────────────

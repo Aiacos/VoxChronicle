@@ -572,8 +572,7 @@ export class ChapterTracker {
    * @private
    */
   _convertNodeToChapterInfo(node, journalId) {
-    const cached = this._journalParser._cachedContent?.get(journalId);
-    const journalName = cached?.name || '';
+    const journalName = this._journalParser.getJournalName?.(journalId) || '';
 
     return {
       id: node.id,
@@ -597,8 +596,7 @@ export class ChapterTracker {
    * @private
    */
   _convertFlatNodeToChapterInfo(node, journalId) {
-    const cached = this._journalParser._cachedContent?.get(journalId);
-    const journalName = cached?.name || '';
+    const journalName = this._journalParser.getJournalName?.(journalId) || '';
 
     return {
       id: node.id,

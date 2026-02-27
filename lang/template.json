@@ -684,7 +684,8 @@
       "ConfigIncomplete": "",
       "TranscriptionCircuitBreaker": "",
       "AutonomousSuggestionFailed": "",
-      "EntityExtractionFailed": ""
+      "EntityExtractionFailed": "",
+      "RagStateSaveFailed": ""
     },
     "Notifications": {
       "ModuleReady": "",

@@ -743,7 +743,8 @@ Return JSON in this exact format:
         const target = String(r.targetEntity).trim();
 
         // Validate confidence
-        const confidence = Math.min(10, Math.max(1, parseInt(r.confidence, 10) || 5));
+        const rawConfidence = parseInt(r.confidence, 10);
+        const confidence = Math.min(10, Math.max(1, Number.isNaN(rawConfidence) ? 5 : rawConfidence));
 
         // Validate relationship type
         let relationType = String(r.relationType || '')

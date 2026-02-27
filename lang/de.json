@@ -684,7 +684,8 @@
       "ConfigIncomplete": "Konfiguration unvollständig",
       "TranscriptionCircuitBreaker": "Transkription wurde aufgrund wiederholter Fehler pausiert. Versuchen Sie, die Aufnahme zu stoppen und neu zu starten.",
       "AutonomousSuggestionFailed": "VoxChronicle: Autonome Vorschläge schlagen wiederholt fehl. Überprüfen Sie Ihren API-Schlüssel und die Verbindung.",
-      "EntityExtractionFailed": "VoxChronicle: Entitätsextraktion fehlgeschlagen. Die Sitzung wird ohne Entitäten fortgesetzt."
+      "EntityExtractionFailed": "VoxChronicle: Entitätsextraktion fehlgeschlagen. Die Sitzung wird ohne Entitäten fortgesetzt.",
+      "RagStateSaveFailed": "VoxChronicle: RAG-Status konnte nicht gespeichert werden — Neuindizierung könnte in der nächsten Sitzung erforderlich sein."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle bereit",

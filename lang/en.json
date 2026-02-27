@@ -684,7 +684,8 @@
       "ConfigIncomplete": "Configuration incomplete",
       "TranscriptionCircuitBreaker": "Transcription paused due to repeated errors. Try stopping and restarting recording.",
       "AutonomousSuggestionFailed": "VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.",
-      "EntityExtractionFailed": "VoxChronicle: Entity extraction failed. Session will continue without entities."
+      "EntityExtractionFailed": "VoxChronicle: Entity extraction failed. Session will continue without entities.",
+      "RagStateSaveFailed": "VoxChronicle: Failed to persist RAG state — reindexing may be required next session."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle is ready",

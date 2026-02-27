@@ -163,6 +163,10 @@ export class OpenAIFileSearchProvider extends RAGProvider {
       this._logger.debug('Saved RAG state to settings');
     } catch (err) {
       this._logger.error('Failed to save RAG state:', err);
+      globalThis.ui?.notifications?.warn(
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.RagStateSaveFailed')
+          || 'VoxChronicle: Failed to persist RAG state — reindexing may be required next session.'
+      );
     }
   }
 

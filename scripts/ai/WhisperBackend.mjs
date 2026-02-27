@@ -152,7 +152,8 @@ class WhisperBackend {
     this._maxRetries = options.maxRetries ?? 3;
 
     // Initialize rate limiter for local backend (more permissive than cloud APIs)
-    this._rateLimiter = new RateLimiter(100, 60000, {
+    this._rateLimiter = new RateLimiter({
+      requestsPerMinute: 100,
       name: 'WhisperBackend',
       maxRetries: this._maxRetries
     });

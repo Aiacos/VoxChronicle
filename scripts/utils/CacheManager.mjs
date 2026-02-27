@@ -57,6 +57,12 @@ export class CacheManager {
         this._name = options.name || 'cache';
 
         /**
+         * Logger instance for this cache
+         * @private
+         */
+        this._logger = Logger.createChild(`CacheManager:${this._name}`);
+
+        /**
          * Internal cache storage
          * @type {Map<string, CacheEntry>}
          * @private
@@ -182,7 +188,7 @@ export class CacheManager {
         }
 
         if (expiredKeys.length > 0) {
-            Logger.info(`Cleared ${expiredKeys.length} expired cache entries`, this._name);
+            this._logger.info(`Cleared ${expiredKeys.length} expired cache entries`);
         }
 
         return expiredKeys.length;
@@ -193,7 +199,7 @@ export class CacheManager {
      */
     clear() {
         this._cache.clear();
-        Logger.info('Cache cleared', this._name);
+        this._logger.info('Cache cleared');
     }
 
     /**
@@ -238,7 +244,7 @@ export class CacheManager {
             this._cache.delete(key);
         }
 
-        Logger.info(`Trimmed ${toRemove.length} old cache entries`, this._name);
+        this._logger.info(`Trimmed ${toRemove.length} old cache entries`);
     }
 
     /**

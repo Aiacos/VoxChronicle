@@ -636,6 +636,46 @@ describe('SceneDetector', () => {
   });
 
   // =========================================================================
+  // English language patterns
+  // =========================================================================
+  describe('English language patterns', () => {
+    describe('location transitions (English)', () => {
+      it('should detect "You enter the dungeon" as EXPLORATION', () => {
+        const result = detector.detectSceneTransition('You enter the dungeon');
+        expect(result.detected).toBe(true);
+        expect(result.type).toBe('location');
+        expect(result.sceneType).toBe(SCENE_TYPES.EXPLORATION);
+      });
+    });
+
+    describe('combat transitions (English)', () => {
+      it('should detect "Roll for initiative" as COMBAT', () => {
+        const result = detector.detectSceneTransition('Roll for initiative');
+        expect(result.detected).toBe(true);
+        expect(result.type).toBe('combat');
+        expect(result.sceneType).toBe(SCENE_TYPES.COMBAT);
+      });
+    });
+
+    describe('time transitions (English)', () => {
+      it('should detect "The next morning" as a time skip', () => {
+        const result = detector.detectSceneTransition('The next morning you wake up refreshed');
+        expect(result.detected).toBe(true);
+        expect(result.type).toBe('time');
+      });
+    });
+
+    describe('social transitions (English)', () => {
+      it('should detect "You meet a merchant" as SOCIAL', () => {
+        const result = detector.detectSceneTransition('You meet a merchant on the road');
+        expect(result.detected).toBe(true);
+        expect(result.type).toBe('location');
+        expect(result.sceneType).toBe(SCENE_TYPES.SOCIAL);
+      });
+    });
+  });
+
+  // =========================================================================
   // Integration scenarios
   // =========================================================================
   describe('integration scenarios', () => {

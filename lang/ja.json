@@ -684,7 +684,8 @@
       "ConfigIncomplete": "設定が不完全です",
       "TranscriptionCircuitBreaker": "[EN] Transcription paused due to repeated errors. Try stopping and restarting recording.",
       "AutonomousSuggestionFailed": "[EN] VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.",
-      "EntityExtractionFailed": "[EN] VoxChronicle: Entity extraction failed. Session will continue without entities."
+      "EntityExtractionFailed": "[EN] VoxChronicle: Entity extraction failed. Session will continue without entities.",
+      "RagStateSaveFailed": "[EN] VoxChronicle: Failed to persist RAG state — reindexing may be required next session."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicleの準備ができました",

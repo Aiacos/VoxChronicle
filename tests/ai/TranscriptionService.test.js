@@ -655,6 +655,37 @@ describe('TranscriptionService', () => {
       const mapped = service._mapSpeakersToNames(result);
       expect(mapped.segments[0].speaker).toBe('SPEAKER_00');
     });
+
+    it('should preserve start=0 without replacing it (nullish coalescing fix)', () => {
+      const result = {
+        text: 'Hello',
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1.5 }]
+      };
+      const mapped = service._mapSpeakersToNames(result, {});
+      // start=0 is a valid timestamp — it must NOT be replaced by a default.
+      // The old bug was `segment.start || 0` which treated 0 as falsy.
+      // The fix uses `segment.start ?? 0` which only replaces null/undefined.
+      expect(mapped.segments[0].start).toBe(0);
+      expect(mapped.segments[0].end).toBe(1.5);
+    });
+
+    it('should default start to 0 when start is undefined', () => {
+      const result = {
+        text: 'Hello',
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', end: 2.0 }]
+      };
+      const mapped = service._mapSpeakersToNames(result, {});
+      expect(mapped.segments[0].start).toBe(0);
+    });
+
+    it('should default start to 0 when start is null', () => {
+      const result = {
+        text: 'Hello',
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: null, end: 2.0 }]
+      };
+      const mapped = service._mapSpeakersToNames(result, {});
+      expect(mapped.segments[0].start).toBe(0);
+    });
   });
 
   // ── Speaker map management ─────────────────────────────────────────

@@ -326,6 +326,33 @@ describe('JournalParser', () => {
   });
 
   // =========================================================================
+  // getJournalName()
+  // =========================================================================
+  describe('getJournalName()', () => {
+    it('returns the journal name when cached', async () => {
+      const journal = createMockJournal('j1', 'Adventure Log', [
+        { id: 'p1', name: 'Page 1', content: '<p>Content</p>' }
+      ]);
+      setupGameJournal([journal]);
+      await parser.parseJournal('j1');
+
+      expect(parser.getJournalName('j1')).toBe('Adventure Log');
+    });
+
+    it('returns empty string when journal is not cached', () => {
+      expect(parser.getJournalName('nonexistent')).toBe('');
+    });
+
+    it('returns empty string for null journal ID', () => {
+      expect(parser.getJournalName(null)).toBe('');
+    });
+
+    it('returns empty string for undefined journal ID', () => {
+      expect(parser.getJournalName(undefined)).toBe('');
+    });
+  });
+
+  // =========================================================================
   // Cache management
   // =========================================================================
   describe('cache management', () => {

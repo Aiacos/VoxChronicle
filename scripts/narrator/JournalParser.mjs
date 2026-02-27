@@ -615,6 +615,15 @@ export class JournalParser {
   }
 
   /**
+   * Gets the name of a cached journal
+   * @param {string} journalId - The journal ID
+   * @returns {string} The journal name or empty string if not cached
+   */
+  getJournalName(journalId) {
+    return this._cachedContent.get(journalId)?.name || '';
+  }
+
+  /**
    * Refreshes the cache for a journal by re-parsing it
    *
    * @param {string} journalId - The journal ID to refresh
