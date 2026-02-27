@@ -1041,4 +1041,91 @@ describe('KankaPublisher', () => {
       expect(results[1].journal).toBeDefined();
     });
   });
+
+  // ── _uploadSessionImages ──────────────────────────────────────────────
+
+  describe('_uploadSessionImages', () => {
+    let uploadService;
+
+    beforeEach(() => {
+      uploadService = createMockKankaService({
+        uploadJournalImage: vi.fn().mockResolvedValue({ id: 100, image_full: 'https://kanka.io/img/100.png' })
+      });
+    });
+
+    it('should upload blob images to journal', async () => {
+      const p = new KankaPublisher(uploadService, mockExporter);
+      const sessionData = createSessionData({
+        images: [{ blob: new Blob(['img'], { type: 'image/png' }), filename: 'scene.png' }]
+      });
+      const result = await p.publishSession(sessionData);
+      expect(uploadService.uploadJournalImage).toHaveBeenCalledTimes(1);
+      expect(result.images.length).toBe(1);
+    });
+
+    it('should upload base64 images to journal', async () => {
+      const p = new KankaPublisher(uploadService, mockExporter);
+      const sessionData = createSessionData({
+        images: [{ b64_json: btoa('fake-png-data'), filename: 'portrait.png' }]
+      });
+      const result = await p.publishSession(sessionData);
+      expect(uploadService.uploadJournalImage).toHaveBeenCalledTimes(1);
+      expect(result.images.length).toBe(1);
+    });
+
+    it('should skip images with no usable data', async () => {
+      const p = new KankaPublisher(uploadService, mockExporter);
+      const sessionData = createSessionData({
+        images: [{ metadata: 'only' }]
+      });
+      const result = await p.publishSession(sessionData);
+      expect(uploadService.uploadJournalImage).not.toHaveBeenCalled();
+      expect(result.images.length).toBe(0);
+    });
+
+    it('should continue on individual image upload failure', async () => {
+      uploadService.uploadJournalImage
+        .mockRejectedValueOnce(new Error('Upload failed'))
+        .mockResolvedValueOnce({ id: 101 });
+      const p = new KankaPublisher(uploadService, mockExporter);
+      const sessionData = createSessionData({
+        images: [
+          { blob: new Blob(['a'], { type: 'image/png' }) },
+          { blob: new Blob(['b'], { type: 'image/png' }) }
+        ]
+      });
+      const result = await p.publishSession(sessionData);
+      expect(result.images.length).toBe(1);
+      expect(result.errors.some(e => e.type === 'image')).toBe(true);
+    });
+
+    it('should not upload images when uploadImages is false', async () => {
+      const p = new KankaPublisher(uploadService, mockExporter);
+      const sessionData = createSessionData({
+        images: [{ blob: new Blob(['x'], { type: 'image/png' }) }]
+      });
+      const result = await p.publishSession(sessionData, { uploadImages: false });
+      expect(uploadService.uploadJournalImage).not.toHaveBeenCalled();
+    });
+
+    it('should not upload when no journal was created', async () => {
+      const p = new KankaPublisher(uploadService, mockExporter);
+      const sessionData = createSessionData({
+        images: [{ blob: new Blob(['x'], { type: 'image/png' }) }]
+      });
+      const result = await p.publishSession(sessionData, { createChronicle: false });
+      expect(uploadService.uploadJournalImage).not.toHaveBeenCalled();
+    });
+
+    it('should handle URL string image sources', async () => {
+      const p = new KankaPublisher(uploadService, mockExporter);
+      const sessionData = createSessionData({
+        images: [{ url: 'https://example.com/image.png' }]
+      });
+      const result = await p.publishSession(sessionData);
+      expect(uploadService.uploadJournalImage).toHaveBeenCalledWith(
+        1, 'https://example.com/image.png', { filename: 'session-image-1.png' }
+      );
+    });
+  });
 });

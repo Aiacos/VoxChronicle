@@ -174,11 +174,10 @@ class KankaPublisher {
         await this._createChronicle(sessionData, results);
       }
 
-      // TODO: Implement image upload to Kanka journals (gpt-image-1 base64 → Kanka image API)
-      // Disabled: _uploadSessionImages was never implemented and would throw TypeError at runtime.
-      // if (uploadImages && sessionData.images?.length > 0 && results.journal) {
-      //   await this._uploadSessionImages(sessionData.images, results.journal.id, results);
-      // }
+      // Upload session images to the chronicle journal
+      if (uploadImages && sessionData.images?.length > 0 && results.journal) {
+        await this._uploadSessionImages(sessionData.images, results.journal.id, results);
+      }
 
       // Create entities (characters as sub-journals, validated locations/items)
       if (createEntities && sessionData.entities) {
@@ -529,6 +528,62 @@ class KankaPublisher {
     }
 
     return matchingSentences.join('. ') + '.';
+  }
+
+  // ============================================================================
+  // Private - Image Upload
+  // ============================================================================
+
+  /**
+   * Upload session images to the chronicle journal in Kanka.
+   * Images from gpt-image-1 are base64 blobs — converted to Blob and uploaded
+   * via KankaService.uploadJournalImage().
+   *
+   * @param {Array<object>} images - Session images with base64 data or blob
+   * @param {string|number} journalId - The parent chronicle journal ID
+   * @param {KankaPublishResult} results - Results object to populate
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _uploadSessionImages(images, journalId, results) {
+    this._logger.debug(`Uploading ${images.length} images to journal ${journalId}`);
+    this._reportProgress(85, 'Uploading images...');
+
+    for (const image of images) {
+      try {
+        let imageBlob;
+
+        if (image.blob instanceof Blob) {
+          imageBlob = image.blob;
+        } else if (image.base64 || image.b64_json) {
+          const base64Data = image.base64 || image.b64_json;
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          imageBlob = new Blob([bytes], { type: 'image/png' });
+        } else if (typeof image.url === 'string') {
+          imageBlob = image.url;
+        } else {
+          this._logger.warn(`Skipping image — no usable data (keys: ${Object.keys(image).join(', ')})`);
+          continue;
+        }
+
+        const filename = image.filename || `session-image-${results.images.length + 1}.png`;
+        const uploaded = await this._kankaService.uploadJournalImage(
+          journalId, imageBlob, { filename }
+        );
+
+        results.images.push(uploaded);
+        this._logger.debug(`Image uploaded: "${filename}" to journal ${journalId}`);
+      } catch (error) {
+        this._logger.error(`Failed to upload image: ${error.message}`);
+        results.errors.push({ entity: `image-${results.images.length}`, type: 'image', error: error.message });
+      }
+    }
+
+    this._logger.debug(`Image uploads done: ${results.images.length}/${images.length}`);
   }
 
   // ============================================================================

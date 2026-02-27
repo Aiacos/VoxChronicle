@@ -56,7 +56,7 @@ form .form-group .vox-chronicle-validate-button {
   padding: 8px;
 }
 
-.vox-chronicle-recorder .recorder-status {
+.vox-chronicle-recorder .vox-chronicle-recorder-status {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -67,22 +67,22 @@ form .form-group .vox-chronicle-validate-button {
   transition: border-color 0.2s, background-color 0.2s;
 }
 
-.vox-chronicle-recorder .recorder-status.ready { border-left-color: #06d6a0; }
-.vox-chronicle-recorder .recorder-status.recording {
+.vox-chronicle-recorder .vox-chronicle-recorder-status.ready { border-left-color: #06d6a0; }
+.vox-chronicle-recorder .vox-chronicle-recorder-status.recording {
   border-left-color: #ef233c;
   background: rgba(239, 35, 60, 0.08);
 }
-.vox-chronicle-recorder .recorder-status.paused { border-left-color: #fca311; }
-.vox-chronicle-recorder .recorder-status.processing {
+.vox-chronicle-recorder .vox-chronicle-recorder-status.paused { border-left-color: #fca311; }
+.vox-chronicle-recorder .vox-chronicle-recorder-status.processing {
   border-left-color: #4cc9f0;
   background: rgba(76, 201, 240, 0.08);
 }
-.vox-chronicle-recorder .recorder-status.error {
+.vox-chronicle-recorder .vox-chronicle-recorder-status.error {
   border-left-color: #ef233c;
   background: rgba(239, 35, 60, 0.08);
 }
 
-.vox-chronicle-recorder .status-indicator {
+.vox-chronicle-recorder .vox-chronicle-status-indicator {
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -91,24 +91,24 @@ form .form-group .vox-chronicle-validate-button {
   flex-shrink: 0;
 }
 
-.vox-chronicle-recorder .recorder-status.ready .status-indicator { background: #06d6a0; }
-.vox-chronicle-recorder .recorder-status.recording .status-indicator {
+.vox-chronicle-recorder .vox-chronicle-recorder-status.ready .vox-chronicle-status-indicator { background: #06d6a0; }
+.vox-chronicle-recorder .vox-chronicle-recorder-status.recording .vox-chronicle-status-indicator {
   background: #ef233c;
   animation: vox-pulse 1.5s ease-in-out infinite;
 }
-.vox-chronicle-recorder .recorder-status.paused .status-indicator { background: #fca311; }
-.vox-chronicle-recorder .recorder-status.processing .status-indicator {
+.vox-chronicle-recorder .vox-chronicle-recorder-status.paused .vox-chronicle-status-indicator { background: #fca311; }
+.vox-chronicle-recorder .vox-chronicle-recorder-status.processing .vox-chronicle-status-indicator {
   background: #4cc9f0;
   animation: vox-spin 1s linear infinite;
 }
-.vox-chronicle-recorder .recorder-status.error .status-indicator { background: #ef233c; }
+.vox-chronicle-recorder .vox-chronicle-recorder-status.error .vox-chronicle-status-indicator { background: #ef233c; }
 
-.vox-chronicle-recorder .status-text {
+.vox-chronicle-recorder .vox-chronicle-status-text {
   flex: 1;
   font-weight: 500;
 }
 
-.vox-chronicle-recorder .recorder-duration {
+.vox-chronicle-recorder .vox-chronicle-recorder-duration {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -118,10 +118,10 @@ form .form-group .vox-chronicle-validate-button {
   font-family: monospace;
 }
 
-.vox-chronicle-recorder .duration-label { opacity: 0.7; font-size: 0.9em; }
-.vox-chronicle-recorder .duration-value { font-size: 1.4em; font-weight: bold; letter-spacing: 2px; }
+.vox-chronicle-recorder .vox-chronicle-duration-label { opacity: 0.7; font-size: 0.9em; }
+.vox-chronicle-recorder .vox-chronicle-duration-value { font-size: 1.4em; font-weight: bold; letter-spacing: 2px; }
 
-.vox-chronicle-recorder .recorder-mode-indicator {
+.vox-chronicle-recorder .vox-chronicle-recorder-mode-indicator {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -130,9 +130,9 @@ form .form-group .vox-chronicle-validate-button {
   border-radius: 4px;
 }
 
-.vox-chronicle-recorder .mode-label { opacity: 0.7; font-size: 0.9em; }
+.vox-chronicle-recorder .vox-chronicle-mode-label { opacity: 0.7; font-size: 0.9em; }
 
-.vox-chronicle-recorder .mode-badge {
+.vox-chronicle-recorder .vox-chronicle-mode-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -144,35 +144,35 @@ form .form-group .vox-chronicle-validate-button {
   letter-spacing: 0.5px;
 }
 
-.vox-chronicle-recorder .mode-badge.mode-api {
+.vox-chronicle-recorder .vox-chronicle-mode-badge.mode-api {
   background: rgba(76, 201, 240, 0.15);
   color: #4cc9f0;
   border: 1px solid rgba(76, 201, 240, 0.3);
 }
-.vox-chronicle-recorder .mode-badge.mode-local {
+.vox-chronicle-recorder .vox-chronicle-mode-badge.mode-local {
   background: rgba(6, 214, 160, 0.15);
   color: #06d6a0;
   border: 1px solid rgba(6, 214, 160, 0.3);
 }
-.vox-chronicle-recorder .mode-badge.mode-auto {
+.vox-chronicle-recorder .vox-chronicle-mode-badge.mode-auto {
   background: rgba(252, 163, 17, 0.15);
   color: #fca311;
   border: 1px solid rgba(252, 163, 17, 0.3);
 }
 
-.vox-chronicle-recorder .health-icon { font-size: 0.9em; margin-left: 2px; }
-.vox-chronicle-recorder .health-connected .health-icon { color: #06d6a0; }
-.vox-chronicle-recorder .health-checking .health-icon { color: #fca311; }
-.vox-chronicle-recorder .health-unavailable .health-icon { color: #ef233c; }
+.vox-chronicle-recorder .vox-chronicle-health-icon { font-size: 0.9em; margin-left: 2px; }
+.vox-chronicle-recorder .health-connected .vox-chronicle-health-icon { color: #06d6a0; }
+.vox-chronicle-recorder .health-checking .vox-chronicle-health-icon { color: #fca311; }
+.vox-chronicle-recorder .health-unavailable .vox-chronicle-health-icon { color: #ef233c; }
 
 /* Progress bar */
-.vox-chronicle-recorder .recorder-progress {
+.vox-chronicle-recorder .vox-chronicle-recorder-progress {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.vox-chronicle-recorder .progress-bar,
+.vox-chronicle-recorder .vox-chronicle-progress-bar,
 .vox-chronicle-entity-preview .progress-bar {
   height: 8px;
   background: rgba(0, 0, 0, 0.3);
@@ -180,7 +180,7 @@ form .form-group .vox-chronicle-validate-button {
   overflow: hidden;
 }
 
-.vox-chronicle-recorder .progress-fill,
+.vox-chronicle-recorder .vox-chronicle-progress-fill,
 .vox-chronicle-entity-preview .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #4cc9f0, #06d6a0);
@@ -188,9 +188,9 @@ form .form-group .vox-chronicle-validate-button {
   transition: width 0.2s;
 }
 
-.vox-chronicle-recorder .progress-text { font-size: 0.85em; opacity: 0.7; text-align: center; }
+.vox-chronicle-recorder .vox-chronicle-progress-text { font-size: 0.85em; opacity: 0.7; text-align: center; }
 
-.vox-chronicle-recorder .recorder-controls {
+.vox-chronicle-recorder .vox-chronicle-recorder-controls {
   display: flex;
   gap: 8px;
   justify-content: center;
@@ -198,7 +198,7 @@ form .form-group .vox-chronicle-validate-button {
 }
 
 /* Warning & error messages */
-.vox-chronicle-recorder .recorder-warning,
+.vox-chronicle-recorder .vox-chronicle-recorder-warning,
 .vox-chronicle-entity-preview .preview-warning {
   display: flex;
   align-items: center;
@@ -210,12 +210,12 @@ form .form-group .vox-chronicle-validate-button {
   color: #fca311;
   flex-wrap: wrap;
 }
-.vox-chronicle-recorder .recorder-warning i,
+.vox-chronicle-recorder .vox-chronicle-recorder-warning i,
 .vox-chronicle-entity-preview .preview-warning i { font-size: 1.2em; }
-.vox-chronicle-recorder .recorder-warning span,
+.vox-chronicle-recorder .vox-chronicle-recorder-warning span,
 .vox-chronicle-entity-preview .preview-warning span { flex: 1; min-width: 200px; }
 
-.vox-chronicle-recorder .recorder-error {
+.vox-chronicle-recorder .vox-chronicle-recorder-error {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -226,9 +226,9 @@ form .form-group .vox-chronicle-validate-button {
   color: #ef233c;
   font-size: 0.9em;
 }
-.vox-chronicle-recorder .recorder-error i { flex-shrink: 0; }
+.vox-chronicle-recorder .vox-chronicle-recorder-error i { flex-shrink: 0; }
 
-.vox-chronicle-recorder .recorder-config-status {
+.vox-chronicle-recorder .vox-chronicle-recorder-config-status {
   display: flex;
   gap: 16px;
   justify-content: center;
@@ -238,11 +238,11 @@ form .form-group .vox-chronicle-validate-button {
   font-size: 0.85em;
 }
 
-.vox-chronicle-recorder .config-item { display: flex; align-items: center; gap: 4px; opacity: 0.7; }
-.vox-chronicle-recorder .config-item.configured { opacity: 1; color: #06d6a0; }
-.vox-chronicle-recorder .config-item.missing { opacity: 1; color: #ef233c; }
+.vox-chronicle-recorder .vox-chronicle-config-item { display: flex; align-items: center; gap: 4px; opacity: 0.7; }
+.vox-chronicle-recorder .vox-chronicle-config-item.configured { opacity: 1; color: #06d6a0; }
+.vox-chronicle-recorder .vox-chronicle-config-item.missing { opacity: 1; color: #ef233c; }
 
-.vox-chronicle-recorder .recorder-session-summary {
+.vox-chronicle-recorder .vox-chronicle-recorder-session-summary {
   display: flex;
   gap: 16px;
   justify-content: center;
@@ -251,9 +251,9 @@ form .form-group .vox-chronicle-validate-button {
   border-radius: 4px;
   font-size: 0.9em;
 }
-.vox-chronicle-recorder .summary-item { display: flex; align-items: center; gap: 4px; }
-.vox-chronicle-recorder .summary-label { opacity: 0.7; }
-.vox-chronicle-recorder .summary-value { font-weight: 600; }
+.vox-chronicle-recorder .vox-chronicle-summary-item { display: flex; align-items: center; gap: 4px; }
+.vox-chronicle-recorder .vox-chronicle-summary-label { opacity: 0.7; }
+.vox-chronicle-recorder .vox-chronicle-summary-value { font-weight: 600; }
 
 /* ==========================================================================
    Speaker Labeling Component
@@ -894,11 +894,9 @@ form .form-group .vox-chronicle-validate-button {
 }
 
 /* Danger Button */
-.vox-chronicle-panel button.danger,
 button.vox-chronicle-btn--danger {
   color: #ef233c;
 }
-.vox-chronicle-panel button.danger:hover,
 button.vox-chronicle-btn--danger:hover:not(:disabled) {
   background: rgba(239, 35, 60, 0.12);
 }

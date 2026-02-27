@@ -1,6 +1,61 @@
 # TODO - VoxChronicle
 
-Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-26 (v3.1.7 audit).
+Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-27 (v3.2.5 audit).
+
+## V3.2.5 AUDIT — 2026-02-27
+
+4-agent parallel scan: CSS namespace, security, error handling, performance.
+
+### HIGH — CSS Namespace (214 un-prefixed classes across 6 templates)
+
+- [ ] `speaker-labeling.hbs` — 21 classi CSS senza prefisso `vox-chronicle-` (form-description, speaker-row, btn-clear, etc.)
+- [ ] `entity-preview.hbs` — 57 classi CSS senza prefisso `vox-chronicle-` (preview-description, entity-row, section-header, etc.)
+- [ ] `relationship-graph.hbs` — 24 classi CSS senza prefisso `vox-chronicle-` (graph-error, graph-toolbar, legend-item, etc.)
+- [ ] `vocabulary-manager.hbs` — 33 classi CSS senza prefisso `vox-chronicle-` (vocabulary-description, terms-list, term-item, etc.)
+- [ ] `analytics-tab.hbs` — 48 classi CSS senza prefisso `vox-chronicle-` (analytics-section, stat-item, speaker-list, etc.)
+- [ ] `journal-picker.hbs` — 31 classi CSS senza prefisso `vox-chronicle-` (picker-header, folder-tree, journal-item, etc.)
+
+### MEDIUM — Security & Error Handling
+
+- [ ] `KankaClient.mjs:370` — Error messages from Kanka API not sanitized before use in exceptions (MITM risk)
+- [ ] `VoxChronicle.mjs:175` — reinitialize() failure only logged, user not notified via ui.notifications
+
+### LOW — Performance
+
+- [ ] `RelationshipGraph.mjs:295` — O(n*m) per-type filter; replace with single-pass count
+
+---
+
+## V3.2.4 AUDIT — 2026-02-27
+
+Audit con scan automatico: stub detection, CSS namespace, i18n, architectural debt.
+
+### CRITICAL — Stub Methods (non-functional features)
+
+- [x] `RulesReference.mjs` — `loadRules()` implementato con compendium integration (v3.2.5)
+- [x] `RulesReference.mjs` — `searchRules()` implementato con full-text search index (v3.2.5)
+- [x] `RulesReference.mjs` — `getRuleById()` implementato con cache lookup + recent tracking (v3.2.5)
+- [x] `RulesReference.mjs` — `getRecentRules()` implementato con MRU pattern (v3.2.5)
+- [x] `RulesReference.mjs` — `getCategories()` implementato con set-based deduplication (v3.2.5)
+- [x] `RulesReference.mjs` — `getRulesByCategory()` implementato con case-insensitive filter (v3.2.5)
+
+### HIGH — Missing Features & CSS Namespace
+
+- [x] `KankaPublisher.mjs` — `_uploadSessionImages()` implementato: blob/base64/URL → Kanka API (v3.2.5)
+- [x] `recorder.hbs` + `vox-chronicle.css` — 40+ classi CSS prefissate con `vox-chronicle-` (v3.2.5)
+
+### MEDIUM — Architectural Debt & Minor Issues
+
+- [ ] `AIAssistant.mjs` — God Object 2076 righe, candidato per decomposizione (suggestion, dialogue, scene analysis)
+- [x] `main-panel.hbs` — Classe `danger` rinominata a `vox-chronicle-btn--danger` (v3.2.5)
+- [x] `main.mjs` — Timer debounce cleanup via `closeSettingsConfig` hook (v3.2.5)
+- [ ] Session state non persistente: ricaricare la pagina perde lo stato della sessione corrente
+
+### LOW — Dead Code & Cleanup
+
+- [x] `ErrorNotificationHelper.mjs` — Gia' rimosso in v3.1.9 (entry stale)
+
+---
 
 ## V3.1.7 AUDIT — 2026-02-26
 

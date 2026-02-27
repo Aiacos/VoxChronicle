@@ -449,6 +449,13 @@ Hooks.on('renderSettingsConfig', (app, html) => {
       });
     }
 
+    // Clear debounce timer when settings dialog closes to prevent orphan timer
+    const closeHookId = Hooks.on('closeSettingsConfig', () => {
+      clearTimeout(tokenDebounceTimer);
+      tokenDebounceTimer = null;
+      Hooks.off('closeSettingsConfig', closeHookId);
+    });
+
     // Auto-load campaigns if token exists in saved settings
     const kankaToken = Settings.get('kankaApiToken');
     if (kankaToken && kankaToken.trim().length > 0) {

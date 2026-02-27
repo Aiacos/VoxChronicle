@@ -366,7 +366,9 @@ class KankaClient {
       const text = await response.text();
       if (text) {
         errorData = JSON.parse(text);
-        // Kanka returns errors in { message: '...', errors: {...} } format
+        // TODO [MEDIUM]: Sanitize error messages from Kanka API before using in exceptions.
+        // A compromised/MITM'd API could inject HTML via errorData.message. Truncate and
+        // strip angle brackets: msg.substring(0, 500).replace(/[<>]/g, '')
         if (errorData.message) {
           errorMessage = errorData.message;
         }

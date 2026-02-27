@@ -10,24 +10,24 @@
 
 <div class="vox-chronicle-recorder">
   {{!-- Status indicator section --}}
-  <div class="recorder-status {{statusClass}}">
-    <span class="status-indicator"></span>
-    <span class="status-text">{{statusText}}</span>
+  <div class="vox-chronicle-recorder-status {{statusClass}}">
+    <span class="vox-chronicle-status-indicator"></span>
+    <span class="vox-chronicle-status-text">{{statusText}}</span>
   </div>
 
   {{!-- Transcription Mode Indicator --}}
   {{#if showModeIndicator}}
-  <div class="recorder-mode-indicator">
-    <span class="mode-label">{{i18n.transcriptionMode}}:</span>
-    <span class="mode-badge {{modeClass}} {{healthClass}}" title="{{modeTooltip}}">
+  <div class="vox-chronicle-recorder-mode-indicator">
+    <span class="vox-chronicle-mode-label">{{i18n.transcriptionMode}}:</span>
+    <span class="vox-chronicle-mode-badge {{modeClass}} {{healthClass}}" title="{{modeTooltip}}">
       {{modeLabel}}
       {{#if healthStatus}}
         {{#if (eq healthStatus "connected")}}
-          <i class="fa-solid fa-check-circle health-icon" title="{{i18n.localBackendConnected}}"></i>
+          <i class="fa-solid fa-check-circle vox-chronicle-health-icon" title="{{i18n.localBackendConnected}}"></i>
         {{else if (eq healthStatus "checking")}}
-          <i class="fa-solid fa-spinner fa-pulse health-icon" title="{{i18n.localBackendChecking}}"></i>
+          <i class="fa-solid fa-spinner fa-pulse vox-chronicle-health-icon" title="{{i18n.localBackendChecking}}"></i>
         {{else}}
-          <i class="fa-solid fa-exclamation-circle health-icon" title="{{i18n.localBackendUnavailable}}"></i>
+          <i class="fa-solid fa-exclamation-circle vox-chronicle-health-icon" title="{{i18n.localBackendUnavailable}}"></i>
         {{/if}}
       {{/if}}
     </span>
@@ -35,40 +35,40 @@
   {{/if}}
 
   {{!-- Duration display --}}
-  <div class="recorder-duration">
-    <span class="duration-label">{{i18n.duration}}:</span>
-    <span class="duration-value" data-duration="{{durationSeconds}}">{{duration}}</span>
+  <div class="vox-chronicle-recorder-duration">
+    <span class="vox-chronicle-duration-label">{{i18n.duration}}:</span>
+    <span class="vox-chronicle-duration-value" data-duration="{{durationSeconds}}">{{duration}}</span>
   </div>
 
   {{!-- Progress bar (shown during processing) --}}
   {{#if hasProgress}}
-  <div class="recorder-progress">
-    <div class="progress-bar"
+  <div class="vox-chronicle-recorder-progress">
+    <div class="vox-chronicle-progress-bar"
          role="progressbar"
          aria-valuenow="{{progress.progress}}"
          aria-valuemin="0"
          aria-valuemax="100"
          aria-label="{{progress.message}}">
-      <div class="progress-fill" style="width: {{progress.progress}}%"></div>
+      <div class="vox-chronicle-progress-fill" style="width: {{progress.progress}}%"></div>
     </div>
-    <span class="progress-text">{{progress.message}}</span>
+    <span class="vox-chronicle-progress-text">{{progress.message}}</span>
   </div>
   {{/if}}
 
   {{!-- Error display --}}
   {{#if isError}}
-  <div class="recorder-error">
+  <div class="vox-chronicle-recorder-error">
     <i class="fa-solid fa-exclamation-circle"></i>
     <span>{{lastError}}</span>
   </div>
   {{/if}}
 
   {{!-- Control buttons --}}
-  <div class="recorder-controls">
+  <div class="vox-chronicle-recorder-controls">
     {{!-- Start Recording button (shown when idle) --}}
     {{#if canRecord}}
     <button type="button"
-            class="btn-record"
+            class="vox-chronicle-btn-record"
             data-action="start-recording"
             title="{{i18n.startRecording}}"
             {{#unless isConfigured}}disabled{{/unless}}>
@@ -80,7 +80,7 @@
     {{!-- Pause button (shown when recording) --}}
     {{#if canPause}}
     <button type="button"
-            class="btn-pause"
+            class="vox-chronicle-btn-pause"
             data-action="pause-recording"
             title="{{i18n.pauseRecording}}"
             aria-label="{{i18n.pauseRecording}}">
@@ -91,7 +91,7 @@
     {{!-- Resume button (shown when paused) --}}
     {{#if canResume}}
     <button type="button"
-            class="btn-resume"
+            class="vox-chronicle-btn-resume"
             data-action="resume-recording"
             title="{{i18n.resumeRecording}}"
             aria-label="{{i18n.resumeRecording}}">
@@ -102,7 +102,7 @@
     {{!-- Stop Recording button (shown when recording or paused) --}}
     {{#if canStop}}
     <button type="button"
-            class="btn-stop"
+            class="vox-chronicle-btn-stop"
             data-action="stop-recording"
             title="{{i18n.stopRecording}}">
       <i class="fa-solid fa-stop"></i>
@@ -113,7 +113,7 @@
     {{!-- Cancel button (shown when recording or paused) --}}
     {{#if canStop}}
     <button type="button"
-            class="btn-cancel"
+            class="vox-chronicle-btn-cancel"
             data-action="cancel-session"
             title="{{i18n.cancelSession}}"
             aria-label="{{i18n.cancelSession}}">
@@ -124,10 +124,10 @@
 
   {{!-- Configuration warning (shown when not configured) --}}
   {{#unless isConfigured}}
-  <div class="recorder-warning">
+  <div class="vox-chronicle-recorder-warning">
     <i class="fa-solid fa-exclamation-triangle"></i>
     <span>{{i18n.notConfigured}}</span>
-    <button type="button" class="btn-settings" data-action="open-settings">
+    <button type="button" class="vox-chronicle-btn-settings" data-action="open-settings">
       <i class="fa-solid fa-cog"></i>
       <span>{{i18n.settings}}</span>
     </button>
@@ -136,12 +136,12 @@
 
   {{!-- Configuration status indicators --}}
   {{#if isConfigured}}
-  <div class="recorder-config-status">
-    <span class="config-item {{#if isOpenAIConfigured}}configured{{else}}missing{{/if}}" title="OpenAI API">
+  <div class="vox-chronicle-recorder-config-status">
+    <span class="vox-chronicle-config-item {{#if isOpenAIConfigured}}configured{{else}}missing{{/if}}" title="OpenAI API">
       <i class="fa-solid fa-{{#if isOpenAIConfigured}}check-circle{{else}}exclamation-circle{{/if}}"></i>
       <span>OpenAI</span>
     </span>
-    <span class="config-item {{#if isKankaConfigured}}configured{{else}}optional{{/if}}" title="Kanka API">
+    <span class="vox-chronicle-config-item {{#if isKankaConfigured}}configured{{else}}optional{{/if}}" title="Kanka API">
       <i class="fa-solid fa-{{#if isKankaConfigured}}check-circle{{else}}minus-circle{{/if}}"></i>
       <span>Kanka</span>
     </span>
@@ -150,15 +150,15 @@
 
   {{!-- Session summary (shown after recording) --}}
   {{#if sessionSummary}}
-  <div class="recorder-session-summary">
-    <div class="summary-item">
-      <span class="summary-label">{{i18n.segments}}</span>
-      <span class="summary-value">{{sessionSummary.segmentCount}}</span>
+  <div class="vox-chronicle-recorder-session-summary">
+    <div class="vox-chronicle-summary-item">
+      <span class="vox-chronicle-summary-label">{{i18n.segments}}</span>
+      <span class="vox-chronicle-summary-value">{{sessionSummary.segmentCount}}</span>
     </div>
     {{#if sessionSummary.speakerCount}}
-    <div class="summary-item">
-      <span class="summary-label">{{i18n.speakers}}</span>
-      <span class="summary-value">{{sessionSummary.speakerCount}}</span>
+    <div class="vox-chronicle-summary-item">
+      <span class="vox-chronicle-summary-label">{{i18n.speakers}}</span>
+      <span class="vox-chronicle-summary-value">{{sessionSummary.speakerCount}}</span>
     </div>
     {{/if}}
   </div>

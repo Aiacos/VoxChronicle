@@ -137,7 +137,7 @@
             <button data-action="rag-build-index" {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
               <i class="fas fa-hammer"></i> {{localize "VOXCHRONICLE.RAG.RebuildIndex"}}
             </button>
-            <button class="danger" data-action="rag-clear-index" {{#unless ragVectorCount}}disabled{{/unless}} {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
+            <button class="vox-chronicle-btn--danger" data-action="rag-clear-index" {{#unless ragVectorCount}}disabled{{/unless}} {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
               <i class="fas fa-trash-alt"></i> {{localize "VOXCHRONICLE.RAG.ClearIndex"}}
             </button>
           </div>

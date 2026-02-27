@@ -127,6 +127,36 @@ describe('RulesReference', () => {
   // loadRules
   // =========================================================================
   describe('loadRules', () => {
+    let mockPack;
+
+    beforeEach(() => {
+      mockPack = {
+        collection: 'dnd5e.rules',
+        documentName: 'JournalEntry',
+        metadata: { label: 'Rules' },
+        getIndex: vi.fn().mockResolvedValue([
+          { _id: 'rule1', name: 'Combat' },
+          { _id: 'rule2', name: 'Spells' }
+        ]),
+        getDocument: vi.fn().mockImplementation((id) => {
+          const docs = {
+            rule1: {
+              name: 'Combat', type: 'rules',
+              pages: [{ type: 'text', text: { content: '<p>Combat rules for melee</p>' } }],
+              system: {}, flags: {}
+            },
+            rule2: {
+              name: 'Spells', type: 'rules',
+              pages: [{ type: 'text', text: { content: '<p>Casting spells and concentration</p>' } }],
+              system: {}, flags: {}
+            }
+          };
+          return Promise.resolve(docs[id] || null);
+        })
+      };
+      game.packs = [mockPack];
+    });
+
     it('should set isLoaded to true', async () => {
       await rules.loadRules();
       expect(rules.isConfigured()).toBe(true);
@@ -136,39 +166,162 @@ describe('RulesReference', () => {
       const result = rules.loadRules();
       expect(result).toBeInstanceOf(Promise);
     });
+
+    it('should populate the rules cache from compendiums', async () => {
+      await rules.loadRules();
+      expect(rules.getCategories().length).toBeGreaterThan(0);
+    });
+
+    it('should handle missing game.packs gracefully', async () => {
+      game.packs = null;
+      await rules.loadRules();
+      expect(rules.isConfigured()).toBe(true);
+      expect(rules.getCategories()).toEqual([]);
+    });
+
+    it('should handle pack errors gracefully', async () => {
+      mockPack.getIndex.mockRejectedValue(new Error('Pack error'));
+      await rules.loadRules();
+      expect(rules.isConfigured()).toBe(true);
+    });
   });
 
   // =========================================================================
-  // searchRules (stub)
+  // searchRules
   // =========================================================================
   describe('searchRules', () => {
-    it('should return an empty array', async () => {
-      const results = await rules.searchRules('grappling');
+    let mockPack;
+
+    beforeEach(async () => {
+      mockPack = {
+        collection: 'dnd5e.rules',
+        documentName: 'JournalEntry',
+        metadata: { label: 'Rules' },
+        getIndex: vi.fn().mockResolvedValue([
+          { _id: 'rule1', name: 'Combat Basics' },
+          { _id: 'rule2', name: 'Spell Casting' },
+          { _id: 'rule3', name: 'Conditions' }
+        ]),
+        getDocument: vi.fn().mockImplementation((id) => {
+          const docs = {
+            rule1: {
+              name: 'Combat Basics', type: 'rules',
+              pages: [{ type: 'text', text: { content: '<p>Melee and ranged attacks in combat</p>' } }],
+              system: {}, flags: {}
+            },
+            rule2: {
+              name: 'Spell Casting', type: 'rules',
+              pages: [{ type: 'text', text: { content: '<p>How to cast spells and concentration</p>' } }],
+              system: {}, flags: {}
+            },
+            rule3: {
+              name: 'Conditions', type: 'rules',
+              pages: [{ type: 'text', text: { content: '<p>Stunned, paralyzed, and blinded</p>' } }],
+              system: {}, flags: {}
+            }
+          };
+          return Promise.resolve(docs[id] || null);
+        })
+      };
+      game.packs = [mockPack];
+      await rules.loadRules();
+    });
+
+    it('should return empty array for null query', async () => {
+      const results = await rules.searchRules(null);
       expect(results).toEqual([]);
     });
 
-    it('should accept options parameter', async () => {
-      const results = await rules.searchRules('grappling', { categories: ['combat'], limit: 3 });
+    it('should return empty array for empty query', async () => {
+      const results = await rules.searchRules('');
       expect(results).toEqual([]);
+    });
+
+    it('should find rules matching query', async () => {
+      const results = await rules.searchRules('combat');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].rule.title).toBe('Combat Basics');
+    });
+
+    it('should filter by categories', async () => {
+      const results = await rules.searchRules('combat', { categories: ['nonexistent'] });
+      expect(results).toEqual([]);
+    });
+
+    it('should respect limit option', async () => {
+      const results = await rules.searchRules('rules', { limit: 1 });
+      expect(results.length).toBeLessThanOrEqual(1);
+    });
+
+    it('should sort by relevance descending', async () => {
+      const results = await rules.searchRules('combat');
+      for (let i = 1; i < results.length; i++) {
+        expect(results[i - 1].relevance).toBeGreaterThanOrEqual(results[i].relevance);
+      }
     });
   });
 
   // =========================================================================
-  // getRuleById (stub)
+  // getRuleById
   // =========================================================================
   describe('getRuleById', () => {
-    it('should return null', async () => {
-      const result = await rules.getRuleById('some-id');
+    beforeEach(async () => {
+      game.packs = [{
+        collection: 'test.rules',
+        documentName: 'JournalEntry',
+        metadata: { label: 'Test Rules' },
+        getIndex: vi.fn().mockResolvedValue([{ _id: 'r1', name: 'TestRule' }]),
+        getDocument: vi.fn().mockResolvedValue({
+          name: 'TestRule', type: 'rules',
+          pages: [{ type: 'text', text: { content: 'Test content' } }],
+          system: {}, flags: {}
+        })
+      }];
+      await rules.loadRules();
+    });
+
+    it('should return null for unknown ID', async () => {
+      const result = await rules.getRuleById('unknown-id');
       expect(result).toBeNull();
+    });
+
+    it('should return rule for known ID', async () => {
+      const result = await rules.getRuleById('test.rules.r1');
+      expect(result).not.toBeNull();
+      expect(result.title).toBe('TestRule');
+    });
+
+    it('should track accessed rule in recent list', async () => {
+      await rules.getRuleById('test.rules.r1');
+      const recent = rules.getRecentRules();
+      expect(recent.length).toBe(1);
+      expect(recent[0].title).toBe('TestRule');
     });
   });
 
   // =========================================================================
-  // getRecentRules (stub)
+  // getRecentRules
   // =========================================================================
   describe('getRecentRules', () => {
-    it('should return an empty array', () => {
+    it('should return empty array before any access', () => {
       expect(rules.getRecentRules()).toEqual([]);
+    });
+
+    it('should return recently accessed rules', async () => {
+      game.packs = [{
+        collection: 'test.rules',
+        documentName: 'JournalEntry',
+        metadata: { label: 'Test' },
+        getIndex: vi.fn().mockResolvedValue([{ _id: 'r1', name: 'Rule1' }]),
+        getDocument: vi.fn().mockResolvedValue({
+          name: 'Rule1', type: 'rules',
+          pages: [{ type: 'text', text: { content: 'Content' } }],
+          system: {}, flags: {}
+        })
+      }];
+      await rules.loadRules();
+      await rules.getRuleById('test.rules.r1');
+      expect(rules.getRecentRules().length).toBe(1);
     });
   });
 
@@ -192,20 +345,70 @@ describe('RulesReference', () => {
   });
 
   // =========================================================================
-  // getCategories (stub)
+  // getCategories
   // =========================================================================
   describe('getCategories', () => {
-    it('should return an empty array', () => {
+    it('should return empty array when no rules loaded', () => {
       expect(rules.getCategories()).toEqual([]);
+    });
+
+    it('should return distinct categories after loading', async () => {
+      game.packs = [{
+        collection: 'test.mixed',
+        documentName: 'Item',
+        metadata: { label: 'Mixed' },
+        getIndex: vi.fn().mockResolvedValue([
+          { _id: 'i1', name: 'Sword' },
+          { _id: 'i2', name: 'Shield' }
+        ]),
+        getDocument: vi.fn().mockImplementation((id) => {
+          const docs = {
+            i1: { name: 'Sword', type: 'weapon', system: { description: { value: 'A sharp blade' } }, flags: {} },
+            i2: { name: 'Shield', type: 'armor', system: { description: { value: 'A sturdy shield' } }, flags: {} }
+          };
+          return Promise.resolve(docs[id] || null);
+        })
+      }];
+      await rules.loadRules();
+      const categories = rules.getCategories();
+      expect(categories).toContain('weapon');
+      expect(categories).toContain('armor');
     });
   });
 
   // =========================================================================
-  // getRulesByCategory (stub)
+  // getRulesByCategory
   // =========================================================================
   describe('getRulesByCategory', () => {
-    it('should return an empty array', () => {
+    it('should return empty array for null category', () => {
+      expect(rules.getRulesByCategory(null)).toEqual([]);
+    });
+
+    it('should return empty array when no rules loaded', () => {
       expect(rules.getRulesByCategory('combat')).toEqual([]);
+    });
+
+    it('should filter rules by category', async () => {
+      game.packs = [{
+        collection: 'test.items',
+        documentName: 'Item',
+        metadata: { label: 'Items' },
+        getIndex: vi.fn().mockResolvedValue([
+          { _id: 'i1', name: 'Sword' },
+          { _id: 'i2', name: 'Potion' }
+        ]),
+        getDocument: vi.fn().mockImplementation((id) => {
+          const docs = {
+            i1: { name: 'Sword', type: 'weapon', system: { description: { value: 'A blade' } }, flags: {} },
+            i2: { name: 'Potion', type: 'consumable', system: { description: { value: 'Heals' } }, flags: {} }
+          };
+          return Promise.resolve(docs[id] || null);
+        })
+      }];
+      await rules.loadRules();
+      const weapons = rules.getRulesByCategory('weapon');
+      expect(weapons.length).toBe(1);
+      expect(weapons[0].title).toBe('Sword');
     });
   });
 

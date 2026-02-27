@@ -163,9 +163,34 @@ export class RulesReference {
    */
   async loadRules() {
     this._logger.debug('loadRules() entry');
-    // TODO: Implementation
+
+    this._rulesCache.clear();
+    this._searchIndex.clear();
+    this._recentRules = [];
+
+    if (!game.packs) {
+      this._logger.warn('Compendium packs not available');
+      this._isLoaded = true;
+      return;
+    }
+
+    for (const pack of game.packs) {
+      try {
+        const index = await pack.getIndex();
+        for (const indexEntry of index) {
+          const ruleEntry = await this._extractCompendiumEntry(pack, indexEntry);
+          if (ruleEntry) {
+            this._rulesCache.set(ruleEntry.id, ruleEntry);
+            this._indexRule(ruleEntry);
+          }
+        }
+      } catch (error) {
+        this._logger.warn(`Error loading rules from pack ${pack.collection}:`, error);
+      }
+    }
+
     this._isLoaded = true;
-    this._logger.debug('loadRules() exit — rules loaded');
+    this._logger.debug(`loadRules() exit — ${this._rulesCache.size} rules loaded`);
   }
 
   /**
@@ -176,11 +201,58 @@ export class RulesReference {
    * @param {number} [options.limit] - Override result limit
    * @returns {Promise<SearchResult[]>} Array of search results
    */
-  async searchRules(_query, _options = {}) {
-    this._logger.debug(`searchRules() entry — query="${_query}"`);
-    // TODO: Implementation
-    this._logger.debug('searchRules() exit — 0 results (not implemented)');
-    return [];
+  async searchRules(query, options = {}) {
+    this._logger.debug(`searchRules() entry — query="${query}"`);
+
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return [];
+    }
+
+    const normalizedQuery = query.toLowerCase().trim();
+    const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
+    const limit = options.limit || this._resultLimit;
+    const categories = options.categories;
+
+    if (queryWords.length === 0) {
+      return [];
+    }
+
+    // Collect matching rule IDs with word-hit counts
+    const scoreMap = new Map();
+    for (const word of queryWords) {
+      const matchingIds = this._searchIndex.get(word);
+      if (matchingIds) {
+        for (const id of matchingIds) {
+          scoreMap.set(id, (scoreMap.get(id) || 0) + 1);
+        }
+      }
+    }
+
+    const results = [];
+    for (const [id, wordHits] of scoreMap) {
+      const rule = this._rulesCache.get(id);
+      if (!rule) continue;
+
+      if (categories && !categories.includes(rule.category)) continue;
+
+      let relevance = wordHits / queryWords.length;
+      if (rule.title.toLowerCase() === normalizedQuery) {
+        relevance = 1.0;
+      } else if (rule.title.toLowerCase().includes(normalizedQuery)) {
+        relevance = Math.max(relevance, 0.8);
+      }
+
+      const matchedTerms = queryWords.filter(w =>
+        rule.title.toLowerCase().includes(w) || rule.content.toLowerCase().includes(w)
+      );
+
+      results.push({ rule, relevance: Math.min(relevance, 1.0), matchedTerms });
+    }
+
+    results.sort((a, b) => b.relevance - a.relevance);
+    const limited = results.slice(0, limit);
+    this._logger.debug(`searchRules() exit — ${limited.length}/${results.length} results`);
+    return limited;
   }
 
   /**
@@ -188,11 +260,14 @@ export class RulesReference {
    * @param {string} _ruleId - The rule ID
    * @returns {Promise<RuleEntry|null>} The rule entry or null if not found
    */
-  async getRuleById(_ruleId) {
-    this._logger.debug(`getRuleById() entry — ruleId="${_ruleId}"`);
-    // TODO: Implementation
-    this._logger.debug('getRuleById() exit — null (not implemented)');
-    return null;
+  async getRuleById(ruleId) {
+    this._logger.debug(`getRuleById() entry — ruleId="${ruleId}"`);
+    const rule = this._rulesCache.get(ruleId) || null;
+    if (rule) {
+      this._addToRecent(ruleId);
+    }
+    this._logger.debug(`getRuleById() exit — ${rule ? rule.title : 'null'}`);
+    return rule;
   }
 
   /**
@@ -200,8 +275,9 @@ export class RulesReference {
    * @returns {RuleEntry[]} Array of recent rule entries
    */
   getRecentRules() {
-    // TODO: Implementation
-    return [];
+    return this._recentRules
+      .map(id => this._rulesCache.get(id))
+      .filter(Boolean);
   }
 
   /**
@@ -222,8 +298,13 @@ export class RulesReference {
    * @returns {string[]} Array of category names
    */
   getCategories() {
-    // TODO: Implementation
-    return [];
+    const categories = new Set();
+    for (const rule of this._rulesCache.values()) {
+      if (rule.category) {
+        categories.add(rule.category);
+      }
+    }
+    return [...categories].sort();
   }
 
   /**
@@ -231,9 +312,61 @@ export class RulesReference {
    * @param {string} _category - The category name
    * @returns {RuleEntry[]} Array of rule entries in the category
    */
-  getRulesByCategory(_category) {
-    // TODO: Implementation
-    return [];
+  getRulesByCategory(category) {
+    if (!category) return [];
+    const normalizedCategory = category.toLowerCase();
+    return [...this._rulesCache.values()].filter(
+      rule => rule.category?.toLowerCase() === normalizedCategory
+    );
+  }
+
+  /**
+   * Indexes a rule entry into the search index by extracting keywords
+   * from the title, content, tags, and category.
+   * @param {RuleEntry} rule - The rule to index
+   * @private
+   */
+  _indexRule(rule) {
+    const words = new Set();
+
+    for (const word of rule.title.toLowerCase().split(/\s+/)) {
+      if (word.length >= 2) words.add(word);
+    }
+
+    for (const word of rule.content.toLowerCase().split(/\s+/)) {
+      if (word.length >= 3) words.add(word);
+    }
+
+    for (const tag of rule.tags) {
+      if (tag) words.add(tag.toLowerCase());
+    }
+
+    if (rule.category) {
+      words.add(rule.category.toLowerCase());
+    }
+
+    for (const word of words) {
+      if (!this._searchIndex.has(word)) {
+        this._searchIndex.set(word, new Set());
+      }
+      this._searchIndex.get(word).add(rule.id);
+    }
+  }
+
+  /**
+   * Adds a rule ID to the recent rules list (MRU order, bounded).
+   * @param {string} ruleId - The rule ID to add
+   * @private
+   */
+  _addToRecent(ruleId) {
+    const idx = this._recentRules.indexOf(ruleId);
+    if (idx !== -1) {
+      this._recentRules.splice(idx, 1);
+    }
+    this._recentRules.unshift(ruleId);
+    if (this._recentRules.length > this._maxRecentSize) {
+      this._recentRules.length = this._maxRecentSize;
+    }
   }
 
   /**

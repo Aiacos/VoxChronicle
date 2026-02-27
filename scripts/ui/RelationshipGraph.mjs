@@ -290,7 +290,8 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     ];
 
-    // Add each relationship type
+    // TODO [LOW]: Replace O(n*m) per-type filter with single-pass count using Map/reduce.
+    // Each type scans the full _relationships array; a single pass would collect all counts.
     Object.values(RelationshipType).forEach((type) => {
       const count = this._relationships.filter((r) => r.relationType === type).length;
       if (count > 0) {
