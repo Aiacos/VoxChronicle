@@ -1034,7 +1034,11 @@
       "Message": "Error: {error}"
     },
     "Compendium": {
-      "UnnamedEntry": "Unnamed Entry"
+      "UnnamedEntry": "Unnamed Entry",
+      "RulesAndReferences": "RULES AND REFERENCES (COMPENDIUMS)",
+      "TopicInfo": "Information about: {topic}",
+      "Type": "Type",
+      "Results": "Results:"
     }
   }
 }

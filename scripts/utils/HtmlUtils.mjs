@@ -56,7 +56,7 @@ export function sanitizeHtml(html) {
   const doc = parser.parseFromString(html, 'text/html');
 
   // Remove dangerous elements
-  const dangerous = doc.querySelectorAll('script, iframe, object, embed, form, input, textarea, select, button');
+  const dangerous = doc.querySelectorAll('script, iframe, object, embed, form, input, textarea, select, button, style, link, meta, base');
   for (const el of dangerous) {
     el.remove();
   }

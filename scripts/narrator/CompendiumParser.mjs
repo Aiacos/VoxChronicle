@@ -384,7 +384,7 @@ export class CompendiumParser {
     return this._getContentForAIFromList(
       this._rulesCompendiums,
       maxLength,
-      'REGOLE E RIFERIMENTI (COMPENDI)'
+      game.i18n?.localize('VOXCHRONICLE.Compendium.RulesAndReferences') || 'RULES AND REFERENCES (COMPENDIUMS)'
     );
   }
 
@@ -403,7 +403,8 @@ export class CompendiumParser {
     }
 
     const topResults = results.slice(0, maxResults);
-    let content = `# Informazioni su: ${topic}\n\n`;
+    const infoHeader = game.i18n?.format('VOXCHRONICLE.Compendium.TopicInfo', { topic }) || `Information about: ${topic}`;
+    let content = `# ${infoHeader}\n\n`;
 
     for (const result of topResults) {
       content += `## ${result.entry.name}\n`;
@@ -811,7 +812,7 @@ export class CompendiumParser {
     const parts = [item.name];
 
     if (item.type) {
-      parts.push(`Tipo: ${item.type}`);
+      parts.push(`${game.i18n?.localize('VOXCHRONICLE.Compendium.Type') || 'Type'}: ${item.type}`);
     }
 
     // Description (most systems use system.description.value)
@@ -843,7 +844,7 @@ export class CompendiumParser {
 
     // Include table results
     if (table.results && table.results.size > 0) {
-      parts.push('Risultati:');
+      parts.push(game.i18n?.localize('VOXCHRONICLE.Compendium.Results') || 'Results:');
       for (const result of table.results) {
         const range = result.range ? `${result.range[0]}-${result.range[1]}` : '';
         const text = result.text || result.data?.text || '';
@@ -867,7 +868,7 @@ export class CompendiumParser {
     const parts = [actor.name];
 
     if (actor.type) {
-      parts.push(`Tipo: ${actor.type}`);
+      parts.push(`${game.i18n?.localize('VOXCHRONICLE.Compendium.Type') || 'Type'}: ${actor.type}`);
     }
 
     // Biography/description

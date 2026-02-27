@@ -1134,13 +1134,18 @@ class SessionOrchestrator {
     }
 
     try {
-      // Implement sliding window for context: keep last ~15,000 characters
-      // Format as structured dialogue (Speaker: Text) to allow AI to distinguish roles
-      const fullText = this._liveTranscript.map(s => `${s.speaker || 'Unknown'}: ${s.text}`).join('\n');
+      // Build context from tail of transcript — avoids serializing entire array
       const windowSize = 15000;
-      const contextText = fullText.length > windowSize 
-        ? '... ' + fullText.slice(-windowSize) 
-        : fullText;
+      let contextText = '';
+      for (let i = this._liveTranscript.length - 1; i >= 0; i--) {
+        const s = this._liveTranscript[i];
+        const line = `${s.speaker || 'Unknown'}: ${s.text}`;
+        if (contextText.length + line.length + 1 > windowSize) {
+          contextText = '... ' + (line + '\n' + contextText).slice(-(windowSize));
+          break;
+        }
+        contextText = contextText ? line + '\n' + contextText : line;
+      }
 
       const currentChapter = this._chapterTracker?.getCurrentChapter?.() || null;
 
@@ -1181,10 +1186,10 @@ class SessionOrchestrator {
         this._logger.debug('AI analysis returned no suggestions');
       }
 
-      if (analysis?.offTrack !== undefined) {
-        this._lastOffTrackStatus = analysis.offTrack;
-        if (analysis.offTrack.isOffTrack) {
-          this._logger.log(`Off-track detected: severity=${analysis.offTrack.severity}, reason="${analysis.offTrack.reason || 'N/A'}"`);
+      if (analysis?.offTrackStatus !== undefined) {
+        this._lastOffTrackStatus = analysis.offTrackStatus;
+        if (analysis.offTrackStatus.isOffTrack) {
+          this._logger.log(`Off-track detected: severity=${analysis.offTrackStatus.severity}, reason="${analysis.offTrackStatus.reason || 'N/A'}"`);
         } else {
           this._logger.debug('Players on track');
         }

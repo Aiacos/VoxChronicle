@@ -130,6 +130,9 @@ class VoxChronicle {
       VoxChronicle.#instance.audioRecorder?.cancel?.();
       VoxChronicle.#instance.silenceDetector?.stop?.();
       VoxChronicle.#instance.sessionOrchestrator?.reset?.();
+      if (VoxChronicle.#instance._updateSettingHookId != null) {
+        Hooks.off('updateSetting', VoxChronicle.#instance._updateSettingHookId);
+      }
       VoxChronicle.#instance.isInitialized = false;
       VoxChronicle._hooksRegistered = false;
     }
@@ -163,7 +166,7 @@ class VoxChronicle {
    * @private
    */
   _registerHooks() {
-    Hooks.on('updateSetting', (setting) => {
+    this._updateSettingHookId = Hooks.on('updateSetting', (setting) => {
       if (setting.key.startsWith(`${MODULE_ID}.`)) {
         // Invalidate cached settings status on any module setting change
         this._cachedSettingsStatus = null;
@@ -327,12 +330,9 @@ class VoxChronicle {
       this.isInitialized = true;
       logger.info('VoxChronicle services stabilized');
       
-      // Notify UI to refresh badges
-      if (ui.windows) {
-        Object.values(ui.windows).forEach(w => {
-          if (w.constructor.name === 'MainPanel') w.render();
-        });
-      }
+      // Notify UI to refresh badges (v13 ApplicationV2 API)
+      const panel = foundry.applications?.instances?.get('vox-chronicle-main-panel');
+      if (panel?.rendered) panel.render();
     } catch (error) {
       logger.error('Failed to initialize services:', error);
       throw error;

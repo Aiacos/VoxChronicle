@@ -1034,7 +1034,11 @@
       "Message": ""
     },
     "Compendium": {
-      "UnnamedEntry": ""
+      "UnnamedEntry": "",
+      "RulesAndReferences": "",
+      "TopicInfo": "",
+      "Type": "",
+      "Results": ""
     }
   }
 }

@@ -399,7 +399,7 @@ describe('CompendiumParser', () => {
       await parser.parseJournalCompendiums();
 
       const content = parser.getTopicContent('Fireball');
-      expect(content).toContain('Informazioni su: Fireball');
+      expect(content).toContain('VOXCHRONICLE.Compendium.TopicInfo');
       expect(content).toContain('Fireball');
     });
   });
@@ -599,7 +599,7 @@ describe('CompendiumParser', () => {
       ]);
       const text = parser._extractRollTableText(table);
       expect(text).toContain('Wild Magic');
-      expect(text).toContain('Risultati:');
+      expect(text).toContain('VOXCHRONICLE.Compendium.Results');
       expect(text).toContain('Nothing happens');
       expect(text).toContain('Fireball!');
     });
@@ -610,7 +610,7 @@ describe('CompendiumParser', () => {
       const actor = createMockActorDoc('a1', 'Goblin', 'npc', 'A sneaky goblin.');
       const text = parser._extractActorText(actor);
       expect(text).toContain('Goblin');
-      expect(text).toContain('Tipo: npc');
+      expect(text).toContain('VOXCHRONICLE.Compendium.Type');
       expect(text).toContain('sneaky goblin');
     });
   });

@@ -1034,7 +1034,11 @@
       "Message": "Errore: {error}"
     },
     "Compendium": {
-      "UnnamedEntry": "Voce senza nome"
+      "UnnamedEntry": "Voce senza nome",
+      "RulesAndReferences": "REGOLE E RIFERIMENTI (COMPENDI)",
+      "TopicInfo": "Informazioni su: {topic}",
+      "Type": "Tipo",
+      "Results": "Risultati:"
     }
   }
 }

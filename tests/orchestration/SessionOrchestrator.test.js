@@ -88,7 +88,7 @@ function createMockAIAssistant(overrides = {}) {
   return {
     analyzeContext: vi.fn().mockResolvedValue({
       suggestions: [{ type: 'narration', content: 'Describe the scene' }],
-      offTrack: { isOffTrack: false }
+      offTrackStatus: { isOffTrack: false }
     }),
     setAdventureContext: vi.fn(),
     setChapterContext: vi.fn(),
@@ -1301,7 +1301,7 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveTranscript = [{ text: 'test' }];
       services.aiAssistant.analyzeContext.mockResolvedValue({
         suggestions: [],
-        offTrack: { isOffTrack: true, severity: 'high', reason: 'Went off topic' }
+        offTrackStatus: { isOffTrack: true, severity: 'high', reason: 'Went off topic' }
       });
 
       await orchestrator._runAIAnalysis({ text: 'test' });

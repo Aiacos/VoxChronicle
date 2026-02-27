@@ -14,7 +14,6 @@
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { escapeHtml } from '../utils/HtmlUtils.mjs';
-import { escapeHtml } from '../utils/HtmlUtils.mjs';
 import { VocabularyDictionary, VocabularyCategory } from '../core/VocabularyDictionary.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;

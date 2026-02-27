@@ -445,8 +445,8 @@ class RateLimiter {
             const retryAfter = error.retryAfter ?? 60000;
             this.pause(retryAfter);
 
-            // Re-queue the request if retries available
-            if (item.retries < this._maxRetries) {
+            // Re-queue the request if retries available and queue not full
+            if (item.retries < this._maxRetries && this._queue.length < this._maxQueueSize) {
               item.retries++;
               this._retryCount++;
               this._queue.unshift(item);

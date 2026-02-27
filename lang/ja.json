@@ -1034,7 +1034,11 @@
       "Message": "[EN] Error: {error}"
     },
     "Compendium": {
-      "UnnamedEntry": "[EN] Unnamed Entry"
+      "UnnamedEntry": "[EN] Unnamed Entry",
+      "RulesAndReferences": "ルールとリファレンス（コンペンディウム）",
+      "TopicInfo": "{topic}についての情報",
+      "Type": "タイプ",
+      "Results": "結果："
     }
   }
 }

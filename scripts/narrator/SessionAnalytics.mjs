@@ -274,6 +274,7 @@ export class SessionAnalytics {
     }
 
     this._segments.push(segment);
+    this._metricsDirty = true;
     this._logger.debug(`addSegment() — speaker="${segment.speaker}", duration=${(segment.end - segment.start).toFixed(1)}s, total segments: ${this._segments.length}`);
 
     // Initialize speaker metrics if this is a new speaker
@@ -310,9 +311,10 @@ export class SessionAnalytics {
    * @private
    */
   _calculateMetrics() {
-    if (!this._currentSession) {
+    if (!this._currentSession || !this._metricsDirty) {
       return;
     }
+    this._metricsDirty = false;
 
     const totalSpeakingTime = Object.values(this._speakerMetrics).reduce(
       (sum, m) => sum + m.speakingTime,

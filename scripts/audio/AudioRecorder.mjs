@@ -466,7 +466,8 @@ class AudioRecorder {
         try {
           this._analyserNode.getByteFrequencyData(data);
           const sum = data.reduce((a, b) => a + b, 0);
-          this._callbacks.onLevelChange?.(Math.min(1, sum / (data.length * 128)));
+          this._lastAudioLevel = Math.min(1, sum / (data.length * 128));
+          this._callbacks.onLevelChange?.(this._lastAudioLevel);
         } catch (e) {
           this._logger.warn('Level monitoring error:', e.message);
           this._stopLevelMonitoring();
@@ -492,12 +493,12 @@ class AudioRecorder {
   }
 
   /**
-   * Get the current audio input level. Returns 0 because real-time levels
-   * are delivered via the onLevelChange callback instead.
-   * @returns {number} Always 0.
+   * Get the current audio input level (0–1 range).
+   * Updated every animation frame during recording via the level monitor.
+   * @returns {number} Current audio level between 0 and 1.
    */
   getAudioLevel() {
-    return 0; // Handled via callback for real-time
+    return this._lastAudioLevel || 0;
   }
 }
 
