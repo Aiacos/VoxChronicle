@@ -674,6 +674,9 @@
       "FailedToOpenRelationshipGraph": "",
       "FailedToInitialize": "",
       "ReinitializeFailed": "",
+      "ImageCachingFailed": "",
+      "ImageGalleryLoadFailed": "",
+      "RagStateLoadFailed": "",
       "ClipboardFailed": ""
     },
     "Warnings": {

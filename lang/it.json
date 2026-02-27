@@ -674,6 +674,9 @@
       "FailedToOpenRelationshipGraph": "VoxChronicle: Impossibile aprire il grafico relazioni. Controlla la console.",
       "FailedToInitialize": "VoxChronicle: Impossibile inizializzare il modulo. Controlla la console per i dettagli.",
       "ReinitializeFailed": "VoxChronicle: Reinizializzazione dei servizi fallita dopo la modifica delle impostazioni. Controlla la console.",
+      "ImageCachingFailed": "VoxChronicle: Caching immagine fallito — l'URL scade tra 60 minuti.",
+      "ImageGalleryLoadFailed": "VoxChronicle: Impossibile caricare la galleria immagini dalle impostazioni.",
+      "RagStateLoadFailed": "VoxChronicle: Impossibile ripristinare le mappature RAG — potrebbe essere necessaria la reindicizzazione.",
       "ClipboardFailed": "Impossibile copiare negli appunti."
     },
     "Warnings": {

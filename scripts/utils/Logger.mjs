@@ -302,7 +302,7 @@ class Logger {
 
     // Helper to sanitize arguments if enabled
     const maybeSanitize = (args) => {
-      return sanitize ? SensitiveDataFilter.sanitizeArgs(args) : args;
+      return sanitize ? SensitiveDataFilter.sanitizeArgs(...args) : args;
     };
 
     return {

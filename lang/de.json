@@ -674,6 +674,9 @@
       "FailedToOpenRelationshipGraph": "VoxChronicle: Beziehungsgraph konnte nicht geöffnet werden. Überprüfen Sie die Konsole.",
       "FailedToInitialize": "VoxChronicle: Modul konnte nicht initialisiert werden. Überprüfen Sie die Konsole für Details.",
       "ReinitializeFailed": "VoxChronicle: Dienst-Reinitialisierung nach Einstellungsänderung fehlgeschlagen. Überprüfen Sie die Konsole.",
+      "ImageCachingFailed": "VoxChronicle: Bild-Caching fehlgeschlagen — URL läuft in 60 Minuten ab.",
+      "ImageGalleryLoadFailed": "VoxChronicle: Bildgalerie konnte nicht aus den Einstellungen geladen werden.",
+      "RagStateLoadFailed": "VoxChronicle: RAG-Dateizuordnungen konnten nicht wiederhergestellt werden — Neuindizierung erforderlich.",
       "ClipboardFailed": "Kopieren in die Zwischenablage fehlgeschlagen."
     },
     "Warnings": {

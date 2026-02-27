@@ -1363,6 +1363,138 @@ describe('VoxChronicle', () => {
   });
 
   // ====================================================================
+  // reinitialize
+  // ====================================================================
+
+  describe('reinitialize', () => {
+    it('should call teardown steps then initialize', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      // First, initialize to set up services
+      await instance.initialize();
+      expect(instance.isInitialized).toBe(true);
+
+      // Add mock methods for cleanup verification
+      instance.audioRecorder = { cancel: vi.fn() };
+      instance.silenceDetector = { stop: vi.fn() };
+      instance.sessionOrchestrator = {
+        ...mockSessionOrchestratorInstance,
+        reset: vi.fn(),
+        isSessionActive: false,
+        setServices: vi.fn(),
+        setTranscriptionConfig: vi.fn(),
+        setNarratorServices: vi.fn()
+      };
+
+      // Clear mocks to track calls during reinitialize
+      vi.clearAllMocks();
+      // Re-establish required mock implementations after clearAllMocks
+      mockTranscriptionFactoryCreate.mockResolvedValue({ type: 'cloud' });
+      mockNarrativeExporter.mockImplementation(() => ({ setOpenAIClient: vi.fn() }));
+      mockSettingsModule.getRAGSettings.mockReturnValue({ enabled: false });
+      mockSettingsModule.validateServerUrls = vi.fn();
+
+      await instance.reinitialize();
+
+      // Should have cleaned up existing services
+      expect(instance.audioRecorder.cancel).toHaveBeenCalled();
+      expect(instance.silenceDetector.stop).toHaveBeenCalled();
+
+      // Should have called initialize (re-establishing services)
+      expect(instance.isInitialized).toBe(true);
+    });
+
+    it('should handle initialization failure gracefully', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Set up services with required cleanup methods so reinitialize teardown works
+      instance.audioRecorder = { cancel: vi.fn() };
+      instance.silenceDetector = { stop: vi.fn() };
+      instance.sessionOrchestrator = {
+        ...mockSessionOrchestratorInstance,
+        isSessionActive: false,
+        reset: vi.fn(),
+        setServices: vi.fn(),
+        setTranscriptionConfig: vi.fn(),
+        setNarratorServices: vi.fn()
+      };
+
+      // Make Settings.validateServerUrls throw to simulate init failure early
+      // (this happens at the very top of initialize(), before any service creation)
+      mockSettingsModule.validateServerUrls = vi.fn(() => {
+        throw new Error('API unavailable');
+      });
+      mockSettingsModule.getRAGSettings.mockReturnValue({ enabled: false });
+
+      // reinitialize calls initialize which will throw (we propagate the error)
+      await expect(instance.reinitialize()).rejects.toThrow('API unavailable');
+
+      // isInitialized should be false because it was cleared before init attempt
+      expect(instance.isInitialized).toBe(false);
+    });
+
+    it('should defer reinitialize when a session is active', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Simulate an active recording session
+      instance.sessionOrchestrator = {
+        ...mockSessionOrchestratorInstance,
+        isSessionActive: true,
+        reset: vi.fn()
+      };
+
+      const initSpy = vi.spyOn(instance, 'initialize');
+
+      await instance.reinitialize();
+
+      // Should NOT have called initialize
+      expect(initSpy).not.toHaveBeenCalled();
+      // Should have flagged pending reinitialize
+      expect(instance._reinitializePending).toBe(true);
+      // Should still be initialized (old state preserved)
+      expect(instance.isInitialized).toBe(true);
+
+      initSpy.mockRestore();
+    });
+
+    it('should reset _reinitializePending flag after successful reinitialize', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Set pending flag as if a previous reinitialize was deferred
+      instance._reinitializePending = true;
+
+      // Set up services with required cleanup methods
+      instance.audioRecorder = { cancel: vi.fn() };
+      instance.silenceDetector = { stop: vi.fn() };
+      instance.sessionOrchestrator = {
+        ...mockSessionOrchestratorInstance,
+        isSessionActive: false,
+        reset: vi.fn(),
+        setServices: vi.fn(),
+        setTranscriptionConfig: vi.fn(),
+        setNarratorServices: vi.fn()
+      };
+
+      mockTranscriptionFactoryCreate.mockResolvedValue({ type: 'cloud' });
+      mockNarrativeExporter.mockImplementation(() => ({ setOpenAIClient: vi.fn() }));
+      mockSettingsModule.getRAGSettings.mockReturnValue({ enabled: false });
+      mockSettingsModule.validateServerUrls = vi.fn();
+
+      await instance.reinitialize();
+
+      expect(instance._reinitializePending).toBe(false);
+      expect(instance.isInitialized).toBe(true);
+    });
+  });
+
+  // ====================================================================
   // getServicesStatus
   // ====================================================================
 

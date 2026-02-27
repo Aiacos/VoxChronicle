@@ -454,7 +454,10 @@ class ImageGenerationService extends OpenAIClient {
       return base64;
     } catch (error) {
       this._logger.warn('Failed to cache image as base64:', error.message);
-      ui?.notifications?.warn('VoxChronicle: Image caching failed — URL expires in 60 minutes.');
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.ImageCachingFailed')
+          || 'VoxChronicle: Image caching failed — URL expires in 60 minutes.'
+      );
       return null;
     }
   }
@@ -546,7 +549,10 @@ class ImageGenerationService extends OpenAIClient {
       return this._gallery;
     } catch (error) {
       this._logger.warn('Failed to load image gallery:', error.message);
-      ui?.notifications?.warn('VoxChronicle: Could not load image gallery from settings.');
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.ImageGalleryLoadFailed')
+          || 'VoxChronicle: Could not load image gallery from settings.'
+      );
       this._gallery = [];
       return this._gallery;
     }

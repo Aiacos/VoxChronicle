@@ -674,6 +674,9 @@
       "FailedToOpenRelationshipGraph": "VoxChronicle: Failed to open relationship graph. Check console.",
       "FailedToInitialize": "VoxChronicle: Failed to initialize module. Check console for details.",
       "ReinitializeFailed": "VoxChronicle: Service reinitialization failed after settings change. Check console.",
+      "ImageCachingFailed": "VoxChronicle: Image caching failed — URL expires in 60 minutes.",
+      "ImageGalleryLoadFailed": "VoxChronicle: Could not load image gallery from settings.",
+      "RagStateLoadFailed": "VoxChronicle: Could not restore RAG file mappings — reindexing may be required.",
       "ClipboardFailed": "Failed to copy to clipboard."
     },
     "Warnings": {

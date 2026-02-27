@@ -140,7 +140,10 @@ export class OpenAIFileSearchProvider extends RAGProvider {
       }
     } catch (err) {
       this._logger.error('Failed to load RAG state:', err);
-      ui?.notifications?.warn('VoxChronicle: Could not restore RAG file mappings — reindexing may be required.');
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Errors.RagStateLoadFailed')
+          || 'VoxChronicle: Could not restore RAG file mappings — reindexing may be required.'
+      );
     }
   }
 

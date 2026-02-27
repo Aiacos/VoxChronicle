@@ -810,10 +810,41 @@ describe('OpenAIClient', () => {
       expect(typeof stats).toBe('object');
     });
 
-    it('should reset rate limiter', () => {
+    it('should reset rate limiter by calling _rateLimiter.reset()', () => {
+      // Spy on the underlying rate limiter's reset method
+      const resetSpy = vi.spyOn(client._rateLimiter, 'reset');
+
       client.resetRateLimiter();
+
+      expect(resetSpy).toHaveBeenCalledTimes(1);
+      resetSpy.mockRestore();
+    });
+
+    it('should clear paused state after resetRateLimiter', () => {
+      // Pause the rate limiter (simulating a 429 response)
+      client._rateLimiter.pause(60000);
+
+      // Verify it is paused
+      const statsBefore = client.getRateLimiterStats();
+      expect(statsBefore.isPaused).toBe(true);
+
+      // Reset should clear the paused state
+      client.resetRateLimiter();
+
+      const statsAfter = client.getRateLimiterStats();
+      expect(statsAfter.isPaused).toBe(false);
+    });
+
+    it('should handle resetRateLimiter when _rateLimiter is null', () => {
+      // Temporarily set _rateLimiter to null
+      const original = client._rateLimiter;
+      client._rateLimiter = null;
+
       // Should not throw
-      expect(true).toBe(true);
+      expect(() => client.resetRateLimiter()).not.toThrow();
+
+      // Restore
+      client._rateLimiter = original;
     });
   });
 

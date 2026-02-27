@@ -376,6 +376,54 @@ describe('TranscriptionService', () => {
       expect(reusableOptions.prompt).toBe('Dungeons and Dragons session');
     });
 
+    it('should create synthetic fallback segment when diarization returns text but zero segments', async () => {
+      // Simulate OpenAI returning text but empty segments (diarization fails silently)
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse({
+          text: 'The adventurers entered the dungeon.',
+          segments: [],
+          duration: 5.0
+        })
+      );
+
+      const blob = createAudioBlob();
+      const result = await service.transcribe(blob);
+
+      // Should have created a single synthetic segment with the full text
+      expect(result.segments).toHaveLength(1);
+      expect(result.segments[0].text).toBe('The adventurers entered the dungeon.');
+      expect(result.segments[0].speaker).toBe('Unknown');
+      expect(result.segments[0].originalSpeaker).toBe('Unknown');
+      expect(result.segments[0].start).toBe(0);
+      expect(result.segments[0].end).toBe(5.0);
+
+      // Should also have a speaker entry for 'Unknown'
+      const unknownSpeaker = result.speakers.find(s => s.id === 'Unknown');
+      expect(unknownSpeaker).toBeDefined();
+      expect(unknownSpeaker.isMapped).toBe(false);
+    });
+
+    it('should use mapped name for synthetic fallback segment when speakerMap has Unknown key', async () => {
+      fetchSpy.mockResolvedValueOnce(
+        mockResponse({
+          text: 'A mysterious voice echoed.',
+          segments: [],
+          duration: 3.0
+        })
+      );
+
+      const blob = createAudioBlob();
+      const result = await service.transcribe(blob, {
+        speakerMap: { 'Unknown': 'Narrator' }
+      });
+
+      // The fail-safe uses speakerMap['Unknown'] || 'Unknown'
+      expect(result.segments).toHaveLength(1);
+      expect(result.segments[0].speaker).toBe('Narrator');
+      expect(result.segments[0].originalSpeaker).toBe('Unknown');
+      expect(result.segments[0].start).toBe(0);
+    });
+
     it('should enable multi-language tagging when mode is active', async () => {
       service.setMultiLanguageMode(true);
 
