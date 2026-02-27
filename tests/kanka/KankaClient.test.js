@@ -1216,6 +1216,100 @@ describe('KankaClient', () => {
   });
 
   // ════════════════════════════════════════════════════════════════════════
+  // _parseErrorResponse XSS sanitization
+  // ════════════════════════════════════════════════════════════════════════
+
+  describe('_parseErrorResponse XSS sanitization', () => {
+    it('should sanitize HTML in Kanka error messages', async () => {
+      const client = new KankaClient(TEST_TOKEN);
+      const xssMessage = '<img src=x onerror=alert(1)>Error occurred';
+      fetchSpy.mockResolvedValueOnce(mockResponse(
+        { message: xssMessage },
+        { status: 403 }
+      ));
+
+      try {
+        await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        // Angle brackets must be escaped so the tag is not rendered as HTML
+        expect(error.message).not.toContain('<img');
+        expect(error.message).not.toContain('>');
+        expect(error.message).toContain('&lt;img');
+        expect(error.message).toContain('&gt;');
+      }
+    });
+
+    it('should sanitize HTML in Kanka error field', async () => {
+      const client = new KankaClient(TEST_TOKEN);
+      const xssError = '<script>steal()</script>Server fault';
+      fetchSpy.mockResolvedValueOnce(mockResponse(
+        { error: xssError },
+        { status: 422 }
+      ));
+
+      try {
+        await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error.message).not.toContain('<script>');
+      }
+    });
+
+    it('should truncate very long error messages', async () => {
+      const client = new KankaClient(TEST_TOKEN);
+      const longMsg = 'x'.repeat(1000);
+      fetchSpy.mockResolvedValueOnce(mockResponse(
+        { message: longMsg },
+        { status: 422 }
+      ));
+
+      try {
+        await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error.message.length).toBeLessThanOrEqual(500);
+      }
+    });
+
+    it('should handle non-string error messages safely', async () => {
+      const client = new KankaClient(TEST_TOKEN);
+      fetchSpy.mockResolvedValueOnce(mockResponse(
+        { message: 12345 },
+        { status: 422 }
+      ));
+
+      try {
+        await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error.message).toBe('12345');
+      }
+    });
+
+    it('should sanitize both angle brackets and quotes', async () => {
+      const client = new KankaClient(TEST_TOKEN);
+      const xssMessage = '"><svg onload=alert(1)>';
+      fetchSpy.mockResolvedValueOnce(mockResponse(
+        { message: xssMessage },
+        { status: 403 }
+      ));
+
+      try {
+        await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        // Angle brackets and quotes must be escaped
+        expect(error.message).not.toContain('<svg');
+        expect(error.message).not.toContain('>');
+        expect(error.message).toContain('&quot;');
+        expect(error.message).toContain('&lt;svg');
+        expect(error.message).toContain('&gt;');
+      }
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
   // 429 with retry-after header parse in error
   // ════════════════════════════════════════════════════════════════════════
 

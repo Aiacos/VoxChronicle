@@ -17,6 +17,7 @@
 import { Logger } from '../utils/Logger.mjs';
 import { RateLimiter } from '../utils/RateLimiter.mjs';
 import { SensitiveDataFilter } from '../utils/SensitiveDataFilter.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Kanka API error types enumeration
@@ -366,14 +367,11 @@ class KankaClient {
       const text = await response.text();
       if (text) {
         errorData = JSON.parse(text);
-        // TODO [MEDIUM]: Sanitize error messages from Kanka API before using in exceptions.
-        // A compromised/MITM'd API could inject HTML via errorData.message. Truncate and
-        // strip angle brackets: msg.substring(0, 500).replace(/[<>]/g, '')
         if (errorData.message) {
-          errorMessage = errorData.message;
+          errorMessage = escapeHtml(String(errorData.message).substring(0, 500));
         }
         if (errorData.error) {
-          errorMessage = errorData.error;
+          errorMessage = escapeHtml(String(errorData.error).substring(0, 500));
         }
       }
     } catch (parseError) {
