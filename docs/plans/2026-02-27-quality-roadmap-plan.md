@@ -10,6 +10,113 @@
 
 ---
 
+## Task 0: Wire Silence Detection to Autonomous AI Suggestions in Live Mode
+
+**Priority:** CRITICAL — User-requested feature. When the DM is in a scene (e.g., Curse of Strahd) but silent, VoxChronicle should proactively suggest what to do next using journal/RAG context.
+
+**Problem:** `SilenceDetector` is created and connected to `AIAssistant` in `VoxChronicle.mjs`, but `startSilenceMonitoring()` is **never called**. The AIAssistant autonomous suggestion pipeline is fully implemented but disconnected.
+
+**Files:**
+- Modify: `scripts/orchestration/SessionOrchestrator.mjs` (startLiveMode, stopLiveMode, _liveCycle)
+- Modify: `tests/orchestration/SessionOrchestrator.test.js`
+
+**Step 1: Write the failing test**
+
+Add to `tests/orchestration/SessionOrchestrator.test.js`:
+
+```javascript
+describe('silence monitoring in live mode', () => {
+  it('should start silence monitoring when live mode starts', async () => {
+    const mockAI = { startSilenceMonitoring: vi.fn().mockReturnValue(true) };
+    const orch = createOrchestrator({ aiAssistant: mockAI });
+    await orch.startLiveMode({});
+    expect(mockAI.startSilenceMonitoring).toHaveBeenCalled();
+  });
+
+  it('should stop silence monitoring when live mode stops', async () => {
+    const mockAI = {
+      startSilenceMonitoring: vi.fn().mockReturnValue(true),
+      stopSilenceMonitoring: vi.fn()
+    };
+    const orch = createOrchestrator({ aiAssistant: mockAI });
+    await orch.startLiveMode({});
+    await orch.stopLiveMode();
+    expect(mockAI.stopSilenceMonitoring).toHaveBeenCalled();
+  });
+
+  it('should record activity when transcription is received', async () => {
+    const mockAI = {
+      startSilenceMonitoring: vi.fn().mockReturnValue(true),
+      recordActivityForSilenceDetection: vi.fn().mockReturnValue(true)
+    };
+    // Test that _liveCycle calls recordActivityForSilenceDetection after successful transcription
+  });
+});
+```
+
+**Step 2: Run test to verify it fails**
+
+Run: `npx vitest run tests/orchestration/SessionOrchestrator.test.js --reporter=verbose 2>&1 | tail -20`
+Expected: FAIL — startSilenceMonitoring not called
+
+**Step 3: Implement the wiring**
+
+In `scripts/orchestration/SessionOrchestrator.mjs`:
+
+1. In `startLiveMode()`, after `this._scheduleLiveCycle()` (~line 806), add:
+```javascript
+      // Start silence monitoring for autonomous AI suggestions
+      if (this._aiAssistant) {
+        // Register callback to push suggestions to UI
+        this._aiAssistant.setOnAutonomousSuggestionCallback((data) => {
+          this._logger.info(`Autonomous suggestion received: ${data.suggestion.type}`);
+          if (this._callbacks.onAISuggestion) {
+            this._callbacks.onAISuggestion(data.suggestion, data.silenceEvent);
+          }
+          this._lastAISuggestions = [data.suggestion];
+          this._updateState(SessionState.LIVE_LISTENING);
+        });
+        this._aiAssistant.startSilenceMonitoring();
+        this._logger.debug('Silence monitoring started for autonomous suggestions');
+      }
+```
+
+2. In `stopLiveMode()`, before `this._audioRecorder.stopRecording()` (~line 970), add:
+```javascript
+      // Stop silence monitoring
+      if (this._aiAssistant) {
+        this._aiAssistant.stopSilenceMonitoring();
+        this._logger.debug('Silence monitoring stopped');
+      }
+```
+
+3. In `_liveCycle()`, after successful transcription (after line 1063 `this._liveTranscript.push(...offsetSegments)`), add:
+```javascript
+          // Reset silence detector timer since we got speech
+          if (this._aiAssistant) {
+            this._aiAssistant.recordActivityForSilenceDetection();
+          }
+```
+
+**Step 4: Run tests to verify they pass**
+
+Run: `npx vitest run tests/orchestration/SessionOrchestrator.test.js --reporter=verbose 2>&1 | tail -20`
+Expected: PASS
+
+**Step 5: Run full test suite**
+
+Run: `npx vitest run 2>&1 | tail -5`
+Expected: All tests pass
+
+**Step 6: Commit**
+
+```bash
+git add scripts/orchestration/SessionOrchestrator.mjs tests/orchestration/SessionOrchestrator.test.js
+git commit -m "feat(live): wire silence detection to autonomous AI suggestions in live mode"
+```
+
+---
+
 ## Task 1: Sanitize Kanka API Error Messages
 
 **Files:**
