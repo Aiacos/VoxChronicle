@@ -13,6 +13,7 @@
 
 import { Logger } from '../utils/Logger.mjs';
 import { MODULE_ID } from '../constants.mjs';
+import { SilenceMonitor } from './SilenceMonitor.mjs';
 
 /**
  * Default model for cost-effective suggestions
@@ -164,8 +165,7 @@ class AIAssistant {
     this._sessionState = {
       currentScene: null,
       lastOffTrackCheck: null,
-      suggestionsCount: 0,
-      silenceSuggestionCount: 0
+      suggestionsCount: 0
     };
 
     /**
@@ -218,32 +218,20 @@ class AIAssistant {
     this._cachedRAGContext = null;
 
     /**
-     * SilenceDetector instance for autonomous suggestion triggers
-     * @type {import('./SilenceDetector.mjs').SilenceDetector|null}
+     * SilenceMonitor — handles silence detection and autonomous suggestion triggers
+     * @type {SilenceMonitor}
      * @private
      */
-    this._silenceDetector = options.silenceDetector || null;
+    this._silenceMonitor = new SilenceMonitor();
+    this._silenceMonitor.setGenerateSuggestionFn(() => this._generateAutonomousSuggestion());
 
-    /**
-     * Callback function invoked when autonomous suggestion is generated
-     * @type {function|null}
-     * @private
-     */
-    this._onAutonomousSuggestionCallback = options.onAutonomousSuggestion || null;
-
-    /**
-     * Whether silence monitoring is currently active
-     * @type {boolean}
-     * @private
-     */
-    this._silenceMonitoringActive = false;
-
-    /**
-     * Bound handler for silence events (to allow removal)
-     * @type {function|null}
-     * @private
-     */
-    this._boundSilenceHandler = null;
+    // Apply constructor options for silence-related configuration
+    if (options.silenceDetector) {
+      this._silenceMonitor.setSilenceDetector(options.silenceDetector);
+    }
+    if (options.onAutonomousSuggestion) {
+      this._silenceMonitor.setOnAutonomousSuggestionCallback(options.onAutonomousSuggestion);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -316,7 +304,7 @@ class AIAssistant {
   }
 
   // ---------------------------------------------------------------------------
-  // Silence detection integration
+  // Silence detection integration (delegated to SilenceMonitor)
   // ---------------------------------------------------------------------------
 
   /**
@@ -325,13 +313,7 @@ class AIAssistant {
    * @param {import('./SilenceDetector.mjs').SilenceDetector} silenceDetector - SilenceDetector instance
    */
   setSilenceDetector(silenceDetector) {
-    // Stop any existing monitoring
-    if (this._silenceMonitoringActive) {
-      this.stopSilenceMonitoring();
-    }
-
-    this._silenceDetector = silenceDetector;
-    this._logger.debug('SilenceDetector updated');
+    this._silenceMonitor.setSilenceDetector(silenceDetector);
   }
 
   /**
@@ -340,7 +322,7 @@ class AIAssistant {
    * @returns {import('./SilenceDetector.mjs').SilenceDetector|null} The SilenceDetector instance or null
    */
   getSilenceDetector() {
-    return this._silenceDetector;
+    return this._silenceMonitor.getSilenceDetector();
   }
 
   /**
@@ -349,11 +331,7 @@ class AIAssistant {
    * @param {function} callback - Callback function receiving { suggestion: Suggestion, silenceEvent: SilenceEvent }
    */
   setOnAutonomousSuggestionCallback(callback) {
-    if (callback === null || typeof callback === 'function') {
-      this._onAutonomousSuggestionCallback = callback;
-    } else {
-      this._logger.warn('Invalid autonomous suggestion callback provided, ignoring');
-    }
+    this._silenceMonitor.setOnAutonomousSuggestionCallback(callback);
   }
 
   /**
@@ -362,7 +340,7 @@ class AIAssistant {
    * @returns {function|null} The callback function or null
    */
   getOnAutonomousSuggestionCallback() {
-    return this._onAutonomousSuggestionCallback;
+    return this._silenceMonitor.getOnAutonomousSuggestionCallback();
   }
 
   /**
@@ -375,48 +353,19 @@ class AIAssistant {
    * @returns {boolean} True if monitoring started successfully, false otherwise
    */
   startSilenceMonitoring() {
-    if (!this._silenceDetector) {
-      this._logger.warn('Cannot start silence monitoring: no SilenceDetector configured');
-      return false;
-    }
-
     if (!this.isConfigured()) {
       this._logger.warn('Cannot start silence monitoring: OpenAI client not configured');
       return false;
     }
 
-    if (this._silenceMonitoringActive) {
-      this._logger.debug('Silence monitoring already active');
-      return true;
-    }
-
-    // Create bound handler so we can remove it later
-    this._boundSilenceHandler = this._handleSilenceEvent.bind(this);
-    this._silenceDetector.setOnSilenceCallback(this._boundSilenceHandler);
-    this._silenceDetector.start();
-    this._silenceMonitoringActive = true;
-
-    this._logger.info('Silence monitoring started');
-    return true;
+    return this._silenceMonitor.startMonitoring();
   }
 
   /**
    * Stops silence monitoring
    */
   stopSilenceMonitoring() {
-    if (!this._silenceMonitoringActive) {
-      this._logger.debug('Silence monitoring not active');
-      return;
-    }
-
-    if (this._silenceDetector) {
-      this._silenceDetector.stop();
-    }
-
-    this._silenceMonitoringActive = false;
-    this._boundSilenceHandler = null;
-
-    this._logger.info('Silence monitoring stopped');
+    this._silenceMonitor.stopMonitoring();
   }
 
   /**
@@ -427,11 +376,7 @@ class AIAssistant {
    * @returns {boolean} True if activity was recorded, false if monitoring not active
    */
   recordActivityForSilenceDetection() {
-    if (!this._silenceMonitoringActive || !this._silenceDetector) {
-      return false;
-    }
-
-    return this._silenceDetector.recordActivity();
+    return this._silenceMonitor.recordActivity();
   }
 
   /**
@@ -440,7 +385,7 @@ class AIAssistant {
    * @returns {boolean} True if monitoring is active
    */
   isSilenceMonitoringActive() {
-    return this._silenceMonitoringActive;
+    return this._silenceMonitor.isMonitoring;
   }
 
   /**
@@ -962,16 +907,13 @@ class AIAssistant {
     this._logger.debug('resetSession() — clearing conversation history, session state, and RAG cache');
 
     // Stop silence monitoring if active
-    if (this._silenceMonitoringActive) {
-      this.stopSilenceMonitoring();
-    }
+    this._silenceMonitor.stopMonitoring();
 
     this._conversationHistory = [];
     this._sessionState = {
       currentScene: null,
       lastOffTrackCheck: null,
-      suggestionsCount: 0,
-      silenceSuggestionCount: 0
+      suggestionsCount: 0
     };
     this._previousTranscription = '';
     this._cachedRAGContext = null;
@@ -999,11 +941,11 @@ class AIAssistant {
       ragMaxResults: this._ragMaxResults,
       ragHasCachedContext: Boolean(this._cachedRAGContext && this._cachedRAGContext.context),
       ragCachedSourceCount: this._cachedRAGContext?.sources?.length || 0,
-      // Silence detection stats
-      silenceDetectorConfigured: Boolean(this._silenceDetector),
-      silenceMonitoringActive: this._silenceMonitoringActive,
-      silenceSuggestionCount: this._sessionState.silenceSuggestionCount,
-      hasAutonomousSuggestionCallback: Boolean(this._onAutonomousSuggestionCallback)
+      // Silence detection stats (delegated to SilenceMonitor)
+      silenceDetectorConfigured: Boolean(this._silenceMonitor.getSilenceDetector()),
+      silenceMonitoringActive: this._silenceMonitor.isMonitoring,
+      silenceSuggestionCount: this._silenceMonitor.silenceSuggestionCount,
+      hasAutonomousSuggestionCallback: Boolean(this._silenceMonitor.getOnAutonomousSuggestionCallback())
     };
   }
 
@@ -1749,65 +1691,6 @@ Respond in JSON format:
    */
   getCachedRAGContext() {
     return this._cachedRAGContext;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Private: Silence event handling
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Handles silence events from the SilenceDetector
-   *
-   * Generates an autonomous suggestion based on current chapter context and RAG retrieval.
-   * Invokes the onAutonomousSuggestion callback if registered.
-   *
-   * @param {Object} silenceEvent - The silence event from SilenceDetector
-   * @param {number} silenceEvent.silenceDurationMs - Duration of silence in milliseconds
-   * @param {number} silenceEvent.lastActivityTime - Timestamp of the last recorded activity
-   * @param {number} silenceEvent.silenceCount - Number of silence events since start
-   * @private
-   */
-  async _handleSilenceEvent(silenceEvent) {
-    this._logger.info(`Processing silence event #${silenceEvent.silenceCount} (${silenceEvent.silenceDurationMs}ms)`);
-
-    // Verify we can generate suggestions
-    if (!this.isConfigured()) {
-      this._logger.warn('Cannot generate autonomous suggestion: OpenAI client not configured');
-      return;
-    }
-
-    try {
-      // Generate the suggestion
-      const suggestion = await this._generateAutonomousSuggestion();
-
-      if (!suggestion) {
-        this._logger.debug('No autonomous suggestion generated');
-        return;
-      }
-
-      // Track the suggestion
-      this._sessionState.silenceSuggestionCount++;
-
-      this._logger.info(`Generated autonomous suggestion: type=${suggestion.type}, confidence=${suggestion.confidence}`);
-
-      // Invoke callback if registered
-      if (this._onAutonomousSuggestionCallback) {
-        try {
-          this._onAutonomousSuggestionCallback({
-            suggestion,
-            silenceEvent: {
-              silenceDurationMs: silenceEvent.silenceDurationMs,
-              lastActivityTime: silenceEvent.lastActivityTime,
-              silenceCount: silenceEvent.silenceCount
-            }
-          });
-        } catch (callbackError) {
-          this._logger.error('Error in autonomous suggestion callback:', callbackError.message);
-        }
-      }
-    } catch (error) {
-      this._logger.error('Failed to generate autonomous suggestion:', error.message);
-    }
   }
 
   /**

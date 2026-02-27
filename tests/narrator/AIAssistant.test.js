@@ -241,14 +241,15 @@ describe('AIAssistant', () => {
 
     it('setSilenceDetector() stops existing monitoring', () => {
       const sd1 = createMockSilenceDetector();
-      assistant._silenceDetector = sd1;
-      assistant._silenceMonitoringActive = true;
+      assistant.setSilenceDetector(sd1);
+      assistant.startSilenceMonitoring();
+      expect(assistant.isSilenceMonitoringActive()).toBe(true);
 
       const sd2 = createMockSilenceDetector();
       assistant.setSilenceDetector(sd2);
 
       expect(sd1.stop).toHaveBeenCalled();
-      expect(assistant._silenceMonitoringActive).toBe(false);
+      expect(assistant.isSilenceMonitoringActive()).toBe(false);
     });
 
     it('setOnAutonomousSuggestionCallback() accepts function', () => {
@@ -1079,8 +1080,8 @@ describe('AIAssistant', () => {
     });
   });
 
-  describe('_handleSilenceEvent()', () => {
-    it('generates suggestion and invokes callback', async () => {
+  describe('silence event handling (via SilenceMonitor)', () => {
+    it('generates suggestion and invokes callback through SilenceMonitor', async () => {
       const callback = vi.fn();
       assistant.setOnAutonomousSuggestionCallback(callback);
 
@@ -1095,7 +1096,8 @@ describe('AIAssistant', () => {
       };
       mockClient.post.mockResolvedValue(suggResponse);
 
-      await assistant._handleSilenceEvent({
+      // Call through the SilenceMonitor (which delegates suggestion generation to AIAssistant)
+      await assistant._silenceMonitor._handleSilenceEvent({
         silenceDurationMs: 30000,
         lastActivityTime: Date.now() - 30000,
         silenceCount: 1
@@ -1110,8 +1112,9 @@ describe('AIAssistant', () => {
 
     it('handles unconfigured client gracefully', async () => {
       const a = new AIAssistant();
+      // SilenceMonitor's generateSuggestionFn calls _generateAutonomousSuggestion which will fail
       // Should not throw
-      await a._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await a._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
     });
 
     it('handles callback error gracefully', async () => {
@@ -1130,13 +1133,13 @@ describe('AIAssistant', () => {
       mockClient.post.mockResolvedValue(suggResponse);
 
       // Should not throw
-      await assistant._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await assistant._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
     });
 
     it('handles API error gracefully', async () => {
       mockClient.post.mockRejectedValue(new Error('API down'));
       // Should not throw
-      await assistant._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await assistant._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
     });
   });
 
