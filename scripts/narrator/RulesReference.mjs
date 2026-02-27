@@ -102,6 +102,10 @@ export class RulesReference {
      */
     this._recentRules = [];
 
+    /** @private Cached static patterns — built once, reused across calls */
+    this._questionPatterns = null;
+    this._mechanicTerms = null;
+
     /**
      * Maximum recent rules to track
      * @type {number}
@@ -130,7 +134,7 @@ export class RulesReference {
    * @param {string} language - Language code (e.g., 'it', 'en')
    */
   setLanguage(language) {
-    this._language = language || 'it';
+    this._language = language || 'en';
   }
 
   /**
@@ -257,7 +261,7 @@ export class RulesReference {
 
   /**
    * Gets a specific rule by ID
-   * @param {string} _ruleId - The rule ID
+   * @param {string} ruleId - The rule ID
    * @returns {Promise<RuleEntry|null>} The rule entry or null if not found
    */
   async getRuleById(ruleId) {
@@ -309,7 +313,7 @@ export class RulesReference {
 
   /**
    * Gets rules in a specific category
-   * @param {string} _category - The category name
+   * @param {string} category - The category name
    * @returns {RuleEntry[]} Array of rule entries in the category
    */
   getRulesByCategory(category) {
@@ -459,7 +463,8 @@ export class RulesReference {
    * @private
    */
   _getQuestionPatterns() {
-    return [
+    if (this._questionPatterns) return this._questionPatterns;
+    this._questionPatterns = [
       // English patterns
       {
         regex: /(?:how does|how do|what is the rule for|what are the rules for)\s+([a-z\s]+?)(?:\s+work|\?|$)/i,
@@ -514,6 +519,7 @@ export class RulesReference {
         name: 'rules_keyword'
       }
     ];
+    return this._questionPatterns;
   }
 
   /**
@@ -522,7 +528,8 @@ export class RulesReference {
    * @private
    */
   _getMechanicTerms() {
-    return {
+    if (this._mechanicTerms) return this._mechanicTerms;
+    this._mechanicTerms = {
       // Combat mechanics
       'grappling': 'combat',
       'lotta': 'combat',
@@ -597,6 +604,7 @@ export class RulesReference {
       'long rest': 'rest',
       'riposo lungo': 'rest'
     };
+    return this._mechanicTerms;
   }
 
   /**
@@ -743,8 +751,9 @@ export class RulesReference {
           matchedTerms.push(entry.name);
         }
 
-        // Create a rule entry from the compendium entry
-        const ruleEntry = await this._extractCompendiumEntry(pack, entry);
+        // Use cached rule if available (populated by loadRules), else fetch from compendium
+        const cacheKey = `${pack.collection}.${entry._id}`;
+        const ruleEntry = this._rulesCache.get(cacheKey) || await this._extractCompendiumEntry(pack, entry);
 
         if (ruleEntry) {
           results.push({

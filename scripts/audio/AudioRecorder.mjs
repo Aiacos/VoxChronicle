@@ -457,10 +457,13 @@ class AudioRecorder {
    * @private
    */
   _startLevelMonitoring() {
+    // Pre-allocate typed array once — reused across all animation frames
+    const data = this._analyserNode
+      ? new Uint8Array(this._analyserNode.frequencyBinCount)
+      : null;
     const monitor = () => {
-      if (this._state === RecordingState.RECORDING && this._analyserNode) {
+      if (this._state === RecordingState.RECORDING && this._analyserNode && data) {
         try {
-          const data = new Uint8Array(this._analyserNode.frequencyBinCount);
           this._analyserNode.getByteFrequencyData(data);
           const sum = data.reduce((a, b) => a + b, 0);
           this._callbacks.onLevelChange?.(Math.min(1, sum / (data.length * 128)));

@@ -2,7 +2,7 @@
   {{!-- Config Warning --}}
   {{#unless isConfigured}}
   <div class="vox-chronicle-panel__warning">
-    <i class="fas fa-exclamation-triangle"></i>
+    <i class="fa-solid fa-exclamation-triangle"></i>
     {{localize "VOXCHRONICLE.Panel.ConfigWarning"}}
   </div>
   {{/unless}}
@@ -10,13 +10,13 @@
   {{!-- Status Badges --}}
   <div class="vox-chronicle-panel__badges">
     <span class="vox-chronicle-badge {{#if isConfigured}}active{{else}}inactive{{/if}}" title="OpenAI API">
-      <i class="fas fa-robot"></i> AI
+      <i class="fa-solid fa-robot"></i> AI
     </span>
     <span class="vox-chronicle-badge {{#if hasRAG}}active{{else}}inactive{{/if}}" title="RAG Knowledge Base">
-      <i class="fas fa-database"></i> RAG
+      <i class="fa-solid fa-database"></i> RAG
     </span>
     <span class="vox-chronicle-badge {{#if kankaConfigured}}active{{else}}inactive{{/if}}" title="Kanka Integration">
-      <i class="fas fa-cloud-upload-alt"></i> KANKA
+      <i class="fa-solid fa-cloud-upload-alt"></i> KANKA
     </span>
   </div>
 
@@ -24,12 +24,12 @@
   <div class="vox-chronicle-panel__header">
     <div class="vox-chronicle-panel__controls">
       <button data-action="toggle-recording" {{#if isProcessing}}disabled{{/if}}>
-        <i class="fas {{#if isRecording}}fa-stop{{else}}fa-circle{{/if}}"></i>
+        <i class="fa-solid {{#if isRecording}}fa-stop{{else}}fa-circle{{/if}}"></i>
         {{#if isRecording}}{{localize "VOXCHRONICLE.Panel.Stop"}}{{else}}{{localize "VOXCHRONICLE.Panel.Record"}}{{/if}}
       </button>
       {{#if isRecording}}
       <button data-action="toggle-pause">
-        <i class="fas {{#if isPaused}}fa-play{{else}}fa-pause{{/if}}"></i>
+        <i class="fa-solid {{#if isPaused}}fa-play{{else}}fa-pause{{/if}}"></i>
       </button>
       {{/if}}
       <span class="vox-chronicle-panel__duration">{{duration}}</span>
@@ -42,7 +42,7 @@
 
     {{#if statusMessage}}
     <div class="vox-chronicle-panel__status-msg">
-      <i class="fas fa-circle-notch fa-spin"></i> {{statusMessage}}
+      <i class="fa-solid fa-circle-notch fa-spin"></i> {{statusMessage}}
     </div>
     {{/if}}
     <div class="vox-chronicle-panel__status">
@@ -51,7 +51,7 @@
       </span>
       {{#if currentChapter}}
       <span class="vox-chronicle-panel__chapter" title="{{currentChapter.path}}">
-        <i class="fas fa-book"></i> {{currentChapter.title}}
+        <i class="fa-solid fa-book"></i> {{currentChapter.title}}
       </span>
       {{/if}}
     </div>
@@ -86,18 +86,18 @@
       {{!-- RAG Indexing Status & Controls --}}
       <div class="vox-chronicle-rag-status">
         <div class="vox-chronicle-rag-status__header">
-          <h4><i class="fas fa-database"></i> {{localize "VOXCHRONICLE.RAG.IndexStatus"}}</h4>
+          <h4><i class="fa-solid fa-database"></i> {{localize "VOXCHRONICLE.RAG.IndexStatus"}}</h4>
           <span class="vox-chronicle-rag-status__badge vox-chronicle-rag-status__badge--{{ragStatus}}">
             {{#if ragEnabled}}
               {{#if (eq ragStatus 'indexing')}}
-                <i class="fas fa-sync fa-spin"></i> {{localize "VOXCHRONICLE.RAG.IndexBuilding"}}
+                <i class="fa-solid fa-sync fa-spin"></i> {{localize "VOXCHRONICLE.RAG.IndexBuilding"}}
               {{else if (eq ragStatus 'indexed')}}
-                <i class="fas fa-check"></i> {{localize "VOXCHRONICLE.RAG.IndexReady"}}
+                <i class="fa-solid fa-check"></i> {{localize "VOXCHRONICLE.RAG.IndexReady"}}
               {{else}}
-                <i class="fas fa-circle"></i> {{localize "VOXCHRONICLE.RAG.IndexEmpty"}}
+                <i class="fa-solid fa-circle"></i> {{localize "VOXCHRONICLE.RAG.IndexEmpty"}}
               {{/if}}
             {{else}}
-              <i class="fas fa-times-circle"></i> {{localize "VOXCHRONICLE.RAG.Disabled"}}
+              <i class="fa-solid fa-times-circle"></i> {{localize "VOXCHRONICLE.RAG.Disabled"}}
             {{/if}}
           </span>
         </div>
@@ -114,18 +114,18 @@
           {{!-- RAG Statistics --}}
           <div class="vox-chronicle-rag-status__stats">
             <div class="vox-chronicle-rag-status__stat">
-              <i class="fas fa-cubes"></i>
+              <i class="fa-solid fa-cubes"></i>
               <span class="vox-chronicle-rag-status__stat-label">{{localize "VOXCHRONICLE.RAG.TotalVectors"}}</span>
               <span class="vox-chronicle-rag-status__stat-value">{{ragVectorCount}}</span>
             </div>
             <div class="vox-chronicle-rag-status__stat">
-              <i class="fas fa-hdd"></i>
+              <i class="fa-solid fa-hdd"></i>
               <span class="vox-chronicle-rag-status__stat-label">{{localize "VOXCHRONICLE.RAG.MemoryUsage"}}</span>
               <span class="vox-chronicle-rag-status__stat-value">{{ragStorageUsage}}</span>
             </div>
             {{#if ragLastIndexed}}
             <div class="vox-chronicle-rag-status__stat">
-              <i class="fas fa-clock"></i>
+              <i class="fa-solid fa-clock"></i>
               <span class="vox-chronicle-rag-status__stat-label">{{localize "VOXCHRONICLE.RAG.LastUpdated"}}</span>
               <span class="vox-chronicle-rag-status__stat-value">{{ragLastIndexed}}</span>
             </div>
@@ -135,10 +135,10 @@
           {{!-- RAG Control Buttons --}}
           <div class="vox-chronicle-rag-status__controls">
             <button data-action="rag-build-index" {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
-              <i class="fas fa-hammer"></i> {{localize "VOXCHRONICLE.RAG.RebuildIndex"}}
+              <i class="fa-solid fa-hammer"></i> {{localize "VOXCHRONICLE.RAG.RebuildIndex"}}
             </button>
             <button class="vox-chronicle-btn--danger" data-action="rag-clear-index" {{#unless ragVectorCount}}disabled{{/unless}} {{#if (eq ragStatus 'indexing')}}disabled{{/if}}>
-              <i class="fas fa-trash-alt"></i> {{localize "VOXCHRONICLE.RAG.ClearIndex"}}
+              <i class="fa-solid fa-trash-alt"></i> {{localize "VOXCHRONICLE.RAG.ClearIndex"}}
             </button>
           </div>
         {{else}}
@@ -153,13 +153,13 @@
       <div class="vox-chronicle-panel__actions">
         <button data-action="process-session" {{#unless hasTranscript}}disabled{{/unless}} {{#if isProcessing}}disabled{{/if}}>
           {{#if isProcessing}}
-            <i class="fas fa-spinner fa-spin"></i> {{localize "VOXCHRONICLE.Panel.Processing"}}
+            <i class="fa-solid fa-spinner fa-spin"></i> {{localize "VOXCHRONICLE.Panel.Processing"}}
           {{else}}
-            <i class="fas fa-cogs"></i> {{localize "VOXCHRONICLE.Panel.ProcessSession"}}
+            <i class="fa-solid fa-cogs"></i> {{localize "VOXCHRONICLE.Panel.ProcessSession"}}
           {{/if}}
         </button>
         <button data-action="publish-kanka" {{#unless hasEntities}}disabled{{/unless}}>
-          <i class="fas fa-upload"></i> {{localize "VOXCHRONICLE.Panel.PublishToKanka"}}
+          <i class="fa-solid fa-upload"></i> {{localize "VOXCHRONICLE.Panel.PublishToKanka"}}
         </button>
       </div>
 
@@ -176,7 +176,7 @@
 
     <div class="vox-chronicle-tab-pane" data-tab-pane="images" {{#unless (eq activeTab 'images')}}hidden{{/unless}}>
       <button data-action="generate-image">
-        <i class="fas fa-image"></i> {{localize "VOXCHRONICLE.Panel.GenerateImage"}}
+        <i class="fa-solid fa-image"></i> {{localize "VOXCHRONICLE.Panel.GenerateImage"}}
       </button>
       <div class="vox-chronicle-panel__gallery">
         {{#each images}}
@@ -203,7 +203,7 @@
     <div class="vox-chronicle-tab-pane" data-tab-pane="entities" {{#unless (eq activeTab 'entities')}}hidden{{/unless}}>
       {{#if entities}}
       <button data-action="review-entities">
-        <i class="fas fa-eye"></i> {{localize "VOXCHRONICLE.Panel.ReviewEntities"}}
+        <i class="fa-solid fa-eye"></i> {{localize "VOXCHRONICLE.Panel.ReviewEntities"}}
       </button>
       {{else}}
       <p class="vox-chronicle-panel__empty">{{localize "VOXCHRONICLE.Panel.NoEntities"}}</p>

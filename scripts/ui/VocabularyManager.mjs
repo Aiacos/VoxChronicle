@@ -14,6 +14,7 @@
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { escapeHtml } from '../utils/HtmlUtils.mjs';
+import { escapeHtml } from '../utils/HtmlUtils.mjs';
 import { VocabularyDictionary, VocabularyCategory } from '../core/VocabularyDictionary.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -326,8 +327,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     } catch (error) {
       this._logger.error('Failed to add term:', error);
       ui.notifications.error(
-        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-          `Error: ${error.message}`
+        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
+          `Error: ${escapeHtml(error.message)}`
       );
     }
   }
@@ -360,8 +361,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     } catch (error) {
       this._logger.error('Failed to remove term:', error);
       ui.notifications.error(
-        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-          `Error: ${error.message}`
+        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
+          `Error: ${escapeHtml(error.message)}`
       );
     }
   }
@@ -403,8 +404,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     } catch (error) {
       this._logger.error('Failed to clear category:', error);
       ui.notifications.error(
-        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-          `Error: ${error.message}`
+        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
+          `Error: ${escapeHtml(error.message)}`
       );
     }
   }
@@ -441,8 +442,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     } catch (error) {
       this._logger.error('Failed to clear all terms:', error);
       ui.notifications.error(
-        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-          `Error: ${error.message}`
+        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
+          `Error: ${escapeHtml(error.message)}`
       );
     }
   }
@@ -592,8 +593,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     } catch (error) {
       this._logger.error('Failed to export dictionary:', error);
       ui.notifications.error(
-        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-          `Error: ${error.message}`
+        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
+          `Error: ${escapeHtml(error.message)}`
       );
     }
   }
@@ -837,8 +838,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     } catch (error) {
       this._logger.error('Failed to suggest from Foundry:', error);
       ui.notifications.error(
-        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: error.message }) ||
-          `Error: ${error.message}`
+        game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
+          `Error: ${escapeHtml(error.message)}`
       );
     }
   }

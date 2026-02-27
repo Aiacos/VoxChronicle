@@ -455,6 +455,21 @@
       "TokenExpiringUrgent": "",
       "TokenExpiring": ""
     },
+    "KankaPublisher": {
+      "ProgressPreparing": "",
+      "ProgressComplete": "",
+      "ProgressChronicle": "",
+      "ProgressCharacters": "",
+      "ProgressLocations": "",
+      "ProgressItems": "",
+      "ProgressImages": "",
+      "ChronicleDate": "",
+      "ChronicleEntities": "",
+      "ChronicleTranscript": "",
+      "ChronicleUnknownSpeaker": "",
+      "ChronicleMoreSegments": "",
+      "ChronicleGeneratedBy": ""
+    },
     "Chronicle": {
       "Title": "",
       "SessionNumber": "",

@@ -531,6 +531,7 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
       RelationshipGraph.#visLoadPromise = new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = 'https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js';
+        script.integrity = 'sha384-yxKDWWf0wwdUj/gPeuL11czrnKFQROnLgY8ll7En9NYoXibgg3C6NK/UDHNtUgWJ';
         script.crossOrigin = 'anonymous';
         script.onload = () => {
           RelationshipGraph.#visLoaded = true;

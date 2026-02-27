@@ -455,6 +455,21 @@
       "TokenExpiringUrgent": "[EN] Your Kanka API token expires in {days} days. Consider generating a new token soon.",
       "TokenExpiring": "[EN] Your Kanka API token will expire in {days} days."
     },
+    "KankaPublisher": {
+      "ProgressPreparing": "Kankaエクスポートを準備中...",
+      "ProgressComplete": "公開完了",
+      "ProgressChronicle": "年代記を作成中...",
+      "ProgressCharacters": "キャラクタージャーナルを作成中...",
+      "ProgressLocations": "ロケーションを作成中...",
+      "ProgressItems": "アイテムを作成中...",
+      "ProgressImages": "画像をアップロード中...",
+      "ChronicleDate": "日付",
+      "ChronicleEntities": "このセッションで{count}件の新しいエンティティが登場しました。",
+      "ChronicleTranscript": "トランスクリプト",
+      "ChronicleUnknownSpeaker": "不明",
+      "ChronicleMoreSegments": "... 他{count}セグメント",
+      "ChronicleGeneratedBy": "VoxChronicleで生成"
+    },
     "Chronicle": {
       "Title": "[EN] Session Chronicle",
       "SessionNumber": "[EN] Session {number}",

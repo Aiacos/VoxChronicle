@@ -87,14 +87,14 @@ describe('RulesReference', () => {
       expect(rules.getLanguage()).toBe('de');
     });
 
-    it('should default to "it" when given falsy value', () => {
+    it('should default to "en" when given falsy value', () => {
       rules.setLanguage(null);
-      expect(rules.getLanguage()).toBe('it');
+      expect(rules.getLanguage()).toBe('en');
     });
 
-    it('should default to "it" when given empty string', () => {
+    it('should default to "en" when given empty string', () => {
       rules.setLanguage('');
-      expect(rules.getLanguage()).toBe('it');
+      expect(rules.getLanguage()).toBe('en');
     });
   });
 

@@ -170,14 +170,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const session = this._orchestrator?.currentSession;
     const ragData = this._getRAGData();
 
-    // Map images to include a displayable src
+    // Map images to include a displayable src (cached on source object to avoid rebuild per render)
     const images = (session?.images || []).map(img => {
-      if (img.src) return img;
-      if (img.base64 || img.b64_json) {
-        return {
-          ...img,
-          src: `data:image/png;base64,${img.base64 || img.b64_json}`
-        };
+      if (!img.src && (img.base64 || img.b64_json)) {
+        img.src = `data:image/png;base64,${img.base64 || img.b64_json}`;
       }
       return img;
     });
@@ -218,7 +214,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       progressPercent: this.#progressPercent,
       duration: this._formatDuration(),
       audioLevel: this._getAudioLevel(),
-      transcriptionMode: voxChronicle._getSetting('transcriptionMode') || 'auto',
+      transcriptionMode: game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
       activeTab: this._activeTab,
       suggestions: this._orchestrator?.getAISuggestions?.() || [],

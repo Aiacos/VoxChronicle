@@ -69,9 +69,12 @@ export function sanitizeHtml(html) {
       if (attr.name.startsWith('on') || attr.name === 'srcdoc') {
         el.removeAttribute(attr.name);
       }
-      // Remove javascript: URLs
-      if (['href', 'src', 'action'].includes(attr.name) && attr.value.trim().toLowerCase().startsWith('javascript:')) {
-        el.removeAttribute(attr.name);
+      // Remove dangerous protocol URLs (javascript:, data:, vbscript:)
+      if (['href', 'src', 'action'].includes(attr.name)) {
+        const val = attr.value.trim().toLowerCase();
+        if (val.startsWith('javascript:') || val.startsWith('data:') || val.startsWith('vbscript:')) {
+          el.removeAttribute(attr.name);
+        }
       }
     }
   }

@@ -158,7 +158,7 @@ class KankaPublisher {
 
     const publishStart = Date.now();
     try {
-      this._reportProgress(0, 'Preparing Kanka export...');
+      this._reportProgress(0, game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ProgressPreparing') || 'Preparing Kanka export...');
 
       const results = {
         journal: null,
@@ -184,7 +184,7 @@ class KankaPublisher {
         await this._createEntities(sessionData, results, uploadImages);
       }
 
-      this._reportProgress(100, 'Publishing complete');
+      this._reportProgress(100, game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ProgressComplete') || 'Publishing complete');
       const publishMs = Date.now() - publishStart;
       this._logger.log(`Published to Kanka in ${publishMs}ms — journal: ${results.journal ? 'yes' : 'no'}, characters: ${results.characters.length}, locations: ${results.locations.length}, items: ${results.items.length}, errors: ${results.errors.length}`);
 
@@ -213,7 +213,7 @@ class KankaPublisher {
    */
   async _createChronicle(sessionData, results) {
     this._logger.debug(`Creating chronicle: "${sessionData.title}", format=${this._chronicleFormat}, hasExporter=${!!this._narrativeExporter}`);
-    this._reportProgress(10, 'Creating chronicle...');
+    this._reportProgress(10, game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ProgressChronicle') || 'Creating chronicle...');
 
     const chronicleStart = Date.now();
     // Format chronicle using NarrativeExporter if available
@@ -329,7 +329,7 @@ class KankaPublisher {
    */
   async _createCharacterSubJournals(sessionData, characters, results) {
     this._logger.debug(`Creating ${characters.length} character sub-journals...`);
-    this._reportProgress(30, 'Creating character journals...');
+    this._reportProgress(30, game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ProgressCharacters') || 'Creating character journals...');
 
     const parentJournalId = results.journal?.id;
     if (!parentJournalId) {
@@ -384,10 +384,9 @@ class KankaPublisher {
    */
   async _createValidatedLocations(sessionData, locations, results) {
     this._logger.debug(`Validating and creating ${locations.length} locations...`);
-    this._reportProgress(50, 'Creating locations...');
+    this._reportProgress(50, game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ProgressLocations') || 'Creating locations...');
 
     const locsStart = Date.now();
-    let skipped = 0;
     let deduplicated = 0;
 
     for (const location of locations) {
@@ -416,7 +415,7 @@ class KankaPublisher {
       }
     }
     const locsMs = Date.now() - locsStart;
-    this._logger.debug(`Locations done: ${results.locations.length} created, ${skipped} not in journal, ${deduplicated} deduplicated in ${locsMs}ms`);
+    this._logger.debug(`Locations done: ${results.locations.length} created, ${deduplicated} deduplicated in ${locsMs}ms`);
   }
 
   /**
@@ -431,10 +430,9 @@ class KankaPublisher {
    */
   async _createValidatedItems(sessionData, items, results) {
     this._logger.debug(`Validating and creating ${items.length} items...`);
-    this._reportProgress(70, 'Creating items...');
+    this._reportProgress(70, game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ProgressItems') || 'Creating items...');
 
     const itemsStart = Date.now();
-    let skipped = 0;
     let deduplicated = 0;
 
     for (const item of items) {
@@ -463,7 +461,7 @@ class KankaPublisher {
       }
     }
     const itemsMs = Date.now() - itemsStart;
-    this._logger.debug(`Items done: ${results.items.length} created, ${skipped} not in journal, ${deduplicated} deduplicated in ${itemsMs}ms`);
+    this._logger.debug(`Items done: ${results.items.length} created, ${deduplicated} deduplicated in ${itemsMs}ms`);
   }
 
   // ============================================================================
@@ -547,14 +545,14 @@ class KankaPublisher {
    */
   async _uploadSessionImages(images, journalId, results) {
     this._logger.debug(`Uploading ${images.length} images to journal ${journalId}`);
-    this._reportProgress(85, 'Uploading images...');
+    this._reportProgress(85, game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ProgressImages') || 'Uploading images...');
 
     for (const image of images) {
       try {
-        let imageBlob;
+        let imageData; // Blob or URL string — KankaService.uploadJournalImage accepts both
 
         if (image.blob instanceof Blob) {
-          imageBlob = image.blob;
+          imageData = image.blob;
         } else if (image.base64 || image.b64_json) {
           const base64Data = image.base64 || image.b64_json;
           const binaryString = atob(base64Data);
@@ -562,9 +560,9 @@ class KankaPublisher {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
-          imageBlob = new Blob([bytes], { type: 'image/png' });
+          imageData = new Blob([bytes], { type: 'image/png' });
         } else if (typeof image.url === 'string') {
-          imageBlob = image.url;
+          imageData = image.url;
         } else {
           this._logger.warn(`Skipping image — no usable data (keys: ${Object.keys(image).join(', ')})`);
           continue;
@@ -572,7 +570,7 @@ class KankaPublisher {
 
         const filename = image.filename || `session-image-${results.images.length + 1}.png`;
         const uploaded = await this._kankaService.uploadJournalImage(
-          journalId, imageBlob, { filename }
+          journalId, imageData, { filename }
         );
 
         results.images.push(uploaded);
@@ -616,7 +614,8 @@ class KankaPublisher {
 
     // Header
     parts.push(`<h2>${escapeHtml(sessionData.title)}</h2>`);
-    parts.push(`<p><em>Date: ${escapeHtml(sessionData.date)}</em></p>`);
+    const dateLabel = game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ChronicleDate') || 'Date';
+    parts.push(`<p><em>${escapeHtml(dateLabel)}: ${escapeHtml(sessionData.date)}</em></p>`);
 
     // Summary of entities
     if (sessionData.entities) {
@@ -626,24 +625,25 @@ class KankaPublisher {
         (sessionData.entities.items?.length || 0);
 
       if (entityCount > 0) {
-        parts.push(`<p>This session introduced ${entityCount} new entities.</p>`);
+        parts.push(`<p>${game.i18n?.format('VOXCHRONICLE.KankaPublisher.ChronicleEntities', { count: entityCount }) || `This session introduced ${entityCount} new entities.`}</p>`);
       }
     }
 
     // Basic transcript
     if (sessionData.transcript?.segments?.length > 0) {
-      parts.push('<h3>Transcript</h3>');
+      parts.push(`<h3>${escapeHtml(game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ChronicleTranscript') || 'Transcript')}</h3>`);
       parts.push('<div class="transcript">');
 
       for (const segment of sessionData.transcript.segments.slice(0, 50)) {
-        const speaker = escapeHtml(segment.speaker || 'Unknown');
+        const speaker = escapeHtml(segment.speaker || game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ChronicleUnknownSpeaker') || 'Unknown');
         const text = escapeHtml(segment.text || '');
         parts.push(`<p><strong>${speaker}:</strong> ${text}</p>`);
       }
 
       if (sessionData.transcript.segments.length > 50) {
+        const moreCount = sessionData.transcript.segments.length - 50;
         parts.push(
-          `<p><em>... and ${sessionData.transcript.segments.length - 50} more segments</em></p>`
+          `<p><em>${game.i18n?.format('VOXCHRONICLE.KankaPublisher.ChronicleMoreSegments', { count: moreCount }) || `... and ${moreCount} more segments`}</em></p>`
         );
       }
 
@@ -651,7 +651,7 @@ class KankaPublisher {
     }
 
     parts.push('<hr>');
-    parts.push('<p><em>Generated by VoxChronicle</em></p>');
+    parts.push(`<p><em>${escapeHtml(game.i18n?.localize('VOXCHRONICLE.KankaPublisher.ChronicleGeneratedBy') || 'Generated by VoxChronicle')}</em></p>`);
 
     return parts.join('\n');
   }
