@@ -1,7 +1,8 @@
 /**
- * KankaClient - Base API Client for Kanka.io Services
+ * KankaClient - API Client for Kanka.io Services
  *
- * Provides authentication, rate limiting, retry logic, and common request
+ * Extends BaseAPIClient with Kanka-specific functionality:
+ * rate limiting with premium/free tiers, retry logic, and common request
  * functionality for interacting with the Kanka API. Used as a base for
  * KankaService which handles entity CRUD operations.
  *
@@ -10,11 +11,12 @@
  * - Premium tier: 90 requests per minute
  *
  * @class KankaClient
+ * @extends BaseAPIClient
  * @module vox-chronicle
  * @see https://api.kanka.io/docs/
  */
 
-import { Logger } from '../utils/Logger.mjs';
+import { BaseAPIClient } from '../api/BaseAPIClient.mjs';
 import { RateLimiter } from '../utils/RateLimiter.mjs';
 import { SensitiveDataFilter } from '../utils/SensitiveDataFilter.mjs';
 import { escapeHtml } from '../utils/HtmlUtils.mjs';
@@ -117,42 +119,7 @@ class KankaError extends Error {
  * const client = new KankaClient('your-api-token', { isPremium: false });
  * const campaigns = await client.request('/campaigns');
  */
-class KankaClient {
-  /**
-   * Logger instance for this class
-   * @type {object}
-   * @private
-   */
-  _logger = Logger.createChild('KankaClient', { sanitize: true });
-
-  /**
-   * Kanka API token
-   * @type {string}
-   * @private
-   */
-  _apiToken = '';
-
-  /**
-   * API base URL
-   * @type {string}
-   * @private
-   */
-  _baseUrl = KANKA_BASE_URL;
-
-  /**
-   * Rate limiter for API requests
-   * @type {RateLimiter}
-   * @private
-   */
-  _rateLimiter = null;
-
-  /**
-   * Default request timeout in milliseconds
-   * @type {number}
-   * @private
-   */
-  _timeout = DEFAULT_TIMEOUT_MS;
-
+class KankaClient extends BaseAPIClient {
   /**
    * Maximum retries for failed requests
    * @type {number}
@@ -178,19 +145,31 @@ class KankaClient {
    * @param {boolean} [options.isPremium=false] - Whether user has premium subscription (affects rate limits)
    */
   constructor(apiToken, options = {}) {
-    this._apiToken = apiToken || '';
-    this._baseUrl = options.baseUrl || KANKA_BASE_URL;
-    this._timeout = options.timeout || DEFAULT_TIMEOUT_MS;
-    this._maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
-    this._isPremium = options.isPremium ?? false;
+    const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+    const isPremium = options.isPremium ?? false;
 
     // Initialize rate limiter based on subscription tier
-    const preset = this._isPremium ? 'KANKA_PREMIUM' : 'KANKA_FREE';
-    this._rateLimiter = RateLimiter.fromPreset(preset, {
-      name: `Kanka (${this._isPremium ? 'Premium' : 'Free'})`,
-      maxRetries: this._maxRetries,
+    const preset = isPremium ? 'KANKA_PREMIUM' : 'KANKA_FREE';
+    const rateLimiter = RateLimiter.fromPreset(preset, {
+      name: `Kanka (${isPremium ? 'Premium' : 'Free'})`,
+      maxRetries,
       initialBackoffMs: INITIAL_BACKOFF_MS
     });
+
+    super({
+      apiKey: apiToken,
+      baseUrl: options.baseUrl || KANKA_BASE_URL,
+      timeout: options.timeout || DEFAULT_TIMEOUT_MS,
+      loggerName: 'KankaClient',
+      sanitizeLogger: true,
+      authErrorMessage: 'Kanka API token not configured. Please add your API token in module settings.',
+      AuthErrorClass: KankaError,
+      authErrorType: KankaErrorType.AUTHENTICATION_ERROR,
+      rateLimiter,
+    });
+
+    this._maxRetries = maxRetries;
+    this._isPremium = isPremium;
 
     this._logger.debug(`KankaClient instance created (${preset})`);
   }
@@ -201,16 +180,7 @@ class KankaClient {
    * @returns {boolean} True if API token is set
    */
   get isConfigured() {
-    return Boolean(this._apiToken && this._apiToken.length > 0);
-  }
-
-  /**
-   * Get the API base URL
-   *
-   * @returns {string} The base URL
-   */
-  get baseUrl() {
-    return this._baseUrl;
+    return Boolean(this._apiKey && this._apiKey.length > 0);
   }
 
   /**
@@ -228,7 +198,7 @@ class KankaClient {
    * @param {string} apiToken - New API token
    */
   setApiToken(apiToken) {
-    this._apiToken = apiToken || '';
+    this._apiKey = apiToken || '';
     this._logger.debug('API token updated');
   }
 
@@ -251,73 +221,6 @@ class KankaClient {
 
       this._logger.info(`Premium status updated: ${isPremium ? 'Premium' : 'Free'} tier`);
     }
-  }
-
-  /**
-   * Build authorization headers for API requests
-   *
-   * @returns {object} Headers object with Bearer token
-   * @private
-   */
-  _buildAuthHeaders() {
-    if (!this._apiToken) {
-      throw new KankaError(
-        'Kanka API token not configured. Please add your API token in module settings.',
-        KankaErrorType.AUTHENTICATION_ERROR
-      );
-    }
-
-    return {
-      Authorization: `Bearer ${this._apiToken}`
-    };
-  }
-
-  /**
-   * Build common headers for JSON API requests
-   *
-   * @returns {object} Headers object
-   * @private
-   */
-  _buildJsonHeaders() {
-    return {
-      ...this._buildAuthHeaders(),
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    };
-  }
-
-  /**
-   * Build the full URL for an API endpoint
-   *
-   * @param {string} endpoint - API endpoint path (e.g., '/campaigns')
-   * @returns {string} Full URL
-   * @private
-   */
-  _buildUrl(endpoint) {
-    // Ensure endpoint starts with /
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return `${this._baseUrl}${normalizedEndpoint}`;
-  }
-
-  /**
-   * Create an AbortController with timeout
-   *
-   * @param {number} [timeout] - Timeout in milliseconds
-   * @returns {AbortController} AbortController with timeout signal
-   * @private
-   */
-  _createTimeoutController(timeout) {
-    const controller = new AbortController();
-    const timeoutMs = timeout || this._timeout;
-
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, timeoutMs);
-
-    // Store timeout ID for cleanup
-    controller.timeoutId = timeoutId;
-
-    return controller;
   }
 
   /**
@@ -709,7 +612,7 @@ class KankaClient {
    */
   async validateApiToken() {
     this._logger.debug('Validating API token');
-    if (!this._apiToken) {
+    if (!this._apiKey) {
       this._logger.debug('No API token set, returning false');
       return false;
     }
@@ -729,23 +632,6 @@ class KankaClient {
       this._logger.error('API token validation could not be completed:', sanitizedMessage);
       throw error;
     }
-  }
-
-  /**
-   * Get rate limiter statistics
-   *
-   * @returns {object} Rate limiter stats
-   */
-  getRateLimiterStats() {
-    return this._rateLimiter.getStats();
-  }
-
-  /**
-   * Reset the rate limiter state
-   */
-  resetRateLimiter() {
-    this._rateLimiter.reset();
-    this._logger.debug('Rate limiter reset');
   }
 
   /**

@@ -1,18 +1,20 @@
 /**
- * OpenAIClient - Base API Client for OpenAI Services
+ * OpenAIClient - API Client for OpenAI Services
  *
- * Provides authentication, error handling, retry with exponential backoff,
- * sequential request queue, and common request functionality for interacting
- * with OpenAI's REST API. Used as a base for TranscriptionService,
- * ImageGenerationService, and EntityExtractor.
+ * Extends BaseAPIClient with OpenAI-specific functionality:
+ * retry with exponential backoff, sequential request queue,
+ * operation history, and error handling for OpenAI's REST API.
+ * Used as a base for TranscriptionService, ImageGenerationService,
+ * and EntityExtractor.
  *
  * Retry/queue system adapted from Narrator Master's OpenAIServiceBase.
  *
  * @class OpenAIClient
+ * @extends BaseAPIClient
  * @module vox-chronicle
  */
 
-import { Logger } from '../utils/Logger.mjs';
+import { BaseAPIClient } from '../api/BaseAPIClient.mjs';
 import { RateLimiter } from '../utils/RateLimiter.mjs';
 import { SensitiveDataFilter } from '../utils/SensitiveDataFilter.mjs';
 
@@ -101,42 +103,7 @@ class OpenAIError extends Error {
  *   body: JSON.stringify({ ... })
  * });
  */
-class OpenAIClient {
-  /**
-   * Logger instance for this class
-   * @type {object}
-   * @private
-   */
-  _logger = Logger.createChild('OpenAIClient', { sanitize: true });
-
-  /**
-   * OpenAI API key
-   * @type {string}
-   * @private
-   */
-  _apiKey = '';
-
-  /**
-   * API base URL
-   * @type {string}
-   * @private
-   */
-  _baseUrl = OPENAI_BASE_URL;
-
-  /**
-   * Rate limiter for API requests
-   * @type {RateLimiter}
-   * @private
-   */
-  _rateLimiter = null;
-
-  /**
-   * Default request timeout in milliseconds
-   * @type {number}
-   * @private
-   */
-  _timeout = DEFAULT_TIMEOUT_MS;
-
+class OpenAIClient extends BaseAPIClient {
   /**
    * Create a new OpenAIClient instance
    *
@@ -153,16 +120,27 @@ class OpenAIClient {
    * @param {number} [options.maxHistorySize=50] - Maximum operation history entries to keep
    */
   constructor(apiKey, options = {}) {
-    this._apiKey = apiKey || '';
-    this._baseUrl = options.baseUrl || OPENAI_BASE_URL;
-    this._timeout = options.timeout || DEFAULT_TIMEOUT_MS;
-    this._maxRetries = options.maxRetries ?? 3;
+    const maxRetries = options.maxRetries ?? 3;
 
     // Initialize rate limiter with OpenAI preset
-    this._rateLimiter = RateLimiter.fromPreset('OPENAI', {
+    const rateLimiter = RateLimiter.fromPreset('OPENAI', {
       name: 'OpenAI',
-      maxRetries: this._maxRetries
+      maxRetries
     });
+
+    super({
+      apiKey,
+      baseUrl: options.baseUrl || OPENAI_BASE_URL,
+      timeout: options.timeout || DEFAULT_TIMEOUT_MS,
+      loggerName: 'OpenAIClient',
+      sanitizeLogger: true,
+      authErrorMessage: 'OpenAI API key not configured. Please add your API key in module settings.',
+      AuthErrorClass: OpenAIError,
+      authErrorType: OpenAIErrorType.AUTHENTICATION_ERROR,
+      rateLimiter,
+    });
+
+    this._maxRetries = maxRetries;
 
     // Retry configuration (from NM OpenAIServiceBase)
     this._retryConfig = {
@@ -194,15 +172,6 @@ class OpenAIClient {
   }
 
   /**
-   * Get the API base URL
-   *
-   * @returns {string} The base URL
-   */
-  get baseUrl() {
-    return this._baseUrl;
-  }
-
-  /**
    * Update the API key
    *
    * @param {string} apiKey - New API key
@@ -210,73 +179,6 @@ class OpenAIClient {
   setApiKey(apiKey) {
     this._apiKey = apiKey || '';
     this._logger.debug('API key updated');
-  }
-
-  /**
-   * Build authorization headers for API requests
-   *
-   * @returns {object} Headers object with Bearer token
-   * @private
-   */
-  _buildAuthHeaders() {
-    if (!this._apiKey) {
-      throw new OpenAIError(
-        'OpenAI API key not configured. Please add your API key in module settings.',
-        OpenAIErrorType.AUTHENTICATION_ERROR
-      );
-    }
-
-    return {
-      Authorization: `Bearer ${this._apiKey}`
-    };
-  }
-
-  /**
-   * Build common headers for JSON API requests
-   *
-   * @returns {object} Headers object
-   * @private
-   */
-  _buildJsonHeaders() {
-    return {
-      ...this._buildAuthHeaders(),
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    };
-  }
-
-  /**
-   * Build the full URL for an API endpoint
-   *
-   * @param {string} endpoint - API endpoint path (e.g., '/chat/completions')
-   * @returns {string} Full URL
-   * @private
-   */
-  _buildUrl(endpoint) {
-    // Ensure endpoint starts with /
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return `${this._baseUrl}${normalizedEndpoint}`;
-  }
-
-  /**
-   * Create an AbortController with timeout
-   *
-   * @param {number} [timeout] - Timeout in milliseconds
-   * @returns {AbortController} AbortController with timeout signal
-   * @private
-   */
-  _createTimeoutController(timeout) {
-    const controller = new AbortController();
-    const timeoutMs = timeout || this._timeout;
-
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, timeoutMs);
-
-    // Store timeout ID for cleanup
-    controller.timeoutId = timeoutId;
-
-    return controller;
   }
 
   /**
@@ -850,22 +752,6 @@ class OpenAIClient {
     }
   }
 
-  /**
-   * Get rate limiter statistics
-   *
-   * @returns {object} Rate limiter stats
-   */
-  getRateLimiterStats() {
-    return this._rateLimiter.getStats();
-  }
-
-  /**
-   * Reset the rate limiter state
-   */
-  resetRateLimiter() {
-    this._rateLimiter.reset();
-    this._logger.debug('Rate limiter reset');
-  }
 }
 
 // Export the OpenAIClient class and related exports
