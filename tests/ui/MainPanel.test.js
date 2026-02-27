@@ -58,6 +58,20 @@ vi.mock('../../scripts/utils/HtmlUtils.mjs', () => ({
   escapeHtml: vi.fn((str) => str || '')
 }));
 
+vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
+  AudioUtils: {
+    formatDuration: vi.fn((seconds) => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+      return `${minutes}:${String(secs).padStart(2, '0')}`;
+    })
+  }
+}));
+
 vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({
   VoxChronicle: {
     getInstance: vi.fn(() => ({
@@ -296,7 +310,7 @@ describe('MainPanel', () => {
       expect(ctx.isRecording).toBe(false);
       expect(ctx.isPaused).toBe(false);
       expect(ctx.isProcessing).toBe(false);
-      expect(ctx.duration).toBe('00:00');
+      expect(ctx.duration).toBe('0:00');
       expect(ctx.audioLevel).toBe(0);
       expect(ctx.activeTab).toBe('live');
       expect(ctx.suggestions).toEqual([]);
@@ -733,15 +747,15 @@ describe('MainPanel', () => {
   // ─── _formatDuration ───────────────────────────────────────────
 
   describe('_formatDuration', () => {
-    it('should return 00:00 when no session', () => {
+    it('should return 0:00 when no session', () => {
       const panel = MainPanel.getInstance(mockOrchestrator);
-      expect(panel._formatDuration()).toBe('00:00');
+      expect(panel._formatDuration()).toBe('0:00');
     });
 
-    it('should return 00:00 when no startTime', () => {
+    it('should return 0:00 when no startTime', () => {
       const panel = MainPanel.getInstance(mockOrchestrator);
       mockOrchestrator.currentSession = {};
-      expect(panel._formatDuration()).toBe('00:00');
+      expect(panel._formatDuration()).toBe('0:00');
     });
 
     it('should format elapsed time correctly', () => {
@@ -751,7 +765,7 @@ describe('MainPanel', () => {
         startTime: now - 125000, // 2 minutes and 5 seconds
         endTime: now
       };
-      expect(panel._formatDuration()).toBe('02:05');
+      expect(panel._formatDuration()).toBe('2:05');
     });
 
     it('should use Date.now when no endTime', () => {
@@ -760,7 +774,17 @@ describe('MainPanel', () => {
         startTime: Date.now() - 60000 // 1 minute ago
       };
       const result = panel._formatDuration();
-      expect(result).toMatch(/^01:0[0-1]$/); // ~01:00
+      expect(result).toMatch(/^1:0[0-1]$/); // ~1:00
+    });
+
+    it('should format hours correctly for long sessions', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const now = Date.now();
+      mockOrchestrator.currentSession = {
+        startTime: now - 3723000, // 1 hour, 2 minutes, 3 seconds
+        endTime: now
+      };
+      expect(panel._formatDuration()).toBe('1:02:03');
     });
   });
 
@@ -1136,7 +1160,7 @@ describe('MainPanel', () => {
       rafCallbacks[0]();
 
       expect(mockLevelBar.style.width).toBe('65%');
-      expect(mockDurationSpan.textContent).toBe('02:05');
+      expect(mockDurationSpan.textContent).toBe('2:05');
     });
 
     it('should update duration span on first rAF tick', () => {
@@ -1152,7 +1176,7 @@ describe('MainPanel', () => {
       expect(rafCallbacks.length).toBeGreaterThan(0);
       rafCallbacks[0]();
 
-      expect(mockDurationSpan.textContent).toBe('02:05');
+      expect(mockDurationSpan.textContent).toBe('2:05');
     });
 
     it('should stop rAF loop on _stopRealtimeUpdates', () => {
@@ -1228,13 +1252,13 @@ describe('MainPanel', () => {
       // Execute first rAF callback
       rafCallbacks[0]();
       const firstValue = mockDurationSpan.textContent;
-      expect(firstValue).toBe('00:05');
+      expect(firstValue).toBe('0:05');
 
       // Execute second rAF callback in same second — should not re-write
       const writeCount = Object.getOwnPropertyDescriptor(mockDurationSpan, 'textContent')
         ? undefined : 1; // can't easily track setter calls on plain object, but the optimization is covered
       rafCallbacks[1]();
-      expect(mockDurationSpan.textContent).toBe('00:05'); // same value, no error
+      expect(mockDurationSpan.textContent).toBe('0:05'); // same value, no error
     });
   });
 });

@@ -12,6 +12,7 @@
 
 import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
+import { AudioUtils } from '../utils/AudioUtils.mjs';
 import { debounce } from '../utils/DomUtils.mjs';
 import { stripHtml, sanitizeHtml, escapeHtml } from '../utils/HtmlUtils.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
@@ -718,18 +719,16 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Format the current session duration as MM:SS
+   * Format the current session duration using AudioUtils.formatDuration.
+   * Returns "H:MM:SS" for sessions over an hour, "M:SS" otherwise.
    * @returns {string} Formatted duration string
    * @private
    */
   _formatDuration() {
     const session = this._orchestrator?.currentSession;
-    if (!session?.startTime) return '00:00';
-
+    if (!session?.startTime) return '0:00';
     const elapsed = Math.floor(((session.endTime || Date.now()) - session.startTime) / 1000);
-    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-    const seconds = (elapsed % 60).toString().padStart(2, '0');
-    return `${minutes}:${seconds}`;
+    return AudioUtils.formatDuration(elapsed);
   }
 
   /**
