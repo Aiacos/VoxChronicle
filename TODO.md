@@ -46,7 +46,7 @@ Audit con scan automatico: stub detection, CSS namespace, i18n, architectural de
 
 ### MEDIUM — Architectural Debt & Minor Issues
 
-- [ ] `AIAssistant.mjs` — God Object 2076 righe, candidato per decomposizione (suggestion, dialogue, scene analysis)
+- [ ] `AIAssistant.mjs` — God Object ridotto da 2076 a 1601 righe tramite estrazione SilenceMonitor e PromptBuilder, candidato per ulteriore decomposizione (suggestion, dialogue, scene analysis)
 - [x] `main-panel.hbs` — Classe `danger` rinominata a `vox-chronicle-btn--danger` (v3.2.5)
 - [x] `main.mjs` — Timer debounce cleanup via `closeSettingsConfig` hook (v3.2.5)
 - [ ] Session state non persistente: ricaricare la pagina perde lo stato della sessione corrente

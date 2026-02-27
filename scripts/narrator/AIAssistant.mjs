@@ -14,18 +14,13 @@
 import { Logger } from '../utils/Logger.mjs';
 import { MODULE_ID } from '../constants.mjs';
 import { SilenceMonitor } from './SilenceMonitor.mjs';
+import { PromptBuilder, MAX_CONTEXT_TOKENS } from './PromptBuilder.mjs';
 
 /**
  * Default model for cost-effective suggestions
  * @constant {string}
  */
 const DEFAULT_MODEL = 'gpt-4o-mini';
-
-/**
- * Maximum context tokens to avoid excessive API costs
- * @constant {number}
- */
-const MAX_CONTEXT_TOKENS = 8000;
 
 /**
  * Represents a contextual suggestion for the DM
@@ -216,6 +211,16 @@ class AIAssistant {
      * @private
      */
     this._cachedRAGContext = null;
+
+    /**
+     * PromptBuilder — handles all prompt/message construction for AI requests
+     * @type {PromptBuilder}
+     * @private
+     */
+    this._promptBuilder = new PromptBuilder({
+      primaryLanguage: this._primaryLanguage,
+      sensitivity: this._sensitivity
+    });
 
     /**
      * SilenceMonitor — handles silence detection and autonomous suggestion triggers
@@ -414,6 +419,7 @@ class AIAssistant {
   setSensitivity(sensitivity) {
     if (['low', 'medium', 'high'].includes(sensitivity)) {
       this._sensitivity = sensitivity;
+      this._promptBuilder.setSensitivity(sensitivity);
     }
   }
 
@@ -433,6 +439,7 @@ class AIAssistant {
    */
   setAdventureContext(context) {
     this._adventureContext = context || '';
+    this._promptBuilder.setAdventureContext(this._adventureContext);
   }
 
   /**
@@ -451,6 +458,7 @@ class AIAssistant {
    */
   setPrimaryLanguage(language) {
     this._primaryLanguage = language || 'it';
+    this._promptBuilder.setPrimaryLanguage(this._primaryLanguage);
   }
 
   /**
@@ -481,6 +489,7 @@ class AIAssistant {
   setChapterContext(chapterInfo) {
     if (chapterInfo === null || chapterInfo === undefined) {
       this._chapterContext = null;
+      this._promptBuilder.setChapterContext(null);
       return;
     }
 
@@ -496,6 +505,7 @@ class AIAssistant {
         })),
       summary: this._validateString(chapterInfo.summary || '', 2000, 'chapterContext.summary')
     };
+    this._promptBuilder.setChapterContext(this._chapterContext);
   }
 
   /**
@@ -505,48 +515,6 @@ class AIAssistant {
    */
   getChapterContext() {
     return this._chapterContext;
-  }
-
-  /**
-   * Formats the chapter context for inclusion in AI prompts
-   *
-   * @returns {string} Formatted chapter context string or empty string if not set
-   * @private
-   */
-  _formatChapterContext() {
-    if (!this._chapterContext) {
-      return '';
-    }
-
-    const parts = [];
-
-    if (this._chapterContext.chapterName) {
-      parts.push(`CURRENT CHAPTER: ${this._chapterContext.chapterName}`);
-    }
-
-    if (this._chapterContext.subsections && this._chapterContext.subsections.length > 0) {
-      parts.push(`SECTIONS: ${this._chapterContext.subsections.join(', ')}`);
-    }
-
-    if (this._chapterContext.pageReferences && this._chapterContext.pageReferences.length > 0) {
-      const refs = this._chapterContext.pageReferences
-        .filter(ref => ref.pageName)
-        .map(ref => {
-          if (ref.journalName) {
-            return `"${ref.pageName}" (${ref.journalName})`;
-          }
-          return `"${ref.pageName}"`;
-        });
-      if (refs.length > 0) {
-        parts.push(`REFERENCE PAGES: ${refs.join(', ')}`);
-      }
-    }
-
-    if (this._chapterContext.summary) {
-      parts.push(`SUMMARY: ${this._chapterContext.summary}`);
-    }
-
-    return parts.join('\n');
   }
 
   /**
@@ -674,7 +642,8 @@ class AIAssistant {
       // Retrieve RAG context if available
       const ragContext = await this._fetchRAGContextFor(transcription, 'analysis');
 
-      const messages = this._buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext);
+      this._promptBuilder.setConversationHistory(this._conversationHistory);
+      const messages = this._promptBuilder.buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext);
       const response = await this._makeChatRequest(messages);
       const analysis = this._parseAnalysisResponse(response);
 
@@ -733,7 +702,7 @@ class AIAssistant {
       // Retrieve RAG context if available
       const ragContext = await this._fetchRAGContextFor(transcription, 'off-track');
 
-      const messages = this._buildOffTrackMessages(transcription, ragContext);
+      const messages = this._promptBuilder.buildOffTrackMessages(transcription, ragContext);
       const response = await this._makeChatRequest(messages);
       const result = this._parseOffTrackResponse(response);
 
@@ -770,7 +739,7 @@ class AIAssistant {
       // Retrieve RAG context if available
       const ragContext = await this._fetchRAGContextFor(transcription, 'suggestions');
 
-      const messages = this._buildSuggestionMessages(transcription, maxSuggestions, ragContext);
+      const messages = this._promptBuilder.buildSuggestionMessages(transcription, maxSuggestions, ragContext);
       const response = await this._makeChatRequest(messages);
       const suggestions = this._parseSuggestionsResponse(response, maxSuggestions);
 
@@ -802,7 +771,7 @@ class AIAssistant {
       // Retrieve RAG context if available, using both situation and target as query
       const ragContext = await this._fetchRAGContextFor(`${currentSituation} ${targetScene}`, 'narrative bridge');
 
-      const messages = this._buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
+      const messages = this._promptBuilder.buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
       const response = await this._makeChatRequest(messages);
       const content = response.choices?.[0]?.message?.content || '';
       const result = content.trim();
@@ -841,7 +810,7 @@ class AIAssistant {
     const _npcStart = performance.now();
 
     try {
-      const messages = this._buildNPCDialogueMessages(npcName, npcContext, transcription, maxOptions);
+      const messages = this._promptBuilder.buildNPCDialogueMessages(npcName, npcContext, transcription, maxOptions);
       const response = await this._makeChatRequest(messages);
       const dialogueOptions = this._parseNPCDialogueResponse(response, maxOptions);
 
@@ -976,299 +945,19 @@ class AIAssistant {
   }
 
   // ---------------------------------------------------------------------------
-  // Private: Message builders
+  // Private: Prompt building delegation wrappers (for backward compatibility)
   // ---------------------------------------------------------------------------
 
   /**
    * Builds the system prompt for the AI assistant
    *
+   * Delegates to PromptBuilder.buildSystemPrompt() for the actual implementation.
+   *
    * @returns {string} The system prompt
    * @private
    */
   _buildSystemPrompt() {
-    const chapterContext = this._formatChapterContext();
-
-    const sensitivityGuide = {
-      low: 'Be tolerant of minor deviations, only flag when players completely leave the story.',
-      medium: 'Balance tolerance for improvisation with adherence to the main plot.',
-      high: 'Closely monitor every deviation from the plot and flag even minor variations.'
-    };
-
-    const languageNames = {
-      it: 'Italian',
-      en: 'English',
-      de: 'German',
-      fr: 'French',
-      es: 'Spanish',
-      pt: 'Portuguese',
-      ja: 'Japanese',
-      ko: 'Korean',
-      zh: 'Chinese'
-    };
-
-    const responseLang = languageNames[this._primaryLanguage] || languageNames['en'];
-
-    const chapterSection = chapterContext
-      ? `\n\nCURRENT CHAPTER/SCENE CONTEXT:\n${chapterContext}`
-      : '';
-
-    return `You are an expert assistant for Dungeon Masters (GMs) in fantasy tabletop RPGs.
-Your SOLE purpose is to help the GM during game sessions.
-
-## FUNDAMENTAL RULES (ANTI-HALLUCINATION)
-
-1. **USE ONLY PROVIDED MATERIAL**: Base ALL your answers exclusively on the Journal/Compendium content provided in the context. Do NOT invent details, NPCs, locations, events, or information not present in the material.
-
-2. **ALWAYS CITE SOURCES**: Every suggestion MUST include a reference to the journal page/section the information comes from (e.g., "[Source: Chapter 2 - The Tavern]").
-
-3. **ADMIT WHEN YOU DON'T KNOW**: If information is not present in the provided material, respond explicitly: "Information not found in adventure material".
-
-4. **DO NOT FILL IN WITH ASSUMPTIONS**: If the material is incomplete or vague, do NOT fill gaps with invented content. Flag what is missing instead.
-
-## YOUR TASK
-
-You are a **Navigator and Oracle** for the Dungeon Master. You will receive a transcription where each line starts with the speaker's name (e.g., "DM: ...", "Marco: ...").
-
-1.  **Contextual Deduction**: 
-    *   **DM Input**: Treat the words of the DM as absolute truth. When the DM describes a location or NPC, immediately retrieve those specific details from the Journal.
-    *   **Player Input**: Treat player words as intent or questions. Identify what they are looking for or interacting with.
-2.  **Guidance from Material**: Suggest only what is explicitly written in the material. If the players are talking to NPC "X", show the DM "X's" motivations, secrets, or the next dialogue prompt provided in the Journal.
-3.  **Pathfinding**: If the players are lost or off-track, identify the closest logical "hook" present in the adventure material to bring them back to the intended path.
-4.  **No Invention**: DO NOT create new lore, NPCs, or plot twists. Your goal is to make the DM's life easier by retrieving the right information at the right time.
-
-## RESPONSE FORMAT
-
-- Respond in the same language as the transcription (${responseLang}).
-- **Direct Citation**: Always start suggestions with "[Journal: Page Name]".
-- **Deduction Rule**: "Since [Speaker] mentioned [Element], the current scene matches [Journal Section]. The material suggests [Action/Event]."
-
-## IMPORTANT
-
-- You are a retrieval and mapping engine.
-- If the players do something not covered by the material, provide the DM with the most relevant "General Themes" or "NPC Goals" from the manual to help them improvise *consistently* with the world, but do not write the scene yourself.
-- Stay silent if no relevant information can be deduced from the context.`;
-  }
-
-  /**
-   * Builds messages for context analysis
-   *
-   * @param {string} transcription - The transcription to analyze
-   * @param {boolean} includeSuggestions - Whether to include suggestions
-   * @param {boolean} checkOffTrack - Whether to check off-track status
-   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
-   * @returns {Array<{role: string, content: string}>} The messages array
-   * @private
-   */
-  _buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext) {
-    const messages = [
-      { role: 'system', content: this._buildSystemPrompt() }
-    ];
-
-    // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
-
-    if (context) {
-      messages.push({
-        role: 'system',
-        content: `ADVENTURE CONTEXT:\n${context}`
-      });
-    }
-
-    // Add recent conversation history
-    for (const entry of this._conversationHistory.slice(-5)) {
-      messages.push(entry);
-    }
-
-    let requestContent = `Analyze this session transcription:\n\n"${transcription}"\n\n`;
-
-    if (includeSuggestions && checkOffTrack) {
-      requestContent += `Respond in JSON format with this structure:
-{
-  "suggestions": [{"type": "narration|dialogue|action|reference", "content": "...", "confidence": 0.0-1.0}],
-  "offTrackStatus": {"isOffTrack": boolean, "severity": 0.0-1.0, "reason": "..."},
-  "relevantPages": ["..."],
-  "summary": "..."
-}`;
-    } else if (includeSuggestions) {
-      requestContent += `Provide suggestions for the DM in JSON format:
-{
-  "suggestions": [{"type": "narration|dialogue|action|reference", "content": "...", "confidence": 0.0-1.0}],
-  "summary": "..."
-}`;
-    } else if (checkOffTrack) {
-      requestContent += `Assess whether players are off-track in JSON format:
-{
-  "offTrackStatus": {"isOffTrack": boolean, "severity": 0.0-1.0, "reason": "..."},
-  "summary": "..."
-}`;
-    }
-
-    messages.push({ role: 'user', content: requestContent });
-
-    return messages;
-  }
-
-  /**
-   * Builds messages for off-track detection
-   *
-   * @param {string} transcription - The transcription to analyze
-   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
-   * @returns {Array<{role: string, content: string}>} The messages array
-   * @private
-   */
-  _buildOffTrackMessages(transcription, ragContext) {
-    const messages = [
-      { role: 'system', content: this._buildSystemPrompt() }
-    ];
-
-    // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
-
-    if (context) {
-      messages.push({
-        role: 'system',
-        content: `ADVENTURE CONTEXT:\n${context}`
-      });
-    }
-
-    const requestContent = `Analyze whether the players are following the adventure plot based on this transcription:
-
-"${transcription}"
-
-Respond in JSON format:
-{
-  "isOffTrack": boolean,
-  "severity": 0.0-1.0,
-  "reason": "brief explanation",
-  "narrativeBridge": "optional suggestion to bring them back on track"
-}`;
-
-    messages.push({ role: 'user', content: requestContent });
-
-    return messages;
-  }
-
-  /**
-   * Builds messages for suggestion generation
-   *
-   * @param {string} transcription - The transcription to analyze
-   * @param {number} maxSuggestions - Maximum suggestions to generate
-   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
-   * @returns {Array<{role: string, content: string}>} The messages array
-   * @private
-   */
-  _buildSuggestionMessages(transcription, maxSuggestions, ragContext) {
-    const messages = [
-      { role: 'system', content: this._buildSystemPrompt() }
-    ];
-
-    // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
-
-    if (context) {
-      messages.push({
-        role: 'system',
-        content: `ADVENTURE CONTEXT:\n${context}`
-      });
-    }
-
-    const requestContent = `Based on this transcription, generate up to ${maxSuggestions} suggestions for the DM:
-
-"${transcription}"
-
-Respond in JSON format:
-{
-  "suggestions": [
-    {
-      "type": "narration|dialogue|action|reference",
-      "content": "the suggestion",
-      "pageReference": "page name if applicable",
-      "confidence": 0.0-1.0
-    }
-  ]
-}`;
-
-    messages.push({ role: 'user', content: requestContent });
-
-    return messages;
-  }
-
-  /**
-   * Builds messages for narrative bridge generation
-   *
-   * @param {string} currentSituation - Current off-track situation
-   * @param {string} targetScene - Target scene to return to
-   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of truncated full-text
-   * @returns {Array<{role: string, content: string}>} The messages array
-   * @private
-   */
-  _buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext) {
-    const messages = [
-      { role: 'system', content: this._buildSystemPrompt() }
-    ];
-
-    // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
-
-    if (context) {
-      messages.push({
-        role: 'system',
-        content: `ADVENTURE CONTEXT:\n${context}`
-      });
-    }
-
-    messages.push({
-      role: 'user',
-      content: `The players have deviated from the main plot.
-
-Current situation: ${currentSituation}
-Target scene: ${targetScene}
-
-Write a brief narration (2-3 sentences) that the DM can use to gently guide the players back towards the target scene, maintaining narrative continuity. Don't force the transition, but create a natural connection.`
-    });
-
-    return messages;
-  }
-
-  /**
-   * Builds messages for NPC dialogue generation
-   *
-   * @param {string} npcName - The name of the NPC
-   * @param {string} npcContext - NPC personality and backstory
-   * @param {string} transcription - Current conversation context
-   * @param {number} maxOptions - Maximum dialogue options to generate
-   * @returns {Array<{role: string, content: string}>} The messages array
-   * @private
-   */
-  _buildNPCDialogueMessages(npcName, npcContext, transcription, maxOptions) {
-    const messages = [
-      { role: 'system', content: this._buildSystemPrompt() }
-    ];
-
-    if (npcContext) {
-      messages.push({
-        role: 'system',
-        content: `NPC PROFILE - ${npcName}:\n${this._truncateContext(npcContext)}`
-      });
-    }
-
-    const requestContent = `Generate ${maxOptions} dialogue options for the character "${npcName}" based on the conversation context:
-
-"${transcription}"
-
-The character must respond consistently with their personality and context.
-Respond in JSON format:
-{
-  "dialogueOptions": [
-    "dialogue option 1",
-    "dialogue option 2",
-    "dialogue option 3"
-  ]
-}`;
-
-    messages.push({ role: 'user', content: requestContent });
-
-    return messages;
+    return this._promptBuilder.buildSystemPrompt();
   }
 
   // ---------------------------------------------------------------------------
@@ -1727,8 +1416,11 @@ Respond in JSON format:
     // Retrieve RAG context if available
     const ragContext = await this._fetchRAGContextFor(contextQuery.trim(), 'autonomous suggestion');
 
+    // Sync previous transcription to prompt builder before building messages
+    this._promptBuilder.setPreviousTranscription(this._previousTranscription);
+
     // Build the messages for suggestion generation
-    const messages = this._buildAutonomousSuggestionMessages(contextQuery.trim(), ragContext);
+    const messages = this._promptBuilder.buildAutonomousSuggestionMessages(contextQuery.trim(), ragContext);
 
     // Make the API request
     const response = await this._makeChatRequest(messages);
@@ -1741,54 +1433,6 @@ Respond in JSON format:
     }
 
     return null;
-  }
-
-  /**
-   * Builds messages for autonomous suggestion generation during silence
-   *
-   * @param {string} contextQuery - The context query built from chapter and transcription
-   * @param {string} [ragContext] - Optional RAG-retrieved context
-   * @returns {Array<{role: string, content: string}>} The messages array
-   * @private
-   */
-  _buildAutonomousSuggestionMessages(contextQuery, ragContext) {
-    const messages = [
-      { role: 'system', content: this._buildSystemPrompt() }
-    ];
-
-    // Use RAG context if provided, otherwise fall back to adventure context
-    const context = ragContext || (this._adventureContext ? this._truncateContext(this._adventureContext) : '');
-
-    if (context) {
-      messages.push({
-        role: 'system',
-        content: `ADVENTURE CONTEXT:\n${context}`
-      });
-    }
-
-    const chapterInfo = this._formatChapterContext();
-    const silencePrompt = `The game session has been silent for a while. Based on the current chapter and context, suggest what the DM should do next to re-engage the players.
-
-${chapterInfo ? `Current Chapter Information:\n${chapterInfo}\n\n` : ''}${this._previousTranscription ? `Recent conversation context:\n"${this._previousTranscription.slice(-300)}"\n\n` : ''}Generate a single, helpful suggestion for the DM to move the story forward. Focus on:
-1. What happens next in the adventure according to the source material
-2. An NPC who could speak or act to prompt player engagement
-3. An environmental detail or event to describe
-
-Respond in JSON format:
-{
-  "suggestions": [
-    {
-      "type": "narration|dialogue|action|reference",
-      "content": "the suggestion",
-      "pageReference": "source page if applicable",
-      "confidence": 0.0-1.0
-    }
-  ]
-}`;
-
-    messages.push({ role: 'user', content: silencePrompt });
-
-    return messages;
   }
 
   // ---------------------------------------------------------------------------
@@ -1830,18 +1474,26 @@ Respond in JSON format:
   /**
    * Truncates context to avoid exceeding token limits
    *
+   * Delegates to PromptBuilder.truncateContext() for the actual implementation.
+   *
    * @param {string} context - The context to truncate
    * @returns {string} Truncated context
    * @private
    */
   _truncateContext(context) {
-    const maxChars = MAX_CONTEXT_TOKENS * 4;
+    return this._promptBuilder.truncateContext(context);
+  }
 
-    if (context.length <= maxChars) {
-      return context;
-    }
-
-    return context.substring(0, maxChars) + '\n\n[... content truncated ...]';
+  /**
+   * Formats the chapter context for inclusion in AI prompts
+   *
+   * Delegates to PromptBuilder.formatChapterContext() for the actual implementation.
+   *
+   * @returns {string} Formatted chapter context string or empty string if not set
+   * @private
+   */
+  _formatChapterContext() {
+    return this._promptBuilder.formatChapterContext();
   }
 
   /**
