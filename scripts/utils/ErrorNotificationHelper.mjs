@@ -40,7 +40,13 @@ class ErrorNotificationHelper {
       ? globalThis.ui?.notifications?.warn
       : globalThis.ui?.notifications?.error;
 
-    notifyFn?.call(globalThis.ui?.notifications, message);
+    if (notifyFn) {
+      notifyFn.call(globalThis.ui?.notifications, message);
+    } else {
+      // Fallback when UI not yet initialized (e.g., during module init)
+      // eslint-disable-next-line no-console
+      console.error(`[VoxChronicle] ${message}`);
+    }
   }
 }
 

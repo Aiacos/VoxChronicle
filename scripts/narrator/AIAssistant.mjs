@@ -14,7 +14,7 @@
 import { Logger } from '../utils/Logger.mjs';
 import { MODULE_ID } from '../constants.mjs';
 import { SilenceMonitor } from './SilenceMonitor.mjs';
-import { PromptBuilder, MAX_CONTEXT_TOKENS } from './PromptBuilder.mjs';
+import { PromptBuilder } from './PromptBuilder.mjs';
 
 /**
  * Default model for cost-effective suggestions
@@ -642,7 +642,7 @@ class AIAssistant {
       // Retrieve RAG context if available
       const ragContext = await this._fetchRAGContextFor(transcription, 'analysis');
 
-      this._promptBuilder.setConversationHistory(this._conversationHistory);
+      this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext);
       const response = await this._makeChatRequest(messages);
       const analysis = this._parseAnalysisResponse(response);
@@ -702,6 +702,7 @@ class AIAssistant {
       // Retrieve RAG context if available
       const ragContext = await this._fetchRAGContextFor(transcription, 'off-track');
 
+      this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildOffTrackMessages(transcription, ragContext);
       const response = await this._makeChatRequest(messages);
       const result = this._parseOffTrackResponse(response);
@@ -739,6 +740,7 @@ class AIAssistant {
       // Retrieve RAG context if available
       const ragContext = await this._fetchRAGContextFor(transcription, 'suggestions');
 
+      this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildSuggestionMessages(transcription, maxSuggestions, ragContext);
       const response = await this._makeChatRequest(messages);
       const suggestions = this._parseSuggestionsResponse(response, maxSuggestions);
@@ -771,6 +773,7 @@ class AIAssistant {
       // Retrieve RAG context if available, using both situation and target as query
       const ragContext = await this._fetchRAGContextFor(`${currentSituation} ${targetScene}`, 'narrative bridge');
 
+      this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
       const response = await this._makeChatRequest(messages);
       const content = response.choices?.[0]?.message?.content || '';
@@ -810,6 +813,7 @@ class AIAssistant {
     const _npcStart = performance.now();
 
     try {
+      this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildNPCDialogueMessages(npcName, npcContext, transcription, maxOptions);
       const response = await this._makeChatRequest(messages);
       const dialogueOptions = this._parseNPCDialogueResponse(response, maxOptions);
@@ -947,6 +951,14 @@ class AIAssistant {
   // ---------------------------------------------------------------------------
   // Private: Prompt building delegation wrappers (for backward compatibility)
   // ---------------------------------------------------------------------------
+
+  /**
+   * Sync mutable state to PromptBuilder before any build call.
+   * @private
+   */
+  _syncPromptBuilderState() {
+    this._promptBuilder.setConversationHistory(this._conversationHistory);
+  }
 
   /**
    * Builds the system prompt for the AI assistant
@@ -1420,6 +1432,7 @@ class AIAssistant {
     this._promptBuilder.setPreviousTranscription(this._previousTranscription);
 
     // Build the messages for suggestion generation
+    this._syncPromptBuilderState();
     const messages = this._promptBuilder.buildAutonomousSuggestionMessages(contextQuery.trim(), ragContext);
 
     // Make the API request
@@ -1598,4 +1611,4 @@ class AIAssistant {
   }
 }
 
-export { AIAssistant, DEFAULT_MODEL, MAX_CONTEXT_TOKENS };
+export { AIAssistant, DEFAULT_MODEL };

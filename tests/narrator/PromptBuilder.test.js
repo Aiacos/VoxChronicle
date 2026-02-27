@@ -171,18 +171,19 @@ describe('PromptBuilder', () => {
       }
     });
 
-    it('does not include chapter context in system prompt (chapter section is unused in template)', () => {
-      // NOTE: The original AIAssistant._buildSystemPrompt() computes chapterSection
-      // but never appends it to the template string. This is preserved as-is.
+    it('includes chapter context and sensitivity in system prompt', () => {
       builder.setChapterContext({
         chapterName: 'The Dark Forest',
         subsections: ['Entry', 'Clearing'],
         pageReferences: [],
         summary: 'A haunted forest.'
       });
+      builder.setSensitivity('high');
       const prompt = builder.buildSystemPrompt();
-      // chapterSection is a dead variable in the original code - not appended to prompt
-      expect(prompt).not.toContain('CURRENT CHAPTER/SCENE CONTEXT');
+      expect(prompt).toContain('CURRENT CHAPTER/SCENE CONTEXT');
+      expect(prompt).toContain('The Dark Forest');
+      expect(prompt).toContain('OFF-TRACK SENSITIVITY');
+      expect(prompt).toContain('Closely monitor');
     });
   });
 

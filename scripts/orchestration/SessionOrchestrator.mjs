@@ -744,6 +744,9 @@ class SessionOrchestrator {
     this._lastAISuggestions = null;
     this._lastOffTrackStatus = null;
 
+    if (this._aiAssistant) {
+      this._aiAssistant.stopSilenceMonitoring();
+    }
     if (this._audioRecorder?.cancel) {
       this._audioRecorder.cancel();
     }

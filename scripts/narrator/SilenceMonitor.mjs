@@ -203,6 +203,7 @@ class SilenceMonitor {
 
     if (this._silenceDetector) {
       this._silenceDetector.stop();
+      this._silenceDetector.setOnSilenceCallback(null);
     }
 
     this._silenceMonitoringActive = false;
@@ -298,7 +299,7 @@ class SilenceMonitor {
             }
           });
         } catch (callbackError) {
-          this._logger.error('Error in autonomous suggestion callback:', callbackError.message);
+          this._logger.error('Error in autonomous suggestion callback:', callbackError);
         }
       }
     } catch (error) {

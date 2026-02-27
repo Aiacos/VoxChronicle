@@ -154,6 +154,8 @@ class PromptBuilder {
   setSensitivity(sensitivity) {
     if (['low', 'medium', 'high'].includes(sensitivity)) {
       this._sensitivity = sensitivity;
+    } else {
+      this._logger.warn(`Invalid sensitivity value "${sensitivity}", keeping current: "${this._sensitivity}"`);
     }
   }
 
@@ -193,6 +195,8 @@ class PromptBuilder {
       ? `\n\nCURRENT CHAPTER/SCENE CONTEXT:\n${chapterContext}`
       : '';
 
+    const sensitivitySection = `\n\nOFF-TRACK SENSITIVITY: ${sensitivityGuide[this._sensitivity] || sensitivityGuide['medium']}`;
+
     return `You are an expert assistant for Dungeon Masters (GMs) in fantasy tabletop RPGs.
 Your SOLE purpose is to help the GM during game sessions.
 
@@ -227,7 +231,7 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
 
 - You are a retrieval and mapping engine.
 - If the players do something not covered by the material, provide the DM with the most relevant "General Themes" or "NPC Goals" from the manual to help them improvise *consistently* with the world, but do not write the scene yourself.
-- Stay silent if no relevant information can be deduced from the context.`;
+- Stay silent if no relevant information can be deduced from the context.${sensitivitySection}${chapterSection}`;
   }
 
   /**
@@ -505,6 +509,7 @@ Respond in JSON format:
    * @returns {string} Truncated context
    */
   truncateContext(context) {
+    if (!context) return '';
     const maxChars = MAX_CONTEXT_TOKENS * 4;
 
     if (context.length <= maxChars) {

@@ -96,7 +96,7 @@ const toolHandlers = {
     }
   },
   settings: () => {
-    const SettingsApp = foundry?.applications?.settings?.SettingsConfig ?? SettingsConfig;
+    const SettingsApp = foundry?.applications?.settings?.SettingsConfig ?? globalThis.SettingsConfig;
     const app = new SettingsApp();
     app.render(true, { focus: true });
     setTimeout(() => {

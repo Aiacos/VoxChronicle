@@ -1,4 +1,5 @@
-import { AIAssistant, DEFAULT_MODEL, MAX_CONTEXT_TOKENS } from '../../scripts/narrator/AIAssistant.mjs';
+import { AIAssistant, DEFAULT_MODEL } from '../../scripts/narrator/AIAssistant.mjs';
+import { MAX_CONTEXT_TOKENS } from '../../scripts/narrator/PromptBuilder.mjs';
 
 // Suppress Logger console output in tests
 beforeEach(() => {
@@ -1344,7 +1345,7 @@ describe('AIAssistant', () => {
       expect(DEFAULT_MODEL).toBe('gpt-4o-mini');
     });
 
-    it('exports MAX_CONTEXT_TOKENS', () => {
+    it('MAX_CONTEXT_TOKENS is exported from PromptBuilder', () => {
       expect(MAX_CONTEXT_TOKENS).toBe(8000);
     });
   });

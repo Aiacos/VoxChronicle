@@ -175,10 +175,12 @@ class VoxChronicle {
         const key = setting.key.split('.')[1];
         if (aiSettings.includes(key) || this._reinitializePending) {
           logger.info(`Setting '${key}' updated, reinitializing services...`);
-          // TODO [MEDIUM]: Notify user via ui.notifications.warn() when reinitialize fails.
-          // Currently only logs — user sees no feedback if services fail to restart after settings change.
           this.reinitialize().catch(err => {
             logger.error(`Reinitialization after '${key}' change failed:`, err);
+            ui.notifications?.warn(
+              game.i18n?.localize('VOXCHRONICLE.Errors.ReinitializeFailed')
+                || 'VoxChronicle: Service reinitialization failed after settings change. Check console.'
+            );
           });
         }
       }

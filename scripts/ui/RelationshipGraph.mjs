@@ -290,18 +290,20 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     ];
 
-    // TODO [LOW]: Replace O(n*m) per-type filter with single-pass count using Map/reduce.
-    // Each type scans the full _relationships array; a single pass would collect all counts.
-    Object.values(RelationshipType).forEach((type) => {
-      const count = this._relationships.filter((r) => r.relationType === type).length;
+    const typeCounts = new Map();
+    for (const r of this._relationships) {
+      typeCounts.set(r.relationType, (typeCounts.get(r.relationType) || 0) + 1);
+    }
+    for (const type of Object.values(RelationshipType)) {
+      const count = typeCounts.get(type) || 0;
       if (count > 0) {
         relationshipTypeOptions.push({
           value: type,
           label: game.i18n?.localize(`VOXCHRONICLE.RelationshipType.${type}`) || type,
-          count: count
+          count
         });
       }
-    });
+    }
 
     // Build legend items
     const legendItems = Object.entries(this._relationshipColors).map(([type, color]) => ({
@@ -535,7 +537,10 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
           RelationshipGraph.#visLoaded = true;
           resolve();
         };
-        script.onerror = () => reject(new Error('vis-network library failed to load from local bundle'));
+        script.onerror = () => {
+          RelationshipGraph.#visLoadPromise = null;
+          reject(new Error('vis-network library failed to load from local bundle'));
+        };
         document.head.appendChild(script);
       });
     }

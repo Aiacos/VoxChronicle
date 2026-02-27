@@ -123,9 +123,9 @@ class BaseAPIClient {
    * @private
    */
   _buildUrl(endpoint) {
-    // Ensure endpoint starts with /
+    const base = this._baseUrl.replace(/\/+$/, '');
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return `${this._baseUrl}${normalizedEndpoint}`;
+    return `${base}${normalizedEndpoint}`;
   }
 
   /**
@@ -159,6 +159,9 @@ class BaseAPIClient {
    * @returns {object} Rate limiter stats
    */
   getRateLimiterStats() {
+    if (!this._rateLimiter) {
+      return { requests: 0, remaining: 0, resetAt: null };
+    }
     return this._rateLimiter.getStats();
   }
 
@@ -166,6 +169,9 @@ class BaseAPIClient {
    * Reset the rate limiter state
    */
   resetRateLimiter() {
+    if (!this._rateLimiter) {
+      return;
+    }
     this._rateLimiter.reset();
     this._logger.debug('Rate limiter reset');
   }
