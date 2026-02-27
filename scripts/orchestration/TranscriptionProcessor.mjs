@@ -100,7 +100,7 @@ class TranscriptionProcessor {
     const mode =
       this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
 
-    this._logger.info(`Processing transcription: ${blobSizeMB}MB, mode=${mode}, language=${language || 'auto'}, speakers=${Object.keys(speakerMap).length}`);
+    this._logger.log(`Processing transcription: ${blobSizeMB}MB, mode=${mode}, language=${language || 'auto'}, speakers=${Object.keys(speakerMap).length}`);
 
     onProgress(0, `Starting transcription (${mode} mode)...`);
 
@@ -117,7 +117,7 @@ class TranscriptionProcessor {
       const transcriptionMs = Date.now() - transcriptionStart;
       const segmentCount = transcriptResult.segments?.length || 0;
       const textLength = transcriptResult.text?.length || 0;
-      this._logger.info(
+      this._logger.log(
         `Transcription complete: ${segmentCount} segments, ${textLength} chars in ${transcriptionMs}ms`
       );
 
@@ -143,7 +143,7 @@ class TranscriptionProcessor {
         // Create API service for fallback
         const apiService = new TranscriptionService(this._config.openaiApiKey);
 
-        this._logger.info('Using OpenAI API as fallback');
+        this._logger.log('Using OpenAI API as fallback');
 
         const fallbackStart = Date.now();
         try {
@@ -157,7 +157,7 @@ class TranscriptionProcessor {
           });
 
           const fallbackMs = Date.now() - fallbackStart;
-          this._logger.info(`Fallback to API transcription successful in ${fallbackMs}ms`);
+          this._logger.log(`Fallback to API transcription successful in ${fallbackMs}ms`);
           onProgress(100, 'Transcription complete (via API fallback)');
 
           return transcriptResult;

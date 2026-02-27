@@ -521,7 +521,7 @@ Respect Kanka API limits (30/min free, 90/min premium):
 
 ```javascript
 // Use RateLimiter utility
-const limiter = new RateLimiter(30, 60000);
+const limiter = new RateLimiter({ requestsPerMinute: 30 });
 await limiter.throttle();
 const response = await fetch(url);
 
