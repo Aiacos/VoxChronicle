@@ -684,7 +684,7 @@
       "ConfigIncomplete": "Configurazione incompleta",
       "TranscriptionCircuitBreaker": "Trascrizione in pausa per errori ripetuti. Riprova fermando e riavviando la registrazione.",
       "AutonomousSuggestionFailed": "VoxChronicle: I suggerimenti autonomi continuano a fallire. Controlla la chiave API e la connessione.",
-      "EntityExtractionFailed": "VoxChronicle: Estrazione entita fallita. La sessione continua senza entita."
+      "EntityExtractionFailed": "VoxChronicle: Estrazione entità fallita. La sessione continuerà senza entità."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle e pronto",
