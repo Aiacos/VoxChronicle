@@ -727,14 +727,7 @@ class AIAssistant {
 
     try {
       // Retrieve RAG context if available
-      let ragContext = null;
-      if (this.isRAGConfigured()) {
-        const ragResult = await this._getRAGContext(transcription);
-        if (ragResult.context) {
-          ragContext = this._formatRAGContext(ragResult);
-          this._logger.debug(`Using RAG context with ${ragResult.sources.length} sources`);
-        }
-      }
+      const ragContext = await this._fetchRAGContextFor(transcription, 'analysis');
 
       const messages = this._buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext);
       const response = await this._makeChatRequest(messages);
@@ -793,14 +786,7 @@ class AIAssistant {
 
     try {
       // Retrieve RAG context if available
-      let ragContext = null;
-      if (this.isRAGConfigured()) {
-        const ragResult = await this._getRAGContext(transcription);
-        if (ragResult.context) {
-          ragContext = this._formatRAGContext(ragResult);
-          this._logger.debug(`Using RAG context for off-track detection with ${ragResult.sources.length} sources`);
-        }
-      }
+      const ragContext = await this._fetchRAGContextFor(transcription, 'off-track');
 
       const messages = this._buildOffTrackMessages(transcription, ragContext);
       const response = await this._makeChatRequest(messages);
@@ -837,14 +823,7 @@ class AIAssistant {
 
     try {
       // Retrieve RAG context if available
-      let ragContext = null;
-      if (this.isRAGConfigured()) {
-        const ragResult = await this._getRAGContext(transcription);
-        if (ragResult.context) {
-          ragContext = this._formatRAGContext(ragResult);
-          this._logger.debug(`Using RAG context for suggestions with ${ragResult.sources.length} sources`);
-        }
-      }
+      const ragContext = await this._fetchRAGContextFor(transcription, 'suggestions');
 
       const messages = this._buildSuggestionMessages(transcription, maxSuggestions, ragContext);
       const response = await this._makeChatRequest(messages);
@@ -876,14 +855,7 @@ class AIAssistant {
 
     try {
       // Retrieve RAG context if available, using both situation and target as query
-      let ragContext = null;
-      if (this.isRAGConfigured()) {
-        const ragResult = await this._getRAGContext(`${currentSituation} ${targetScene}`);
-        if (ragResult.context) {
-          ragContext = this._formatRAGContext(ragResult);
-          this._logger.debug(`Using RAG context for narrative bridge with ${ragResult.sources.length} sources`);
-        }
-      }
+      const ragContext = await this._fetchRAGContextFor(`${currentSituation} ${targetScene}`, 'narrative bridge');
 
       const messages = this._buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
       const response = await this._makeChatRequest(messages);
@@ -1674,6 +1646,31 @@ Respond in JSON format:
   // ---------------------------------------------------------------------------
 
   /**
+   * Fetches and formats RAG context for a given query.
+   * Consolidates the repeated RAG fetch + format pattern used across public methods.
+   *
+   * @param {string} query - The query to retrieve context for
+   * @param {string} [logLabel] - Optional label for debug logging
+   * @returns {Promise<string|null>} Formatted RAG context string or null if unavailable
+   * @private
+   */
+  async _fetchRAGContextFor(query, logLabel) {
+    if (!this.isRAGConfigured()) {
+      return null;
+    }
+
+    const ragResult = await this._getRAGContext(query);
+    if (!ragResult.context) {
+      return null;
+    }
+
+    if (logLabel) {
+      this._logger.debug(`Using RAG context for ${logLabel} with ${ragResult.sources.length} sources`);
+    }
+    return this._formatRAGContext(ragResult);
+  }
+
+  /**
    * Retrieves relevant context using RAG provider
    *
    * @param {string} query - The query to retrieve context for (usually the transcription)
@@ -1845,14 +1842,7 @@ Respond in JSON format:
     }
 
     // Retrieve RAG context if available
-    let ragContext = null;
-    if (this.isRAGConfigured()) {
-      const ragResult = await this._getRAGContext(contextQuery.trim());
-      if (ragResult.context) {
-        ragContext = this._formatRAGContext(ragResult);
-        this._logger.debug(`Using RAG context for autonomous suggestion with ${ragResult.sources.length} sources`);
-      }
-    }
+    const ragContext = await this._fetchRAGContextFor(contextQuery.trim(), 'autonomous suggestion');
 
     // Build the messages for suggestion generation
     const messages = this._buildAutonomousSuggestionMessages(contextQuery.trim(), ragContext);

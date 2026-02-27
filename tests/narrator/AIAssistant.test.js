@@ -999,6 +999,86 @@ describe('AIAssistant', () => {
     });
   });
 
+  // =========================================================================
+  // _fetchRAGContextFor (consolidated RAG fetch + format helper)
+  // =========================================================================
+  describe('_fetchRAGContextFor()', () => {
+    it('should return null when RAG is not configured', async () => {
+      // No RAG provider set — isRAGConfigured() returns false
+      const result = await assistant._fetchRAGContextFor('test query');
+      expect(result).toBeNull();
+    });
+
+    it('should return formatted context when RAG has results', async () => {
+      const mockProvider = createMockRAGProvider({
+        answer: 'Test answer',
+        sources: [{ title: 'Tavern Lore', excerpt: 'The tavern is old and haunted.' }]
+      });
+      assistant.setRAGProvider(mockProvider);
+      assistant.setUseRAG(true);
+
+      const result = await assistant._fetchRAGContextFor('test query', 'test');
+      expect(result).toBeTruthy();
+      expect(result).toContain('Tavern Lore');
+      expect(result).toContain('The tavern is old and haunted.');
+      expect(mockProvider.query).toHaveBeenCalledWith('test query', expect.any(Object));
+    });
+
+    it('should return null when RAG returns empty context', async () => {
+      const mockProvider = createMockRAGProvider({
+        answer: '',
+        sources: []
+      });
+      assistant.setRAGProvider(mockProvider);
+      assistant.setUseRAG(true);
+
+      const result = await assistant._fetchRAGContextFor('test query');
+      expect(result).toBeNull();
+    });
+
+    it('should include sources header in formatted output', async () => {
+      const mockProvider = createMockRAGProvider({
+        answer: 'Synthesized answer',
+        sources: [
+          { title: 'Chapter 1', excerpt: 'The hero arrives.' },
+          { title: 'NPC Guide', excerpt: 'The bartender is friendly.' }
+        ]
+      });
+      assistant.setRAGProvider(mockProvider);
+      assistant.setUseRAG(true);
+
+      const result = await assistant._fetchRAGContextFor('hero bartender', 'multi-source');
+      expect(result).toContain('RELEVANT SOURCES: Chapter 1, NPC Guide');
+      expect(result).toContain('The hero arrives.');
+      expect(result).toContain('The bartender is friendly.');
+    });
+
+    it('should pass logLabel to debug logging', async () => {
+      const mockProvider = createMockRAGProvider({
+        answer: 'Answer',
+        sources: [{ title: 'Src', excerpt: 'Content here' }]
+      });
+      assistant.setRAGProvider(mockProvider);
+      assistant.setUseRAG(true);
+
+      // Should not throw and should complete successfully
+      const result = await assistant._fetchRAGContextFor('query', 'my-label');
+      expect(result).toBeTruthy();
+    });
+
+    it('should work without logLabel parameter', async () => {
+      const mockProvider = createMockRAGProvider({
+        answer: 'Answer',
+        sources: [{ title: 'Src', excerpt: 'Some content' }]
+      });
+      assistant.setRAGProvider(mockProvider);
+      assistant.setUseRAG(true);
+
+      const result = await assistant._fetchRAGContextFor('query');
+      expect(result).toBeTruthy();
+    });
+  });
+
   describe('_handleSilenceEvent()', () => {
     it('generates suggestion and invokes callback', async () => {
       const callback = vi.fn();
