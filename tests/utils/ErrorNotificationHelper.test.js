@@ -71,5 +71,13 @@ describe('ErrorNotificationHelper', () => {
         ErrorNotificationHelper.notify('test', new Error('fail'));
       }).not.toThrow();
     });
+
+    it('should include category in fallback message when i18n unavailable', () => {
+      delete globalThis.game;
+      ErrorNotificationHelper.notify('transcription', new Error('API timeout'));
+      const msg = ui.notifications.error.mock.calls[0][0];
+      expect(msg).toContain('[transcription]');
+      expect(msg).toContain('API timeout');
+    });
   });
 });

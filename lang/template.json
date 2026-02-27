@@ -677,11 +677,14 @@
       "ImageCachingFailed": "",
       "ImageGalleryLoadFailed": "",
       "RagStateLoadFailed": "",
-      "ClipboardFailed": ""
+      "ClipboardFailed": "",
+      "FailedToOpenSettings": ""
     },
     "Warnings": {
       "ConfigIncomplete": "",
-      "TranscriptionCircuitBreaker": ""
+      "TranscriptionCircuitBreaker": "",
+      "AutonomousSuggestionFailed": "",
+      "EntityExtractionFailed": ""
     },
     "Notifications": {
       "ModuleReady": "",

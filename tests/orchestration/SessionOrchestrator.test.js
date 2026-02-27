@@ -483,6 +483,14 @@ describe('SessionOrchestrator', () => {
       await o.startSession();
       expect(() => o.cancelSession()).not.toThrow();
     });
+
+    it('should return early when _isStopping is true (race condition guard)', async () => {
+      await orchestrator.startSession();
+      orchestrator._isStopping = true;
+      orchestrator.cancelSession();
+      // audioRecorder.cancel should NOT be called because the guard returns early
+      expect(services.audioRecorder.cancel).not.toHaveBeenCalled();
+    });
   });
 
   // ── processTranscription ──────────────────────────────────────────────
@@ -621,6 +629,28 @@ describe('SessionOrchestrator', () => {
       };
       await orchestrator._extractEntities();
       expect(orchestrator._currentSession.relationships).toBeTruthy();
+    });
+
+    it('should skip relationship extraction when extraction result has warnings', async () => {
+      orchestrator.setOptions({ autoExtractRelationships: true });
+      // Mock extractAll to return a result with a non-empty warnings array
+      orchestrator._entityProcessor.extractAll = vi.fn().mockResolvedValue({
+        characters: [{ name: 'Gandalf', description: 'A wizard' }],
+        locations: [],
+        items: [],
+        moments: [],
+        totalCount: 1,
+        warnings: ['Partial extraction failure: some entities could not be parsed']
+      });
+      orchestrator._entityProcessor.extractRelationships = vi.fn().mockResolvedValue([]);
+      orchestrator._currentSession = {
+        transcript: { text: 'Gandalf went to the Shire' },
+        title: 'Test',
+        errors: []
+      };
+      await orchestrator._extractEntities();
+      // extractRelationships should NOT have been called due to warnings
+      expect(orchestrator._entityProcessor.extractRelationships).not.toHaveBeenCalled();
     });
   });
 

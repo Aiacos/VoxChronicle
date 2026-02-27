@@ -189,6 +189,9 @@ class PromptBuilder {
       zh: 'Chinese'
     };
 
+    if (this._primaryLanguage && !languageNames[this._primaryLanguage]) {
+      this._logger.warn(`Unrecognized language code "${this._primaryLanguage}", falling back to English for AI responses`);
+    }
     const responseLang = languageNames[this._primaryLanguage] || languageNames['en'];
 
     const chapterSection = chapterContext

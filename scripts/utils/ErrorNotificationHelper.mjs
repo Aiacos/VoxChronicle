@@ -35,7 +35,7 @@ class ErrorNotificationHelper {
 
     const i18nKey = `VOXCHRONICLE.Errors.${category.charAt(0).toUpperCase() + category.slice(1)}`;
     const message = globalThis.game?.i18n?.format(i18nKey, { error: safeMessage })
-      || `VoxChronicle: ${safeMessage}`;
+      || `VoxChronicle [${category}]: ${safeMessage}`;
 
     const notifyFn = options.warn
       ? globalThis.ui?.notifications?.warn

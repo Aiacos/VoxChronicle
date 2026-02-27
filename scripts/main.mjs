@@ -96,13 +96,23 @@ const toolHandlers = {
     }
   },
   settings: () => {
-    const SettingsApp = foundry?.applications?.settings?.SettingsConfig ?? globalThis.SettingsConfig;
-    const app = new SettingsApp();
-    app.render(true, { focus: true });
-    setTimeout(() => {
-      const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
-      if (section) section.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    try {
+      const SettingsApp = foundry?.applications?.settings?.SettingsConfig ?? globalThis.SettingsConfig;
+      if (!SettingsApp) {
+        logger.error('SettingsConfig class not found');
+        ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSettings') || 'VoxChronicle: Failed to open settings. Check console.');
+        return;
+      }
+      const app = new SettingsApp();
+      app.render(true, { focus: true });
+      setTimeout(() => {
+        const section = document.querySelector(`[data-tab="${MODULE_ID}"]`);
+        if (section) section.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } catch (error) {
+      logger.error('Failed to open settings:', error);
+      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSettings') || 'VoxChronicle: Failed to open settings. Check console.');
+    }
   }
 };
 

@@ -470,6 +470,10 @@ class SessionOrchestrator {
         error: 'Entity extraction failed',
         timestamp: Date.now()
       });
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Warnings.EntityExtractionFailed')
+          || 'VoxChronicle: Entity extraction failed. Session will continue without entities.'
+      );
       return null;
     }
 

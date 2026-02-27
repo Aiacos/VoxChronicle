@@ -85,6 +85,13 @@ class SilenceMonitor {
      * @private
      */
     this._generateSuggestionFn = null;
+
+    /**
+     * Consecutive suggestion generation failures (resets on success)
+     * @type {number}
+     * @private
+     */
+    this._consecutiveSuggestionFailures = 0;
   }
 
   // ---------------------------------------------------------------------------
@@ -282,8 +289,9 @@ class SilenceMonitor {
         return;
       }
 
-      // Track the suggestion
+      // Track the suggestion and reset failure counter
       this._silenceSuggestionCount++;
+      this._consecutiveSuggestionFailures = 0;
 
       this._logger.info(`Generated autonomous suggestion: type=${suggestion.type}, confidence=${suggestion.confidence}`);
 
@@ -304,6 +312,13 @@ class SilenceMonitor {
       }
     } catch (error) {
       this._logger.error('Failed to generate autonomous suggestion:', error);
+      this._consecutiveSuggestionFailures++;
+      if (this._consecutiveSuggestionFailures === 3) {
+        globalThis.ui?.notifications?.warn(
+          globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.AutonomousSuggestionFailed')
+            || 'VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.'
+        );
+      }
     }
   }
 }

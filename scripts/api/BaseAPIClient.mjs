@@ -55,7 +55,7 @@ class BaseAPIClient {
   constructor(options = {}) {
     this._apiKey = options.apiKey || '';
     this._baseUrl = options.baseUrl || '';
-    this._timeout = options.timeout || 30000;
+    this._timeout = options.timeout ?? 30000;
     this._logger = Logger.createChild(options.loggerName || 'BaseAPIClient', {
       sanitize: options.sanitizeLogger !== false
     });
@@ -141,7 +141,7 @@ class BaseAPIClient {
    */
   _createTimeoutController(timeout) {
     const controller = new AbortController();
-    const timeoutMs = timeout || this._timeout;
+    const timeoutMs = timeout ?? this._timeout;
 
     const timeoutId = setTimeout(() => {
       controller.abort();

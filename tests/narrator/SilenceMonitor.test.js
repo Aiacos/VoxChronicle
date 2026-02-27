@@ -419,6 +419,68 @@ describe('SilenceMonitor', () => {
   });
 
   // =========================================================================
+  // _consecutiveSuggestionFailures
+  // =========================================================================
+  describe('_consecutiveSuggestionFailures counter', () => {
+    const silenceEvent = { silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 };
+
+    it('shows warning via ui.notifications.warn after 3 consecutive failures', async () => {
+      const warnFn = vi.fn();
+      globalThis.ui = { notifications: { warn: warnFn } };
+      globalThis.game = { i18n: { localize: vi.fn((key) => key) } };
+
+      const generateFn = vi.fn().mockRejectedValue(new Error('API down'));
+      monitor.setGenerateSuggestionFn(generateFn);
+
+      // First two failures — no warning
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 1 });
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 2 });
+      expect(warnFn).not.toHaveBeenCalled();
+
+      // Third consecutive failure — warning triggered
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 3 });
+      expect(warnFn).toHaveBeenCalledTimes(1);
+
+      delete globalThis.ui;
+      delete globalThis.game;
+    });
+
+    it('does not trigger warning for fewer than 3 consecutive failures', async () => {
+      const warnFn = vi.fn();
+      globalThis.ui = { notifications: { warn: warnFn } };
+
+      const generateFn = vi.fn().mockRejectedValue(new Error('API down'));
+      monitor.setGenerateSuggestionFn(generateFn);
+
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 1 });
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 2 });
+
+      expect(warnFn).not.toHaveBeenCalled();
+      expect(monitor._consecutiveSuggestionFailures).toBe(2);
+
+      delete globalThis.ui;
+    });
+
+    it('resets failure counter on successful suggestion after failures', async () => {
+      const generateFn = vi.fn()
+        .mockRejectedValueOnce(new Error('fail 1'))
+        .mockRejectedValueOnce(new Error('fail 2'))
+        .mockResolvedValueOnce({ type: 'narration', content: 'Success!', confidence: 0.8 });
+
+      monitor.setGenerateSuggestionFn(generateFn);
+
+      // Two failures
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 1 });
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 2 });
+      expect(monitor._consecutiveSuggestionFailures).toBe(2);
+
+      // Success — counter resets
+      await monitor._handleSilenceEvent({ ...silenceEvent, silenceCount: 3 });
+      expect(monitor._consecutiveSuggestionFailures).toBe(0);
+    });
+  });
+
+  // =========================================================================
   // Integration: full lifecycle
   // =========================================================================
   describe('full lifecycle', () => {

@@ -677,11 +677,14 @@
       "ImageCachingFailed": "[EN] VoxChronicle: Image caching failed — URL expires in 60 minutes.",
       "ImageGalleryLoadFailed": "[EN] VoxChronicle: Could not load image gallery from settings.",
       "RagStateLoadFailed": "[EN] VoxChronicle: Could not restore RAG file mappings — reindexing may be required.",
-      "ClipboardFailed": "[EN] Failed to copy to clipboard."
+      "ClipboardFailed": "[EN] Failed to copy to clipboard.",
+      "FailedToOpenSettings": "[EN] VoxChronicle: Failed to open settings. Check console."
     },
     "Warnings": {
       "ConfigIncomplete": "Configuration incomplète",
-      "TranscriptionCircuitBreaker": "[EN] Transcription paused due to repeated errors. Try stopping and restarting recording."
+      "TranscriptionCircuitBreaker": "[EN] Transcription paused due to repeated errors. Try stopping and restarting recording.",
+      "AutonomousSuggestionFailed": "[EN] VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.",
+      "EntityExtractionFailed": "[EN] VoxChronicle: Entity extraction failed. Session will continue without entities."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle prêt",
