@@ -371,6 +371,7 @@
       "SelectAll": "Seleziona Tutto",
       "AddSelected": "Aggiungi Selezionati",
       "SuggestAddedCount": "Aggiunti {count} termine/i",
+      "AlreadyAdded": "già aggiunto",
       "SuggestPartialFailure": "Alcuni dati di Foundry non sono stati letti. I suggerimenti potrebbero essere incompleti.",
       "NoTermsSelected": "Nessun termine selezionato"
     },
@@ -685,7 +686,11 @@
       "TranscriptionCircuitBreaker": "Trascrizione in pausa per errori ripetuti. Riprova fermando e riavviando la registrazione.",
       "AutonomousSuggestionFailed": "VoxChronicle: I suggerimenti autonomi continuano a fallire. Controlla la chiave API e la connessione.",
       "EntityExtractionFailed": "VoxChronicle: Estrazione entità fallita. La sessione continuerà senza entità.",
-      "RagStateSaveFailed": "VoxChronicle: Impossibile salvare lo stato RAG — potrebbe essere necessaria la reindicizzazione alla prossima sessione."
+      "RagStateSaveFailed": "VoxChronicle: Impossibile salvare lo stato RAG — potrebbe essere necessaria la reindicizzazione alla prossima sessione.",
+      "RAGProviderFallback": "VoxChronicle: Provider RAG \"{requested}\" non trovato. Utilizzo di \"{fallback}\" come alternativa. Controlla le impostazioni RAG.",
+      "RulesLoadAllFailed": "VoxChronicle: Impossibile caricare dati dai compendi per il riferimento regole. Le domande sulle regole non funzioneranno.",
+      "JournalContextFailed": "VoxChronicle: Impossibile caricare il diario dell'avventura per il contesto AI. I suggerimenti saranno generici.",
+      "CompendiumParseFailures": "VoxChronicle: {count} compendio/i non caricato/i. Il contesto AI potrebbe essere incompleto."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle e pronto",

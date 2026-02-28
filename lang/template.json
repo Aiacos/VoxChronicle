@@ -371,6 +371,7 @@
       "SelectAll": "",
       "AddSelected": "",
       "SuggestAddedCount": "",
+      "AlreadyAdded": "",
       "SuggestPartialFailure": "",
       "NoTermsSelected": ""
     },
@@ -685,7 +686,11 @@
       "TranscriptionCircuitBreaker": "",
       "AutonomousSuggestionFailed": "",
       "EntityExtractionFailed": "",
-      "RagStateSaveFailed": ""
+      "RagStateSaveFailed": "",
+      "RAGProviderFallback": "",
+      "RulesLoadAllFailed": "",
+      "JournalContextFailed": "",
+      "CompendiumParseFailures": ""
     },
     "Notifications": {
       "ModuleReady": "",

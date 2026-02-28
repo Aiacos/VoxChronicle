@@ -913,6 +913,10 @@ class SessionOrchestrator {
       }
     } catch (error) {
       this._logger.warn(`Failed to initialize journal context: ${error.message}`);
+      globalThis.ui?.notifications?.info(
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.JournalContextFailed')
+          || 'VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.'
+      );
     }
   }
 

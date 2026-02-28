@@ -4,7 +4,6 @@
  * @module vox-chronicle
  */
 
-import { MODULE_ID } from '../constants.mjs';
 import { Logger } from './Logger.mjs';
 
 /**

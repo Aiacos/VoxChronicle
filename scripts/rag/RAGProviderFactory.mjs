@@ -45,6 +45,12 @@ export class RAGProviderFactory {
 
     if (!ProviderClass) {
       logger.warn(`Unknown RAG provider "${type}", falling back to "${DEFAULT_PROVIDER}"`);
+
+      globalThis.ui?.notifications?.warn(
+        globalThis.game?.i18n?.format('VOXCHRONICLE.Warnings.RAGProviderFallback', { requested: type, fallback: DEFAULT_PROVIDER })
+          || `VoxChronicle: RAG provider "${type}" not found. Falling back to "${DEFAULT_PROVIDER}". Check your RAG settings.`
+      );
+
       const FallbackClass = providerRegistry.get(DEFAULT_PROVIDER);
 
       if (!FallbackClass) {

@@ -230,11 +230,15 @@ export class RAGFlowProvider extends RAGProvider {
         onProgress?.(documents.length, documents.length, 'Parsing documents...');
         const parseStart = Date.now();
         await this.#triggerParsing(uploadedDocIds);
-        await this.#waitForParsing(uploadedDocIds);
+        const parseResult = await this.#waitForParsing(uploadedDocIds);
+        if (parseResult?.parseFailed > 0) {
+          failed += parseResult.parseFailed;
+          indexed = Math.max(0, indexed - parseResult.parseFailed);
+          this._logger.warn(`${parseResult.parseFailed} documents failed parsing after upload`);
+        }
         this._logger.info(`Parsing complete for ${uploadedDocIds.length} documents in ${Date.now() - parseStart}ms`);
       } catch (err) {
         this._logger.error(`Document parsing failed: ${err.message}`);
-        // Docs are uploaded but not parsed — don't count as failure since they may still be usable
       }
     }
 
@@ -548,11 +552,11 @@ export class RAGFlowProvider extends RAGProvider {
       if (anyFailed) {
         const failedDocs = targetDocs.filter(d => d.run === 'FAIL' || d.status === 'FAIL');
         this._logger.warn(`${failedDocs.length} documents failed parsing`);
-        return; // Continue anyway — some docs may have parsed successfully
+        return { parseFailed: failedDocs.length };
       }
 
       if (allDone) {
-        return;
+        return { parseFailed: 0 };
       }
 
       await new Promise(resolve => setTimeout(resolve, PARSE_POLL_INTERVAL_MS));

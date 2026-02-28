@@ -371,6 +371,7 @@
       "SelectAll": "Alle auswählen",
       "AddSelected": "Ausgewählte hinzufügen",
       "SuggestAddedCount": "{count} Begriff(e) hinzugefügt",
+      "AlreadyAdded": "bereits hinzugefügt",
       "SuggestPartialFailure": "Einige Foundry-Daten konnten nicht gelesen werden. Vorschläge können unvollständig sein.",
       "NoTermsSelected": "Keine Begriffe ausgewählt"
     },
@@ -685,7 +686,11 @@
       "TranscriptionCircuitBreaker": "Transkription wurde aufgrund wiederholter Fehler pausiert. Versuchen Sie, die Aufnahme zu stoppen und neu zu starten.",
       "AutonomousSuggestionFailed": "VoxChronicle: Autonome Vorschläge schlagen wiederholt fehl. Überprüfen Sie Ihren API-Schlüssel und die Verbindung.",
       "EntityExtractionFailed": "VoxChronicle: Entitätsextraktion fehlgeschlagen. Die Sitzung wird ohne Entitäten fortgesetzt.",
-      "RagStateSaveFailed": "VoxChronicle: RAG-Status konnte nicht gespeichert werden — Neuindizierung könnte in der nächsten Sitzung erforderlich sein."
+      "RagStateSaveFailed": "VoxChronicle: RAG-Status konnte nicht gespeichert werden — Neuindizierung könnte in der nächsten Sitzung erforderlich sein.",
+      "RAGProviderFallback": "VoxChronicle: RAG-Anbieter \"{requested}\" nicht gefunden. Fallback auf \"{fallback}\". Überprüfen Sie Ihre RAG-Einstellungen.",
+      "RulesLoadAllFailed": "VoxChronicle: Regelreferenz konnte keine Kompendiumsdaten laden. Regel-Q&A funktioniert nicht.",
+      "JournalContextFailed": "VoxChronicle: Abenteuerjournal konnte nicht für AI-Kontext geladen werden. Vorschläge werden generisch sein.",
+      "CompendiumParseFailures": "VoxChronicle: {count} Kompendiumspaket(e) konnten nicht geladen werden. AI-Kontext möglicherweise unvollständig."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle bereit",

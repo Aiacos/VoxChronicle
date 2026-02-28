@@ -26,10 +26,7 @@ const SENSITIVE_PATTERNS = {
   API_KEY: /\b(api[_-]?key[s]?["\s:=]+)([a-zA-Z0-9\-._~+/]{20,})/gi,
 
   // Authorization header values
-  AUTHORIZATION: /\b(authorization["\s:=]+)([a-zA-Z0-9\-._~+/\s]{20,})/gi,
-
-  // Kanka tokens (format may vary)
-  KANKA_TOKEN: /\b([a-zA-Z0-9]{64,})\b/g
+  AUTHORIZATION: /\b(authorization["\s:=]+)([a-zA-Z0-9\-._~+/\s]{20,})/gi
 };
 
 /**

@@ -150,6 +150,13 @@ export class CompendiumParser {
 
     this._journalCompendiums = results;
     const totalEntries = results.reduce((sum, c) => sum + c.entries.length, 0);
+    const failedPacks = journalPacks.length - results.length;
+    if (failedPacks > 0) {
+      globalThis.ui?.notifications?.warn(
+        globalThis.game?.i18n?.format('VOXCHRONICLE.Warnings.CompendiumParseFailures', { count: failedPacks })
+          || `VoxChronicle: ${failedPacks} compendium pack(s) could not be loaded. AI context may be incomplete.`
+      );
+    }
     this._logger.debug(`parseJournalCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
 
     return results;
@@ -213,6 +220,13 @@ export class CompendiumParser {
 
     this._rulesCompendiums = results;
     const totalEntries = results.reduce((sum, c) => sum + c.entries.length, 0);
+    const failedRulesPacks = rulesPacks.length - results.length;
+    if (failedRulesPacks > 0) {
+      globalThis.ui?.notifications?.warn(
+        globalThis.game?.i18n?.format('VOXCHRONICLE.Warnings.CompendiumParseFailures', { count: failedRulesPacks })
+          || `VoxChronicle: ${failedRulesPacks} compendium pack(s) could not be loaded. AI context may be incomplete.`
+      );
+    }
     this._logger.debug(`parseRulesCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
 
     return results;

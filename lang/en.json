@@ -371,6 +371,7 @@
       "SelectAll": "Select All",
       "AddSelected": "Add Selected",
       "SuggestAddedCount": "Added {count} term(s)",
+      "AlreadyAdded": "already added",
       "SuggestPartialFailure": "Some Foundry data could not be read. Suggestions may be incomplete.",
       "NoTermsSelected": "No terms selected"
     },
@@ -685,7 +686,11 @@
       "TranscriptionCircuitBreaker": "Transcription paused due to repeated errors. Try stopping and restarting recording.",
       "AutonomousSuggestionFailed": "VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.",
       "EntityExtractionFailed": "VoxChronicle: Entity extraction failed. Session will continue without entities.",
-      "RagStateSaveFailed": "VoxChronicle: Failed to persist RAG state — reindexing may be required next session."
+      "RagStateSaveFailed": "VoxChronicle: Failed to persist RAG state — reindexing may be required next session.",
+      "RAGProviderFallback": "VoxChronicle: RAG provider \"{requested}\" not found. Falling back to \"{fallback}\". Check your RAG settings.",
+      "RulesLoadAllFailed": "VoxChronicle: Rules reference could not load any compendium data. Rules Q&A will not work.",
+      "JournalContextFailed": "VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.",
+      "CompendiumParseFailures": "VoxChronicle: {count} compendium pack(s) could not be loaded. AI context may be incomplete."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle is ready",

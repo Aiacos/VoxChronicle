@@ -194,6 +194,15 @@ export class RulesReference {
     }
 
     this._isLoaded = true;
+
+    if (this._rulesCache.size === 0 && game.packs?.size > 0) {
+      this._logger.error('All compendium packs failed to load. Rules reference is empty.');
+      globalThis.ui?.notifications?.warn(
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.RulesLoadAllFailed')
+          || 'VoxChronicle: Rules reference could not load any compendium data. Rules Q&A will not work.'
+      );
+    }
+
     this._logger.debug(`loadRules() exit — ${this._rulesCache.size} rules loaded`);
   }
 

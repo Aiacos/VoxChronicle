@@ -176,9 +176,7 @@ export const DND_VOCABULARY = {
     'Mummy',
     'Mummy Lord',
 
-    // Aberrations
-    'Beholder',
-    'Aboleth',
+    // Aberrations (Beholder and Aboleth listed under Iconic Monsters)
     'Chuul',
     'Gibbering Mouther',
     'Intellect Devourer',

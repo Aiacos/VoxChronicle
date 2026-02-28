@@ -302,7 +302,7 @@ function injectValidationButton(container, inputName, targetName, validateFn) {
   const icon = document.createElement('i');
   icon.className = 'fa-solid fa-plug';
   validateButton.appendChild(icon);
-  validateButton.append(' Test Connection');
+  validateButton.append(` ${game.i18n?.localize('VOXCHRONICLE.Settings.TestConnection') || 'Test Connection'}`);
 
   inputElement.parentElement.appendChild(validateButton);
 

@@ -226,12 +226,12 @@ describe('injectValidationButton()', () => {
     expect(button.dataset.validationTarget).toBe('openai');
   });
 
-  it('should include "Test Connection" text in the button', () => {
+  it('should include localized "Test Connection" text in the button', () => {
     const validateFn = vi.fn().mockResolvedValue(true);
     injectValidationButton(container, 'vox-chronicle.openaiApiKey', 'openai', validateFn);
 
     const button = container.querySelector('.vox-chronicle-validate-button');
-    expect(button.textContent).toContain('Test Connection');
+    expect(button.textContent).toContain('VOXCHRONICLE.Settings.TestConnection');
   });
 
   it('should include a plug icon in the button initially', () => {

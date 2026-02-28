@@ -710,7 +710,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
                      value="${safeName}"
                      ${disabled} />
               ${safeName}
-              ${exists ? '<em>(already added)</em>' : ''}
+              ${exists ? `<em>(${game.i18n?.localize('VOXCHRONICLE.Vocabulary.AlreadyAdded') || 'already added'})</em>` : ''}
             </label>
           `;
         });
@@ -748,7 +748,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
                      value="${safeName}"
                      ${disabled} />
               ${safeName}
-              ${exists ? '<em>(already added)</em>' : ''}
+              ${exists ? `<em>(${game.i18n?.localize('VOXCHRONICLE.Vocabulary.AlreadyAdded') || 'already added'})</em>` : ''}
             </label>
           `;
         });

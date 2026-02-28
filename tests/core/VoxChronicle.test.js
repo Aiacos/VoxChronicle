@@ -1742,4 +1742,188 @@ describe('VoxChronicle', () => {
       });
     });
   });
+
+  // ====================================================================
+  // _registerHooks — updateSetting handler
+  // ====================================================================
+
+  describe('_registerHooks (updateSetting handler)', () => {
+    /**
+     * Helper: initialize an instance then extract the updateSetting callback
+     * that was registered via Hooks.on('updateSetting', cb).
+     */
+    async function initAndGetHookCallback(settingsOverrides = {}) {
+      configureSettings(fullSettings(settingsOverrides));
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Find the updateSetting callback registered via Hooks.on
+      const hookOnCall = Hooks.on.mock.calls.find(
+        ([event]) => event === 'updateSetting'
+      );
+      expect(hookOnCall).toBeDefined();
+      const callback = hookOnCall[1];
+      return { instance, callback };
+    }
+
+    it('should invalidate _cachedSettingsStatus on any module setting change', async () => {
+      const { instance, callback } = await initAndGetHookCallback();
+
+      // Pre-populate the cache
+      instance._cachedSettingsStatus = { openaiConfigured: true };
+
+      // Fire a non-critical module setting change
+      callback({ key: 'vox-chronicle.debugMode' });
+
+      expect(instance._cachedSettingsStatus).toBeNull();
+    });
+
+    it('should trigger reinitialize for critical setting openaiApiKey', async () => {
+      const { instance, callback } = await initAndGetHookCallback();
+
+      // Spy on reinitialize
+      const reinitSpy = vi.spyOn(instance, 'reinitialize').mockResolvedValue(undefined);
+
+      callback({ key: 'vox-chronicle.openaiApiKey' });
+
+      expect(reinitSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should trigger reinitialize for each critical setting (kankaApiToken, ragEnabled, transcriptionMode)', async () => {
+      const criticalSettings = ['kankaApiToken', 'ragEnabled', 'transcriptionMode'];
+
+      for (const settingName of criticalSettings) {
+        // Reset for each iteration
+        VoxChronicle.resetInstance();
+        vi.clearAllMocks();
+        // Re-establish mocks cleared by resetInstance
+        mockAudioRecorder.mockImplementation(() => ({}));
+        mockTranscriptionFactoryCreate.mockResolvedValue({ type: 'cloud' });
+        mockImageGenerationService.mockImplementation(() => ({}));
+        mockKankaService.mockImplementation(() => ({}));
+        mockEntityExtractor.mockImplementation(() => ({}));
+        mockNarrativeExporter.mockImplementation(() => ({ setOpenAIClient: vi.fn() }));
+        mockSessionOrchestratorInstance.setTranscriptionConfig = vi.fn();
+        mockSessionOrchestratorInstance.setNarratorServices = vi.fn();
+        mockSessionOrchestrator.mockImplementation(() => mockSessionOrchestratorInstance);
+        mockVocabularyDictionary.mockImplementation(() => ({
+          initialize: vi.fn().mockResolvedValue(undefined)
+        }));
+        mockOpenAIClient.mockImplementation(() => ({}));
+        mockSilenceDetector.mockImplementation(() => ({}));
+        mockSettingsModule.getRAGSettings.mockReturnValue({
+          enabled: false, provider: 'openai-file-search', maxResults: 5,
+          autoIndex: true, silenceThresholdMs: 3000, vectorStoreId: null,
+          campaignId: 'test-campaign'
+        });
+        mockSettingsModule.setRAGVectorStoreId = vi.fn().mockResolvedValue(undefined);
+        mockSettingsModule.validateServerUrls = vi.fn();
+
+        const { instance, callback } = await initAndGetHookCallback();
+        const reinitSpy = vi.spyOn(instance, 'reinitialize').mockResolvedValue(undefined);
+
+        callback({ key: `vox-chronicle.${settingName}` });
+
+        expect(reinitSpy).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    it('should NOT trigger reinitialize for non-critical module settings', async () => {
+      const { instance, callback } = await initAndGetHookCallback();
+      const reinitSpy = vi.spyOn(instance, 'reinitialize').mockResolvedValue(undefined);
+
+      // Fire a non-critical setting change
+      callback({ key: 'vox-chronicle.debugMode' });
+
+      expect(reinitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should ignore settings from other modules entirely', async () => {
+      const { instance, callback } = await initAndGetHookCallback();
+
+      // Pre-populate cache to verify it is NOT invalidated
+      instance._cachedSettingsStatus = { openaiConfigured: true };
+      const reinitSpy = vi.spyOn(instance, 'reinitialize').mockResolvedValue(undefined);
+
+      // Fire a setting change from a different module
+      callback({ key: 'some-other-module.openaiApiKey' });
+
+      // Cache should remain intact
+      expect(instance._cachedSettingsStatus).toEqual({ openaiConfigured: true });
+      expect(reinitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should catch and log reinitialize errors', async () => {
+      const { instance, callback } = await initAndGetHookCallback();
+
+      const testError = new Error('Reinit boom');
+      vi.spyOn(instance, 'reinitialize').mockRejectedValue(testError);
+
+      // Fire a critical setting change — the .catch() handler should swallow the error
+      callback({ key: 'vox-chronicle.openaiApiKey' });
+
+      // Wait for the microtask (promise rejection handler) to execute
+      await vi.waitFor(() => {
+        expect(mockLoggerChild.error).toHaveBeenCalledWith(
+          expect.stringContaining('openaiApiKey'),
+          testError
+        );
+      });
+    });
+
+    it('should trigger reinitialize for a non-critical setting when _reinitializePending is true', async () => {
+      const { instance, callback } = await initAndGetHookCallback();
+
+      // Simulate deferred reinitialize (e.g. setting changed during active session)
+      instance._reinitializePending = true;
+      const reinitSpy = vi.spyOn(instance, 'reinitialize').mockResolvedValue(undefined);
+
+      // Fire a non-critical setting change — should still reinit due to pending flag
+      callback({ key: 'vox-chronicle.debugMode' });
+
+      expect(reinitSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ====================================================================
+  // _getCachedSettingsStatus — caching behavior
+  // ====================================================================
+
+  describe('_getCachedSettingsStatus (caching)', () => {
+    it('should reuse cached value on consecutive calls', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // First call populates cache
+      const result1 = instance._getCachedSettingsStatus();
+      // Record how many times game.settings.get was called
+      const callCountAfterFirst = game.settings.get.mock.calls.length;
+
+      // Second call should reuse cache — no additional game.settings.get calls
+      const result2 = instance._getCachedSettingsStatus();
+      const callCountAfterSecond = game.settings.get.mock.calls.length;
+
+      expect(result1).toBe(result2); // Same object reference (cached)
+      expect(callCountAfterSecond).toBe(callCountAfterFirst);
+    });
+
+    it('should rebuild cache after _cachedSettingsStatus is set to null', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Populate cache
+      const result1 = instance._getCachedSettingsStatus();
+      expect(result1).toBeDefined();
+
+      // Invalidate cache
+      instance._cachedSettingsStatus = null;
+
+      // Next call rebuilds the cache — returns a new object
+      const result2 = instance._getCachedSettingsStatus();
+      expect(result2).not.toBe(result1); // New object, not same reference
+      expect(result2).toEqual(result1);  // But with same content
+    });
+  });
 });

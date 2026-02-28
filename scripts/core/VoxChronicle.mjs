@@ -34,7 +34,7 @@ import { SilenceDetector } from '../narrator/SilenceDetector.mjs';
 import { Settings } from './Settings.mjs';
 
 // Create logger instance for VoxChronicle
-const logger = Logger.createChild('VoxChronicle');
+const logger = Logger.createChild('VoxChronicle', { sanitize: true });
 
 /**
  * Main VoxChronicle singleton class
@@ -213,7 +213,7 @@ class VoxChronicle {
       const kankaCampaignId = this._getSetting('kankaCampaignId')?.trim();
       
       if (openaiApiKey) {
-        logger.info(`OpenAI API key loaded (${openaiApiKey.substring(0, 5)}...)`);
+        logger.info('OpenAI API key loaded');
       } else {
         logger.warn('OpenAI API key is empty or not configured');
       }

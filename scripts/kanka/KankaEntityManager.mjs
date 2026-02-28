@@ -634,6 +634,8 @@ class KankaEntityManager {
 
       // Search each entity type sequentially
       // Note: We continue even if one type fails to maximize results
+      let searchFailures = 0;
+      let lastSearchError = null;
       for (const type of types) {
         try {
           const endpoint = this._buildCampaignEndpoint(type);
@@ -650,8 +652,15 @@ class KankaEntityManager {
         } catch (error) {
           // Log error but continue searching other types
           // This prevents one failure from blocking all results
+          searchFailures++;
+          lastSearchError = error;
           this._logger.warn(`Failed to search ${type}: ${error.message}`);
         }
+      }
+
+      // If ALL types failed, propagate the error instead of caching empty results
+      if (searchFailures === types.length && lastSearchError) {
+        throw lastSearchError;
       }
     }
 

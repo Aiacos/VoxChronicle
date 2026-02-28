@@ -802,8 +802,8 @@ describe('RAGFlowProvider', () => {
       const docs = [{ id: 'test-doc', title: 'Test', content: 'Content' }];
       const result = await provider.indexDocuments(docs);
 
-      // Document was uploaded (indexed=1), but parsing failed — still counted as indexed
-      expect(result).toEqual({ indexed: 1, failed: 0 });
+      // Document was uploaded but parsing failed — now counted as failure
+      expect(result).toEqual({ indexed: 0, failed: 1 });
     });
 
     it('should handle CANCEL status without throwing', async () => {
@@ -842,8 +842,8 @@ describe('RAGFlowProvider', () => {
       ];
 
       const result = await provider.indexDocuments(docs);
-      // Both documents uploaded successfully, parsing had mixed results but does not affect count
-      expect(result).toEqual({ indexed: 2, failed: 0 });
+      // Both documents uploaded, but one failed parsing — now reflected in the count
+      expect(result).toEqual({ indexed: 1, failed: 1 });
     });
   });
 
