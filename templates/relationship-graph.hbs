@@ -9,12 +9,12 @@
   @template relationship-graph
 --}}
 
-{{!-- TODO [HIGH]: Prefix all 24 CSS classes with vox-chronicle- (graph-error, graph-toolbar, legend-item, btn-action, etc.) to prevent Foundry DOM collisions. See recorder.hbs for reference. --}}
+{{!-- All CSS classes prefixed with vox-chronicle- to prevent Foundry DOM collisions. --}}
 <div class="vox-chronicle-relationship-graph">
 
   {{!-- Error state --}}
   {{#if isError}}
-  <div class="graph-error">
+  <div class="vox-chronicle-graph-error">
     <i class="fa-solid fa-exclamation-triangle"></i>
     <p>{{localize "VOXCHRONICLE.RelationshipGraph.ErrorMessage"}}</p>
   </div>
@@ -22,21 +22,21 @@
 
   {{!-- Empty state --}}
   {{#if isEmpty}}
-  <div class="graph-empty">
+  <div class="vox-chronicle-graph-empty">
     <i class="fa-solid fa-project-diagram"></i>
     <p>{{localize "VOXCHRONICLE.RelationshipGraph.NoRelationships"}}</p>
-    <p class="empty-hint">{{localize "VOXCHRONICLE.RelationshipGraph.NoRelationshipsHint"}}</p>
+    <p class="vox-chronicle-empty-hint">{{localize "VOXCHRONICLE.RelationshipGraph.NoRelationshipsHint"}}</p>
   </div>
   {{/if}}
 
   {{!-- Main graph visualization area --}}
   {{#if isReady}}
-  <div class="graph-visualization">
+  <div class="vox-chronicle-graph-visualization">
 
     {{!-- Toolbar with controls --}}
-    <div class="graph-toolbar">
-      <div class="toolbar-section filter-controls">
-        <label class="filter-label">
+    <div class="vox-chronicle-graph-toolbar">
+      <div class="vox-chronicle-toolbar-section vox-chronicle-filter-controls">
+        <label class="vox-chronicle-filter-label">
           <span>{{localize "VOXCHRONICLE.RelationshipGraph.FilterByEntity"}}:</span>
           <select data-filter="entity-type">
             {{#each entityTypeOptions}}
@@ -47,7 +47,7 @@
           </select>
         </label>
 
-        <label class="filter-label">
+        <label class="vox-chronicle-filter-label">
           <span>{{localize "VOXCHRONICLE.RelationshipGraph.FilterByRelation"}}:</span>
           <select data-filter="relationship-type">
             {{#each relationshipTypeOptions}}
@@ -59,16 +59,16 @@
         </label>
       </div>
 
-      <div class="toolbar-section action-controls">
+      <div class="vox-chronicle-toolbar-section vox-chronicle-action-controls">
         <button type="button"
-                class="btn-action"
+                class="vox-chronicle-btn-action"
                 data-action="refresh"
                 title="{{localize 'VOXCHRONICLE.RelationshipGraph.Refresh'}}">
           <i class="fa-solid fa-sync"></i>
           <span>{{localize "VOXCHRONICLE.RelationshipGraph.Refresh"}}</span>
         </button>
         <button type="button"
-                class="btn-action"
+                class="vox-chronicle-btn-action"
                 data-action="export"
                 title="{{localize 'VOXCHRONICLE.RelationshipGraph.Export'}}">
           <i class="fa-solid fa-download"></i>
@@ -78,21 +78,21 @@
     </div>
 
     {{!-- Graph container (vis-network renders here) --}}
-    <div class="graph-container" id="relationship-graph-network">
+    <div class="vox-chronicle-graph-container" id="relationship-graph-network">
       {{!-- vis-network will create the graph here --}}
     </div>
 
     {{!-- Legend panel --}}
-    <div class="graph-legend">
-      <div class="legend-header">
-        <span class="legend-title">{{localize "VOXCHRONICLE.RelationshipGraph.Legend"}}</span>
+    <div class="vox-chronicle-graph-legend">
+      <div class="vox-chronicle-legend-header">
+        <span class="vox-chronicle-legend-title">{{localize "VOXCHRONICLE.RelationshipGraph.Legend"}}</span>
       </div>
-      <div class="legend-content">
-        <div class="legend-section">
-          <div class="legend-section-title">{{localize "VOXCHRONICLE.RelationshipGraph.RelationshipTypes"}}</div>
+      <div class="vox-chronicle-legend-content">
+        <div class="vox-chronicle-legend-section">
+          <div class="vox-chronicle-legend-section-title">{{localize "VOXCHRONICLE.RelationshipGraph.RelationshipTypes"}}</div>
           {{#each legendItems}}
-          <div class="legend-item">
-            <div class="legend-edge" style="background-color: {{color}};"></div>
+          <div class="vox-chronicle-legend-item">
+            <div class="vox-chronicle-legend-edge" style="background-color: {{color}};"></div>
             <span>{{label}}</span>
           </div>
           {{/each}}
@@ -103,20 +103,20 @@
   </div>
 
   {{!-- Footer with stats and actions --}}
-  <div class="graph-footer">
-    <div class="graph-stats">
-      <span class="stat-item">
+  <div class="vox-chronicle-graph-footer">
+    <div class="vox-chronicle-graph-stats">
+      <span class="vox-chronicle-stat-item">
         <i class="fa-solid fa-circle"></i>
         <span>{{totalEntities}} {{localize "VOXCHRONICLE.RelationshipGraph.Entities"}}</span>
       </span>
-      <span class="stat-item">
+      <span class="vox-chronicle-stat-item">
         <i class="fa-solid fa-arrows-alt-h"></i>
         <span>{{totalRelationships}} {{localize "VOXCHRONICLE.RelationshipGraph.Relationships"}}</span>
       </span>
     </div>
-    <div class="graph-actions">
+    <div class="vox-chronicle-graph-actions">
       <button type="button"
-              class="btn-close"
+              class="vox-chronicle-btn-close"
               data-action="close">
         <i class="fa-solid fa-times"></i>
         <span>{{localize "VOXCHRONICLE.RelationshipGraph.Close"}}</span>

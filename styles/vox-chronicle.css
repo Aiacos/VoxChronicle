@@ -505,7 +505,7 @@ form .form-group .vox-chronicle-validate-button {
   min-height: 400px;
 }
 
-.vox-chronicle-relationship-graph .graph-container {
+.vox-chronicle-relationship-graph .vox-chronicle-graph-container {
   position: relative;
   flex: 1;
   background: rgba(0, 0, 0, 0.2);
@@ -515,7 +515,7 @@ form .form-group .vox-chronicle-validate-button {
   min-height: 400px;
 }
 
-.vox-chronicle-relationship-graph .graph-legend {
+.vox-chronicle-relationship-graph .vox-chronicle-graph-legend {
   position: absolute;
   bottom: 16px;
   left: 16px;
@@ -525,11 +525,11 @@ form .form-group .vox-chronicle-validate-button {
   padding: 8px 16px;
   z-index: 10;
 }
-.vox-chronicle-relationship-graph .legend-title { font-weight: 600; font-size: 0.9em; margin-bottom: 4px; }
-.vox-chronicle-relationship-graph .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85em; opacity: 0.7; }
-.vox-chronicle-relationship-graph .legend-edge { width: 20px; height: 3px; border-radius: 2px; }
+.vox-chronicle-relationship-graph .vox-chronicle-legend-title { font-weight: 600; font-size: 0.9em; margin-bottom: 4px; }
+.vox-chronicle-relationship-graph .vox-chronicle-legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85em; opacity: 0.7; }
+.vox-chronicle-relationship-graph .vox-chronicle-legend-edge { width: 20px; height: 3px; border-radius: 2px; }
 
-.vox-chronicle-relationship-graph .graph-empty {
+.vox-chronicle-relationship-graph .vox-chronicle-graph-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -540,9 +540,9 @@ form .form-group .vox-chronicle-validate-button {
   text-align: center;
   min-height: 400px;
 }
-.vox-chronicle-relationship-graph .graph-empty i { font-size: 48px; opacity: 0.5; }
+.vox-chronicle-relationship-graph .vox-chronicle-graph-empty i { font-size: 48px; opacity: 0.5; }
 
-.vox-chronicle-relationship-graph .graph-stats {
+.vox-chronicle-relationship-graph .vox-chronicle-graph-stats {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -551,7 +551,7 @@ form .form-group .vox-chronicle-validate-button {
   border-radius: 4px;
   font-size: 0.9em;
 }
-.vox-chronicle-relationship-graph .stat-item { display: flex; align-items: center; gap: 4px; opacity: 0.7; }
+.vox-chronicle-relationship-graph .vox-chronicle-stat-item { display: flex; align-items: center; gap: 4px; opacity: 0.7; }
 
 /* ==========================================================================
    Main Panel — Foundry v13 Native Integration
