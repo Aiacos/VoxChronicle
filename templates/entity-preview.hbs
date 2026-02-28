@@ -9,16 +9,15 @@
   @template entity-preview
 --}}
 
-{{!-- TODO [HIGH]: Prefix all 57 CSS classes with vox-chronicle- (preview-description, entity-row, section-header, btn-edit, etc.) to prevent Foundry DOM collisions. See recorder.hbs for reference. --}}
 <div class="vox-chronicle-entity-preview">
   {{!-- Description section --}}
-  <div class="preview-description">
+  <div class="vox-chronicle-preview-description">
     <p>{{i18n.description}}</p>
   </div>
 
   {{!-- Configuration warning (shown when Kanka is not configured) --}}
   {{#unless isKankaConfigured}}
-  <div class="preview-warning">
+  <div class="vox-chronicle-preview-warning">
     <i class="fa-solid fa-exclamation-triangle"></i>
     <span>{{i18n.notConfigured}}</span>
   </div>
@@ -26,39 +25,39 @@
 
   {{!-- Progress section (shown during entity creation) --}}
   {{#if hasProgress}}
-  <div class="entity-preview-progress">
-    <div class="progress-message">{{progress.message}}</div>
-    <div class="progress-bar">
-      <div class="progress-fill" style="width: {{progress.percent}}%"></div>
+  <div class="vox-chronicle-entity-preview-progress">
+    <div class="vox-chronicle-progress-message">{{progress.message}}</div>
+    <div class="vox-chronicle-progress-bar">
+      <div class="vox-chronicle-progress-fill" style="width: {{progress.percent}}%"></div>
     </div>
-    <div class="progress-count">{{progress.current}} / {{progress.total}}</div>
+    <div class="vox-chronicle-progress-count">{{progress.current}} / {{progress.total}}</div>
   </div>
   {{/if}}
 
   {{!-- Results section (shown after entity creation) --}}
   {{#if hasResults}}
-  <div class="entity-preview-results {{#if isError}}error{{else}}success{{/if}}">
-    <div class="results-summary">
+  <div class="vox-chronicle-entity-preview-results {{#if isError}}error{{else}}success{{/if}}">
+    <div class="vox-chronicle-results-summary">
       {{#if createdCount}}
-      <div class="created-count">
+      <div class="vox-chronicle-created-count">
         <i class="fa-solid fa-check"></i>
         <span>{{i18n.created}}</span>
       </div>
       {{/if}}
       {{#if failedCount}}
-      <div class="failed-count">
+      <div class="vox-chronicle-failed-count">
         <i class="fa-solid fa-times"></i>
         <span>{{i18n.failedCountLabel}}</span>
       </div>
       {{/if}}
     </div>
     {{#if failedCount}}
-    <div class="failed-entities">
+    <div class="vox-chronicle-failed-entities">
       {{#each results.failed}}
-      <div class="failed-entity">
-        <span class="failed-type">{{type}}:</span>
-        <span class="failed-name">{{name}}</span>
-        <span class="failed-error">- {{error}}</span>
+      <div class="vox-chronicle-failed-entity">
+        <span class="vox-chronicle-failed-type">{{type}}:</span>
+        <span class="vox-chronicle-failed-name">{{name}}</span>
+        <span class="vox-chronicle-failed-error">- {{error}}</span>
       </div>
       {{/each}}
     </div>
@@ -69,34 +68,34 @@
   {{!-- Entity sections (shown in review mode) --}}
   {{#if isReview}}
     {{#if hasEntities}}
-    <div class="entity-sections">
+    <div class="vox-chronicle-entity-sections">
 
       {{!-- Characters section --}}
       {{#if hasCharacters}}
-      <div class="entity-section">
-        <div class="section-header" data-action="toggle-section">
-          <i class="fa-solid fa-chevron-down section-toggle"></i>
-          <span class="section-title">{{i18n.characters}}</span>
-          <span class="section-count">({{characters.length}})</span>
+      <div class="vox-chronicle-entity-section">
+        <div class="vox-chronicle-section-header" data-action="toggle-section">
+          <i class="fa-solid fa-chevron-down vox-chronicle-section-toggle"></i>
+          <span class="vox-chronicle-section-title">{{i18n.characters}}</span>
+          <span class="vox-chronicle-section-count">({{characters.length}})</span>
         </div>
-        <div class="section-content">
+        <div class="vox-chronicle-section-content">
           {{#each characters}}
-          <div class="entity-row {{#if selected}}selected{{/if}}">
-            <div class="entity-select">
+          <div class="vox-chronicle-entity-row {{#if selected}}selected{{/if}}">
+            <div class="vox-chronicle-entity-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
                      {{#if selected}}checked{{/if}} />
             </div>
-            <div class="entity-info">
-              <div class="entity-name">{{name}}</div>
-              <div class="entity-type">{{typeLabel}}</div>
+            <div class="vox-chronicle-entity-info">
+              <div class="vox-chronicle-entity-name">{{name}}</div>
+              <div class="vox-chronicle-entity-type">{{typeLabel}}</div>
               {{#if description}}
-              <div class="entity-description">{{description}}</div>
+              <div class="vox-chronicle-entity-description">{{description}}</div>
               {{/if}}
             </div>
-            <div class="entity-actions">
+            <div class="vox-chronicle-entity-actions">
               <button type="button"
-                      class="btn-edit"
+                      class="vox-chronicle-btn-edit"
                       data-action="edit-description"
                       data-entity-type="characters"
                       data-entity-index="{{index}}"
@@ -104,7 +103,7 @@
                 <i class="fa-solid fa-edit"></i>
               </button>
               <button type="button"
-                      class="btn-generate"
+                      class="vox-chronicle-btn-generate"
                       data-action="generate-portrait"
                       data-entity-type="characters"
                       data-entity-index="{{index}}"
@@ -114,13 +113,13 @@
               </button>
             </div>
             {{#if isGeneratingImage}}
-            <div class="entity-image-placeholder">
+            <div class="vox-chronicle-entity-image-placeholder">
               <i class="fa-solid fa-spinner fa-spin"></i>
-              <span class="placeholder-text">{{../i18n.generating}}</span>
+              <span class="vox-chronicle-placeholder-text">{{../i18n.generating}}</span>
             </div>
             {{else}}
               {{#if imageUrl}}
-              <div class="entity-preview-image">
+              <div class="vox-chronicle-entity-preview-image">
                 <img src="{{imageUrl}}" alt="{{name}}" />
               </div>
               {{/if}}
@@ -133,30 +132,30 @@
 
       {{!-- Locations section --}}
       {{#if hasLocations}}
-      <div class="entity-section">
-        <div class="section-header" data-action="toggle-section">
-          <i class="fa-solid fa-chevron-down section-toggle"></i>
-          <span class="section-title">{{i18n.locations}}</span>
-          <span class="section-count">({{locations.length}})</span>
+      <div class="vox-chronicle-entity-section">
+        <div class="vox-chronicle-section-header" data-action="toggle-section">
+          <i class="fa-solid fa-chevron-down vox-chronicle-section-toggle"></i>
+          <span class="vox-chronicle-section-title">{{i18n.locations}}</span>
+          <span class="vox-chronicle-section-count">({{locations.length}})</span>
         </div>
-        <div class="section-content">
+        <div class="vox-chronicle-section-content">
           {{#each locations}}
-          <div class="entity-row {{#if selected}}selected{{/if}}">
-            <div class="entity-select">
+          <div class="vox-chronicle-entity-row {{#if selected}}selected{{/if}}">
+            <div class="vox-chronicle-entity-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
                      {{#if selected}}checked{{/if}} />
             </div>
-            <div class="entity-info">
-              <div class="entity-name">{{name}}</div>
-              <div class="entity-type">{{typeLabel}}</div>
+            <div class="vox-chronicle-entity-info">
+              <div class="vox-chronicle-entity-name">{{name}}</div>
+              <div class="vox-chronicle-entity-type">{{typeLabel}}</div>
               {{#if description}}
-              <div class="entity-description">{{description}}</div>
+              <div class="vox-chronicle-entity-description">{{description}}</div>
               {{/if}}
             </div>
-            <div class="entity-actions">
+            <div class="vox-chronicle-entity-actions">
               <button type="button"
-                      class="btn-edit"
+                      class="vox-chronicle-btn-edit"
                       data-action="edit-description"
                       data-entity-type="locations"
                       data-entity-index="{{index}}"
@@ -164,7 +163,7 @@
                 <i class="fa-solid fa-edit"></i>
               </button>
               <button type="button"
-                      class="btn-generate"
+                      class="vox-chronicle-btn-generate"
                       data-action="generate-portrait"
                       data-entity-type="locations"
                       data-entity-index="{{index}}"
@@ -174,13 +173,13 @@
               </button>
             </div>
             {{#if isGeneratingImage}}
-            <div class="entity-image-placeholder">
+            <div class="vox-chronicle-entity-image-placeholder">
               <i class="fa-solid fa-spinner fa-spin"></i>
-              <span class="placeholder-text">{{../i18n.generating}}</span>
+              <span class="vox-chronicle-placeholder-text">{{../i18n.generating}}</span>
             </div>
             {{else}}
               {{#if imageUrl}}
-              <div class="entity-preview-image">
+              <div class="vox-chronicle-entity-preview-image">
                 <img src="{{imageUrl}}" alt="{{name}}" />
               </div>
               {{/if}}
@@ -193,30 +192,30 @@
 
       {{!-- Items section --}}
       {{#if hasItems}}
-      <div class="entity-section">
-        <div class="section-header" data-action="toggle-section">
-          <i class="fa-solid fa-chevron-down section-toggle"></i>
-          <span class="section-title">{{i18n.items}}</span>
-          <span class="section-count">({{items.length}})</span>
+      <div class="vox-chronicle-entity-section">
+        <div class="vox-chronicle-section-header" data-action="toggle-section">
+          <i class="fa-solid fa-chevron-down vox-chronicle-section-toggle"></i>
+          <span class="vox-chronicle-section-title">{{i18n.items}}</span>
+          <span class="vox-chronicle-section-count">({{items.length}})</span>
         </div>
-        <div class="section-content">
+        <div class="vox-chronicle-section-content">
           {{#each items}}
-          <div class="entity-row {{#if selected}}selected{{/if}}">
-            <div class="entity-select">
+          <div class="vox-chronicle-entity-row {{#if selected}}selected{{/if}}">
+            <div class="vox-chronicle-entity-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
                      {{#if selected}}checked{{/if}} />
             </div>
-            <div class="entity-info">
-              <div class="entity-name">{{name}}</div>
-              <div class="entity-type">{{typeLabel}}</div>
+            <div class="vox-chronicle-entity-info">
+              <div class="vox-chronicle-entity-name">{{name}}</div>
+              <div class="vox-chronicle-entity-type">{{typeLabel}}</div>
               {{#if description}}
-              <div class="entity-description">{{description}}</div>
+              <div class="vox-chronicle-entity-description">{{description}}</div>
               {{/if}}
             </div>
-            <div class="entity-actions">
+            <div class="vox-chronicle-entity-actions">
               <button type="button"
-                      class="btn-edit"
+                      class="vox-chronicle-btn-edit"
                       data-action="edit-description"
                       data-entity-type="items"
                       data-entity-index="{{index}}"
@@ -224,7 +223,7 @@
                 <i class="fa-solid fa-edit"></i>
               </button>
               <button type="button"
-                      class="btn-generate"
+                      class="vox-chronicle-btn-generate"
                       data-action="generate-portrait"
                       data-entity-type="items"
                       data-entity-index="{{index}}"
@@ -234,13 +233,13 @@
               </button>
             </div>
             {{#if isGeneratingImage}}
-            <div class="entity-image-placeholder">
+            <div class="vox-chronicle-entity-image-placeholder">
               <i class="fa-solid fa-spinner fa-spin"></i>
-              <span class="placeholder-text">{{../i18n.generating}}</span>
+              <span class="vox-chronicle-placeholder-text">{{../i18n.generating}}</span>
             </div>
             {{else}}
               {{#if imageUrl}}
-              <div class="entity-preview-image">
+              <div class="vox-chronicle-entity-preview-image">
                 <img src="{{imageUrl}}" alt="{{name}}" />
               </div>
               {{/if}}
@@ -253,45 +252,45 @@
 
       {{!-- Relationships section --}}
       {{#if hasRelationships}}
-      <div class="entity-section relationships-section">
-        <div class="section-header" data-action="toggle-section">
-          <i class="fa-solid fa-chevron-down section-toggle"></i>
-          <span class="section-title">{{i18n.relationships}}</span>
-          <span class="section-count">({{relationships.length}})</span>
+      <div class="vox-chronicle-entity-section vox-chronicle-relationships-section">
+        <div class="vox-chronicle-section-header" data-action="toggle-section">
+          <i class="fa-solid fa-chevron-down vox-chronicle-section-toggle"></i>
+          <span class="vox-chronicle-section-title">{{i18n.relationships}}</span>
+          <span class="vox-chronicle-section-count">({{relationships.length}})</span>
           <button type="button"
-                  class="btn-view-graph"
+                  class="vox-chronicle-btn-view-graph"
                   data-action="view-graph"
                   title="{{i18n.viewGraph}}">
             <i class="fa-solid fa-project-diagram"></i>
             <span>{{i18n.viewGraph}}</span>
           </button>
         </div>
-        <div class="section-content">
-          <div class="relationships-description">
+        <div class="vox-chronicle-section-content">
+          <div class="vox-chronicle-relationships-description">
             <p>{{i18n.relationshipsDescription}}</p>
           </div>
           {{#each relationships}}
-          <div class="relationship-row {{#if selected}}selected{{/if}}">
-            <div class="relationship-select">
+          <div class="vox-chronicle-relationship-row {{#if selected}}selected{{/if}}">
+            <div class="vox-chronicle-relationship-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
                      {{#if selected}}checked{{/if}} />
             </div>
-            <div class="relationship-info">
-              <div class="relationship-entities">
-                <span class="source-entity">{{sourceEntity}}</span>
+            <div class="vox-chronicle-relationship-info">
+              <div class="vox-chronicle-relationship-entities">
+                <span class="vox-chronicle-source-entity">{{sourceEntity}}</span>
                 <i class="fa-solid fa-arrow-right"></i>
-                <span class="target-entity">{{targetEntity}}</span>
+                <span class="vox-chronicle-target-entity">{{targetEntity}}</span>
               </div>
-              <div class="relationship-type-label">
+              <div class="vox-chronicle-relationship-type-label">
                 <i class="fa-solid fa-tag"></i>
                 <span>{{typeLabel}}</span>
               </div>
               {{#if description}}
-              <div class="relationship-description">{{description}}</div>
+              <div class="vox-chronicle-relationship-description">{{description}}</div>
               {{/if}}
               {{#if confidence}}
-              <div class="relationship-confidence">
+              <div class="vox-chronicle-relationship-confidence">
                 <i class="fa-solid fa-star"></i>
                 <span>{{../i18n.confidenceLabel}} {{confidence}}/10</span>
               </div>
@@ -306,7 +305,7 @@
     </div>
     {{else}}
     {{!-- No entities message --}}
-    <div class="no-entities">
+    <div class="vox-chronicle-no-entities">
       <i class="fa-solid fa-info-circle"></i>
       <span>{{i18n.noEntities}}</span>
     </div>
@@ -314,34 +313,34 @@
   {{/if}}
 
   {{!-- Action buttons --}}
-  <div class="form-footer">
+  <div class="vox-chronicle-form-footer">
     {{!-- Review mode actions --}}
     {{#if isReview}}
-    <div class="selection-actions">
+    <div class="vox-chronicle-selection-actions">
       <button type="button"
-              class="btn-select-all"
+              class="vox-chronicle-btn-select-all"
               data-action="select-all"
               {{#if isAllSelected}}disabled{{/if}}>
         <i class="fa-solid fa-check-square"></i>
         <span>{{i18n.selectAll}}</span>
       </button>
       <button type="button"
-              class="btn-deselect-all"
+              class="vox-chronicle-btn-deselect-all"
               data-action="deselect-all"
               {{#if isNoneSelected}}disabled{{/if}}>
         <i class="fa-solid fa-square"></i>
         <span>{{i18n.deselectAll}}</span>
       </button>
     </div>
-    <div class="form-actions">
+    <div class="vox-chronicle-form-actions">
       <button type="button"
-              class="btn-skip"
+              class="vox-chronicle-btn-skip"
               data-action="skip-all">
         <i class="fa-solid fa-forward"></i>
         <span>{{i18n.skip}}</span>
       </button>
       <button type="button"
-              class="btn-confirm"
+              class="vox-chronicle-btn-confirm"
               data-action="confirm-create"
               {{#if isNoneSelected}}disabled{{/if}}
               {{#unless isKankaConfigured}}disabled{{/unless}}>
@@ -353,16 +352,16 @@
 
     {{!-- Creating mode (no buttons, just progress) --}}
     {{#if isCreating}}
-    <div class="form-actions creating">
-      <span class="creating-message">{{i18n.creating}}</span>
+    <div class="vox-chronicle-form-actions creating">
+      <span class="vox-chronicle-creating-message">{{i18n.creating}}</span>
     </div>
     {{/if}}
 
     {{!-- Complete/Error mode actions --}}
     {{#if isComplete}}
-    <div class="form-actions">
+    <div class="vox-chronicle-form-actions">
       <button type="button"
-              class="btn-close"
+              class="vox-chronicle-btn-close"
               data-action="close">
         <i class="fa-solid fa-times"></i>
         <span>{{i18n.close}}</span>
@@ -371,15 +370,15 @@
     {{/if}}
 
     {{#if isError}}
-    <div class="form-actions">
+    <div class="vox-chronicle-form-actions">
       <button type="button"
-              class="btn-retry"
+              class="vox-chronicle-btn-retry"
               data-action="retry">
         <i class="fa-solid fa-redo"></i>
         <span>{{i18n.retry}}</span>
       </button>
       <button type="button"
-              class="btn-close"
+              class="vox-chronicle-btn-close"
               data-action="close">
         <i class="fa-solid fa-times"></i>
         <span>{{i18n.close}}</span>

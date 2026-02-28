@@ -1300,7 +1300,7 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     event.preventDefault();
 
     const header = target || event.currentTarget;
-    const section = header.closest('.entity-section');
+    const section = header.closest('.vox-chronicle-entity-section');
 
     if (section) {
       section.classList.toggle('collapsed');
