@@ -34,7 +34,7 @@ import { SilenceDetector } from '../narrator/SilenceDetector.mjs';
 import { Settings } from './Settings.mjs';
 
 // Create logger instance for VoxChronicle
-const logger = Logger.createChild('VoxChronicle', { sanitize: true });
+const logger = Logger.createChild('VoxChronicle');
 
 /**
  * Main VoxChronicle singleton class

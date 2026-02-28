@@ -652,7 +652,7 @@ class Settings {
     if (game.ready) {
       const serviceName = service === 'openai' ? 'OpenAI' : 'Kanka';
       ui.notifications?.info(
-        game.i18n?.format('VOXCHRONICLE.Settings.ApiKeyUpdated', { service: serviceName }) ||
+        game.i18n?.format('VOXCHRONICLE.Notifications.ApiKeyUpdated', { service: serviceName }) ||
         `VoxChronicle: ${serviceName} API key updated. Re-initializing services...`
       );
 
@@ -663,9 +663,17 @@ class Settings {
           logger.info(`${serviceName} services re-initialized successfully.`);
         }).catch(err => {
           logger.error(`Failed to re-initialize ${serviceName} services:`, err);
+          ui.notifications?.error(
+            game.i18n?.localize('VOXCHRONICLE.Warnings.ReinitializationFailed')
+              || 'VoxChronicle: Failed to re-initialize services after API key update. Please reload the page.'
+          );
         });
       }).catch(err => {
         logger.error(`Failed to import VoxChronicle for ${serviceName} reinitialization:`, err);
+        ui.notifications?.error(
+          game.i18n?.localize('VOXCHRONICLE.Warnings.ReinitializationFailed')
+            || 'VoxChronicle: Failed to re-initialize services after API key update. Please reload the page.'
+        );
       });
     }
   }

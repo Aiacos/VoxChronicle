@@ -575,6 +575,10 @@ class SessionOrchestrator {
         error: 'Image generation failed',
         timestamp: Date.now()
       });
+      globalThis.ui?.notifications?.warn(
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.ImageGenerationEmpty')
+          || 'VoxChronicle: Image generation produced no results. Try again or check your API key.'
+      );
     }
 
     return results;

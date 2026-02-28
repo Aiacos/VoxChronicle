@@ -11,7 +11,6 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
-import { MODULE_ID } from '../constants.mjs';
 
 /**
  * Default bucket size for timeline visualization (60 seconds)

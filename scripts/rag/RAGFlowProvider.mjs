@@ -19,6 +19,7 @@
 
 import { RAGProvider } from './RAGProvider.mjs';
 import { MODULE_ID } from '../constants.mjs';
+import { RateLimiter } from '../utils/RateLimiter.mjs';
 
 /**
  * Polling interval for document parsing status (ms)
@@ -50,6 +51,9 @@ export class RAGFlowProvider extends RAGProvider {
 
   /** @type {boolean} */
   #initialized = false;
+
+  /** @type {RateLimiter} */
+  #rateLimiter = new RateLimiter({ requestsPerMinute: 60, name: 'RAGFlow' });
 
   /** @type {string} */
   #modelName = '';
@@ -634,38 +638,42 @@ export class RAGFlowProvider extends RAGProvider {
       headers['Content-Type'] = 'application/json';
     }
 
-    const controller = new AbortController();
-    const timeoutMs = 30000;
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    return this.#rateLimiter.throttle(async () => {
+      const controller = new AbortController();
+      const timeoutMs = 30000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    try {
-      const response = await fetch(url, {
-        ...fetchOptions,
-        headers: { ...headers, ...fetchOptions.headers },
-        signal: controller.signal
-      });
+      try {
+        const response = await fetch(url, {
+          ...fetchOptions,
+          headers: { ...headers, ...fetchOptions.headers },
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(`RAGFlow API error ${response.status}: ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          const safeError = String(errorText).substring(0, 200).replace(/[<>]/g, '');
+          throw new Error(`RAGFlow API error ${response.status}: ${safeError}`);
+        }
+
+        const json = await response.json();
+
+        // RAGFlow uses code: 0 for success
+        if (json.code !== undefined && json.code !== 0) {
+          const safeMessage = String(json.message || 'Unknown error').substring(0, 200).replace(/[<>]/g, '');
+          throw new Error(`RAGFlow error (code ${json.code}): ${safeMessage}`);
+        }
+
+        return json;
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error(`RAGFlow request timed out after ${timeoutMs / 1000}s: ${path}`);
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const json = await response.json();
-
-      // RAGFlow uses code: 0 for success
-      if (json.code !== undefined && json.code !== 0) {
-        throw new Error(`RAGFlow error (code ${json.code}): ${json.message || 'Unknown error'}`);
-      }
-
-      return json;
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error(`RAGFlow request timed out after ${timeoutMs / 1000}s: ${path}`);
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    });
   }
 
   // ─── Private: Helpers ──────────────────────────────────────────────

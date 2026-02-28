@@ -777,5 +777,22 @@ describe('KankaEntityManager', () => {
         expect.stringContaining('name=The%20Dragon')
       );
     });
+
+    it('should throw last error when all entity types fail in multi-type search', async () => {
+      const finalError = new Error('Final API Error');
+      // Make all 6 entity type searches fail
+      client.get
+        .mockRejectedValueOnce(new Error('characters failed'))
+        .mockRejectedValueOnce(new Error('locations failed'))
+        .mockRejectedValueOnce(new Error('items failed'))
+        .mockRejectedValueOnce(new Error('journals failed'))
+        .mockRejectedValueOnce(new Error('organisations failed'))
+        .mockRejectedValueOnce(finalError); // quests - last error
+
+      await expect(manager.searchEntities('Dragon')).rejects.toThrow('Final API Error');
+
+      // Should have attempted all 6 entity types
+      expect(client.get).toHaveBeenCalledTimes(6);
+    });
   });
 });

@@ -229,7 +229,8 @@
       "ConfigWarning": "[EN] Configure your OpenAI API key in module settings to use VoxChronicle",
       "Record": "[EN] Record",
       "Stop": "[EN] Stop",
-      "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics."
+      "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics.",
+      "ChroniclePreview": "クロニクルプレビュー"
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
@@ -373,7 +374,18 @@
       "SuggestAddedCount": "[EN] Added {count} term(s)",
       "AlreadyAdded": "[EN] already added",
       "SuggestPartialFailure": "[EN] Some Foundry data could not be read. Suggestions may be incomplete.",
-      "NoTermsSelected": "[EN] No terms selected"
+      "NoTermsSelected": "[EN] No terms selected",
+      "HelpTitle": "ヘルプ",
+      "HelpCategories": "カテゴリ: 精度向上のため、語彙をタイプ別に整理します。",
+      "HelpCharacterNames": "キャラクター名: NPCおよびプレイヤーキャラクター名",
+      "HelpLocationNames": "場所名: 都市、ダンジョン、地域、場所",
+      "HelpItemsArtifacts": "アイテムとアーティファクト: 魔法のアイテム、武器、装備",
+      "HelpGameTerms": "ゲーム用語: 呪文、能力、クリーチャー、ゲーム固有の用語",
+      "HelpCustomTerms": "カスタム用語: キャンペーン固有のその他の語彙",
+      "HelpAddingTerms": "用語の追加: 用語を入力してEnterキーを押すか、追加ボタンをクリックします。",
+      "HelpRemovingTerms": "用語の削除: 用語の横にあるXアイコンをクリックします。",
+      "HelpImportExport": "インポート/エクスポート: キャンペーン間で語彙辞書を共有したり、用語をバックアップしたりします。",
+      "HelpNote": "注意: これらの用語はキャンペーン固有の語彙の精度を向上させるため、文字起こしプロンプトに含まれます。"
     },
     "EntityExtraction": {
       "Title": "[EN] Entity Extraction",
@@ -690,7 +702,10 @@
       "RAGProviderFallback": "[EN] VoxChronicle: RAG provider \"{requested}\" not found. Falling back to \"{fallback}\". Check your RAG settings.",
       "RulesLoadAllFailed": "[EN] VoxChronicle: Rules reference could not load any compendium data. Rules Q&A will not work.",
       "JournalContextFailed": "[EN] VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.",
-      "CompendiumParseFailures": "[EN] VoxChronicle: {count} compendium pack(s) could not be loaded. AI context may be incomplete."
+      "CompendiumParseFailures": "[EN] VoxChronicle: {count} compendium pack(s) could not be loaded. AI context may be incomplete.",
+      "ImageGallerySaveFailed": "VoxChronicle: ギャラリーへの画像保存に失敗しました。ページを再読み込みすると画像が失われる可能性があります。",
+      "ReinitializationFailed": "VoxChronicle: APIキー更新後のサービス再初期化に失敗しました。ページを再読み込みしてください。",
+      "ImageGenerationEmpty": "VoxChronicle: 画像生成で結果が得られませんでした。再試行するかAPIキーを確認してください。"
     },
     "Notifications": {
       "ModuleReady": "VoxChronicleの準備ができました",

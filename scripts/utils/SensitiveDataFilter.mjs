@@ -161,11 +161,9 @@ export class SensitiveDataFilter {
       const urlObj = typeof url === 'string' ? new URL(url) : url;
 
       // Check and redact sensitive query parameters
-      let _modified = false;
       SENSITIVE_PARAMS.forEach((param) => {
         if (urlObj.searchParams.has(param)) {
           urlObj.searchParams.set(param, REDACTED);
-          _modified = true;
         }
       });
 

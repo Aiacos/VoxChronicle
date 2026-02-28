@@ -584,11 +584,11 @@ describe('Logger', () => {
         expect(loggedArgs[1]).toBe('sk-proj-abcdefghijk1234567890');
       });
 
-      it('should not sanitize when object option has no sanitize property', () => {
+      it('should sanitize by default when object option has no sanitize property', () => {
         const child = Logger.createChild('Open', {});
         child.log('sk-proj-abcdefghijk1234567890');
         const loggedArgs = console.log.mock.calls[0];
-        expect(loggedArgs[1]).toBe('sk-proj-abcdefghijk1234567890');
+        expect(loggedArgs[1]).toBe('***');
       });
 
       it('should not sanitize when object option has sanitize: false', () => {

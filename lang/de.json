@@ -229,7 +229,8 @@
       "ConfigWarning": "Konfigurieren Sie Ihren OpenAI API-Schlüssel in den Moduleinstellungen, um VoxChronicle zu verwenden",
       "Record": "Aufnehmen",
       "Stop": "Stoppen",
-      "NoAnalytics": "Keine Analysedaten verfügbar. Starten Sie eine Live-Sitzung, um Analytik zu erfassen."
+      "NoAnalytics": "Keine Analysedaten verfügbar. Starten Sie eine Live-Sitzung, um Analytik zu erfassen.",
+      "ChroniclePreview": "Chronik-Vorschau"
     },
     "Validation": {
       "ValidatingOpenAI": "OpenAI API-Schlüssel wird überprüft...",
@@ -373,7 +374,18 @@
       "SuggestAddedCount": "{count} Begriff(e) hinzugefügt",
       "AlreadyAdded": "bereits hinzugefügt",
       "SuggestPartialFailure": "Einige Foundry-Daten konnten nicht gelesen werden. Vorschläge können unvollständig sein.",
-      "NoTermsSelected": "Keine Begriffe ausgewählt"
+      "NoTermsSelected": "Keine Begriffe ausgewählt",
+      "HelpTitle": "Hilfe",
+      "HelpCategories": "Kategorien: Organisieren Sie Ihr Vokabular nach Typ für bessere Genauigkeit.",
+      "HelpCharacterNames": "Charakternamen: NSC- und Spielercharakternamen",
+      "HelpLocationNames": "Ortsnamen: Städte, Dungeons, Regionen und Orte",
+      "HelpItemsArtifacts": "Gegenstände & Artefakte: Magische Gegenstände, Waffen und Ausrüstung",
+      "HelpGameTerms": "Spielbegriffe: Zauber, Fähigkeiten, Kreaturen und spielspezifische Terminologie",
+      "HelpCustomTerms": "Benutzerdefinierte Begriffe: Jedes andere kampagnenspezifische Vokabular",
+      "HelpAddingTerms": "Begriffe hinzufügen: Geben Sie einen Begriff ein und drücken Sie Enter oder klicken Sie auf Hinzufügen.",
+      "HelpRemovingTerms": "Begriffe entfernen: Klicken Sie auf das X-Symbol neben einem Begriff.",
+      "HelpImportExport": "Import/Export: Teilen Sie Ihr Vokabularlexikon zwischen Kampagnen oder sichern Sie Ihre Begriffe.",
+      "HelpNote": "Hinweis: Diese Begriffe werden in Transkriptionsaufforderungen aufgenommen, um die Genauigkeit für das einzigartige Vokabular Ihrer Kampagne zu verbessern."
     },
     "EntityExtraction": {
       "Title": "Entitätsextraktion",
@@ -690,7 +702,10 @@
       "RAGProviderFallback": "VoxChronicle: RAG-Anbieter \"{requested}\" nicht gefunden. Fallback auf \"{fallback}\". Überprüfen Sie Ihre RAG-Einstellungen.",
       "RulesLoadAllFailed": "VoxChronicle: Regelreferenz konnte keine Kompendiumsdaten laden. Regel-Q&A funktioniert nicht.",
       "JournalContextFailed": "VoxChronicle: Abenteuerjournal konnte nicht für AI-Kontext geladen werden. Vorschläge werden generisch sein.",
-      "CompendiumParseFailures": "VoxChronicle: {count} Kompendiumspaket(e) konnten nicht geladen werden. AI-Kontext möglicherweise unvollständig."
+      "CompendiumParseFailures": "VoxChronicle: {count} Kompendiumspaket(e) konnten nicht geladen werden. AI-Kontext möglicherweise unvollständig.",
+      "ImageGallerySaveFailed": "VoxChronicle: Bild konnte nicht in der Galerie gespeichert werden. Das Bild geht möglicherweise nach dem Neuladen der Seite verloren.",
+      "ReinitializationFailed": "VoxChronicle: Dienste konnten nach API-Schlüsselaktualisierung nicht neu initialisiert werden. Bitte laden Sie die Seite neu.",
+      "ImageGenerationEmpty": "VoxChronicle: Bildgenerierung hat keine Ergebnisse geliefert. Versuchen Sie es erneut oder überprüfen Sie Ihren API-Schlüssel."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle bereit",

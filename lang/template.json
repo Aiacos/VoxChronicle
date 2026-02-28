@@ -229,7 +229,8 @@
       "ConfigWarning": "",
       "Record": "",
       "Stop": "",
-      "NoAnalytics": ""
+      "NoAnalytics": "",
+      "ChroniclePreview": ""
     },
     "Validation": {
       "ValidatingOpenAI": "",
@@ -373,7 +374,18 @@
       "SuggestAddedCount": "",
       "AlreadyAdded": "",
       "SuggestPartialFailure": "",
-      "NoTermsSelected": ""
+      "NoTermsSelected": "",
+      "HelpTitle": "",
+      "HelpCategories": "",
+      "HelpCharacterNames": "",
+      "HelpLocationNames": "",
+      "HelpItemsArtifacts": "",
+      "HelpGameTerms": "",
+      "HelpCustomTerms": "",
+      "HelpAddingTerms": "",
+      "HelpRemovingTerms": "",
+      "HelpImportExport": "",
+      "HelpNote": ""
     },
     "EntityExtraction": {
       "Title": "",
@@ -690,7 +702,10 @@
       "RAGProviderFallback": "",
       "RulesLoadAllFailed": "",
       "JournalContextFailed": "",
-      "CompendiumParseFailures": ""
+      "CompendiumParseFailures": "",
+      "ImageGallerySaveFailed": "",
+      "ReinitializationFailed": "",
+      "ImageGenerationEmpty": ""
     },
     "Notifications": {
       "ModuleReady": "",

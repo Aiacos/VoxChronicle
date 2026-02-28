@@ -229,7 +229,8 @@
       "ConfigWarning": "Configura la tua chiave API OpenAI nelle impostazioni del modulo per usare VoxChronicle",
       "Record": "Registra",
       "Stop": "Ferma",
-      "NoAnalytics": "Nessun dato analitico disponibile. Avvia una sessione live per monitorare le statistiche."
+      "NoAnalytics": "Nessun dato analitico disponibile. Avvia una sessione live per monitorare le statistiche.",
+      "ChroniclePreview": "Anteprima Cronaca"
     },
     "Validation": {
       "ValidatingOpenAI": "Validazione chiave API OpenAI...",
@@ -373,7 +374,18 @@
       "SuggestAddedCount": "Aggiunti {count} termine/i",
       "AlreadyAdded": "già aggiunto",
       "SuggestPartialFailure": "Alcuni dati di Foundry non sono stati letti. I suggerimenti potrebbero essere incompleti.",
-      "NoTermsSelected": "Nessun termine selezionato"
+      "NoTermsSelected": "Nessun termine selezionato",
+      "HelpTitle": "Aiuto",
+      "HelpCategories": "Categorie: Organizza il tuo vocabolario per tipo per una maggiore precisione.",
+      "HelpCharacterNames": "Nomi dei Personaggi: Nomi di PNG e personaggi giocanti",
+      "HelpLocationNames": "Nomi dei Luoghi: Città, dungeon, regioni e luoghi",
+      "HelpItemsArtifacts": "Oggetti e Artefatti: Oggetti magici, armi ed equipaggiamento",
+      "HelpGameTerms": "Termini di Gioco: Incantesimi, abilità, creature e terminologia specifica del gioco",
+      "HelpCustomTerms": "Termini Personalizzati: Qualsiasi altro vocabolario specifico della campagna",
+      "HelpAddingTerms": "Aggiungere Termini: Digita un termine e premi Invio o clicca il pulsante Aggiungi.",
+      "HelpRemovingTerms": "Rimuovere Termini: Clicca l'icona X accanto a qualsiasi termine.",
+      "HelpImportExport": "Importa/Esporta: Condividi il tuo dizionario di vocabolario tra le campagne o esegui il backup dei tuoi termini.",
+      "HelpNote": "Nota: Questi termini saranno inclusi nei prompt di trascrizione per migliorare la precisione del vocabolario unico della tua campagna."
     },
     "EntityExtraction": {
       "Title": "Estrazione Entita",
@@ -690,7 +702,10 @@
       "RAGProviderFallback": "VoxChronicle: Provider RAG \"{requested}\" non trovato. Utilizzo di \"{fallback}\" come alternativa. Controlla le impostazioni RAG.",
       "RulesLoadAllFailed": "VoxChronicle: Impossibile caricare dati dai compendi per il riferimento regole. Le domande sulle regole non funzioneranno.",
       "JournalContextFailed": "VoxChronicle: Impossibile caricare il diario dell'avventura per il contesto AI. I suggerimenti saranno generici.",
-      "CompendiumParseFailures": "VoxChronicle: {count} compendio/i non caricato/i. Il contesto AI potrebbe essere incompleto."
+      "CompendiumParseFailures": "VoxChronicle: {count} compendio/i non caricato/i. Il contesto AI potrebbe essere incompleto.",
+      "ImageGallerySaveFailed": "VoxChronicle: Salvataggio dell'immagine nella galleria fallito. L'immagine potrebbe essere persa dopo il ricaricamento della pagina.",
+      "ReinitializationFailed": "VoxChronicle: Reinizializzazione dei servizi fallita dopo l'aggiornamento della chiave API. Ricarica la pagina.",
+      "ImageGenerationEmpty": "VoxChronicle: La generazione immagini non ha prodotto risultati. Riprova o controlla la tua chiave API."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle e pronto",

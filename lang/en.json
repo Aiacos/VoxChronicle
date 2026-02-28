@@ -229,7 +229,8 @@
       "ConfigWarning": "Configure your OpenAI API key in module settings to use VoxChronicle",
       "Record": "Record",
       "Stop": "Stop",
-      "NoAnalytics": "No analytics data available. Start a live session to track analytics."
+      "NoAnalytics": "No analytics data available. Start a live session to track analytics.",
+      "ChroniclePreview": "Chronicle Preview"
     },
     "Validation": {
       "ValidatingOpenAI": "Validating OpenAI API key...",
@@ -373,7 +374,18 @@
       "SuggestAddedCount": "Added {count} term(s)",
       "AlreadyAdded": "already added",
       "SuggestPartialFailure": "Some Foundry data could not be read. Suggestions may be incomplete.",
-      "NoTermsSelected": "No terms selected"
+      "NoTermsSelected": "No terms selected",
+      "HelpTitle": "Help",
+      "HelpCategories": "Categories: Organize your vocabulary by type for better accuracy.",
+      "HelpCharacterNames": "Character Names: NPC and player character names",
+      "HelpLocationNames": "Location Names: Cities, dungeons, regions, and places",
+      "HelpItemsArtifacts": "Items & Artifacts: Magical items, weapons, and equipment",
+      "HelpGameTerms": "Game Terms: Spells, abilities, creatures, and game-specific terminology",
+      "HelpCustomTerms": "Custom Terms: Any other campaign-specific vocabulary",
+      "HelpAddingTerms": "Adding Terms: Type a term and press Enter or click the Add button.",
+      "HelpRemovingTerms": "Removing Terms: Click the X icon next to any term.",
+      "HelpImportExport": "Import/Export: Share your vocabulary dictionary across campaigns or backup your terms.",
+      "HelpNote": "Note: These terms will be included in transcription prompts to improve accuracy for your campaign's unique vocabulary."
     },
     "EntityExtraction": {
       "Title": "Entity Extraction",
@@ -690,7 +702,10 @@
       "RAGProviderFallback": "VoxChronicle: RAG provider \"{requested}\" not found. Falling back to \"{fallback}\". Check your RAG settings.",
       "RulesLoadAllFailed": "VoxChronicle: Rules reference could not load any compendium data. Rules Q&A will not work.",
       "JournalContextFailed": "VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.",
-      "CompendiumParseFailures": "VoxChronicle: {count} compendium pack(s) could not be loaded. AI context may be incomplete."
+      "CompendiumParseFailures": "VoxChronicle: {count} compendium pack(s) could not be loaded. AI context may be incomplete.",
+      "ImageGallerySaveFailed": "VoxChronicle: Failed to save image to gallery. The image may be lost after page reload.",
+      "ReinitializationFailed": "VoxChronicle: Failed to re-initialize services after API key update. Please reload the page.",
+      "ImageGenerationEmpty": "VoxChronicle: Image generation produced no results. Try again or check your API key."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle is ready",

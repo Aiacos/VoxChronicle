@@ -135,7 +135,7 @@ class Logger {
    */
   static debug(...args) {
     if (Logger._shouldLog(LogLevel.DEBUG) && Logger._debugEnabled) {
-      console.debug(`${Logger._getPrefix()} [DEBUG]`, ...args);
+      console.debug(`${Logger._getPrefix()} [DEBUG]`, ...SensitiveDataFilter.sanitizeArgs(...args));
     }
   }
 
@@ -146,7 +146,7 @@ class Logger {
    */
   static info(...args) {
     if (Logger._shouldLog(LogLevel.INFO)) {
-      console.info(`${Logger._getPrefix()} [INFO]`, ...args);
+      console.info(`${Logger._getPrefix()} [INFO]`, ...SensitiveDataFilter.sanitizeArgs(...args));
     }
   }
 
@@ -157,7 +157,7 @@ class Logger {
    */
   static log(...args) {
     if (Logger._shouldLog(LogLevel.LOG)) {
-      console.log(`${Logger._getPrefix()}`, ...args);
+      console.log(`${Logger._getPrefix()}`, ...SensitiveDataFilter.sanitizeArgs(...args));
     }
   }
 
@@ -168,7 +168,7 @@ class Logger {
    */
   static warn(...args) {
     if (Logger._shouldLog(LogLevel.WARN)) {
-      console.warn(`${Logger._getPrefix()} [WARN]`, ...args);
+      console.warn(`${Logger._getPrefix()} [WARN]`, ...SensitiveDataFilter.sanitizeArgs(...args));
     }
   }
 
@@ -179,7 +179,7 @@ class Logger {
    */
   static error(...args) {
     if (Logger._shouldLog(LogLevel.ERROR)) {
-      console.error(`${Logger._getPrefix()} [ERROR]`, ...args);
+      console.error(`${Logger._getPrefix()} [ERROR]`, ...SensitiveDataFilter.sanitizeArgs(...args));
     }
   }
 
@@ -298,7 +298,7 @@ class Logger {
     const childPrefix = `${MODULE_ID}:${subModule} |`;
 
     // Handle options parameter (boolean or object)
-    const sanitize = typeof options === 'boolean' ? options : options?.sanitize || false;
+    const sanitize = typeof options === 'boolean' ? options : options?.sanitize ?? true;
 
     // Helper to sanitize arguments if enabled
     const maybeSanitize = (args) => {

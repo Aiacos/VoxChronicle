@@ -384,8 +384,6 @@ export class VocabularyDictionary {
    * @returns {Promise<object>} Statistics about loaded terms (loaded, total, skipped)
    */
   async loadDefaults() {
-    const _dictionary = this._getDictionary();
-
     // Check if dictionary is already populated
     const totalTerms = this.getTotalTermCount();
     if (totalTerms > 0) {

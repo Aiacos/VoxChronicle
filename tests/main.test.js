@@ -88,6 +88,16 @@ import {
   VALIDATION_RESET_DELAY_MS
 } from '../scripts/main.mjs';
 
+// Import VoxChronicle mock to control getInstance return values in tests
+import { VoxChronicle } from '../scripts/core/VoxChronicle.mjs';
+
+// ── Capture Hooks.on calls from module-level side effects ─────────────
+// main.mjs registers Hooks.on() callbacks at import time, using the
+// Hooks mock from vi.hoisted(). The global beforeEach in setup.js
+// replaces globalThis.Hooks with a fresh mock, so we must capture
+// the callbacks here — right after static import, before any test runs.
+const _hooksOnCalls = [...Hooks.on.mock.calls];
+
 // ── resolveHtmlElement ─────────────────────────────────────────────────
 
 describe('resolveHtmlElement()', () => {
@@ -457,4 +467,99 @@ describe('injectValidationButton()', () => {
       expect(validateOpenAI).not.toHaveBeenCalled();
     });
   });
+});
+
+// ── Hooks.on callback tests ───────────────────────────────────────────
+
+/**
+ * Helper: find a Hooks.on callback by hook name.
+ * Uses the captured calls from module import time (before setup.js resets
+ * the Hooks mock). Hooks.on is called as Hooks.on(hookName, callback).
+ */
+function findHookCallback(hookName) {
+  const call = _hooksOnCalls.find((c) => c[0] === hookName);
+  return call ? call[1] : null;
+}
+
+describe('canvasReady hook', () => {
+
+  it('should call chapterTracker.updateFromScene when chapterTracker is available', () => {
+    const mockScene = { id: 'scene-1', name: 'Test Scene' };
+    const updateFromScene = vi.fn();
+
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: { updateFromScene },
+      journalParser: null
+    });
+    globalThis.canvas = { scene: mockScene };
+
+    const callback = findHookCallback('canvasReady');
+    expect(callback).toBeDefined();
+
+    callback();
+
+    expect(updateFromScene).toHaveBeenCalledWith(mockScene);
+  });
+
+  it('should not throw when chapterTracker is null', () => {
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: null,
+      journalParser: null
+    });
+    globalThis.canvas = { scene: { id: 'scene-1' } };
+
+    const callback = findHookCallback('canvasReady');
+    expect(() => callback()).not.toThrow();
+  });
+
+  it('should not call updateFromScene when canvas.scene is null', () => {
+    const updateFromScene = vi.fn();
+
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: { updateFromScene },
+      journalParser: null
+    });
+    globalThis.canvas = { scene: null };
+
+    const callback = findHookCallback('canvasReady');
+    callback();
+
+    expect(updateFromScene).not.toHaveBeenCalled();
+  });
+});
+
+describe('journal entry hooks', () => {
+
+  const journalHooks = ['updateJournalEntry', 'createJournalEntry', 'deleteJournalEntry'];
+
+  for (const hookName of journalHooks) {
+    describe(`${hookName} hook`, () => {
+
+      it('should call journalParser.clearAllCache when journalParser is available', () => {
+        const clearAllCache = vi.fn();
+
+        VoxChronicle.getInstance.mockReturnValue({
+          chapterTracker: null,
+          journalParser: { clearAllCache }
+        });
+
+        const callback = findHookCallback(hookName);
+        expect(callback).toBeDefined();
+
+        callback();
+
+        expect(clearAllCache).toHaveBeenCalledTimes(1);
+      });
+
+      it('should not throw when journalParser is null', () => {
+        VoxChronicle.getInstance.mockReturnValue({
+          chapterTracker: null,
+          journalParser: null
+        });
+
+        const callback = findHookCallback(hookName);
+        expect(() => callback()).not.toThrow();
+      });
+    });
+  }
 });

@@ -229,7 +229,8 @@
       "ConfigWarning": "[EN] Configure your OpenAI API key in module settings to use VoxChronicle",
       "Record": "[EN] Record",
       "Stop": "[EN] Stop",
-      "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics."
+      "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics.",
+      "ChroniclePreview": "Vista Previa de Crónica"
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
@@ -373,7 +374,18 @@
       "SuggestAddedCount": "[EN] Added {count} term(s)",
       "AlreadyAdded": "[EN] already added",
       "SuggestPartialFailure": "[EN] Some Foundry data could not be read. Suggestions may be incomplete.",
-      "NoTermsSelected": "[EN] No terms selected"
+      "NoTermsSelected": "[EN] No terms selected",
+      "HelpTitle": "Ayuda",
+      "HelpCategories": "Categorías: Organiza tu vocabulario por tipo para mayor precisión.",
+      "HelpCharacterNames": "Nombres de Personajes: Nombres de PNJ y personajes jugadores",
+      "HelpLocationNames": "Nombres de Lugares: Ciudades, mazmorras, regiones y lugares",
+      "HelpItemsArtifacts": "Objetos y Artefactos: Objetos mágicos, armas y equipamiento",
+      "HelpGameTerms": "Términos del Juego: Hechizos, habilidades, criaturas y terminología específica del juego",
+      "HelpCustomTerms": "Términos Personalizados: Cualquier otro vocabulario específico de la campaña",
+      "HelpAddingTerms": "Agregar Términos: Escribe un término y presiona Enter o haz clic en Agregar.",
+      "HelpRemovingTerms": "Eliminar Términos: Haz clic en el icono X junto a cualquier término.",
+      "HelpImportExport": "Importar/Exportar: Comparte tu diccionario de vocabulario entre campañas o haz una copia de seguridad.",
+      "HelpNote": "Nota: Estos términos se incluirán en los prompts de transcripción para mejorar la precisión del vocabulario único de tu campaña."
     },
     "EntityExtraction": {
       "Title": "[EN] Entity Extraction",
@@ -690,7 +702,10 @@
       "RAGProviderFallback": "[EN] VoxChronicle: RAG provider \"{requested}\" not found. Falling back to \"{fallback}\". Check your RAG settings.",
       "RulesLoadAllFailed": "[EN] VoxChronicle: Rules reference could not load any compendium data. Rules Q&A will not work.",
       "JournalContextFailed": "[EN] VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.",
-      "CompendiumParseFailures": "[EN] VoxChronicle: {count} compendium pack(s) could not be loaded. AI context may be incomplete."
+      "CompendiumParseFailures": "[EN] VoxChronicle: {count} compendium pack(s) could not be loaded. AI context may be incomplete.",
+      "ImageGallerySaveFailed": "VoxChronicle: No se pudo guardar la imagen en la galería. La imagen puede perderse después de recargar la página.",
+      "ReinitializationFailed": "VoxChronicle: No se pudieron reinicializar los servicios después de actualizar la clave API. Recargue la página.",
+      "ImageGenerationEmpty": "VoxChronicle: La generación de imágenes no produjo resultados. Inténtalo de nuevo o verifica tu clave API."
     },
     "Notifications": {
       "ModuleReady": "VoxChronicle listo",

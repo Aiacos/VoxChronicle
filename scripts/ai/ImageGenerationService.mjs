@@ -531,7 +531,10 @@ class ImageGenerationService extends OpenAIClient {
       this._logger.debug('Image saved to gallery');
     } catch (error) {
       this._logger.error('Failed to save image to gallery:', error.message);
-      // Don't throw - gallery persistence is non-critical
+      globalThis.ui?.notifications?.warn(
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.ImageGallerySaveFailed')
+          || 'VoxChronicle: Failed to save image to gallery. The image may be lost after page reload.'
+      );
     }
   }
 

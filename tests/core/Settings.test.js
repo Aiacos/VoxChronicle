@@ -1134,7 +1134,7 @@ describe('Settings', () => {
 
       expect(ui.notifications.info).toHaveBeenCalled();
       expect(game.i18n.format).toHaveBeenCalledWith(
-        'VOXCHRONICLE.Settings.ApiKeyUpdated',
+        'VOXCHRONICLE.Notifications.ApiKeyUpdated',
         { service: 'OpenAI' }
       );
     });
@@ -1146,7 +1146,7 @@ describe('Settings', () => {
 
       expect(ui.notifications.info).toHaveBeenCalled();
       expect(game.i18n.format).toHaveBeenCalledWith(
-        'VOXCHRONICLE.Settings.ApiKeyUpdated',
+        'VOXCHRONICLE.Notifications.ApiKeyUpdated',
         { service: 'Kanka' }
       );
     });
@@ -1176,7 +1176,7 @@ describe('Settings', () => {
       Settings._onApiKeyChange('openai');
 
       expect(game.i18n.format).toHaveBeenCalledWith(
-        'VOXCHRONICLE.Settings.ApiKeyUpdated',
+        'VOXCHRONICLE.Notifications.ApiKeyUpdated',
         { service: 'OpenAI' }
       );
       expect(ui.notifications.info).toHaveBeenCalledWith('Translated: OpenAI key updated');
