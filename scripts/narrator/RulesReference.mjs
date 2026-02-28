@@ -13,7 +13,6 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
-import { MODULE_ID } from '../constants.mjs';
 import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**

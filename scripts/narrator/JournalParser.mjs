@@ -8,7 +8,6 @@
  * @module vox-chronicle
  */
 
-import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { stripHtml } from '../utils/HtmlUtils.mjs';
 

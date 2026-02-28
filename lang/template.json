@@ -385,7 +385,9 @@
       "HelpAddingTerms": "",
       "HelpRemovingTerms": "",
       "HelpImportExport": "",
-      "HelpNote": ""
+      "HelpNote": "",
+      "TermCountLabel": "",
+      "NoTermsCount": ""
     },
     "EntityExtraction": {
       "Title": "",

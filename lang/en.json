@@ -385,7 +385,9 @@
       "HelpAddingTerms": "Adding Terms: Type a term and press Enter or click the Add button.",
       "HelpRemovingTerms": "Removing Terms: Click the X icon next to any term.",
       "HelpImportExport": "Import/Export: Share your vocabulary dictionary across campaigns or backup your terms.",
-      "HelpNote": "Note: These terms will be included in transcription prompts to improve accuracy for your campaign's unique vocabulary."
+      "HelpNote": "Note: These terms will be included in transcription prompts to improve accuracy for your campaign's unique vocabulary.",
+      "TermCountLabel": "terms",
+      "NoTermsCount": "No terms"
     },
     "EntityExtraction": {
       "Title": "Entity Extraction",

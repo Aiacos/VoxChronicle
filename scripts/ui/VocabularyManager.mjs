@@ -279,7 +279,11 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
         importMerge:
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportMerge') || 'Merge with existing terms',
         importReplace:
-          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportReplace') || 'Replace all terms'
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportReplace') || 'Replace all terms',
+        termCountLabel:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.TermCountLabel') || 'terms',
+        noTermsCount:
+          game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoTermsCount') || 'No terms'
       }
     };
   }

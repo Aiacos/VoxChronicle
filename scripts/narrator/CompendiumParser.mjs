@@ -10,7 +10,6 @@
  * @module vox-chronicle/narrator
  */
 
-import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { stripHtml } from '../utils/HtmlUtils.mjs';
 

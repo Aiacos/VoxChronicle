@@ -385,7 +385,9 @@
       "HelpAddingTerms": "Begriffe hinzufügen: Geben Sie einen Begriff ein und drücken Sie Enter oder klicken Sie auf Hinzufügen.",
       "HelpRemovingTerms": "Begriffe entfernen: Klicken Sie auf das X-Symbol neben einem Begriff.",
       "HelpImportExport": "Import/Export: Teilen Sie Ihr Vokabularlexikon zwischen Kampagnen oder sichern Sie Ihre Begriffe.",
-      "HelpNote": "Hinweis: Diese Begriffe werden in Transkriptionsaufforderungen aufgenommen, um die Genauigkeit für das einzigartige Vokabular Ihrer Kampagne zu verbessern."
+      "HelpNote": "Hinweis: Diese Begriffe werden in Transkriptionsaufforderungen aufgenommen, um die Genauigkeit für das einzigartige Vokabular Ihrer Kampagne zu verbessern.",
+      "TermCountLabel": "Begriffe",
+      "NoTermsCount": "Keine Begriffe"
     },
     "EntityExtraction": {
       "Title": "Entitätsextraktion",

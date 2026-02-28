@@ -50,9 +50,9 @@
           <div class="terms-header">
             <span class="terms-title">
               {{#if terms.length}}
-              <strong>{{terms.length}}</strong> term{{#if (ne terms.length 1)}}s{{/if}}
+              <strong>{{terms.length}}</strong> {{../i18n.termCountLabel}}
               {{else}}
-              No terms
+              {{../i18n.noTermsCount}}
               {{/if}}
             </span>
             {{#if terms.length}}

@@ -385,7 +385,9 @@
       "HelpAddingTerms": "Agregar Términos: Escribe un término y presiona Enter o haz clic en Agregar.",
       "HelpRemovingTerms": "Eliminar Términos: Haz clic en el icono X junto a cualquier término.",
       "HelpImportExport": "Importar/Exportar: Comparte tu diccionario de vocabulario entre campañas o haz una copia de seguridad.",
-      "HelpNote": "Nota: Estos términos se incluirán en los prompts de transcripción para mejorar la precisión del vocabulario único de tu campaña."
+      "HelpNote": "Nota: Estos términos se incluirán en los prompts de transcripción para mejorar la precisión del vocabulario único de tu campaña.",
+      "TermCountLabel": "términos",
+      "NoTermsCount": "Sin términos"
     },
     "EntityExtraction": {
       "Title": "[EN] Entity Extraction",

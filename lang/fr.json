@@ -385,7 +385,9 @@
       "HelpAddingTerms": "Ajouter des Termes : Tapez un terme et appuyez sur Entrée ou cliquez sur Ajouter.",
       "HelpRemovingTerms": "Supprimer des Termes : Cliquez sur l'icône X à côté d'un terme.",
       "HelpImportExport": "Import/Export : Partagez votre dictionnaire de vocabulaire entre campagnes ou sauvegardez vos termes.",
-      "HelpNote": "Note : Ces termes seront inclus dans les invites de transcription pour améliorer la précision du vocabulaire unique de votre campagne."
+      "HelpNote": "Note : Ces termes seront inclus dans les invites de transcription pour améliorer la précision du vocabulaire unique de votre campagne.",
+      "TermCountLabel": "termes",
+      "NoTermsCount": "Aucun terme"
     },
     "EntityExtraction": {
       "Title": "[EN] Entity Extraction",
