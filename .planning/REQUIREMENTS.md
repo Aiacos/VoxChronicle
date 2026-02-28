@@ -1,0 +1,120 @@
+# Requirements: VoxChronicle — Stabilization & Intelligent DM Assistant
+
+**Defined:** 2026-02-28
+**Core Value:** The AI must follow the adventure journal as the source of truth — knowing where the party is, what happened before, and what's coming next.
+
+## v1 Requirements
+
+Requirements for this milestone. Each maps to roadmap phases.
+
+### AI Context Pipeline
+
+- [ ] **CTX-01**: DM can select which Foundry journal is the active adventure before starting live mode
+- [ ] **CTX-02**: System tracks current chapter/scene position within the selected adventure journal
+- [ ] **CTX-03**: AI prompts receive chapter-scoped context (current chapter text), not the entire journal dump
+- [ ] **CTX-04**: RAG indexing uses 1200/300 token chunking for adventure content (not default 800/400)
+- [ ] **CTX-05**: RAG index updates automatically when journal pages are edited (hook-driven, debounced)
+- [ ] **CTX-06**: AI surfaces NPC names, personalities, and motivations from adventure journal text when relevant
+- [ ] **CTX-07**: AI anticipates upcoming scenes from the adventure and can suggest foreshadowing seeds
+
+### Suggestion Quality
+
+- [ ] **SUG-01**: AI suggestions reference specific adventure content from the journal, not generic D&D lore
+- [ ] **SUG-02**: AI responses stream to the UI with first tokens visible in under 1 second
+- [ ] **SUG-03**: Silence detection triggers suggestions after 20-30 seconds of DM silence (calibrated threshold)
+- [ ] **SUG-04**: DM can type a question in the panel and receive a direct AI answer (on-demand query)
+- [ ] **SUG-05**: Suggestion prompts adapt to current scene type (narration, combat, social, exploration)
+- [ ] **SUG-06**: AI detects when players go off-track from the adventure and offers recovery suggestions
+- [ ] **SUG-07**: AI uses speaker participation data to weight suggestions (e.g., surface opportunities for quiet players)
+
+### Rules Lookup
+
+- [ ] **RULE-01**: DM can ask D&D 5e rules questions and receive answers grounded in SRD compendium content
+- [ ] **RULE-02**: Rules answers include citations to specific SRD sections/sources
+- [ ] **RULE-03**: Rules lookup integrates into the live cycle as fire-and-forget (non-blocking)
+
+### Session Reliability
+
+- [ ] **SESS-01**: Live mode survives a full 3-4 hour D&D session without crashes or state corruption
+- [ ] **SESS-02**: Stop/restart live mode works cleanly using AbortController at all async boundaries
+- [ ] **SESS-03**: Session context uses rolling summarization (last 5 turns verbatim + summary of prior turns)
+- [ ] **SESS-04**: When OpenAI API is unavailable or slow, live mode degrades gracefully with clear DM-facing status
+- [ ] **SESS-05**: Token usage and API costs are monitored and bounded per session
+
+### UI & Polish
+
+- [ ] **UI-01**: All 214 un-namespaced CSS classes are prefixed with `vox-chronicle-` to prevent module conflicts
+- [ ] **UI-02**: Suggestions display as glanceable, scannable content (not paragraph walls) in the floating panel
+
+## v2 Requirements
+
+Deferred to future milestone. Tracked but not in current roadmap.
+
+### Cross-Session Memory
+
+- **MEM-01**: AI remembers what happened in previous sessions and can reference past events
+- **MEM-02**: Previous session summaries are stored and loaded at session start
+
+### Multi-Campaign Support
+
+- **CAMP-01**: RAG indexes are separated per campaign to prevent cross-contamination
+- **CAMP-02**: DM can switch between campaigns without re-indexing
+
+### Chronicle Mode Validation
+
+- **CHRON-01**: Full chronicle workflow (transcribe → extract → generate images → publish to Kanka) works end-to-end
+- **CHRON-02**: Entity deduplication prevents duplicate Kanka entries across sessions
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Replace the DM (autonomous narration) | Destroys DM agency; AI as co-pilot, not pilot |
+| Continuous auto-suggestion (every few seconds) | Causes suggestion fatigue; silence-triggered + on-demand only |
+| Player-facing AI during live session | Breaks immersion; spoiler risk; DM-only during play |
+| Automatic dice rolling / mechanical arbitration | AI hallucinates outcomes; DM makes the call |
+| Real-time NPC voice synthesis (TTS) | High latency kills table momentum; DM reads text in own voice |
+| Image generation during live session | 10-30 second generation kills momentum; defer to post-session |
+| Session state persistence across browser refresh | Complex architecture for marginal gain; design for single-session scope |
+| Multi-system support (PF2e, etc.) | Different mechanics, compendiums, and SRD; D&D 5e only this milestone |
+| Full transcript display in live UI | Clutters UI; show last 2-3 exchanges only; full transcript post-session |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CTX-01 | — | Pending |
+| CTX-02 | — | Pending |
+| CTX-03 | — | Pending |
+| CTX-04 | — | Pending |
+| CTX-05 | — | Pending |
+| CTX-06 | — | Pending |
+| CTX-07 | — | Pending |
+| SUG-01 | — | Pending |
+| SUG-02 | — | Pending |
+| SUG-03 | — | Pending |
+| SUG-04 | — | Pending |
+| SUG-05 | — | Pending |
+| SUG-06 | — | Pending |
+| SUG-07 | — | Pending |
+| RULE-01 | — | Pending |
+| RULE-02 | — | Pending |
+| RULE-03 | — | Pending |
+| SESS-01 | — | Pending |
+| SESS-02 | — | Pending |
+| SESS-03 | — | Pending |
+| SESS-04 | — | Pending |
+| SESS-05 | — | Pending |
+| UI-01 | — | Pending |
+| UI-02 | — | Pending |
+
+**Coverage:**
+- v1 requirements: 24 total
+- Mapped to phases: 0
+- Unmapped: 24
+
+---
+*Requirements defined: 2026-02-28*
+*Last updated: 2026-02-28 after initial definition*
