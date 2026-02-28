@@ -9,15 +9,15 @@
   @template vocabulary-manager
 --}}
 
-{{!-- TODO [HIGH]: Prefix all 33 CSS classes with vox-chronicle- (vocabulary-description, terms-list, term-item, add-term-btn, etc.) to prevent Foundry DOM collisions. See recorder.hbs for reference. --}}
+{{!-- All CSS classes prefixed with vox-chronicle- to prevent Foundry DOM collisions. Foundry-native tab classes (tabs, item, tab) preserved. --}}
 <div class="vox-chronicle-vocabulary-manager">
   {{!-- Description section --}}
-  <div class="vocabulary-description">
+  <div class="vox-chronicle-vocabulary-description">
     <p>{{i18n.description}}</p>
     {{#if hasTerms}}
-    <div class="vocabulary-stats">
-      <span class="stats-label">{{i18n.totalTermsLabel}}:</span>
-      <span class="stats-count">{{totalTerms}}</span>
+    <div class="vox-chronicle-vocabulary-stats">
+      <span class="vox-chronicle-stats-label">{{i18n.totalTermsLabel}}:</span>
+      <span class="vox-chronicle-stats-count">{{totalTerms}}</span>
     </div>
     {{/if}}
   </div>
@@ -29,26 +29,26 @@
       <i class="fa-solid {{icon}}"></i>
       <span>{{label}}</span>
       {{#if terms.length}}
-      <span class="term-count">({{terms.length}})</span>
+      <span class="vox-chronicle-term-count">({{terms.length}})</span>
       {{/if}}
     </a>
     {{/each}}
   </nav>
 
   {{!-- Tab content area --}}
-  <div class="tab-content">
+  <div class="vox-chronicle-tab-content">
     {{#each categories}}
     <div class="tab" data-tab="{{id}}" data-group="vocabulary-categories">
-      <div class="category-content" data-category="{{id}}">
+      <div class="vox-chronicle-category-content" data-category="{{id}}">
         {{!-- Category description --}}
-        <div class="category-description">
+        <div class="vox-chronicle-category-description">
           <p>{{description}}</p>
         </div>
 
         {{!-- Terms list --}}
-        <div class="terms-section">
-          <div class="terms-header">
-            <span class="terms-title">
+        <div class="vox-chronicle-terms-section">
+          <div class="vox-chronicle-terms-header">
+            <span class="vox-chronicle-terms-title">
               {{#if terms.length}}
               <strong>{{terms.length}}</strong> {{../i18n.termCountLabel}}
               {{else}}
@@ -57,7 +57,7 @@
             </span>
             {{#if terms.length}}
             <button type="button"
-                    class="clear-category-btn"
+                    class="vox-chronicle-clear-category-btn"
                     data-action="clear-category"
                     title="{{../i18n.clearCategory}}">
               <i class="fa-solid fa-trash"></i>
@@ -68,12 +68,12 @@
 
           {{!-- Terms list --}}
           {{#if terms.length}}
-          <ul class="terms-list">
+          <ul class="vox-chronicle-terms-list">
             {{#each terms}}
-            <li class="term-item">
-              <span class="term-text">{{this}}</span>
+            <li class="vox-chronicle-term-item">
+              <span class="vox-chronicle-term-text">{{this}}</span>
               <button type="button"
-                      class="remove-term-btn"
+                      class="vox-chronicle-remove-term-btn"
                       data-action="remove-term"
                       data-term="{{this}}"
                       title="{{../../i18n.removeTerm}}"
@@ -84,7 +84,7 @@
             {{/each}}
           </ul>
           {{else}}
-          <div class="no-terms-message">
+          <div class="vox-chronicle-no-terms-message">
             <i class="fa-solid fa-info-circle"></i>
             <span>{{../i18n.noTerms}}</span>
           </div>
@@ -92,14 +92,14 @@
         </div>
 
         {{!-- Add term section --}}
-        <div class="add-term-section">
-          <div class="add-term-input-group">
+        <div class="vox-chronicle-add-term-section">
+          <div class="vox-chronicle-add-term-input-group">
             <input type="text"
-                   class="term-input"
+                   class="vox-chronicle-term-input"
                    placeholder="{{../i18n.termPlaceholder}}"
                    aria-label="{{../i18n.addTerm}}" />
             <button type="button"
-                    class="add-term-btn"
+                    class="vox-chronicle-add-term-btn"
                     data-action="add-term"
                     title="{{../i18n.addTerm}}">
               <i class="fa-solid fa-plus"></i>
@@ -113,10 +113,10 @@
   </div>
 
   {{!-- Global action buttons --}}
-  <div class="vocabulary-actions">
-    <div class="action-group">
+  <div class="vox-chronicle-vocabulary-actions">
+    <div class="vox-chronicle-action-group">
       <button type="button"
-              class="suggest-foundry-btn"
+              class="vox-chronicle-suggest-foundry-btn"
               data-action="suggest-foundry"
               title="{{i18n.suggestFoundry}}">
         <i class="fa-solid fa-magic"></i>
@@ -124,7 +124,7 @@
       </button>
 
       <button type="button"
-              class="import-btn"
+              class="vox-chronicle-import-btn"
               data-action="import-dict"
               title="{{i18n.importDict}}">
         <i class="fa-solid fa-file-import"></i>
@@ -132,7 +132,7 @@
       </button>
 
       <button type="button"
-              class="export-btn"
+              class="vox-chronicle-export-btn"
               data-action="export-dict"
               title="{{i18n.exportDict}}"
               {{#unless hasTerms}}disabled{{/unless}}>
@@ -141,9 +141,9 @@
       </button>
     </div>
 
-    <div class="action-group danger">
+    <div class="vox-chronicle-action-group danger">
       <button type="button"
-              class="clear-all-btn"
+              class="vox-chronicle-clear-all-btn"
               data-action="clear-all"
               title="{{i18n.clearAll}}"
               {{#unless hasTerms}}disabled{{/unless}}>
@@ -154,10 +154,10 @@
   </div>
 
   {{!-- Help section --}}
-  <div class="vocabulary-help">
+  <div class="vox-chronicle-vocabulary-help">
     <details>
       <summary><i class="fa-solid fa-question-circle"></i> {{localize "VOXCHRONICLE.Vocabulary.HelpTitle"}}</summary>
-      <div class="help-content">
+      <div class="vox-chronicle-help-content">
         <p><strong>{{localize "VOXCHRONICLE.Vocabulary.HelpCategories"}}</strong></p>
         <ul>
           <li><strong>{{localize "VOXCHRONICLE.Vocabulary.HelpCharacterNames"}}</strong></li>

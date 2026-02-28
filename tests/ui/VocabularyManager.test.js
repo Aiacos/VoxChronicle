@@ -1248,7 +1248,7 @@ describe('VocabularyManager', () => {
       const mockTab = { addEventListener: vi.fn(), dataset: { tab: 'items' } };
       const mockElement = {
         querySelectorAll: vi.fn((selector) => {
-          if (selector === '.term-input') return [mockInput];
+          if (selector === '.vox-chronicle-term-input') return [mockInput];
           if (selector === '.tabs .item') return [mockTab];
           return [];
         })
@@ -1320,7 +1320,7 @@ describe('VocabularyManager', () => {
       };
       const mockElement = {
         querySelectorAll: vi.fn((selector) => {
-          if (selector === '.term-input') return [mockInput];
+          if (selector === '.vox-chronicle-term-input') return [mockInput];
           return [];
         })
       };
@@ -1356,7 +1356,7 @@ describe('VocabularyManager', () => {
       };
       const mockElement = {
         querySelectorAll: vi.fn((selector) => {
-          if (selector === '.term-input') return [mockInput];
+          if (selector === '.vox-chronicle-term-input') return [mockInput];
           return [];
         })
       };
@@ -1471,7 +1471,7 @@ describe('VocabularyManager', () => {
       };
       const mockElement2 = {
         querySelectorAll: vi.fn((selector) => {
-          if (selector === '.term-input') return [mockInput];
+          if (selector === '.vox-chronicle-term-input') return [mockInput];
           return [];
         })
       };

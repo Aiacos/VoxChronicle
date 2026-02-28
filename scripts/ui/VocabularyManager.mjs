@@ -138,7 +138,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     const { signal } = this.#listenerController;
 
     // Enter key on term input triggers add-term
-    this.element?.querySelectorAll('.term-input').forEach((input) => {
+    this.element?.querySelectorAll('.vox-chronicle-term-input').forEach((input) => {
       input.addEventListener('keypress', (event) => {
         if (event.which === 13 || event.key === 'Enter') {
           event.preventDefault();
@@ -298,8 +298,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     event.preventDefault();
 
     const button = target || event.currentTarget;
-    const container = button.closest('.category-content');
-    const input = container?.querySelector('.term-input');
+    const container = button.closest('.vox-chronicle-category-content');
+    const input = container?.querySelector('.vox-chronicle-term-input');
     const term = input?.value?.trim() ?? '';
     const category = container?.dataset?.category;
 
@@ -347,7 +347,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
 
     const button = target || event.currentTarget;
     const term = button.dataset.term;
-    const category = button.closest('.category-content')?.dataset?.category;
+    const category = button.closest('.vox-chronicle-category-content')?.dataset?.category;
 
     this._logger.debug(`_onRemoveTerm: "${term}" from category "${category}"`);
 
@@ -380,7 +380,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
     event.preventDefault();
 
     const button = target || event.currentTarget;
-    const category = button.closest('.category-content')?.dataset?.category;
+    const category = button.closest('.vox-chronicle-category-content')?.dataset?.category;
 
     // Confirm with user
     const confirm = await Dialog.confirm({
