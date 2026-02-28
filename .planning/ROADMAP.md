@@ -32,7 +32,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Every Handlebars template reference matches the renamed classes and the UI renders correctly
   3. Every test that references CSS class names passes without modification to the test assertions
   4. A second Foundry module with generic class names (e.g., `.panel`, `.button`) can be active simultaneously without any VoxChronicle UI element changing appearance
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 01-01-PLAN.md — Namespace speaker-labeling (21 classes) and entity-preview (57 classes) with CSS + JS updates
+- [ ] 01-02-PLAN.md — Namespace relationship-graph (24 classes) and vocabulary-manager (33 classes) with CSS + JS + test updates
+- [ ] 01-03-PLAN.md — Namespace analytics-tab (48 classes) and journal-picker (31 classes) + comprehensive verification sweep
 
 ### Phase 2: Journal Context Pipeline
 **Goal**: DMs can select the adventure journal before starting live mode, the system tracks chapter position, and the AI receives chapter-scoped context — not a full journal dump — on every cycle
@@ -121,7 +125,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CSS Namespace | 0/TBD | Not started | - |
+| 1. CSS Namespace | 0/3 | Planning complete | - |
 | 2. Journal Context Pipeline | 0/TBD | Not started | - |
 | 3. AI Knowledge Depth | 0/TBD | Not started | - |
 | 4. Session Reliability | 0/TBD | Not started | - |
