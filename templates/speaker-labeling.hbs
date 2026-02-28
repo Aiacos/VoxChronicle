@@ -9,42 +9,41 @@
   @template speaker-labeling
 --}}
 
-{{!-- TODO [HIGH]: Prefix all 21 CSS classes with vox-chronicle- (form-description, speaker-row, btn-clear, etc.) to prevent Foundry DOM collisions. See recorder.hbs for reference. --}}
 <form class="vox-chronicle-speaker-labeling">
   {{!-- Form description --}}
-  <div class="form-description">
+  <div class="vox-chronicle-form-description">
     <p>{{i18n.description}}</p>
   </div>
 
   {{!-- Header row for the speaker list --}}
-  <div class="speaker-labels-header">
-    <div class="header-speaker-id">{{i18n.speakerId}}</div>
-    <div class="header-player-name">{{i18n.playerName}}</div>
+  <div class="vox-chronicle-speaker-labels-header">
+    <div class="vox-chronicle-header-speaker-id">{{i18n.speakerId}}</div>
+    <div class="vox-chronicle-header-player-name">{{i18n.playerName}}</div>
     {{#if hasGameUsers}}
-    <div class="header-quick-assign">{{i18n.quickAssign}}</div>
+    <div class="vox-chronicle-header-quick-assign">{{i18n.quickAssign}}</div>
     {{/if}}
   </div>
 
   {{!-- Speaker labels list --}}
-  <div class="speaker-labels-list">
+  <div class="vox-chronicle-speaker-labels-list">
     {{#each speakers}}
-    <div class="speaker-row {{#if isKnown}}known{{/if}}">
+    <div class="vox-chronicle-speaker-row {{#if isKnown}}known{{/if}}">
       {{!-- Speaker ID column --}}
-      <div class="speaker-id">
-        <span class="speaker-id-text">{{id}}</span>
+      <div class="vox-chronicle-speaker-id">
+        <span class="vox-chronicle-speaker-id-text">{{id}}</span>
         {{#if isKnown}}
-        <i class="fa-solid fa-check-circle known-indicator" title="{{../i18n.detectedInSession}}"></i>
+        <i class="fa-solid fa-check-circle vox-chronicle-known-indicator" title="{{../i18n.detectedInSession}}"></i>
         {{/if}}
       </div>
 
       {{!-- Speaker label input column --}}
-      <div class="speaker-label">
+      <div class="vox-chronicle-speaker-label">
         <input type="text"
                name="speaker-{{id}}"
                value="{{label}}"
                placeholder="{{placeholder}}" />
         <button type="button"
-                class="btn-clear"
+                class="vox-chronicle-btn-clear"
                 data-action="clear-label"
                 data-speaker-id="{{id}}"
                 title="{{i18n.clear}}"
@@ -55,7 +54,7 @@
 
       {{!-- Quick assign dropdown (only if game users available) --}}
       {{#if ../hasGameUsers}}
-      <div class="quick-assign">
+      <div class="vox-chronicle-quick-assign">
         <select data-action="quick-assign" data-speaker-id="{{id}}">
           <option value="">{{../i18n.quickAssignPlaceholder}}</option>
           {{#each ../gameUsers}}
@@ -71,7 +70,7 @@
 
     {{!-- Empty state message if no speakers detected --}}
     {{#unless speakers.length}}
-    <div class="no-speakers-message">
+    <div class="vox-chronicle-no-speakers-message">
       <i class="fa-solid fa-info-circle"></i>
       <span>{{noSpeakersMessage}}</span>
     </div>
@@ -79,9 +78,9 @@
   </div>
 
   {{!-- Form action buttons --}}
-  <div class="form-actions">
+  <div class="vox-chronicle-form-actions">
     <button type="button"
-            class="btn-auto-detect"
+            class="vox-chronicle-btn-auto-detect"
             data-action="auto-detect"
             title="{{i18n.autoDetect}}">
       <i class="fa-solid fa-magic"></i>
@@ -89,7 +88,7 @@
     </button>
 
     <button type="button"
-            class="btn-reset"
+            class="vox-chronicle-btn-reset"
             data-action="reset-labels"
             title="{{i18n.reset}}">
       <i class="fa-solid fa-undo"></i>
@@ -97,7 +96,7 @@
     </button>
 
     <button type="submit"
-            class="btn-save"
+            class="vox-chronicle-btn-save"
             title="{{i18n.save}}">
       <i class="fa-solid fa-save"></i>
       <span>{{i18n.save}}</span>
@@ -105,10 +104,10 @@
   </div>
 
   {{!-- Help section --}}
-  <div class="form-help">
+  <div class="vox-chronicle-form-help">
     <details>
       <summary><i class="fa-solid fa-question-circle"></i> {{i18n.help}}</summary>
-      <div class="help-content">
+      <div class="vox-chronicle-help-content">
         <p>{{{i18n.helpSpeakerIds}}}</p>
         <p>{{{i18n.helpKnownSpeakers}}}</p>
         <p>{{{i18n.helpQuickAssign}}}</p>

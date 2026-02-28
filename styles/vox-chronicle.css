@@ -265,16 +265,16 @@ form .form-group .vox-chronicle-validate-button {
   gap: 16px;
 }
 
-.vox-chronicle-speaker-labeling .form-description {
+.vox-chronicle-speaker-labeling .vox-chronicle-form-description {
   opacity: 0.7;
   font-size: 0.95em;
   line-height: 1.5;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.vox-chronicle-speaker-labeling .form-description p { margin: 0; }
+.vox-chronicle-speaker-labeling .vox-chronicle-form-description p { margin: 0; }
 
-.vox-chronicle-speaker-labeling .speaker-labels-header {
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-labels-header {
   display: grid;
   grid-template-columns: 140px 1fr auto;
   gap: 16px;
@@ -288,13 +288,13 @@ form .form-group .vox-chronicle-validate-button {
   opacity: 0.7;
 }
 
-.vox-chronicle-speaker-labeling .speaker-labels-list {
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-labels-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.vox-chronicle-speaker-labeling .speaker-row {
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-row {
   display: grid;
   grid-template-columns: 140px 1fr auto;
   gap: 16px;
@@ -305,26 +305,26 @@ form .form-group .vox-chronicle-validate-button {
   border-left: 3px solid transparent;
   transition: border-color 0.2s, background-color 0.2s;
 }
-.vox-chronicle-speaker-labeling .speaker-row:hover { background: rgba(255, 255, 255, 0.08); }
-.vox-chronicle-speaker-labeling .speaker-row.known { border-left-color: #06d6a0; }
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-row:hover { background: rgba(255, 255, 255, 0.08); }
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-row.known { border-left-color: #06d6a0; }
 
-.vox-chronicle-speaker-labeling .speaker-id {
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-id {
   display: flex;
   align-items: center;
   gap: 4px;
   font-family: monospace;
   font-size: 0.9em;
 }
-.vox-chronicle-speaker-labeling .speaker-id .known-indicator { color: #06d6a0; font-size: 0.9em; }
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-id .vox-chronicle-known-indicator { color: #06d6a0; font-size: 0.9em; }
 
-.vox-chronicle-speaker-labeling .speaker-label {
+.vox-chronicle-speaker-labeling .vox-chronicle-speaker-label {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.vox-chronicle-speaker-labeling .form-actions,
-.vox-chronicle-entity-preview .form-actions {
+.vox-chronicle-speaker-labeling .vox-chronicle-form-actions,
+.vox-chronicle-entity-preview .vox-chronicle-form-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
@@ -987,12 +987,12 @@ button.vox-chronicle-btn--danger:hover:not(:disabled) {
    ========================================================================== */
 
 @media (max-width: 500px) {
-  .vox-chronicle-speaker-labeling .speaker-labels-header,
-  .vox-chronicle-speaker-labeling .speaker-row {
+  .vox-chronicle-speaker-labeling .vox-chronicle-speaker-labels-header,
+  .vox-chronicle-speaker-labeling .vox-chronicle-speaker-row {
     grid-template-columns: 1fr;
     gap: 8px;
   }
-  .vox-chronicle-speaker-labeling .header-quick-assign { display: none; }
+  .vox-chronicle-speaker-labeling .vox-chronicle-header-quick-assign { display: none; }
   .vox-chronicle-entity-preview .entity-row { grid-template-columns: auto 1fr; }
   .vox-chronicle-entity-preview .entity-actions { grid-column: 1 / -1; justify-content: flex-end; }
 }
