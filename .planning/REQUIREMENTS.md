@@ -85,36 +85,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CTX-01 | — | Pending |
-| CTX-02 | — | Pending |
-| CTX-03 | — | Pending |
-| CTX-04 | — | Pending |
-| CTX-05 | — | Pending |
-| CTX-06 | — | Pending |
-| CTX-07 | — | Pending |
-| SUG-01 | — | Pending |
-| SUG-02 | — | Pending |
-| SUG-03 | — | Pending |
-| SUG-04 | — | Pending |
-| SUG-05 | — | Pending |
-| SUG-06 | — | Pending |
-| SUG-07 | — | Pending |
-| RULE-01 | — | Pending |
-| RULE-02 | — | Pending |
-| RULE-03 | — | Pending |
-| SESS-01 | — | Pending |
-| SESS-02 | — | Pending |
-| SESS-03 | — | Pending |
-| SESS-04 | — | Pending |
-| SESS-05 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
+| CTX-01 | Phase 2 | Pending |
+| CTX-02 | Phase 2 | Pending |
+| CTX-03 | Phase 2 | Pending |
+| CTX-04 | Phase 2 | Pending |
+| CTX-05 | Phase 2 | Pending |
+| CTX-06 | Phase 3 | Pending |
+| CTX-07 | Phase 3 | Pending |
+| SUG-01 | Phase 3 | Pending |
+| SUG-02 | Phase 6 | Pending |
+| SUG-03 | Phase 6 | Pending |
+| SUG-04 | Phase 8 | Pending |
+| SUG-05 | Phase 8 | Pending |
+| SUG-06 | Phase 8 | Pending |
+| SUG-07 | Phase 8 | Pending |
+| RULE-01 | Phase 7 | Pending |
+| RULE-02 | Phase 7 | Pending |
+| RULE-03 | Phase 7 | Pending |
+| SESS-01 | Phase 4 | Pending |
+| SESS-02 | Phase 4 | Pending |
+| SESS-03 | Phase 5 | Pending |
+| SESS-04 | Phase 4 | Pending |
+| SESS-05 | Phase 4 | Pending |
+| UI-01 | Phase 1 | Pending |
+| UI-02 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after initial definition*
+*Last updated: 2026-02-28 — traceability completed during roadmap creation*
