@@ -12,7 +12,6 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
-import { MODULE_ID } from '../constants.mjs';
 import { SilenceMonitor } from './SilenceMonitor.mjs';
 import { PromptBuilder } from './PromptBuilder.mjs';
 
