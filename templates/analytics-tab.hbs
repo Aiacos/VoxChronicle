@@ -9,18 +9,17 @@
   @template analytics-tab
 --}}
 
-{{!-- TODO [HIGH]: Prefix all 48 CSS classes with vox-chronicle- (analytics-section, stat-item, speaker-list, timeline-bars, etc.) to prevent Foundry DOM collisions. See recorder.hbs for reference. --}}
 <div class="vox-chronicle-analytics-tab">
   {{!-- Current Session Section --}}
-  <section class="analytics-section current-session">
-    <div class="section-header">
+  <section class="vox-chronicle-analytics-section vox-chronicle-current-session">
+    <div class="vox-chronicle-section-header">
       <h3>
         <i class="fa-solid fa-chart-line"></i>
         {{i18n.currentSession}}
       </h3>
       {{#if hasCurrentSession}}
-      <div class="session-actions">
-        <button type="button" class="end-session" title="{{i18n.endSession}}">
+      <div class="vox-chronicle-session-actions">
+        <button type="button" class="vox-chronicle-end-session" title="{{i18n.endSession}}">
           <i class="fa-solid fa-stop-circle"></i>
           {{i18n.endSession}}
         </button>
@@ -29,58 +28,58 @@
     </div>
 
     {{#if hasCurrentSession}}
-    <div class="session-summary">
-      <div class="summary-stats">
-        <div class="stat-item">
+    <div class="vox-chronicle-session-summary">
+      <div class="vox-chronicle-summary-stats">
+        <div class="vox-chronicle-stat-item">
           <i class="fa-solid fa-clock"></i>
-          <span class="stat-label">{{i18n.totalDuration}}</span>
-          <span class="stat-value">{{currentSession.duration}}</span>
+          <span class="vox-chronicle-stat-label">{{i18n.totalDuration}}</span>
+          <span class="vox-chronicle-stat-value">{{currentSession.duration}}</span>
         </div>
-        <div class="stat-item">
+        <div class="vox-chronicle-stat-item">
           <i class="fa-solid fa-users"></i>
-          <span class="stat-label">{{i18n.speakerCount}}</span>
-          <span class="stat-value">{{currentSession.speakerCount}}</span>
+          <span class="vox-chronicle-stat-label">{{i18n.speakerCount}}</span>
+          <span class="vox-chronicle-stat-value">{{currentSession.speakerCount}}</span>
         </div>
       </div>
     </div>
 
     {{!-- Speaker Statistics --}}
-    <div class="speaker-stats">
+    <div class="vox-chronicle-speaker-stats">
       <h4>{{i18n.speakingTime}}</h4>
       {{#if hasSpeakers}}
-      <ul class="speaker-list">
+      <ul class="vox-chronicle-speaker-list">
         {{#each currentSession.speakers}}
-        <li class="speaker-item">
-          <div class="speaker-info">
-            <span class="speaker-name">{{this.name}}</span>
-            <span class="speaker-time">{{this.formattedTime}}</span>
+        <li class="vox-chronicle-speaker-item">
+          <div class="vox-chronicle-speaker-info">
+            <span class="vox-chronicle-speaker-name">{{this.name}}</span>
+            <span class="vox-chronicle-speaker-time">{{this.formattedTime}}</span>
           </div>
-          <div class="speaking-time-bar-container">
-            <div class="speaking-time-bar"
+          <div class="vox-chronicle-speaking-time-bar-container">
+            <div class="vox-chronicle-speaking-time-bar"
                  style="width: {{this.percentage}}%"
                  title="{{this.percentage}}%">
             </div>
           </div>
-          <div class="speaker-metrics">
-            <span class="metric">{{this.percentage}}%</span>
-            <span class="segment-count">{{this.segmentCount}} {{i18n.segments}}</span>
+          <div class="vox-chronicle-speaker-metrics">
+            <span class="vox-chronicle-metric">{{this.percentage}}%</span>
+            <span class="vox-chronicle-segment-count">{{this.segmentCount}} {{i18n.segments}}</span>
           </div>
         </li>
         {{/each}}
       </ul>
       {{else}}
-      <div class="empty-state">
+      <div class="vox-chronicle-empty-state">
         <i class="fa-solid fa-microphone-slash"></i>
         <p>{{i18n.noSpeakersYet}}</p>
       </div>
       {{/if}}
     </div>
     {{else}}
-    <div class="empty-state">
+    <div class="vox-chronicle-empty-state">
       <i class="fa-solid fa-play-circle"></i>
       <p>{{i18n.noActiveSession}}</p>
       <button type="button"
-              class="start-session"
+              class="vox-chronicle-start-session"
               data-action="start-recording"
               {{#unless apiKeyConfigured}}disabled{{/unless}}>
         <i class="fa-solid fa-microphone"></i>
@@ -92,8 +91,8 @@
 
   {{!-- Session Timeline Section --}}
   {{#if hasCurrentSession}}
-  <section class="analytics-section session-timeline">
-    <div class="section-header">
+  <section class="vox-chronicle-analytics-section vox-chronicle-session-timeline">
+    <div class="vox-chronicle-section-header">
       <h3>
         <i class="fa-solid fa-chart-bar"></i>
         {{i18n.timeline}}
@@ -101,35 +100,35 @@
     </div>
 
     {{#if hasTimelineData}}
-    <div class="timeline-visualization">
-      <div class="timeline-bars">
+    <div class="vox-chronicle-timeline-visualization">
+      <div class="vox-chronicle-timeline-bars">
         {{#each timeline}}
-        <div class="timeline-bucket" data-timestamp="{{this.timestamp}}">
-          <div class="bucket-bar"
+        <div class="vox-chronicle-timeline-bucket" data-timestamp="{{this.timestamp}}">
+          <div class="vox-chronicle-bucket-bar"
                style="height: {{this.heightPercent}}%"
                title="{{this.label}}">
             {{#each this.speakerBars}}
-            <div class="speaker-segment"
+            <div class="vox-chronicle-speaker-segment"
                  style="height: {{this.heightPercent}}%; background-color: {{this.color}}"
                  title="{{this.speakerName}}: {{this.duration}}s">
             </div>
             {{/each}}
           </div>
-          <span class="bucket-time">{{this.timeLabel}}</span>
+          <span class="vox-chronicle-bucket-time">{{this.timeLabel}}</span>
         </div>
         {{/each}}
       </div>
-      <div class="timeline-legend">
+      <div class="vox-chronicle-timeline-legend">
         {{#each speakers}}
-        <div class="legend-item">
-          <span class="legend-color" style="background-color: {{this.color}}"></span>
-          <span class="legend-label">{{this.name}}</span>
+        <div class="vox-chronicle-legend-item">
+          <span class="vox-chronicle-legend-color" style="background-color: {{this.color}}"></span>
+          <span class="vox-chronicle-legend-label">{{this.name}}</span>
         </div>
         {{/each}}
       </div>
     </div>
     {{else}}
-    <div class="empty-state">
+    <div class="vox-chronicle-empty-state">
       <i class="fa-solid fa-chart-area"></i>
       <p>{{i18n.noTimelineData}}</p>
     </div>
@@ -138,16 +137,16 @@
   {{/if}}
 
   {{!-- Session History Section --}}
-  <section class="analytics-section session-history">
-    <div class="section-header">
+  <section class="vox-chronicle-analytics-section vox-chronicle-session-history">
+    <div class="vox-chronicle-section-header">
       <h3>
         <i class="fa-solid fa-history"></i>
         {{i18n.sessionHistory}}
       </h3>
       {{#if hasHistory}}
-      <div class="history-actions">
+      <div class="vox-chronicle-history-actions">
         <button type="button"
-                class="clear-history"
+                class="vox-chronicle-clear-history"
                 title="{{i18n.clearHistory}}"
                 data-action="clear-history">
           <i class="fa-solid fa-trash"></i>
@@ -157,48 +156,48 @@
     </div>
 
     {{#if hasHistory}}
-    <ul class="session-history-list">
+    <ul class="vox-chronicle-session-history-list">
       {{#each sessionHistory}}
-      <li class="history-item" data-session-id="{{this.sessionId}}">
-        <div class="history-header">
-          <span class="history-date">
+      <li class="vox-chronicle-history-item" data-session-id="{{this.sessionId}}">
+        <div class="vox-chronicle-history-header">
+          <span class="vox-chronicle-history-date">
             <i class="fa-solid fa-calendar-alt"></i>
             {{this.formattedDate}}
           </span>
-          <span class="history-duration">
+          <span class="vox-chronicle-history-duration">
             <i class="fa-solid fa-clock"></i>
             {{this.duration}}
           </span>
         </div>
-        <div class="history-stats">
-          <span class="history-stat">
+        <div class="vox-chronicle-history-stats">
+          <span class="vox-chronicle-history-stat">
             <i class="fa-solid fa-users"></i>
             {{this.speakerCount}} {{i18n.speakers}}
           </span>
           {{#if this.dominantSpeaker}}
-          <span class="history-stat">
+          <span class="vox-chronicle-history-stat">
             <i class="fa-solid fa-crown"></i>
             {{this.dominantSpeaker}}
           </span>
           {{/if}}
         </div>
-        <div class="history-actions">
+        <div class="vox-chronicle-history-actions">
           <button type="button"
-                  class="view-session"
+                  class="vox-chronicle-view-session"
                   data-session-id="{{this.sessionId}}"
                   data-action="view-session"
                   title="{{i18n.viewDetails}}">
             <i class="fa-solid fa-eye"></i>
           </button>
           <button type="button"
-                  class="export-session"
+                  class="vox-chronicle-export-session"
                   data-session-id="{{this.sessionId}}"
                   data-action="export-session"
                   title="{{i18n.exportSession}}">
             <i class="fa-solid fa-download"></i>
           </button>
           <button type="button"
-                  class="delete-session"
+                  class="vox-chronicle-delete-session"
                   data-session-id="{{this.sessionId}}"
                   data-action="delete-session"
                   title="{{i18n.deleteSession}}">
@@ -209,7 +208,7 @@
       {{/each}}
     </ul>
     {{else}}
-    <div class="empty-state">
+    <div class="vox-chronicle-empty-state">
       <i class="fa-solid fa-inbox"></i>
       <p>{{i18n.noSessionHistory}}</p>
     </div>

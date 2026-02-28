@@ -9,42 +9,41 @@
   @template journal-picker
 --}}
 
-{{!-- TODO [HIGH]: Prefix all 31 CSS classes with vox-chronicle- (picker-header, folder-tree, journal-item, select-all-btn, etc.) to prevent Foundry DOM collisions. See recorder.hbs for reference. --}}
 <div class="vox-chronicle-journal-picker" data-module-id="{{moduleId}}">
   {{!-- Header Section --}}
-  <div class="picker-header">
-    <div class="picker-header-actions">
+  <div class="vox-chronicle-picker-header">
+    <div class="vox-chronicle-picker-header-actions">
       <button type="button"
-              class="select-all-btn"
+              class="vox-chronicle-select-all-btn"
               data-action="select-all"
               title="{{i18n.selectAll}}">
         <i class="fa-solid fa-check-double"></i>
         {{i18n.selectAll}}
       </button>
       <button type="button"
-              class="deselect-all-btn"
+              class="vox-chronicle-deselect-all-btn"
               data-action="deselect-all"
               title="{{i18n.deselectAll}}">
         <i class="fa-solid fa-times"></i>
         {{i18n.deselectAll}}
       </button>
     </div>
-    <div class="picker-selection-count">
+    <div class="vox-chronicle-picker-selection-count">
       <i class="fa-solid fa-info-circle"></i>
       <span>{{i18n.selectedCount}}: <strong>{{selectedCount}}</strong> / {{totalCount}}</span>
     </div>
   </div>
 
   {{!-- Journal Tree Content --}}
-  <div class="picker-content">
+  <div class="vox-chronicle-picker-content">
     {{#if hasJournals}}
       {{#if hasFolders}}
-      <div class="picker-section">
-        <h3 class="picker-section-title">
+      <div class="vox-chronicle-picker-section">
+        <h3 class="vox-chronicle-picker-section-title">
           <i class="fa-solid fa-folder"></i>
           {{i18n.folders}}
         </h3>
-        <ul class="folder-tree">
+        <ul class="vox-chronicle-folder-tree">
           {{#each folderTree}}
             {{> folderNode}}
           {{/each}}
@@ -53,22 +52,22 @@
       {{/if}}
 
       {{#if rootJournals}}
-      <div class="picker-section">
-        <h3 class="picker-section-title">
+      <div class="vox-chronicle-picker-section">
+        <h3 class="vox-chronicle-picker-section-title">
           <i class="fa-solid fa-book"></i>
           {{i18n.journals}}
         </h3>
-        <ul class="journal-list">
+        <ul class="vox-chronicle-journal-list">
           {{#each rootJournals}}
-            <li class="journal-item">
-              <label class="journal-label">
+            <li class="vox-chronicle-journal-item">
+              <label class="vox-chronicle-journal-label">
                 <input type="checkbox"
-                       class="journal-checkbox"
+                       class="vox-chronicle-journal-checkbox"
                        data-id="{{this.id}}"
                        data-type="{{this.type}}"
                        {{#if this.selected}}checked{{/if}} />
                 <i class="fa-solid fa-book"></i>
-                <span class="journal-name">{{this.name}}</span>
+                <span class="vox-chronicle-journal-name">{{this.name}}</span>
               </label>
             </li>
           {{/each}}
@@ -76,7 +75,7 @@
       </div>
       {{/if}}
     {{else}}
-      <div class="picker-empty-state">
+      <div class="vox-chronicle-picker-empty-state">
         <i class="fa-solid fa-book-open"></i>
         <p>{{i18n.noJournalsAvailable}}</p>
       </div>
@@ -84,12 +83,12 @@
   </div>
 
   {{!-- Footer Section --}}
-  <div class="picker-footer">
-    <button type="button" class="save-selection-btn" data-action="save-selection">
+  <div class="vox-chronicle-picker-footer">
+    <button type="button" class="vox-chronicle-save-selection-btn" data-action="save-selection">
       <i class="fa-solid fa-save"></i>
       {{i18n.save}}
     </button>
-    <button type="button" class="cancel-btn" data-action="cancel">
+    <button type="button" class="vox-chronicle-cancel-btn" data-action="cancel">
       <i class="fa-solid fa-times"></i>
       {{i18n.cancel}}
     </button>
@@ -98,36 +97,36 @@
 
 {{!-- Partial template for recursive folder rendering --}}
 {{#*inline "folderNode"}}
-<li class="folder-item {{#if this.expanded}}expanded{{/if}}">
-  <div class="folder-header">
+<li class="vox-chronicle-folder-item {{#if this.expanded}}expanded{{/if}}">
+  <div class="vox-chronicle-folder-header">
     {{#if this.hasChildren}}
     <button type="button"
-            class="folder-toggle"
+            class="vox-chronicle-folder-toggle"
             data-folder-id="{{this.id}}"
             data-action="toggle-folder"
             title="{{#if this.expanded}}{{i18n.collapseFolder}}{{else}}{{i18n.expandFolder}}{{/if}}">
       <i class="fa-solid {{#if this.expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i>
     </button>
     {{else}}
-    <span class="folder-spacer"></span>
+    <span class="vox-chronicle-folder-spacer"></span>
     {{/if}}
 
-    <label class="folder-label">
+    <label class="vox-chronicle-folder-label">
       <input type="checkbox"
-             class="folder-checkbox"
+             class="vox-chronicle-folder-checkbox"
              data-id="{{this.id}}"
              data-type="{{this.type}}"
              {{#if this.selected}}checked{{/if}} />
       <i class="fa-solid {{#if this.expanded}}fa-folder-open{{else}}fa-folder{{/if}}"></i>
-      <span class="folder-name">{{this.name}}</span>
-      <span class="folder-count">({{this.journalCount}})</span>
+      <span class="vox-chronicle-folder-name">{{this.name}}</span>
+      <span class="vox-chronicle-folder-count">({{this.journalCount}})</span>
     </label>
   </div>
 
   {{#if this.hasChildren}}
-  <div class="folder-children {{#unless this.expanded}}hidden{{/unless}}">
+  <div class="vox-chronicle-folder-children {{#unless this.expanded}}vox-chronicle-hidden{{/unless}}">
     {{#if this.folders}}
-    <ul class="folder-tree nested">
+    <ul class="vox-chronicle-folder-tree nested">
       {{#each this.folders}}
         {{> folderNode}}
       {{/each}}
@@ -135,17 +134,17 @@
     {{/if}}
 
     {{#if this.journals}}
-    <ul class="journal-list nested">
+    <ul class="vox-chronicle-journal-list nested">
       {{#each this.journals}}
-        <li class="journal-item">
-          <label class="journal-label">
+        <li class="vox-chronicle-journal-item">
+          <label class="vox-chronicle-journal-label">
             <input type="checkbox"
-                   class="journal-checkbox"
+                   class="vox-chronicle-journal-checkbox"
                    data-id="{{this.id}}"
                    data-type="{{this.type}}"
                    {{#if this.selected}}checked{{/if}} />
             <i class="fa-solid fa-book"></i>
-            <span class="journal-name">{{this.name}}</span>
+            <span class="vox-chronicle-journal-name">{{this.name}}</span>
           </label>
         </li>
       {{/each}}
