@@ -95,6 +95,20 @@ class PromptBuilder {
      * @private
      */
     this._previousTranscription = '';
+
+    /**
+     * NPC profiles for context injection
+     * @type {Array<Object>}
+     * @private
+     */
+    this._npcProfiles = [];
+
+    /**
+     * Next chapter lookahead text for foreshadowing
+     * @type {string}
+     * @private
+     */
+    this._nextChapterLookahead = '';
   }
 
   // ---------------------------------------------------------------------------
@@ -144,6 +158,25 @@ class PromptBuilder {
    */
   setPrimaryLanguage(lang) {
     this._primaryLanguage = lang || 'en';
+  }
+
+  /**
+   * Sets the NPC profiles for context injection into analysis messages
+   *
+   * @param {Array<Object>} profiles - Array of NPCProfile objects
+   */
+  setNPCProfiles(profiles) {
+    this._npcProfiles = profiles || [];
+    this._logger.debug(`Set ${this._npcProfiles.length} NPC profiles`);
+  }
+
+  /**
+   * Sets the next chapter lookahead text for foreshadowing injection
+   *
+   * @param {string} text - Preview text from the next chapter
+   */
+  setNextChapterLookahead(text) {
+    this._nextChapterLookahead = text || '';
   }
 
   /**
@@ -261,6 +294,29 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
       });
     }
 
+    // Inject NPC profiles as system message (after adventure context, before history)
+    if (this._npcProfiles.length > 0) {
+      const npcLines = this._npcProfiles.map(profile => {
+        let line = `- **${profile.name}** (${profile.role}): ${profile.personality}. Motivation: ${profile.motivation}. [${profile.chapterLocation}]`;
+        if (profile.sessionNotes && profile.sessionNotes.length > 0) {
+          line += `\n  Session notes: ${profile.sessionNotes.join('; ')}`;
+        }
+        return line;
+      });
+      messages.push({
+        role: 'system',
+        content: `ACTIVE NPC PROFILES (mentioned in current conversation):\n${npcLines.join('\n')}\n\nUse these profiles to inform your suggestions. Reference NPCs by name with their personality and motivation.`
+      });
+    }
+
+    // Inject next chapter lookahead for foreshadowing (after NPC profiles)
+    if (this._nextChapterLookahead) {
+      messages.push({
+        role: 'system',
+        content: `UPCOMING CONTENT (next chapter preview - DM eyes only):\n${this._nextChapterLookahead}\n\nYou may subtly weave foreshadowing seeds from this content into your suggestions, framed as DM-only hints the DM can choose to use.`
+      });
+    }
+
     // Add recent conversation history
     for (const entry of this._conversationHistory.slice(-5)) {
       messages.push(entry);
@@ -268,20 +324,23 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
 
     let requestContent = `Analyze this session transcription:\n\n"${transcription}"\n\n`;
 
+    const sourceSchema = ', "source": {"chapter": "...", "page": "...", "journalName": "..."}';
+    const sourceInstruction = '\n\nIMPORTANT: Every suggestion MUST include a "source" field citing the specific chapter and page from the provided context. Use format "[Source: Chapter > Page]" inline in the suggestion text as well.';
+
     if (includeSuggestions && checkOffTrack) {
       requestContent += `Respond in JSON format with this structure:
 {
-  "suggestions": [{"type": "narration|dialogue|action|reference", "content": "...", "confidence": 0.0-1.0}],
+  "suggestions": [{"type": "narration|dialogue|action|reference", "content": "...", "confidence": 0.0-1.0${sourceSchema}}],
   "offTrackStatus": {"isOffTrack": boolean, "severity": 0.0-1.0, "reason": "..."},
   "relevantPages": ["..."],
   "summary": "..."
-}`;
+}${sourceInstruction}`;
     } else if (includeSuggestions) {
       requestContent += `Provide suggestions for the DM in JSON format:
 {
-  "suggestions": [{"type": "narration|dialogue|action|reference", "content": "...", "confidence": 0.0-1.0}],
+  "suggestions": [{"type": "narration|dialogue|action|reference", "content": "...", "confidence": 0.0-1.0${sourceSchema}}],
   "summary": "..."
-}`;
+}${sourceInstruction}`;
     } else if (checkOffTrack) {
       requestContent += `Assess whether players are off-track in JSON format:
 {

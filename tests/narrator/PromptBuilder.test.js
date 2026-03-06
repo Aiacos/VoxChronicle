@@ -594,6 +594,167 @@ describe('PromptBuilder', () => {
   });
 
   // =========================================================================
+  // NPC Profiles (Phase 03-01)
+  // =========================================================================
+  describe('setNPCProfiles / NPC injection', () => {
+    const sampleProfiles = [
+      {
+        name: 'Garrick',
+        personality: 'Jovial facade hiding deep anxiety',
+        motivation: 'Protect his family from the guild',
+        role: 'merchant',
+        chapterLocation: 'Chapter 3: The Thieves Guild',
+        aliases: ['Old Garrick'],
+        sessionNotes: ['Players attempted to deceive him', 'He revealed guild connection']
+      },
+      {
+        name: 'Selene',
+        personality: 'Cold and calculating',
+        motivation: 'Gain control of the council',
+        role: 'antagonist',
+        chapterLocation: 'Chapter 5: The Shadow Court',
+        aliases: [],
+        sessionNotes: []
+      }
+    ];
+
+    it('setNPCProfiles stores profiles', () => {
+      builder.setNPCProfiles(sampleProfiles);
+      // Internal state stored - verify via buildAnalysisMessages
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      expect(npcMsg).toBeDefined();
+    });
+
+    it('buildAnalysisMessages includes NPC profiles system message when profiles are set', () => {
+      builder.setNPCProfiles(sampleProfiles);
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      expect(npcMsg).toBeDefined();
+      expect(npcMsg.role).toBe('system');
+    });
+
+    it('buildAnalysisMessages does NOT include NPC message when profiles are empty', () => {
+      builder.setNPCProfiles([]);
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const npcMsg = messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'));
+      expect(npcMsg).toBeUndefined();
+    });
+
+    it('NPC message format includes name, role, personality, motivation, chapterLocation', () => {
+      builder.setNPCProfiles(sampleProfiles);
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      expect(npcMsg.content).toContain('**Garrick**');
+      expect(npcMsg.content).toContain('merchant');
+      expect(npcMsg.content).toContain('Jovial facade hiding deep anxiety');
+      expect(npcMsg.content).toContain('Protect his family from the guild');
+      expect(npcMsg.content).toContain('Chapter 3: The Thieves Guild');
+    });
+
+    it('NPC message includes session notes when present', () => {
+      builder.setNPCProfiles(sampleProfiles);
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      expect(npcMsg.content).toContain('Session notes:');
+      expect(npcMsg.content).toContain('Players attempted to deceive him');
+      expect(npcMsg.content).toContain('He revealed guild connection');
+    });
+
+    it('NPC message does not include session notes line when notes are empty', () => {
+      builder.setNPCProfiles([sampleProfiles[1]]); // Selene has no session notes
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      expect(npcMsg.content).toContain('**Selene**');
+      expect(npcMsg.content).not.toContain('Session notes:');
+    });
+
+    it('setNPCProfiles with null defaults to empty', () => {
+      builder.setNPCProfiles(sampleProfiles);
+      builder.setNPCProfiles(null);
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const npcMsg = messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'));
+      expect(npcMsg).toBeUndefined();
+    });
+  });
+
+  // =========================================================================
+  // Next Chapter Lookahead (Phase 03-01)
+  // =========================================================================
+  describe('setNextChapterLookahead / foreshadowing injection', () => {
+    it('setNextChapterLookahead stores text', () => {
+      builder.setNextChapterLookahead('The party will discover the hidden temple.');
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const lookaheadMsg = messages.find(m => m.content.includes('UPCOMING CONTENT'));
+      expect(lookaheadMsg).toBeDefined();
+    });
+
+    it('buildAnalysisMessages includes lookahead system message when set', () => {
+      builder.setNextChapterLookahead('Next chapter: The dragon awakens.');
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const lookaheadMsg = messages.find(m => m.content.includes('UPCOMING CONTENT'));
+      expect(lookaheadMsg).toBeDefined();
+      expect(lookaheadMsg.role).toBe('system');
+      expect(lookaheadMsg.content).toContain('Next chapter: The dragon awakens.');
+      expect(lookaheadMsg.content).toContain('foreshadowing');
+    });
+
+    it('buildAnalysisMessages does NOT include lookahead message when empty', () => {
+      builder.setNextChapterLookahead('');
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const lookaheadMsg = messages.find(m => m.content?.includes('UPCOMING CONTENT'));
+      expect(lookaheadMsg).toBeUndefined();
+    });
+
+    it('setNextChapterLookahead with null clears text', () => {
+      builder.setNextChapterLookahead('Something');
+      builder.setNextChapterLookahead(null);
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const lookaheadMsg = messages.find(m => m.content?.includes('UPCOMING CONTENT'));
+      expect(lookaheadMsg).toBeUndefined();
+    });
+  });
+
+  // =========================================================================
+  // Source citation in JSON schema (Phase 03-01)
+  // =========================================================================
+  describe('source field in JSON schema', () => {
+    it('buildAnalysisMessages JSON schema includes source field (suggestions + offTrack)', () => {
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const userMsg = messages.find(m => m.role === 'user');
+      expect(userMsg.content).toContain('"source"');
+      expect(userMsg.content).toContain('"chapter"');
+      expect(userMsg.content).toContain('"page"');
+      expect(userMsg.content).toContain('"journalName"');
+    });
+
+    it('buildAnalysisMessages JSON schema includes source field (suggestions only)', () => {
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const userMsg = messages.find(m => m.role === 'user');
+      expect(userMsg.content).toContain('"source"');
+    });
+
+    it('buildAnalysisMessages includes source instruction', () => {
+      const messages = builder.buildAnalysisMessages('test', true, true);
+      const userMsg = messages.find(m => m.role === 'user');
+      expect(userMsg.content).toContain('MUST include a "source" field');
+    });
+  });
+
+  // =========================================================================
+  // Backward compatibility (Phase 03-01)
+  // =========================================================================
+  describe('backward compatibility', () => {
+    it('existing buildAnalysisMessages calls still work without new setters', () => {
+      builder.setAdventureContext('Adventure context');
+      const messages = builder.buildAnalysisMessages('test transcription', true, true);
+      expect(messages.length).toBeGreaterThanOrEqual(3); // system + context + user
+      const userMsg = messages.find(m => m.role === 'user');
+      expect(userMsg.content).toContain('test transcription');
+    });
+  });
+
+  // =========================================================================
   // MAX_CONTEXT_TOKENS export
   // =========================================================================
   describe('MAX_CONTEXT_TOKENS', () => {
