@@ -840,6 +840,47 @@ class AIAssistant {
   }
 
   /**
+   * Generates contextual suggestions via streaming.
+   * Builds the same messages as generateSuggestions but uses _makeChatRequestStreaming.
+   *
+   * @param {string} transcription - Recent transcribed conversation
+   * @param {Object} [options={}] - Generation options
+   * @param {number} [options.maxSuggestions=3] - Maximum suggestions
+   * @param {function} [options.onToken] - Callback invoked with accumulated text on each token
+   * @param {AbortSignal} [options.signal] - AbortSignal to cancel the stream
+   * @returns {Promise<{text: string, usage: object|null}>} Full response text and usage data
+   * @throws {Error} If not configured
+   */
+  async generateSuggestionsStreaming(transcription, options = {}) {
+    if (!this.isConfigured()) {
+      throw new Error('AIAssistant: OpenAI client not configured');
+    }
+
+    const maxSuggestions = options.maxSuggestions || 3;
+
+    this._logger.debug(`generateSuggestionsStreaming() entry — transcription length: ${transcription.length}, maxSuggestions=${maxSuggestions}`);
+    const _suggestStart = performance.now();
+
+    try {
+      // Retrieve RAG context if available
+      const ragContext = await this._fetchRAGContextFor(transcription, 'suggestions');
+
+      this._syncPromptBuilderState();
+      const messages = this._promptBuilder.buildSuggestionMessages(transcription, maxSuggestions, ragContext);
+      const result = await this._makeChatRequestStreaming(messages, {
+        onToken: options.onToken,
+        signal: options.signal
+      });
+
+      this._logger.debug(`generateSuggestionsStreaming() exit — ${result.text.length} chars, ${(performance.now() - _suggestStart).toFixed(1)}ms`);
+      return result;
+    } catch (error) {
+      this._logger.error(`generateSuggestionsStreaming() failed after ${(performance.now() - _suggestStart).toFixed(1)}ms:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Generates a narrative bridge to guide players back on track
    *
    * @param {string} currentSituation - Description of current off-track situation

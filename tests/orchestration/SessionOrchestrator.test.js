@@ -2896,3 +2896,171 @@ describe('RAG Indexing Pipeline', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Cycle-in-flight flag & streaming wiring (06-03)
+// ---------------------------------------------------------------------------
+
+describe('Cycle-in-flight flag and streaming (06-03)', () => {
+  let services;
+  let orchestrator;
+
+  beforeEach(() => {
+    services = {
+      audioRecorder: createMockAudioRecorder(),
+      transcriptionService: createMockTranscriptionService(),
+      aiAssistant: createMockAIAssistant()
+    };
+    orchestrator = new SessionOrchestrator(services);
+  });
+
+  afterEach(() => {
+    if (orchestrator._liveCycleTimer) {
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+    }
+    orchestrator._liveMode = false;
+  });
+
+  describe('_isCycleInFlight flag', () => {
+    it('should initialize _isCycleInFlight as false', () => {
+      expect(orchestrator._isCycleInFlight).toBe(false);
+    });
+
+    it('should be true during _liveCycle execution', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+
+      let flagDuringCycle = null;
+      services.audioRecorder.getLatestChunk.mockImplementation(async () => {
+        flagDuringCycle = orchestrator._isCycleInFlight;
+        return null;
+      });
+
+      await orchestrator._liveCycle();
+      expect(flagDuringCycle).toBe(true);
+    });
+
+    it('should be false after _liveCycle completes', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+
+      services.audioRecorder.getLatestChunk.mockResolvedValue(null);
+      await orchestrator._liveCycle();
+      expect(orchestrator._isCycleInFlight).toBe(false);
+    });
+
+    it('should be false after _liveCycle errors', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+
+      services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('boom'));
+      await orchestrator._liveCycle();
+      expect(orchestrator._isCycleInFlight).toBe(false);
+    });
+
+    it('should be set synchronously before the IIFE (no microtask gap)', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+
+      // Start cycle but don't await yet — flag should be synchronously true
+      services.audioRecorder.getLatestChunk.mockImplementation(() => new Promise(r => setTimeout(r, 50)));
+      const cyclePromise = orchestrator._liveCycle();
+      expect(orchestrator._isCycleInFlight).toBe(true);
+      orchestrator._liveMode = false; // stop to complete cleanly
+      await cyclePromise;
+    });
+
+    it('should be reset in stopLiveMode cleanup', async () => {
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      orchestrator._isCycleInFlight = true; // simulate mid-cycle
+      await orchestrator.stopLiveMode();
+      expect(orchestrator._isCycleInFlight).toBe(false);
+    });
+  });
+
+  describe('SilenceMonitor cycle-in-flight guard injection', () => {
+    it('should inject isCycleInFlightFn into SilenceMonitor during startLiveMode', async () => {
+      const mockSilenceMonitor = {
+        setIsCycleInFlightFn: vi.fn(),
+        setGenerateSuggestionFn: vi.fn(),
+        setSilenceDetector: vi.fn(),
+        setOnAutonomousSuggestionCallback: vi.fn(),
+        startMonitoring: vi.fn().mockReturnValue(true),
+        stopMonitoring: vi.fn(),
+        recordActivity: vi.fn().mockReturnValue(true),
+        isMonitoring: false,
+        silenceSuggestionCount: 0,
+        getSilenceDetector: vi.fn(),
+        getOnAutonomousSuggestionCallback: vi.fn()
+      };
+      services.aiAssistant._silenceMonitor = mockSilenceMonitor;
+
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      expect(mockSilenceMonitor.setIsCycleInFlightFn).toHaveBeenCalledWith(expect.any(Function));
+
+      // The injected function should read orchestrator._isCycleInFlight
+      const injectedFn = mockSilenceMonitor.setIsCycleInFlightFn.mock.calls[0][0];
+      orchestrator._isCycleInFlight = true;
+      expect(injectedFn()).toBe(true);
+      orchestrator._isCycleInFlight = false;
+      expect(injectedFn()).toBe(false);
+    });
+
+    it('should clear isCycleInFlightFn during stopLiveMode', async () => {
+      const mockSilenceMonitor = {
+        setIsCycleInFlightFn: vi.fn(),
+        setGenerateSuggestionFn: vi.fn(),
+        setSilenceDetector: vi.fn(),
+        setOnAutonomousSuggestionCallback: vi.fn(),
+        startMonitoring: vi.fn().mockReturnValue(true),
+        stopMonitoring: vi.fn(),
+        recordActivity: vi.fn().mockReturnValue(true),
+        isMonitoring: false,
+        silenceSuggestionCount: 0,
+        getSilenceDetector: vi.fn(),
+        getOnAutonomousSuggestionCallback: vi.fn()
+      };
+      services.aiAssistant._silenceMonitor = mockSilenceMonitor;
+
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      await orchestrator.stopLiveMode();
+      // Last call should be null (clear)
+      const calls = mockSilenceMonitor.setIsCycleInFlightFn.mock.calls;
+      expect(calls[calls.length - 1][0]).toBeNull();
+    });
+  });
+
+  describe('Streaming callbacks', () => {
+    it('should accept onStreamToken and onStreamComplete callbacks via setCallbacks', () => {
+      const onStreamToken = vi.fn();
+      const onStreamComplete = vi.fn();
+      orchestrator.setCallbacks({ onStreamToken, onStreamComplete });
+      expect(orchestrator._callbacks.onStreamToken).toBe(onStreamToken);
+      expect(orchestrator._callbacks.onStreamComplete).toBe(onStreamComplete);
+    });
+  });
+
+  describe('generateSuggestionsStreaming in AIAssistant', () => {
+    it('should exist on AIAssistant', async () => {
+      // We need a real-ish AIAssistant to test this
+      const { AIAssistant } = await import('../../scripts/narrator/AIAssistant.mjs');
+
+      // Create mock OpenAI client with postStream
+      const mockClient = {
+        post: vi.fn().mockResolvedValue({ choices: [{ message: { content: '{}' } }] }),
+        postStream: vi.fn().mockReturnValue((async function*() {
+          yield { content: 'Hello', usage: null };
+          yield { content: ' world', usage: { prompt_tokens: 10, completion_tokens: 5 } };
+        })())
+      };
+
+      const assistant = new AIAssistant({ openaiClient: mockClient });
+      expect(typeof assistant.generateSuggestionsStreaming).toBe('function');
+    });
+  });
+});

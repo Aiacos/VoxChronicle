@@ -69,13 +69,16 @@ class SessionOrchestrator {
   _narrativeExporter = null;
   _state = SessionState.IDLE;
   _currentSession = null;
+  _isCycleInFlight = false;
   _callbacks = {
     onStateChange: null,
     onProgress: null,
     onError: null,
     onSessionComplete: null,
     onSilenceDetected: null,
-    onAISuggestion: null
+    onAISuggestion: null,
+    onStreamToken: null,
+    onStreamComplete: null
   };
 
   // Live mode services
@@ -938,6 +941,9 @@ class SessionOrchestrator {
         });
         this._aiAssistant.startSilenceMonitoring();
         this._logger.debug('Silence monitoring started for autonomous suggestions');
+
+        // Inject cycle-in-flight guard so silence events are dropped during active cycles
+        this._aiAssistant._silenceMonitor?.setIsCycleInFlightFn(() => this._isCycleInFlight);
       }
 
       this._logger.log('Live mode started');
@@ -1396,10 +1402,14 @@ class SessionOrchestrator {
       this._shutdownController.abort();
     }
 
-    // Stop silence monitoring
+    // Stop silence monitoring and clear cycle-in-flight guard
     if (this._aiAssistant) {
+      this._aiAssistant._silenceMonitor?.setIsCycleInFlightFn(null);
       this._aiAssistant.stopSilenceMonitoring?.();
     }
+
+    // Reset cycle-in-flight flag
+    this._isCycleInFlight = false;
 
     // End analytics session
     if (this._sessionAnalytics) {
@@ -1448,6 +1458,9 @@ class SessionOrchestrator {
    */
   async _liveCycle() {
     if (!this._liveMode) return;
+
+    // Set synchronously BEFORE the IIFE to prevent microtask gap race with silence timer (Pitfall 4)
+    this._isCycleInFlight = true;
 
     const cycleStart = Date.now();
 
@@ -1594,6 +1607,9 @@ class SessionOrchestrator {
           );
         }
       } finally {
+        // Reset cycle-in-flight flag so silence monitor can fire again
+        this._isCycleInFlight = false;
+
         // Self-monitoring: record cycle duration
         const cycleDuration = Date.now() - cycleStart;
         this._cycleDurations.push(cycleDuration);
