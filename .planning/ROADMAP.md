@@ -48,7 +48,11 @@ Plans:
   3. Each AI suggestion cycle receives only the current chapter's text as primary context (not the entire journal) plus up to 5 RAG results for cross-chapter references
   4. The RAG vector store is configured with 1200/300-token chunking and updates automatically (debounced) when a journal page is edited
   5. A warning appears if the loaded journal text is under 500 characters or over 200,000 characters, and the DM must confirm before proceeding
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 02-01-PLAN.md — JournalPicker ApplicationV2 dialog + settings + inline confirmation banner + no-journal fallback
+- [ ] 02-02-PLAN.md — Chapter tracking wiring + chapter nav bar + chapter-scoped AI context (getCurrentChapterContentForAI)
+- [ ] 02-03-PLAN.md — RAG indexing pipeline (4800/1200 chunking) + content hash staleness + debounced live re-indexing
 
 ### Phase 3: AI Knowledge Depth
 **Goal**: AI suggestions reference specific NPCs, locations, and scene hooks by name from the adventure journal, and can surface what is coming next in the story
@@ -126,7 +130,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. CSS Namespace | 0/3 | Planning complete | - |
-| 2. Journal Context Pipeline | 0/TBD | Not started | - |
+| 2. Journal Context Pipeline | 0/3 | Planning complete | - |
 | 3. AI Knowledge Depth | 0/TBD | Not started | - |
 | 4. Session Reliability | 0/TBD | Not started | - |
 | 5. Rolling Context Management | 0/TBD | Not started | - |
