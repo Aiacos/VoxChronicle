@@ -258,7 +258,14 @@
       "Tokens": "Jetons",
       "Cost": "Coût",
       "CostCapReached": "Plafond de coût atteint ({cap}). Suggestions IA en pause.",
-      "SessionSummary": "Session terminée : {duration}min, {suggestions} suggestions, ${cost}"
+      "SessionSummary": "Session terminée : {duration}min, {suggestions} suggestions, ${cost}",
+      "Status": {
+        "Idle": "INACTIF",
+        "Live": "LIVE",
+        "Analyzing": "ANALYSE"
+      },
+      "DismissSuggestion": "Fermer",
+      "AIThinking": "IA en réflexion..."
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",

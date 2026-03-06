@@ -58,6 +58,13 @@
   </div>
   {{/unless}}
 
+  {{!-- Status Badge (visible in live mode or non-idle states) --}}
+  {{#if isLiveMode}}
+  <div class="vox-chronicle-panel__status-badge-bar">
+    <span class="vox-chronicle-status-badge vox-chronicle-status-badge--{{statusState}}">{{statusLabel}}</span>
+  </div>
+  {{/if}}
+
   {{!-- Header: Recording Controls --}}
   <div class="vox-chronicle-panel__header">
     <div class="vox-chronicle-panel__controls">
@@ -137,11 +144,22 @@
   <div class="vox-chronicle-panel__content">
     <div class="vox-chronicle-tab-pane" data-tab-pane="live" {{#unless (eq activeTab 'live')}}hidden{{/unless}}>
       {{#if suggestions.length}}
-      <div class="vox-chronicle-panel__suggestions">
+      <div class="vox-chronicle-suggestions-container">
         {{#each suggestions}}
-        <div class="vox-chronicle-suggestion">
-          <span class="vox-chronicle-suggestion__type">{{this.type}}</span>
-          <p>{{this.content}}</p>
+        <div class="vox-chronicle-suggestion" data-suggestion-index="{{@index}}">
+          <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--{{this.type}}">{{this.type}}</span>
+          <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="{{localize 'VOXCHRONICLE.Live.DismissSuggestion'}}"><i class="fa-solid fa-xmark"></i></button>
+          <div class="vox-chronicle-suggestion__content">
+            <strong class="vox-chronicle-suggestion__title">{{this.parsedTitle}}</strong>
+            {{#if this.parsedBullets.length}}
+            <ul class="vox-chronicle-suggestion__bullets">
+              {{#each this.parsedBullets}}
+              <li>{{this}}</li>
+              {{/each}}
+            </ul>
+            {{/if}}
+          </div>
+          {{#if this.source}}<span class="vox-chronicle-suggestion__source">{{this.source}}</span>{{/if}}
         </div>
         {{/each}}
       </div>

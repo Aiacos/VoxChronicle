@@ -258,7 +258,14 @@
       "Tokens": "",
       "Cost": "",
       "CostCapReached": "",
-      "SessionSummary": ""
+      "SessionSummary": "",
+      "Status": {
+        "Idle": "",
+        "Live": "",
+        "Analyzing": ""
+      },
+      "DismissSuggestion": "",
+      "AIThinking": ""
     },
     "Validation": {
       "ValidatingOpenAI": "",

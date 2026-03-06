@@ -258,7 +258,14 @@
       "Tokens": "Token",
       "Cost": "Kosten",
       "CostCapReached": "Kostenlimit erreicht ({cap}). KI-Vorschlaege pausiert.",
-      "SessionSummary": "Sitzung beendet: {duration}min, {suggestions} Vorschlaege, ${cost}"
+      "SessionSummary": "Sitzung beendet: {duration}min, {suggestions} Vorschlaege, ${cost}",
+      "Status": {
+        "Idle": "LEERLAUF",
+        "Live": "LIVE",
+        "Analyzing": "ANALYSE"
+      },
+      "DismissSuggestion": "Verwerfen",
+      "AIThinking": "KI denkt nach..."
     },
     "Validation": {
       "ValidatingOpenAI": "OpenAI API-Schlüssel wird überprüft...",

@@ -61,7 +61,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       'rag-clear-index': MainPanel._onRAGClearIndex,
       'change-journal': MainPanel._onChangeJournal,
       'prev-chapter': MainPanel._onPrevChapter,
-      'next-chapter': MainPanel._onNextChapter
+      'next-chapter': MainPanel._onNextChapter,
+      'dismiss-suggestion': MainPanel._onDismissSuggestion
     }
   };
 
@@ -251,6 +252,23 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         || `Cost cap reached ($${cap}). AI suggestions paused.`;
     }
 
+    // Status badge mapping — 3 UI states from orchestrator state
+    const stateStr = this._orchestrator?.state || 'idle';
+    let statusState = 'idle';
+    if (stateStr === 'live_listening') statusState = 'live';
+    else if (stateStr === 'live_transcribing' || stateStr === 'live_analyzing') statusState = 'analyzing';
+    if (!isLiveMode) statusState = 'idle';
+
+    const statusKey = 'VOXCHRONICLE.Live.Status.' + statusState.charAt(0).toUpperCase() + statusState.slice(1);
+    const statusLabel = game.i18n?.localize(statusKey) || statusState.toUpperCase();
+
+    // Parse suggestion content into structured cards
+    const rawSuggestions = this._orchestrator?.getAISuggestions?.() || [];
+    const suggestions = rawSuggestions.map(s => {
+      const parsed = this._parseCardContent(s.content);
+      return { ...s, parsedTitle: parsed.title, parsedBullets: parsed.bullets };
+    });
+
     return {
       isConfigured: status.settings.openaiConfigured,
       kankaConfigured: status.settings.kankaConfigured,
@@ -279,8 +297,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       audioLevel: this._getAudioLevel(),
       transcriptionMode: game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
+      statusState,
+      statusLabel,
       activeTab: this._activeTab,
-      suggestions: this._orchestrator?.getAISuggestions?.() || [],
+      suggestions,
       images: images,
       imageCount: images.length,
       segments: session?.transcript?.segments || [],
@@ -1007,6 +1027,161 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this._logger.error('Failed to open journal picker:', error);
       ui?.notifications?.error(escapeHtml(error.message));
     }
+  }
+
+  // ─── Status badge & suggestion card helpers ─────────────────────
+
+  /**
+   * Parse freeform AI suggestion text into a structured title + bullets format.
+   * First line (after stripping markdown heading prefixes) becomes the title.
+   * Lines starting with -, *, or digits become bullets (max 3).
+   * If no bullets found, remaining text is split into sentences (max 3).
+   *
+   * @param {string|null|undefined} text - Raw AI suggestion content
+   * @returns {{ title: string, bullets: string[] }}
+   */
+  _parseCardContent(text) {
+    if (!text) return { title: '', bullets: [] };
+
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return { title: '', bullets: [] };
+
+    // Title: first line, strip markdown heading prefixes
+    const title = lines[0].replace(/^#{1,6}\s+/, '');
+
+    // Remaining lines: look for bullet patterns
+    const remaining = lines.slice(1);
+    const bulletPattern = /^[-*]\s+|^\d+[.)]\s+/;
+    const bulletLines = remaining.filter(l => bulletPattern.test(l));
+
+    let bullets;
+    if (bulletLines.length > 0) {
+      bullets = bulletLines
+        .map(l => l.replace(bulletPattern, ''))
+        .slice(0, 3);
+    } else if (remaining.length > 0) {
+      // No bullet markers — split into sentences
+      const joined = remaining.join(' ');
+      const sentences = joined.split(/(?<=[.!?])\s+/).filter(Boolean);
+      bullets = sentences.slice(0, 3);
+    } else {
+      bullets = [];
+    }
+
+    return { title, bullets };
+  }
+
+  // ─── Dismiss suggestion handler ────────────────────────────────
+
+  /**
+   * Static action handler for dismissing a suggestion card.
+   * Removes the closest .vox-chronicle-suggestion ancestor from DOM.
+   * @param {Event} event
+   * @param {HTMLElement} target
+   * @static
+   */
+  static _onDismissSuggestion(event, target) {
+    target.closest('.vox-chronicle-suggestion')?.remove();
+  }
+
+  // ─── Streaming DOM helpers (wired by Plan 03) ─────────────────
+
+  /**
+   * Create a streaming card skeleton and append it to the suggestions container.
+   * @param {string} type - Suggestion type (narration, dialogue, action, reference)
+   * @param {string} [source] - Optional source label (e.g. 'auto')
+   * @returns {HTMLElement|null} The created card element, or null if container not found
+   */
+  _createStreamingCard(type, source) {
+    const container = this.element?.querySelector('.vox-chronicle-suggestions-container');
+    if (!container) return null;
+
+    const wasAtBottom = this._isScrolledToBottom(container);
+
+    const card = document.createElement('div');
+    card.className = 'vox-chronicle-suggestion vox-chronicle-suggestion--streaming';
+    card.innerHTML = `
+      <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--${type}">${type}</span>
+      <div class="vox-chronicle-suggestion__content">
+        <span class="vox-chronicle-suggestion__spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> ${game.i18n?.localize('VOXCHRONICLE.Live.AIThinking') || 'AI thinking...'}</span>
+      </div>
+      ${source ? `<span class="vox-chronicle-suggestion__source">${source}</span>` : ''}
+    `;
+
+    container.appendChild(card);
+
+    if (wasAtBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Store streaming state for recovery on re-render
+    this._streamingCard = card;
+    this._streamingText = '';
+    this._streamingType = type;
+
+    return card;
+  }
+
+  /**
+   * Append a streaming token to a card's content area.
+   * Removes the spinner placeholder if still present.
+   * @param {HTMLElement} card - The streaming card element
+   * @param {string} token - Text token to append
+   */
+  _appendStreamingToken(card, token) {
+    if (!card) return;
+
+    const spinner = card.querySelector('.vox-chronicle-suggestion__spinner');
+    if (spinner) spinner.remove();
+
+    const content = card.querySelector('.vox-chronicle-suggestion__content');
+    if (content) {
+      content.appendChild(document.createTextNode(token));
+    }
+
+    this._streamingText = (this._streamingText || '') + token;
+  }
+
+  /**
+   * Finalize a streaming card by replacing raw text with structured title+bullets.
+   * Removes the --streaming modifier class.
+   * @param {HTMLElement} card - The streaming card element
+   * @param {string} fullText - Complete suggestion text
+   * @param {string} type - Suggestion type
+   */
+  _finalizeStreamingCard(card, fullText, type) {
+    if (!card) return;
+
+    const parsed = this._parseCardContent(fullText);
+    const content = card.querySelector('.vox-chronicle-suggestion__content');
+    if (content) {
+      let html = `<strong class="vox-chronicle-suggestion__title">${parsed.title}</strong>`;
+      if (parsed.bullets.length > 0) {
+        html += '<ul class="vox-chronicle-suggestion__bullets">';
+        for (const bullet of parsed.bullets) {
+          html += `<li>${bullet}</li>`;
+        }
+        html += '</ul>';
+      }
+      content.innerHTML = html;
+    }
+
+    card.classList.remove('vox-chronicle-suggestion--streaming');
+
+    // Clear streaming state
+    this._streamingCard = null;
+    this._streamingText = '';
+    this._streamingType = null;
+  }
+
+  /**
+   * Check if a scrollable container is scrolled to (or near) the bottom.
+   * @param {HTMLElement} container - Scrollable container element
+   * @returns {boolean} True if within 30px of bottom
+   */
+  _isScrolledToBottom(container) {
+    if (!container) return true;
+    return (container.scrollHeight - container.scrollTop - container.clientHeight) <= 30;
   }
 
   /**

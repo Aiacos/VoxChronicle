@@ -1416,4 +1416,214 @@ describe('MainPanel', () => {
       expect(actions['change-journal']).toBeDefined();
     });
   });
+
+  // ─── Status badge mapping ─────────────────────────────────────
+
+  describe('status badge mapping in _prepareContext', () => {
+    beforeEach(() => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return '';
+        if (key === 'supplementaryJournalIds') return [];
+        if (key === 'transcriptionMode') return 'auto';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+    });
+
+    it('returns statusState "idle" when orchestrator state is idle', async () => {
+      mockOrchestrator.state = 'idle';
+      mockOrchestrator.isLiveMode = false;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+      expect(ctx.statusState).toBe('idle');
+    });
+
+    it('returns statusState "idle" when orchestrator is null', async () => {
+      const panel = new MainPanel(null);
+      const ctx = await panel._prepareContext({});
+      expect(ctx.statusState).toBe('idle');
+    });
+
+    it('returns statusState "live" when orchestrator state is live_listening', async () => {
+      mockOrchestrator.state = 'live_listening';
+      mockOrchestrator.isLiveMode = true;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+      expect(ctx.statusState).toBe('live');
+    });
+
+    it('returns statusState "analyzing" when orchestrator state is live_transcribing', async () => {
+      mockOrchestrator.state = 'live_transcribing';
+      mockOrchestrator.isLiveMode = true;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+      expect(ctx.statusState).toBe('analyzing');
+    });
+
+    it('returns statusState "analyzing" when orchestrator state is live_analyzing', async () => {
+      mockOrchestrator.state = 'live_analyzing';
+      mockOrchestrator.isLiveMode = true;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+      expect(ctx.statusState).toBe('analyzing');
+    });
+
+    it('returns statusState "idle" when not in live mode even if state suggests otherwise', async () => {
+      mockOrchestrator.state = 'live_listening';
+      mockOrchestrator.isLiveMode = false;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+      expect(ctx.statusState).toBe('idle');
+    });
+
+    it('returns statusLabel from localization', async () => {
+      mockOrchestrator.state = 'live_listening';
+      mockOrchestrator.isLiveMode = true;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+      expect(ctx.statusLabel).toBeDefined();
+      expect(typeof ctx.statusLabel).toBe('string');
+    });
+  });
+
+  // ─── _parseCardContent ─────────────────────────────────────────
+
+  describe('_parseCardContent', () => {
+    it('parses title and bullet points from markdown text', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent('Dramatic Entrance\n- The villain appears\n- Lightning strikes\n- Thunder rolls');
+      expect(result.title).toBe('Dramatic Entrance');
+      expect(result.bullets).toEqual(['The villain appears', 'Lightning strikes', 'Thunder rolls']);
+    });
+
+    it('handles text with asterisk bullets', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent('Scene Setup\n* Dim lighting\n* Eerie music');
+      expect(result.title).toBe('Scene Setup');
+      expect(result.bullets).toEqual(['Dim lighting', 'Eerie music']);
+    });
+
+    it('handles text with numbered list items', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent('Action Steps\n1. Roll initiative\n2. Move tokens');
+      expect(result.title).toBe('Action Steps');
+      expect(result.bullets).toEqual(['Roll initiative', 'Move tokens']);
+    });
+
+    it('splits into sentences when no bullets found', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent('Main Point\nThis is a long paragraph with multiple sentences. It continues here. And ends here.');
+      expect(result.title).toBe('Main Point');
+      expect(result.bullets.length).toBeGreaterThan(0);
+      expect(result.bullets.length).toBeLessThanOrEqual(3);
+    });
+
+    it('handles empty input gracefully', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent('');
+      expect(result.title).toBe('');
+      expect(result.bullets).toEqual([]);
+    });
+
+    it('handles null/undefined input gracefully', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent(null);
+      expect(result.title).toBe('');
+      expect(result.bullets).toEqual([]);
+    });
+
+    it('strips markdown heading prefixes from title', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent('## Bold Move\n- Step forward');
+      expect(result.title).toBe('Bold Move');
+    });
+
+    it('limits bullets to 3 maximum', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const result = panel._parseCardContent('Title\n- One\n- Two\n- Three\n- Four\n- Five');
+      expect(result.bullets.length).toBe(3);
+    });
+  });
+
+  // ─── Suggestion card parsing in _prepareContext ────────────────
+
+  describe('suggestion card parsing in _prepareContext', () => {
+    beforeEach(() => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return '';
+        if (key === 'supplementaryJournalIds') return [];
+        if (key === 'transcriptionMode') return 'auto';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+    });
+
+    it('transforms suggestions with parsedTitle and parsedBullets', async () => {
+      mockOrchestrator.getAISuggestions.mockReturnValue([
+        { type: 'narration', content: 'Scene Description\n- Dark forest\n- Howling wind', confidence: 0.8 }
+      ]);
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+
+      expect(ctx.suggestions[0].parsedTitle).toBe('Scene Description');
+      expect(ctx.suggestions[0].parsedBullets).toEqual(['Dark forest', 'Howling wind']);
+      expect(ctx.suggestions[0].type).toBe('narration');
+    });
+  });
+
+  // ─── Dismiss suggestion action ────────────────────────────────
+
+  describe('dismiss-suggestion action', () => {
+    it('dismiss-suggestion action is defined in DEFAULT_OPTIONS', () => {
+      const actions = MainPanel.DEFAULT_OPTIONS.actions;
+      expect(actions['dismiss-suggestion']).toBeDefined();
+    });
+
+    it('_onDismissSuggestion removes closest suggestion element', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const mockSuggestionEl = { remove: vi.fn() };
+      const mockTarget = { closest: vi.fn(() => mockSuggestionEl) };
+
+      MainPanel._onDismissSuggestion.call(panel, {}, mockTarget);
+
+      expect(mockTarget.closest).toHaveBeenCalledWith('.vox-chronicle-suggestion');
+      expect(mockSuggestionEl.remove).toHaveBeenCalled();
+    });
+  });
+
+  // ─── Streaming DOM helpers ─────────────────────────────────────
+
+  describe('streaming DOM helpers', () => {
+    it('_createStreamingCard method exists', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      expect(typeof panel._createStreamingCard).toBe('function');
+    });
+
+    it('_appendStreamingToken method exists', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      expect(typeof panel._appendStreamingToken).toBe('function');
+    });
+
+    it('_finalizeStreamingCard method exists', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      expect(typeof panel._finalizeStreamingCard).toBe('function');
+    });
+
+    it('_isScrolledToBottom method exists', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      expect(typeof panel._isScrolledToBottom).toBe('function');
+    });
+
+    it('_isScrolledToBottom returns true when container is at bottom', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const container = { scrollTop: 270, scrollHeight: 300, clientHeight: 30 };
+      expect(panel._isScrolledToBottom(container)).toBe(true);
+    });
+
+    it('_isScrolledToBottom returns false when container is scrolled up', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const container = { scrollTop: 0, scrollHeight: 300, clientHeight: 30 };
+      expect(panel._isScrolledToBottom(container)).toBe(false);
+    });
+  });
 });

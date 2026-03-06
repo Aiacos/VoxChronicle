@@ -258,7 +258,14 @@
       "Tokens": "Tokens",
       "Cost": "Cost",
       "CostCapReached": "Cost cap reached ({cap}). AI suggestions paused.",
-      "SessionSummary": "Session ended: {duration}min, {suggestions} suggestions, ${cost}"
+      "SessionSummary": "Session ended: {duration}min, {suggestions} suggestions, ${cost}",
+      "Status": {
+        "Idle": "IDLE",
+        "Live": "LIVE",
+        "Analyzing": "ANALYZING"
+      },
+      "DismissSuggestion": "Dismiss",
+      "AIThinking": "AI thinking..."
     },
     "Validation": {
       "ValidatingOpenAI": "Validating OpenAI API key...",

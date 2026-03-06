@@ -258,7 +258,14 @@
       "Tokens": "トークン",
       "Cost": "コスト",
       "CostCapReached": "コスト上限に達しました ({cap})。AI提案を一時停止中。",
-      "SessionSummary": "セッション終了: {duration}分, {suggestions}件の提案, ${cost}"
+      "SessionSummary": "セッション終了: {duration}分, {suggestions}件の提案, ${cost}",
+      "Status": {
+        "Idle": "待機中",
+        "Live": "LIVE",
+        "Analyzing": "分析中"
+      },
+      "DismissSuggestion": "閉じる",
+      "AIThinking": "AI思考中..."
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
