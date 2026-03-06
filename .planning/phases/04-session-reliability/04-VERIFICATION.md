@@ -1,25 +1,23 @@
 ---
 phase: 04-session-reliability
-verified: 2026-03-06T11:05:00Z
-status: gaps_found
-score: 12/13 must-haves verified
-gaps:
-  - truth: "Token usage and cost are visible in a persistent footer bar during live mode"
-    status: partial
-    reason: "CostTracker.addUsage() is never called for AI suggestion chat completions -- only addTranscriptionMinutes() is wired. Token count in the footer will always show 0 and cost will only reflect transcription minutes, not chat model token costs."
-    artifacts:
-      - path: "scripts/orchestration/SessionOrchestrator.mjs"
-        issue: "No addUsage() call after _runAIAnalysis -- AI suggestion token costs not tracked"
-    missing:
-      - "Extract usage data from AIAssistant.analyzeContext() response and call this._costTracker.addUsage(model, usage) in _liveCycle"
+verified: 2026-03-06T11:56:00Z
+status: passed
+score: 13/13 must-haves verified
+re_verification:
+  previous_status: gaps_found
+  previous_score: 12/13
+  gaps_closed:
+    - "Token usage and cost are visible in a persistent footer bar during live mode"
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 04: Session Reliability Verification Report
 
 **Phase Goal:** Make live sessions survivable for 4+ hours with clean stop mechanics, graceful API degradation, visible cost tracking, and memory-bounded transcript accumulation.
-**Verified:** 2026-03-06T11:05:00Z
-**Status:** gaps_found
-**Re-verification:** No -- initial verification
+**Verified:** 2026-03-06T11:56:00Z
+**Status:** passed
+**Re-verification:** Yes -- after gap closure (04-03-PLAN)
 
 ## Goal Achievement
 
@@ -27,53 +25,53 @@ gaps:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | OpenAIClient accepts external AbortSignal and cancels in-flight fetch | VERIFIED | `options.signal` handled at line 555 of OpenAIClient.mjs; `AbortSignal.any()` with manual fallback |
-| 2 | CostTracker accumulates token counts and computes cost from pricing map | VERIFIED | CostTracker.mjs: PRICING map with gpt-4o-mini, gpt-4o, gpt-4o-transcribe; addUsage/addTranscriptionMinutes methods |
-| 3 | CostTracker enforces cost cap and reports when exceeded | VERIFIED | `isCapExceeded(capAmount)` returns true when totalCost >= cap; 0 = disabled |
-| 4 | AIAssistant tracks consecutive errors with circuit breaker (healthy/degraded/down) | VERIFIED | Lines 107-121, 978-1051; getHealthStatus() returns healthy/degraded/down; resets on success |
-| 5 | sessionCostCap Foundry setting exists with sensible defaults | VERIFIED | Settings.mjs line 626; world scope, Number, range 0-100, step 0.5, default 5 |
-| 6 | Clicking Stop causes live mode to reach IDLE within 5 seconds | VERIFIED | Promise.race with 5000ms deadline (SHUTDOWN_DEADLINE_MS), force abort on timeout, _fullTeardown always called |
-| 7 | After stop, startLiveMode starts from zero (clean slate) | VERIFIED | startLiveMode initializes all state fresh; _fullTeardown clears hooks, controllers, timers, transcript, cost |
-| 8 | Panel shows colored status dots (green/yellow/red) for API health | VERIFIED | main-panel.hbs lines 117-118; CSS lines 720-730; MainPanel._prepareContext passes transcriptionHealth/aiSuggestionHealth |
-| 9 | Token usage and cost visible in persistent footer during live mode | PARTIAL | Footer HTML exists (main-panel.hbs line 286), CSS styled, MainPanel formats tokenDisplay/costDisplay. BUT addUsage() never called for chat completions -- tokens always 0, cost only reflects transcription minutes |
-| 10 | Cost cap pauses AI suggestions when exceeded, transcription continues | VERIFIED | _liveCycle lines 1516-1524: checks isCapExceeded, sets _aiSuggestionsPaused, skips _runAIAnalysis but continues cycle |
-| 11 | Rolling window keeps only last 100 segments | VERIFIED | MAX_LIVE_SEGMENTS=100 (line 19); trim at line 1493-1496 with _discardedSegmentCount tracking |
-| 12 | Self-monitoring warns if cycle duration exceeds 2x baseline | VERIFIED | Lines 1574-1595: rolling 20 cycle durations, warns at 2x baseline; Chrome memory check at 500MB |
-| 13 | Session end summary shows duration, suggestion count, and cost | VERIFIED | Lines 1326-1337: builds summary with i18n format, shows via ui.notifications.info |
+| 1 | OpenAIClient accepts external AbortSignal and cancels in-flight fetch | VERIFIED | `options.signal` handled in OpenAIClient.mjs; 7 matches for signal/AbortSignal.any |
+| 2 | CostTracker accumulates token counts and computes cost from pricing map | VERIFIED | CostTracker.mjs: 152 lines, PRICING map, addUsage/addTranscriptionMinutes methods |
+| 3 | CostTracker enforces cost cap and reports when exceeded | VERIFIED | `isCapExceeded(capAmount)` returns true when totalCost >= cap |
+| 4 | AIAssistant tracks consecutive errors with circuit breaker (healthy/degraded/down) | VERIFIED | getHealthStatus() present, 2 matches for health status pattern |
+| 5 | sessionCostCap Foundry setting exists with sensible defaults | VERIFIED | Settings.mjs: world scope, Number, range 0-100, step 0.5, default 5 |
+| 6 | Clicking Stop causes live mode to reach IDLE within 5 seconds | VERIFIED | SHUTDOWN_DEADLINE_MS, _fullTeardown, _shutdownController all present (12 matches) |
+| 7 | After stop, startLiveMode starts from zero (clean slate) | VERIFIED | _fullTeardown clears hooks, controllers, timers, transcript, cost |
+| 8 | Panel shows colored status dots (green/yellow/red) for API health | VERIFIED | main-panel.hbs has health dot classes; CSS styles present |
+| 9 | Token usage and cost visible in persistent footer during live mode | VERIFIED | Footer HTML in template (6 matches), CostTracker.addUsage() now called for chat completions at line 1685 of SessionOrchestrator.mjs |
+| 10 | Cost cap pauses AI suggestions when exceeded, transcription continues | VERIFIED | _liveCycle checks isCapExceeded, sets _aiSuggestionsPaused |
+| 11 | Rolling window keeps only last 100 segments | VERIFIED | MAX_LIVE_SEGMENTS and _discardedSegmentCount present (9 matches) |
+| 12 | Self-monitoring warns if cycle duration exceeds 2x baseline | VERIFIED | Rolling 20 cycle durations, warns at 2x baseline; memory check at 500MB |
+| 13 | Session end summary shows duration, suggestion count, and cost | VERIFIED | Builds summary with i18n format, shows via ui.notifications.info |
 
-**Score:** 12/13 truths verified (1 partial)
+**Score:** 13/13 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `scripts/ai/OpenAIClient.mjs` | External signal support in _makeRequest | VERIFIED | AbortSignal.any() with manual fallback, cleanup in finally |
-| `scripts/orchestration/CostTracker.mjs` | Token accumulation, pricing map, cost cap | VERIFIED | 152 lines, complete implementation with PRICING map and all methods |
-| `scripts/narrator/AIAssistant.mjs` | Circuit breaker for health tracking | VERIFIED | Full circuit breaker pattern matching TranscriptionService |
-| `scripts/core/Settings.mjs` | sessionCostCap setting | VERIFIED | Line 626, correct scope/type/range/default |
-| `scripts/orchestration/SessionOrchestrator.mjs` | Graceful shutdown, health, rolling window, cost, self-monitoring | VERIFIED | _shutdownController, _fullTeardown, rolling window, cost integration, self-monitoring all present |
-| `scripts/ui/MainPanel.mjs` | Status dots, cost footer, stopping spinner | VERIFIED | _prepareContext returns health/cost/stopping data for template |
-| `templates/main-panel.hbs` | Footer bar, status dots, stopping overlay | VERIFIED | All three UI elements present with correct class names |
-| `styles/vox-chronicle.css` | Status dot colors, footer layout, spinner | VERIFIED | Lines 720-760: health dots, cost footer, stopping overlay styles |
+| `scripts/ai/OpenAIClient.mjs` | External signal support | VERIFIED | Exists, AbortSignal handling present |
+| `scripts/orchestration/CostTracker.mjs` | Token accumulation, pricing, cost cap | VERIFIED | 152 lines, complete implementation |
+| `scripts/narrator/AIAssistant.mjs` | Circuit breaker + usage passthrough | VERIFIED | Health tracking + usage/model in analyzeContext return (line 708-709) |
+| `scripts/core/Settings.mjs` | sessionCostCap setting | VERIFIED | Registered with correct scope/type/range |
+| `scripts/orchestration/SessionOrchestrator.mjs` | Lifecycle hardening + cost wiring | VERIFIED | Shutdown, rolling window, cost tracking, addUsage call at line 1685 |
+| `scripts/ui/MainPanel.mjs` | Status dots, cost footer, stopping spinner | VERIFIED | _prepareContext returns health/cost/stopping data |
+| `templates/main-panel.hbs` | Footer bar, status dots, stopping overlay | VERIFIED | All UI elements present |
+| `styles/vox-chronicle.css` | Status dot colors, footer layout, spinner | VERIFIED | Styles present |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
-| SessionOrchestrator | CostTracker | addTranscriptionMinutes | WIRED | Line 1458: called after transcription |
-| SessionOrchestrator | CostTracker | addUsage for chat tokens | NOT WIRED | addUsage() never called after AI analysis -- chat completion token costs not tracked |
-| SessionOrchestrator | OpenAIClient | _shutdownController.signal | WIRED | Line 1454: signal passed to transcription API call |
-| SessionOrchestrator | AIAssistant | health tracking | WIRED (indirect) | Orchestrator tracks its own _aiSuggestionHealth based on _runAIAnalysis success/failure (not via AIAssistant.getHealthStatus()) |
-| MainPanel | SessionOrchestrator | getServiceHealth() + getCostData() | WIRED | Lines 216-217: reads health and cost data for rendering |
+| SessionOrchestrator | CostTracker | addTranscriptionMinutes | WIRED | Called after transcription |
+| SessionOrchestrator | CostTracker | addUsage for chat tokens | WIRED | Line 1685: `this._costTracker.addUsage(analysis.model, analysis.usage)` |
+| AIAssistant | SessionOrchestrator | analyzeContext returns usage+model | WIRED | Lines 708-709: `usage: response.usage`, `model: response.model` |
+| SessionOrchestrator | OpenAIClient | _shutdownController.signal | WIRED | Signal passed to transcription API call |
+| MainPanel | SessionOrchestrator | getServiceHealth() + getCostData() | WIRED | Reads health and cost data for rendering |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| SESS-01 | 04-02 | Live mode survives 3-4 hour session | SATISFIED | Rolling window (100 segments), full-text accumulator, self-monitoring, memory warnings |
-| SESS-02 | 04-01, 04-02 | Stop/restart works cleanly with AbortController | SATISFIED | External AbortSignal in OpenAIClient, _shutdownController in orchestrator, 5s deadline, _fullTeardown |
-| SESS-04 | 04-01, 04-02 | Graceful API degradation with DM-facing status | SATISFIED | Circuit breaker in AIAssistant, independent health tracking in orchestrator, status dots in UI |
-| SESS-05 | 04-01, 04-02 | Token usage and costs monitored and bounded | PARTIALLY SATISFIED | CostTracker exists with pricing map and cost cap enforcement, but chat completion token costs not tracked -- only transcription minutes counted |
+| SESS-01 | 04-02 | Live mode survives 3-4 hour session | SATISFIED | Rolling window (100 segments), self-monitoring, memory warnings |
+| SESS-02 | 04-01, 04-02 | Stop/restart works cleanly with AbortController | SATISFIED | External AbortSignal, _shutdownController, 5s deadline, _fullTeardown |
+| SESS-04 | 04-01, 04-02 | Graceful API degradation with DM-facing status | SATISFIED | Circuit breaker in AIAssistant, status dots in UI |
+| SESS-05 | 04-01, 04-02, 04-03 | Token usage and costs monitored and bounded | SATISFIED | CostTracker tracks both transcription minutes AND chat completion tokens; cost cap enforces on total |
 
 ### Anti-Patterns Found
 
@@ -81,7 +79,12 @@ gaps:
 |------|------|---------|----------|--------|
 | None found | - | - | - | - |
 
-No TODOs, FIXMEs, placeholders, or stub implementations found in phase-modified files.
+### Test Results
+
+All 424 tests pass across 3 relevant test suites:
+- tests/orchestration/CostTracker.test.js (21 tests)
+- tests/narrator/AIAssistant.test.js (193 tests)
+- tests/orchestration/SessionOrchestrator.test.js (230 tests)
 
 ### Human Verification Required
 
@@ -94,7 +97,7 @@ No TODOs, FIXMEs, placeholders, or stub implementations found in phase-modified 
 ### 2. Cost Footer Updates During Live Session
 
 **Test:** Run a live session for 2-3 cycles, observe the cost footer
-**Expected:** Token count stays at 0 (due to gap), cost increments based on transcription minutes
+**Expected:** Token count increments after AI suggestion cycles; cost reflects both transcription and chat tokens
 **Why human:** Real-time UI update behavior requires running application
 
 ### 3. Stopping Spinner During Shutdown
@@ -109,25 +112,17 @@ No TODOs, FIXMEs, placeholders, or stub implementations found in phase-modified 
 **Expected:** Auto-dismiss notification with duration, suggestion count, and cost
 **Why human:** Foundry VTT notification rendering
 
-### Gaps Summary
+### Gap Closure Summary
 
-One gap found: **CostTracker.addUsage() is never called for AI suggestion chat completions** in SessionOrchestrator._liveCycle(). The `_runAIAnalysis` method calls `this._aiAssistant.analyzeContext()` but does not extract or forward the `usage` object from the OpenAI chat completion response to `this._costTracker.addUsage(model, usage)`. As a result:
+The single gap from the initial verification has been closed:
 
-- The token count in the cost footer will always display "0" (only transcription minutes are tracked, which do not contribute to token counts)
-- The cost display will only reflect transcription minutes ($0.006/min), not chat model token costs
-- The cost cap enforcement works but is based on incomplete cost data (transcription only, not chat)
+**Previous gap:** CostTracker.addUsage() was never called for AI suggestion chat completions. Token count always showed 0, cost only reflected transcription minutes.
 
-This is a **partial** gap -- the infrastructure exists end-to-end (CostTracker has addUsage, UI displays tokens, cost cap works), but the wiring between AI analysis and CostTracker is missing. The fix requires either modifying `analyzeContext()` to return usage data, or wrapping the call to extract usage from the underlying OpenAI response.
+**Resolution (04-03-PLAN):** AIAssistant.analyzeContext() now returns `usage` and `model` from the OpenAI response (lines 708-709). SessionOrchestrator._runAIAnalysis() forwards these to CostTracker.addUsage() (line 1685). Graceful degradation when usage is null. 7 new tests cover the wiring.
 
-### Test Results
-
-All 504 tests pass across 4 test suites:
-- tests/orchestration/CostTracker.test.js (21 tests)
-- tests/ai/OpenAIClient.test.js (246 tests)
-- tests/narrator/AIAssistant.test.js (110 tests)
-- tests/orchestration/SessionOrchestrator.test.js (227 tests, including 26 new lifecycle hardening tests)
+No regressions detected in previously-verified truths.
 
 ---
 
-_Verified: 2026-03-06T11:05:00Z_
+_Verified: 2026-03-06T11:56:00Z_
 _Verifier: Claude (gsd-verifier)_
