@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: AI Knowledge Depth** - Surface NPC personalities, anticipate upcoming scenes, ground all suggestions in journal text
 - [ ] **Phase 4: Session Reliability** - Make live mode survivable for 4 hours with clean stop mechanics and graceful degradation
 - [x] **Phase 5: Rolling Context Management** - Prevent context window rot with rolling summarization and bounded conversation history (completed 2026-03-06)
-- [ ] **Phase 6: State Machine and UI Accuracy** - Ensure the panel reflects real session state with streaming display and calibrated silence detection
+- [x] **Phase 6: State Machine and UI Accuracy** - Ensure the panel reflects real session state with streaming display and calibrated silence detection (completed 2026-03-06)
 - [ ] **Phase 7: Rules Lookup Integration** - Wire RulesReference into the live cycle as a non-blocking fire-and-forget path
 - [ ] **Phase 8: Advanced Suggestion Intelligence** - Add on-demand query, scene-type adaptation, off-track detection, and speaker-aware weighting
 
@@ -109,7 +109,7 @@ Plans:
   3. The panel's status label (IDLE / ANALYZING / LIVE) matches the actual SessionOrchestrator state at all times, including after settings changes and reinitializations
   4. AI suggestions display as scannable, structured cards with a title, 2-3 bullet points, and a source badge — not as paragraph walls
   5. Navigating between Foundry scenes during live mode updates the chapter context label in the panel within the next cycle
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [ ] 06-01-PLAN.md — OpenAI streaming (postStream) + AIAssistant streaming variant + SilenceMonitor cycle-in-flight guard
 - [ ] 06-02-PLAN.md — Status badge + suggestion card CSS/template/JS restructure + streaming DOM helpers
@@ -149,6 +149,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. AI Knowledge Depth | 1/2 | In Progress|  |
 | 4. Session Reliability | 0/3 | Planning complete | - |
 | 5. Rolling Context Management | 3/3 | Complete   | 2026-03-06 |
-| 6. State Machine and UI Accuracy | 2/3 | In Progress|  |
+| 6. State Machine and UI Accuracy | 3/3 | Complete   | 2026-03-06 |
 | 7. Rules Lookup Integration | 0/TBD | Not started | - |
 | 8. Advanced Suggestion Intelligence | 0/TBD | Not started | - |

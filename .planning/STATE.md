@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-03-06T12:50:28.065Z"
-last_activity: "2026-03-06 — Completed 06-02 (Status badge, suggestion cards, streaming DOM helpers)"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-03-06T14:35:43Z"
+last_activity: "2026-03-06 — Completed 06-03 (Streaming + silence guard integration wiring)"
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 14
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 97
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 6 of 8 (State Machine & UI Accuracy)
-Plan: 3 of 3 in current phase
-Status: In Progress
-Last activity: 2026-03-06 — Completed 06-01 (Streaming API + silence guard building blocks)
+Phase: 6 of 8 (State Machine & UI Accuracy) -- COMPLETE
+Plan: 3 of 3 in current phase -- DONE
+Status: Phase 6 Complete
+Last activity: 2026-03-06 — Completed 06-03 (Streaming + silence guard integration wiring)
 
-Progress: [██████████████░] 94%
+Progress: [███████████████] 97%
 
 ## Performance Metrics
 
@@ -60,6 +60,8 @@ Progress: [██████████████░] 94%
 | Phase 05 P01 | 4min | 2 tasks | 4 files |
 | Phase 05 P03 | 2min | 2 tasks | 6 files |
 | Phase 06 P01 | 5min | 2 tasks | 6 files |
+| Phase 06 P02 | 5min | 2 tasks | 6 files |
+| Phase 06 P03 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -116,6 +118,10 @@ Recent decisions affecting current work:
 - [06-02]: Streaming card state stored on instance properties for re-render recovery
 - [06-01]: postStream bypasses queue and retry -- streaming is long-lived with implicit retry via next cycle
 - [06-01]: Cycle-in-flight guard is synchronous check, drops event entirely (no queuing)
+- [06-03]: Synchronous _isCycleInFlight set before IIFE prevents microtask race with silence timer
+- [06-03]: Incremental token diffing via slice from accumulated length avoids duplicate text in streaming cards
+- [06-03]: Completed suggestions pushed to _lastAISuggestions for persistence across re-renders
+- [06-03]: Streaming card recovery in _onRender reconstructs from instance state on DOM replacement
 
 ### Pending Todos
 
@@ -129,6 +135,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T14:27:08Z
-Stopped at: Completed 06-01-PLAN.md
-Resume file: .planning/phases/06-state-machine-ui-accuracy/06-03-PLAN.md
+Last session: 2026-03-06T14:35:43Z
+Stopped at: Completed 06-03-PLAN.md (Phase 6 complete)
+Resume file: .planning/phases/07-ux-polish/ (next phase)
