@@ -1302,9 +1302,8 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveTranscript = [{ text: 'The dragon appeared' }];
 
       await orchestrator._runAIAnalysis({ text: 'The dragon appeared' });
-      expect(services.aiAssistant.analyzeContext).toHaveBeenCalled();
+      // Streaming path is tried first; either path populates suggestions
       expect(orchestrator._lastAISuggestions).toBeTruthy();
-      expect(orchestrator._lastOffTrackStatus).toBeDefined();
     });
 
     it('should update chapter context when available', async () => {
@@ -1337,9 +1336,11 @@ describe('SessionOrchestrator', () => {
       );
     });
 
-    it('should handle off-track detection', async () => {
+    it('should handle off-track detection via fallback path', async () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test' }];
+      // Remove streaming to force analyzeContext fallback (off-track comes from non-streaming)
+      services.aiAssistant.generateSuggestionsStreaming = undefined;
       services.aiAssistant.analyzeContext.mockResolvedValue({
         suggestions: [],
         offTrackStatus: { isOffTrack: true, severity: 'high', reason: 'Went off topic' }
@@ -1352,6 +1353,8 @@ describe('SessionOrchestrator', () => {
     it('should handle AI analysis error gracefully', async () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test' }];
+      // Both streaming and fallback fail
+      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(new Error('Stream error'));
       services.aiAssistant.analyzeContext.mockRejectedValue(new Error('AI error'));
       const onError = vi.fn();
       orchestrator.setCallbacks({ onError });
@@ -1363,6 +1366,8 @@ describe('SessionOrchestrator', () => {
     it('should notify user once on AI analysis failure (H-2)', async () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test' }];
+      // Both streaming and fallback fail
+      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(new Error('Stream error'));
       services.aiAssistant.analyzeContext.mockRejectedValue(new Error('AI error'));
 
       // First failure: notification fires
@@ -1383,10 +1388,11 @@ describe('SessionOrchestrator', () => {
       expect(orchestrator._aiAnalysisErrorNotified).toBe(false);
     });
 
-    it('should call costTracker.addUsage when analysis returns usage', async () => {
+    it('should call costTracker.addUsage when analysis returns usage (fallback path)', async () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'The party enters' }];
-      // Manually create costTracker so we can spy on it
+      // Force fallback path to test analyzeContext cost tracking
+      services.aiAssistant.generateSuggestionsStreaming = undefined;
       const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
       orchestrator._costTracker = new CostTracker();
       const addUsageSpy = vi.spyOn(orchestrator._costTracker, 'addUsage');
@@ -1406,9 +1412,10 @@ describe('SessionOrchestrator', () => {
       );
     });
 
-    it('should not call costTracker.addUsage when analysis has no usage', async () => {
+    it('should not call costTracker.addUsage when analysis has no usage (fallback path)', async () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test' }];
+      services.aiAssistant.generateSuggestionsStreaming = undefined;
       const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
       orchestrator._costTracker = new CostTracker();
       const addUsageSpy = vi.spyOn(orchestrator._costTracker, 'addUsage');
@@ -1425,9 +1432,10 @@ describe('SessionOrchestrator', () => {
       expect(addUsageSpy).not.toHaveBeenCalled();
     });
 
-    it('should default to gpt-4o-mini when analysis.model is missing', async () => {
+    it('should default to gpt-4o-mini when analysis.model is missing (fallback path)', async () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test' }];
+      services.aiAssistant.generateSuggestionsStreaming = undefined;
       const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
       orchestrator._costTracker = new CostTracker();
       const addUsageSpy = vi.spyOn(orchestrator._costTracker, 'addUsage');
@@ -2324,18 +2332,17 @@ describe('SessionOrchestrator', () => {
       orchestrator._npcExtractor = mockNPCExtractor;
 
       services.aiAssistant.setNPCProfiles = vi.fn();
-      services.aiAssistant.analyzeContext.mockResolvedValue({
-        suggestions: [
-          { type: 'narration', content: 'Garrick looks suspicious as the party approaches.' }
-        ],
-        offTrackStatus: { isOffTrack: false }
+      // Mock streaming to return text mentioning Garrick
+      services.aiAssistant.generateSuggestionsStreaming.mockResolvedValue({
+        text: 'Garrick looks suspicious as the party approaches.',
+        usage: null
       });
 
       await orchestrator._runAIAnalysis({ text: 'test' });
 
       expect(mockNPCExtractor.addSessionNote).toHaveBeenCalledWith(
         'Garrick',
-        expect.stringContaining('narration')
+        expect.stringContaining('Garrick looks suspicious')
       );
     });
 
@@ -2344,9 +2351,9 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
       orchestrator._npcExtractor = null;
 
-      // Should not throw
+      // Should not throw — streaming or fallback path works
       await orchestrator._runAIAnalysis({ text: 'test' });
-      expect(services.aiAssistant.analyzeContext).toHaveBeenCalled();
+      expect(orchestrator._lastAISuggestions).toBeTruthy();
     });
   });
 

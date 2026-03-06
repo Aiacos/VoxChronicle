@@ -1711,18 +1711,72 @@ class SessionOrchestrator {
 
       this._logger.log(`Running AI analysis (context: ${contextText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
 
-      // Use single analyzeContext() call instead of separate generateSuggestions + detectOffTrack
-      // This halves latency by making one API call instead of two
+      // Try streaming path first (activates MainPanel progressive card display)
+      const hasStreaming = typeof this._aiAssistant.generateSuggestionsStreaming === 'function';
+      let analysis = null;
+      let usedStreaming = false;
       const analysisStart = Date.now();
-      const analysis = await this._aiAssistant.analyzeContext(contextText, {
-        includeSuggestions: true,
-        checkOffTrack: true,
-        detectRules: false
-      });
 
-      // Track AI suggestion token costs
-      if (analysis?.usage && this._costTracker) {
-        this._costTracker.addUsage(analysis.model || 'gpt-4o-mini', analysis.usage);
+      if (hasStreaming) {
+        try {
+          const streamResult = await this._aiAssistant.generateSuggestionsStreaming(contextText, {
+            onToken: (accumulatedText) => {
+              if (this._callbacks.onStreamToken) {
+                this._callbacks.onStreamToken({ text: accumulatedText });
+              }
+            },
+            signal: this._shutdownController?.signal,
+            maxSuggestions: 3
+          });
+
+          usedStreaming = true;
+
+          // Parse the streamed text into structured suggestion format
+          const type = this._detectSuggestionType(streamResult.text);
+          const suggestion = {
+            type: type,
+            content: streamResult.text
+          };
+
+          // Fire stream complete callback for MainPanel card finalization
+          if (this._callbacks.onStreamComplete) {
+            this._callbacks.onStreamComplete({
+              text: streamResult.text,
+              type: type,
+              usage: streamResult.usage || null
+            });
+          }
+
+          // Build analysis result compatible with existing downstream code
+          analysis = {
+            suggestions: [suggestion],
+            offTrackStatus: undefined,
+            usage: streamResult.usage || null,
+            model: streamResult.model || 'gpt-4o-mini'
+          };
+
+          // Track streaming token costs
+          if (streamResult.usage && this._costTracker) {
+            this._costTracker.addUsage(analysis.model, streamResult.usage);
+          }
+        } catch (streamError) {
+          this._logger.warn(`Streaming failed, falling back to non-streaming: ${streamError.message}`);
+          usedStreaming = false;
+        }
+      }
+
+      if (!usedStreaming) {
+        // Fallback: non-streaming analyzeContext (original path)
+        analysis = await this._aiAssistant.analyzeContext(contextText, {
+          includeSuggestions: true,
+          checkOffTrack: true,
+          detectRules: false
+        });
+
+        // Track AI suggestion token costs
+        if (analysis?.usage && this._costTracker) {
+          this._costTracker.addUsage(analysis.model || 'gpt-4o-mini', analysis.usage);
+        }
       }
 
       const analysisMs = Date.now() - analysisStart;
@@ -1780,6 +1834,22 @@ class SessionOrchestrator {
         );
       }
     }
+  }
+
+  /**
+   * Detect suggestion type from streamed text content
+   * @param {string} text - The streamed suggestion text
+   * @returns {string} One of: narration, dialogue, action, reference
+   * @private
+   */
+  _detectSuggestionType(text) {
+    if (!text) return 'narration';
+    const firstLine = text.split('\n')[0].toLowerCase();
+    if (/\b(dialogue|says|speaks|asks|replies|exclaims)\b/.test(firstLine)) return 'dialogue';
+    if (/\b(action|combat|attack|fight|strike|defend)\b/.test(firstLine)) return 'action';
+    if (/\b(rule|reference|check|dc|saving throw|ability)\b/.test(firstLine)) return 'reference';
+    if (/\b(narrat|descri|scene|atmosphere|environ)\b/.test(firstLine)) return 'narration';
+    return 'narration';
   }
 
   /**
