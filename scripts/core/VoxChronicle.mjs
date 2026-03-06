@@ -25,6 +25,7 @@ import { ChapterTracker } from '../narrator/ChapterTracker.mjs';
 import { SceneDetector } from '../narrator/SceneDetector.mjs';
 import { AIAssistant } from '../narrator/AIAssistant.mjs';
 import { RulesReference } from '../narrator/RulesReference.mjs';
+import { RulesLookupService } from '../narrator/RulesLookupService.mjs';
 import { SessionAnalytics } from '../narrator/SessionAnalytics.mjs';
 import { OpenAIClient } from '../ai/OpenAIClient.mjs';
 import { Logger } from '../utils/Logger.mjs';
@@ -89,6 +90,9 @@ class VoxChronicle {
 
     /** @type {object | null} Rules reference lookup */
     this.rulesReference = null;
+
+    /** @type {object | null} Rules lookup service for two-phase hybrid lookup */
+    this.rulesLookupService = null;
 
     /** @type {object | null} Session analytics tracker */
     this.sessionAnalytics = null;
@@ -317,9 +321,31 @@ class VoxChronicle {
         journalParser: this.journalParser
       });
 
-      // Initialize rules reference
+      // Initialize rules reference and lookup service
       if (this._getSetting('rulesDetection') !== false) {
         this.rulesReference = new RulesReference({ language: transcriptionLanguage || 'en' });
+
+        // Create lookup service if we have an OpenAI client for AI synthesis
+        if (openaiApiKey) {
+          this.rulesLookupService = new RulesLookupService(
+            this.rulesReference,
+            new OpenAIClient(openaiApiKey),
+            { cooldownMs: 5 * 60 * 1000 }
+          );
+        }
+
+        // Connect RulesReference to AIAssistant for delegated detection
+        if (this.aiAssistant) {
+          this.aiAssistant.setRulesReference(this.rulesReference);
+        }
+
+        // Wire rules services to orchestrator for fire-and-forget lookups
+        if (this.sessionOrchestrator) {
+          this.sessionOrchestrator.setNarratorServices({
+            rulesReference: this.rulesReference,
+            rulesLookupService: this.rulesLookupService
+          });
+        }
       }
 
       // Initialize RAG services

@@ -329,6 +329,16 @@ class AIAssistant {
   }
 
   /**
+   * Sets the RulesReference instance for delegated rules detection
+   *
+   * @param {import('./RulesReference.mjs').RulesReference} rulesReference - RulesReference instance
+   */
+  setRulesReference(rulesReference) {
+    this._rulesReference = rulesReference;
+    this._logger.debug('RulesReference updated');
+  }
+
+  /**
    * Gets the RAGProvider instance
    *
    * @returns {import('../rag/RAGProvider.mjs').RAGProvider|null} The RAGProvider instance or null
@@ -1454,6 +1464,27 @@ class AIAssistant {
   _detectRulesQuestions(transcription) {
     if (!transcription || typeof transcription !== 'string') {
       return { hasRulesQuestions: false, questions: [] };
+    }
+
+    // Delegate to RulesReference when available (consolidation - avoids duplicate detection logic)
+    if (this._rulesReference) {
+      try {
+        const detection = this._rulesReference.detectRulesQuestion(transcription);
+        if (detection) {
+          return {
+            hasRulesQuestions: detection.isRulesQuestion,
+            questions: detection.isRulesQuestion ? [{
+              text: detection.extractedTopic || transcription.substring(0, 100),
+              confidence: detection.confidence,
+              type: detection.questionType,
+              extractedTopic: detection.extractedTopic,
+              detectedTerms: detection.detectedTerms || []
+            }] : []
+          };
+        }
+      } catch (err) {
+        this._logger.debug('RulesReference delegation failed, falling back:', err.message);
+      }
     }
 
     const normalizedText = transcription.toLowerCase();

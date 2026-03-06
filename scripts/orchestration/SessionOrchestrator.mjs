@@ -721,6 +721,8 @@ class SessionOrchestrator {
     if (services.sceneDetector) this._sceneDetector = services.sceneDetector;
     if (services.sessionAnalytics) this._sessionAnalytics = services.sessionAnalytics;
     if (services.journalParser) this._journalParser = services.journalParser;
+    if (services.rulesReference) this._rulesReference = services.rulesReference;
+    if (services.rulesLookupService) this._rulesLookupService = services.rulesLookupService;
     this._logger.debug('Narrator services connected');
   }
 
