@@ -1052,6 +1052,90 @@ form .form-group .vox-chronicle-validate-button {
   font-style: italic;
 }
 
+/* Rules card — purple tint */
+.vox-chronicle-suggestion--rules {
+  background: rgba(155, 89, 182, 0.08);
+  border-color: rgba(155, 89, 182, 0.3);
+}
+
+/* Refining indicator */
+.vox-chronicle-suggestion__refining {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78em;
+  opacity: 0.6;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* Citation badge */
+.vox-chronicle-suggestion__citation {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7em;
+  background: rgba(155, 89, 182, 0.15);
+  color: #9b59b6;
+  margin-top: 6px;
+}
+
+/* Unavailable card — muted */
+.vox-chronicle-suggestion--unavailable {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+/* Fade-out animation for auto-dismiss */
+.vox-chronicle-suggestion--dismissing {
+  animation: vox-chronicle-fade-out 0.3s ease forwards;
+}
+
+@keyframes vox-chronicle-fade-out {
+  from { opacity: 0.5; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Auto-detected source badge */
+.vox-chronicle-suggestion__auto-badge {
+  display: inline-block;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 0.6em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(155, 89, 182, 0.1);
+  color: #9b59b6;
+  opacity: 0.7;
+  margin-left: 4px;
+}
+
+/* Rules Input — persistent at panel bottom */
+.vox-chronicle-rules-input {
+  padding: 4px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vox-chronicle-rules-input__field {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font-size: 0.85em;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.vox-chronicle-rules-input__field:focus {
+  border-color: rgba(155, 89, 182, 0.5);
+}
+.vox-chronicle-rules-input__field::placeholder {
+  opacity: 0.4;
+  font-style: italic;
+}
+
 .vox-chronicle-suggestion p { margin: 4px 0 0; font-size: 0.85em; line-height: 1.4; }
 
 /* Transcript Segments */

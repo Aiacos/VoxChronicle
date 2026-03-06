@@ -93,6 +93,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._streamingAccumulatedText = '';
     this._streamingActiveType = null;
 
+    // Rules card state (persists across re-renders)
+    this._rulesCards = [];
+    this._rulesInputValue = '';
+    this._rulesDismissTimeouts = [];
+
     // Register callbacks so UI updates immediately on state and progress changes
     if (this._orchestrator?.setCallbacks) {
       this._orchestrator.setCallbacks({
@@ -103,7 +108,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
           this._debouncedRender();
         },
         onStreamToken: (data) => this._handleStreamToken(data),
-        onStreamComplete: (data) => this._handleStreamComplete(data)
+        onStreamComplete: (data) => this._handleStreamComplete(data),
+        onRulesCard: (data) => this._handleRulesCard(data)
       });
     }
   }
@@ -131,7 +137,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
             MainPanel.#instance._debouncedRender();
           },
           onStreamToken: (data) => MainPanel.#instance._handleStreamToken(data),
-          onStreamComplete: (data) => MainPanel.#instance._handleStreamComplete(data)
+          onStreamComplete: (data) => MainPanel.#instance._handleStreamComplete(data),
+          onRulesCard: (data) => MainPanel.#instance._handleRulesCard(data)
         });
       }
     }
@@ -374,6 +381,23 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     }
 
+    // Rules input wiring — persistent input always available
+    const rulesInput = this.element?.querySelector('.vox-chronicle-rules-input__field');
+    if (rulesInput) {
+      rulesInput.value = this._rulesInputValue || '';
+      rulesInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+          const query = e.target.value.trim();
+          e.target.value = '';
+          this._rulesInputValue = '';
+          this._orchestrator?.handleManualRulesQuery?.(query);
+        }
+      }, { signal });
+      rulesInput.addEventListener('input', (e) => {
+        this._rulesInputValue = e.target.value;
+      }, { signal });
+    }
+
     // Auto-scroll transcript to bottom
     if (this._activeTab === 'transcript') {
       const container = this.element.querySelector('.vox-chronicle-panel__transcript');
@@ -468,6 +492,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._stopRealtimeUpdates();
     this.#listenerController?.abort();
     this._debouncedRender?.cancel?.();
+    // Clean up rules auto-dismiss timeouts
+    for (const t of this._rulesDismissTimeouts || []) clearTimeout(t);
+    this._rulesDismissTimeouts = [];
     return super.close(options);
   }
 
@@ -1159,6 +1186,120 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this._orchestrator._lastAISuggestions.push({
         type: data.type || 'narration',
         content: data.text || ''
+      });
+    }
+  }
+
+  // ─── Rules card handler (07-03) ──────────────────────────────
+
+  /**
+   * Handle a rules card event from the orchestrator.
+   * Creates a rules card in the suggestion feed with compendium excerpt,
+   * optional two-phase synthesis update, citation badges, and auto-dismiss for unavailable.
+   *
+   * @param {object} data - Rules card data
+   * @param {string} data.topic - Normalized topic
+   * @param {Array} data.compendiumResults - Compendium search results
+   * @param {Promise|null} data.synthesisPromise - Promise for AI synthesis
+   * @param {string} data.source - 'auto' or 'manual'
+   * @param {boolean} [data.unavailable] - Whether lookup failed
+   * @private
+   */
+  _handleRulesCard(data) {
+    if (!data) return;
+
+    const container = this.element?.querySelector('.vox-chronicle-suggestions-container');
+    if (!container) return;
+
+    const card = document.createElement('div');
+
+    if (data.unavailable) {
+      // Unavailable card — muted, auto-dismiss after 10s
+      card.className = 'vox-chronicle-suggestion vox-chronicle-suggestion--rules vox-chronicle-suggestion--unavailable';
+      card.innerHTML = `
+        <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--reference">reference</span>
+        <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss'}"><i class="fa-solid fa-xmark"></i></button>
+        <div class="vox-chronicle-suggestion__content">
+          <strong class="vox-chronicle-suggestion__title">${escapeHtml(data.topic || game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Rules lookup unavailable')}</strong>
+          <p>${game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Rules lookup unavailable'}</p>
+        </div>
+      `;
+      container.appendChild(card);
+
+      // Auto-dismiss after 10 seconds with fade animation
+      const timeout = setTimeout(() => {
+        card.classList.add('vox-chronicle-suggestion--dismissing');
+        setTimeout(() => card.remove(), 300);
+      }, 10000);
+      this._rulesDismissTimeouts.push(timeout);
+      return;
+    }
+
+    // Normal rules card
+    const excerpt = data.compendiumResults?.[0]?.rule?.content?.substring(0, 300) || '';
+    const citation = data.compendiumResults?.[0]?.rule?.citation?.formatted || '';
+    const hasSynthesis = !!data.synthesisPromise;
+
+    card.className = `vox-chronicle-suggestion vox-chronicle-suggestion--rules${hasSynthesis ? ' vox-chronicle-suggestion--refining' : ''}`;
+    card.innerHTML = `
+      <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--reference">reference</span>
+      ${data.source === 'auto' ? '<span class="vox-chronicle-suggestion__auto-badge">' + (game.i18n?.localize('VOXCHRONICLE.Rules.AutoDetected') || 'auto') + '</span>' : ''}
+      <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss'}"><i class="fa-solid fa-xmark"></i></button>
+      <div class="vox-chronicle-suggestion__content">
+        <strong class="vox-chronicle-suggestion__title">${escapeHtml(data.topic || '')}</strong>
+        <p class="vox-chronicle-suggestion__excerpt">${escapeHtml(excerpt)}</p>
+      </div>
+      ${hasSynthesis ? `<span class="vox-chronicle-suggestion__refining"><i class="fa-solid fa-circle-notch fa-spin"></i> ${game.i18n?.localize('VOXCHRONICLE.Rules.Refining') || 'Refining...'}</span>` : ''}
+      ${citation ? `<span class="vox-chronicle-suggestion__citation">${escapeHtml(citation)}</span>` : ''}
+    `;
+
+    container.appendChild(card);
+
+    // Store for re-render persistence
+    this._rulesCards.push({ data, element: card });
+
+    // Two-phase update: when synthesis resolves, update card in-place
+    if (data.synthesisPromise) {
+      data.synthesisPromise.then(synthesis => {
+        if (!this.element) return; // Panel closed
+
+        // Update card content with AI answer
+        const content = card.querySelector('.vox-chronicle-suggestion__content');
+        if (content && synthesis?.answer) {
+          content.innerHTML = `
+            <strong class="vox-chronicle-suggestion__title">${escapeHtml(data.topic || '')}</strong>
+            <p>${escapeHtml(synthesis.answer)}</p>
+          `;
+        }
+
+        // Update citations
+        if (synthesis?.citations?.length) {
+          const existingCitation = card.querySelector('.vox-chronicle-suggestion__citation');
+          const citationText = synthesis.citations.join(', ');
+          if (existingCitation) {
+            existingCitation.textContent = citationText;
+          } else {
+            const citBadge = document.createElement('span');
+            citBadge.className = 'vox-chronicle-suggestion__citation';
+            citBadge.textContent = citationText;
+            card.appendChild(citBadge);
+          }
+        }
+
+        // Remove refining state
+        card.classList.remove('vox-chronicle-suggestion--refining');
+        const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
+        if (refiningEl) refiningEl.remove();
+
+        // Track synthesis cost
+        if (synthesis?.usage) {
+          this._orchestrator?._costTracker?.addUsage?.('gpt-4o', synthesis.usage);
+        }
+      }).catch(() => {
+        // Remove spinner, keep compendium content as fallback
+        card.classList.remove('vox-chronicle-suggestion--refining');
+        const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
+        if (refiningEl) refiningEl.remove();
       });
     }
   }

@@ -993,7 +993,11 @@
       "RulesCleared": "All rules answers have been cleared",
       "RuleAnswerCopied": "Answer copied to clipboard",
       "Searching": "[EN] Searching rules...",
-      "NoAnswer": "[EN] No relevant rules found"
+      "NoAnswer": "[EN] No relevant rules found",
+      "AskPlaceholder": "ルールについて質問...",
+      "Refining": "精緻化中...",
+      "Unavailable": "ルール検索が利用できません",
+      "AutoDetected": "自動"
     },
     "Recovery": {
       "SubsectionOf": "[EN] Subsection of {chapter}",

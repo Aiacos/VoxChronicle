@@ -299,6 +299,12 @@
     </div>
   </div>
 
+  {{!-- Rules Input (always visible) --}}
+  <div class="vox-chronicle-rules-input">
+    <input type="text" class="vox-chronicle-rules-input__field"
+      placeholder="{{localize 'VOXCHRONICLE.Rules.AskPlaceholder'}}" />
+  </div>
+
   {{!-- Cost Footer (visible during live mode) --}}
   {{#if isLiveMode}}
   {{#if summaryBadgeText}}

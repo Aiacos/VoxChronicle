@@ -993,7 +993,11 @@
       "RulesCleared": "Tutte le risposte sulle regole sono state cancellate",
       "RuleAnswerCopied": "Risposta copiata negli appunti",
       "Searching": "Ricerca regole...",
-      "NoAnswer": "Nessuna regola pertinente trovata"
+      "NoAnswer": "Nessuna regola pertinente trovata",
+      "AskPlaceholder": "Fai una domanda sulle regole...",
+      "Refining": "Perfezionamento...",
+      "Unavailable": "Ricerca regole non disponibile",
+      "AutoDetected": "auto"
     },
     "Recovery": {
       "SubsectionOf": "Sottosezione di {chapter}",

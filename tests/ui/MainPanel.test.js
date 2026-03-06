@@ -474,7 +474,8 @@ describe('MainPanel', () => {
           querySelectorAll: vi.fn((selector) => {
             if (selector === '.vox-chronicle-tab') return mockElements;
             return [];
-          })
+          }),
+          querySelector: vi.fn(() => null)
         }),
         configurable: true
       });
@@ -492,7 +493,8 @@ describe('MainPanel', () => {
       const panel = MainPanel.getInstance(mockOrchestrator);
       Object.defineProperty(panel, 'element', {
         get: () => ({
-          querySelectorAll: vi.fn(() => [])
+          querySelectorAll: vi.fn(() => []),
+          querySelector: vi.fn(() => null)
         }),
         configurable: true
       });
@@ -512,7 +514,8 @@ describe('MainPanel', () => {
       const panel = MainPanel.getInstance(mockOrchestrator);
       Object.defineProperty(panel, 'element', {
         get: () => ({
-          querySelectorAll: vi.fn(() => [])
+          querySelectorAll: vi.fn(() => []),
+          querySelector: vi.fn(() => null)
         }),
         configurable: true
       });
