@@ -500,6 +500,12 @@ class VoxChronicle {
         logger.debug('RAG provider connected to AIAssistant');
       }
 
+      // Connect RAG provider to SessionOrchestrator for journal indexing
+      if (this.sessionOrchestrator) {
+        this.sessionOrchestrator.setRAGProvider(this.ragProvider);
+        logger.debug('RAG provider connected to SessionOrchestrator');
+      }
+
       logger.info('RAG services initialized successfully', {
         provider: providerType,
         vectorStoreId: this.ragProvider.getVectorStoreId?.() || 'N/A'

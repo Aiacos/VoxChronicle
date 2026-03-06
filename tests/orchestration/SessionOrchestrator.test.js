@@ -2305,25 +2305,38 @@ describe('RAG Indexing Pipeline', () => {
     });
 
     it('should guard against concurrent re-index operations', async () => {
-      // Make indexDocuments take time
-      let resolveIndex;
-      mockRAGProvider.indexDocuments.mockImplementation(() => new Promise(r => { resolveIndex = r; }));
+      // Track how indexDocuments is invoked concurrently
+      let concurrentCalls = 0;
+      let maxConcurrentCalls = 0;
+      mockRAGProvider.indexDocuments.mockImplementation(async () => {
+        concurrentCalls++;
+        maxConcurrentCalls = Math.max(maxConcurrentCalls, concurrentCalls);
+        // Simulate async work
+        await new Promise(r => setTimeout(r, 10));
+        concurrentCalls--;
+        return { indexed: 2, failed: 0 };
+      });
 
-      // Start first re-index (will be pending)
+      // Clear content hashes so re-indexing proceeds
+      orchestrator._contentHashes = {};
+
+      // Start first re-index
       const firstReindex = orchestrator.reindexJournal('journal-1');
 
-      // Start second re-index while first is in progress
-      const secondReindex = orchestrator.reindexJournal('journal-1');
+      // Wait a tick so the first reindexJournal sets _reindexInProgress
+      await new Promise(r => setTimeout(r, 0));
+      expect(orchestrator._reindexInProgress).toBe(true);
 
-      // Resolve the first
-      resolveIndex({ indexed: 2, failed: 0 });
+      // Second call should queue (returns immediately)
+      orchestrator.reindexJournal('journal-1');
+
+      // Wait for everything to complete
       await firstReindex;
+      // Give queued re-index time to complete
+      await new Promise(r => setTimeout(r, 50));
 
-      // Resolve again for second (it should queue)
-      resolveIndex({ indexed: 2, failed: 0 });
-      await secondReindex;
-
-      // The guard should have prevented truly concurrent operations
+      // Concurrency should never exceed 1
+      expect(maxConcurrentCalls).toBeLessThanOrEqual(1);
       expect(orchestrator._reindexInProgress).toBe(false);
     });
   });

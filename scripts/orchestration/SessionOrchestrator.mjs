@@ -6,6 +6,7 @@
  *
  * @class SessionOrchestrator
  */
+import { MODULE_ID } from '../constants.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { TranscriptionProcessor } from './TranscriptionProcessor.mjs';
 import { EntityProcessor } from './EntityProcessor.mjs';
@@ -72,6 +73,12 @@ class SessionOrchestrator {
   _sceneDetector = null;
   _sessionAnalytics = null;
   _journalParser = null;
+
+  // RAG indexing
+  _ragProvider = null;
+  _contentHashes = {};
+  _reindexInProgress = false;
+  _reindexQueue = null;
 
   // Live mode state
   _liveMode = false;
@@ -681,6 +688,15 @@ class SessionOrchestrator {
     this._logger.debug('Narrator services connected');
   }
 
+  /**
+   * Set the RAG provider for journal indexing
+   * @param {object} ragProvider - RAGProvider instance with indexDocuments method
+   */
+  setRAGProvider(ragProvider) {
+    this._ragProvider = ragProvider;
+    this._logger.debug('RAG provider connected');
+  }
+
   getOptions() {
     return { ...this._options };
   }
@@ -945,6 +961,161 @@ class SessionOrchestrator {
         globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.JournalContextFailed')
           || 'VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.'
       );
+    }
+
+    // RAG indexing (non-blocking — failure does not block live mode start)
+    if (this._ragProvider && this._journalParser) {
+      try {
+        await this._indexJournalsForRAG({
+          onProgress: (current, total, message) => {
+            if (this._callbacks.onProgress) {
+              this._callbacks.onProgress({
+                message: message || `Indexing journals: ${current}/${total}`,
+                progress: total > 0 ? Math.round((current / total) * 100) : 0
+              });
+            }
+          }
+        });
+      } catch (indexError) {
+        this._logger.warn(`RAG indexing failed (non-blocking): ${indexError.message}`);
+      }
+    }
+  }
+
+  /**
+   * Compute a SHA-256 content hash for staleness detection.
+   * @param {string} text - The text content to hash
+   * @returns {Promise<string>} Hex-encoded SHA-256 hash
+   * @private
+   */
+  async _computeContentHash(text) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /**
+   * Index selected journals for RAG with content-hash-based staleness detection.
+   * Chunks journals at 4800/1200 char boundaries and uploads as RAGDocuments.
+   * @param {object} [options={}] - Indexing options
+   * @param {Function} [options.onProgress] - Progress callback (current, total, message)
+   * @returns {Promise<{indexed: number, skipped: number}>}
+   * @private
+   */
+  async _indexJournalsForRAG(options = {}) {
+    if (!this._ragProvider || !this._journalParser) return { indexed: 0, skipped: 0 };
+
+    const primaryId = globalThis.game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || '';
+    const supplementaryIds = globalThis.game?.settings?.get(MODULE_ID, 'supplementaryJournalIds') || [];
+    const allJournalIds = [primaryId, ...supplementaryIds].filter(Boolean);
+
+    if (allJournalIds.length === 0) {
+      this._logger.debug('No journals selected for RAG indexing');
+      return { indexed: 0, skipped: 0 };
+    }
+
+    let totalIndexed = 0;
+    let totalSkipped = 0;
+
+    for (const journalId of allJournalIds) {
+      // Get full text for hash comparison
+      const fullText = this._journalParser.getFullText(journalId) || '';
+      const currentHash = await this._computeContentHash(fullText);
+
+      // Check staleness
+      if (this._contentHashes[journalId] === currentHash) {
+        this._logger.debug(`Journal ${journalId} unchanged, skipping re-index`);
+        totalSkipped++;
+        continue;
+      }
+
+      // Get chunks with 4800/1200 char boundaries (~1200/300 tokens)
+      const chunks = await this._journalParser.getChunksForEmbedding(journalId, {
+        chunkSize: 4800,
+        overlap: 1200
+      });
+
+      if (chunks.length === 0) {
+        this._logger.debug(`Journal ${journalId} has no chunks to index`);
+        totalSkipped++;
+        continue;
+      }
+
+      // Convert chunks to RAGDocuments
+      const ragDocs = chunks.map((chunk) => ({
+        id: `${journalId}-${chunk.metadata.pageId}-chunk${chunk.metadata.chunkIndex}`,
+        title: `${chunk.metadata.journalName} > ${chunk.metadata.pageName} [${chunk.metadata.chunkIndex + 1}/${chunk.metadata.totalChunks}]`,
+        content: chunk.text,
+        metadata: { ...chunk.metadata, type: 'adventure-journal' }
+      }));
+
+      // Index documents
+      const result = await this._ragProvider.indexDocuments(ragDocs, {
+        onProgress: options.onProgress
+      });
+
+      totalIndexed += result.indexed || 0;
+
+      // Store the new hash
+      this._contentHashes[journalId] = currentHash;
+      this._logger.debug(`Journal ${journalId} indexed: ${result.indexed} docs`);
+    }
+
+    this._logger.log(`RAG indexing complete: ${totalIndexed} indexed, ${totalSkipped} skipped`);
+    return { indexed: totalIndexed, skipped: totalSkipped };
+  }
+
+  /**
+   * Re-index a single journal (called from debounced journal edit hooks).
+   * Only re-indexes if the journal is in the selected set. Non-blocking with
+   * concurrency guard to prevent parallel re-index operations.
+   * @param {string} journalId - The journal ID to re-index
+   * @returns {Promise<void>}
+   */
+  async reindexJournal(journalId) {
+    // Check if this journal is in the selected set
+    const primaryId = globalThis.game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || '';
+    const supplementaryIds = globalThis.game?.settings?.get(MODULE_ID, 'supplementaryJournalIds') || [];
+    const isSelected = journalId === primaryId || supplementaryIds.includes(journalId);
+
+    if (!isSelected) {
+      this._logger.debug(`Journal ${journalId} not in selected set, skipping re-index`);
+      return;
+    }
+
+    // Concurrency guard — queue if already in progress
+    if (this._reindexInProgress) {
+      this._reindexQueue = journalId;
+      this._logger.debug(`Re-index in progress, queued ${journalId}`);
+      return;
+    }
+
+    this._reindexInProgress = true;
+    try {
+      // Clear cached hash so it will be re-indexed
+      delete this._contentHashes[journalId];
+
+      // Clear parser cache and re-parse
+      this._journalParser.clearAllCache?.();
+      await this._journalParser.parseJournal(journalId);
+
+      // Re-index (only the stale journal will actually be indexed)
+      await this._indexJournalsForRAG();
+
+      this._logger.log(`Journal ${journalId} re-indexed successfully`);
+    } catch (error) {
+      this._logger.warn(`Failed to re-index journal ${journalId}: ${error.message}`);
+    } finally {
+      this._reindexInProgress = false;
+
+      // Process queued request if any
+      if (this._reindexQueue) {
+        const queuedId = this._reindexQueue;
+        this._reindexQueue = null;
+        await this.reindexJournal(queuedId);
+      }
     }
   }
 
