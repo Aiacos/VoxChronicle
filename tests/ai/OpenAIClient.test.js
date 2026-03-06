@@ -1017,4 +1017,190 @@ describe('OpenAIClient', () => {
       expect(() => externalController.abort()).not.toThrow();
     });
   });
+
+  // ── postStream() ─────────────────────────────────────────────────────────
+
+  describe('postStream()', () => {
+    /**
+     * Helper: create a mock ReadableStream from SSE lines.
+     * Each string in `chunks` is encoded and delivered as a separate read().
+     */
+    function makeSSEStream(chunks) {
+      let index = 0;
+      const encoder = new TextEncoder();
+      return {
+        getReader() {
+          return {
+            read() {
+              if (index >= chunks.length) {
+                return Promise.resolve({ done: true, value: undefined });
+              }
+              const value = encoder.encode(chunks[index++]);
+              return Promise.resolve({ done: false, value });
+            },
+            releaseLock: vi.fn()
+          };
+        }
+      };
+    }
+
+    /** Build a mock streaming Response with a ReadableStream body */
+    function mockStreamResponse(chunks, status = 200) {
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        statusText: status === 200 ? 'OK' : 'Error',
+        headers: new Headers(),
+        body: makeSSEStream(chunks),
+        text: vi.fn().mockResolvedValue(''),
+        json: vi.fn().mockResolvedValue({})
+      };
+    }
+
+    it('yields content tokens from SSE chunks', async () => {
+      const chunks = [
+        'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":" world"}}]}\n\n',
+        'data: [DONE]\n\n'
+      ];
+      fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
+
+      const tokens = [];
+      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+        tokens.push(chunk);
+      }
+
+      expect(tokens).toHaveLength(2);
+      expect(tokens[0].content).toBe('Hello');
+      expect(tokens[1].content).toBe(' world');
+    });
+
+    it('handles split chunks across reads (buffering)', async () => {
+      // First read delivers an incomplete line, second read completes it
+      const chunks = [
+        'data: {"choices":[{"delta":{"conte',
+        'nt":"split"}}]}\n\ndata: [DONE]\n\n'
+      ];
+      fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
+
+      const tokens = [];
+      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+        tokens.push(chunk);
+      }
+
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].content).toBe('split');
+    });
+
+    it('stops on data: [DONE] sentinel', async () => {
+      const chunks = [
+        'data: {"choices":[{"delta":{"content":"a"}}]}\n\n',
+        'data: [DONE]\n\n',
+        'data: {"choices":[{"delta":{"content":"should not appear"}}]}\n\n'
+      ];
+      fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
+
+      const tokens = [];
+      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+        tokens.push(chunk);
+      }
+
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].content).toBe('a');
+    });
+
+    it('captures usage from final chunk when stream_options.include_usage is set', async () => {
+      const usageData = { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 };
+      const chunks = [
+        'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        `data: {"choices":[{"delta":{}}],"usage":${JSON.stringify(usageData)}}\n\n`,
+        'data: [DONE]\n\n'
+      ];
+      fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
+
+      const tokens = [];
+      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+        tokens.push(chunk);
+      }
+
+      // First chunk has content, second has usage
+      expect(tokens[0].content).toBe('Hi');
+      expect(tokens[0].usage).toBeNull();
+      // The chunk with usage but no content should still yield (usage is non-null)
+      const usageChunk = tokens.find(t => t.usage !== null);
+      expect(usageChunk).toBeDefined();
+      expect(usageChunk.usage).toEqual(usageData);
+    });
+
+    it('throws OpenAIError on non-ok response (e.g. 401)', async () => {
+      fetchSpy.mockResolvedValue(mockStreamResponse([], 401));
+
+      const iter = client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] });
+      await expect(iter.next()).rejects.toThrow(OpenAIError);
+    });
+
+    it('respects AbortSignal (aborted signal throws)', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const iter = client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] }, { signal: controller.signal });
+      await expect(iter.next()).rejects.toThrow();
+    });
+
+    it('bypasses queue and retry (direct fetch, no _enqueueRequest)', async () => {
+      const enqueueSpy = vi.spyOn(client, '_enqueueRequest');
+      const retrySpy = vi.spyOn(client, '_retryWithBackoff');
+
+      const chunks = [
+        'data: {"choices":[{"delta":{"content":"test"}}]}\n\n',
+        'data: [DONE]\n\n'
+      ];
+      fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
+
+      for await (const _chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+        // consume
+      }
+
+      expect(enqueueSpy).not.toHaveBeenCalled();
+      expect(retrySpy).not.toHaveBeenCalled();
+    });
+
+    it('skips chunks with no content (delta with empty/null content)', async () => {
+      const chunks = [
+        'data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"real"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":""}}]}\n\n',
+        'data: [DONE]\n\n'
+      ];
+      fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
+
+      const tokens = [];
+      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+        if (chunk.content) tokens.push(chunk);
+      }
+
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].content).toBe('real');
+    });
+
+    it('sets stream and stream_options in request body', async () => {
+      const chunks = ['data: [DONE]\n\n'];
+      fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
+
+      for await (const _chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+        // consume
+      }
+
+      const [, fetchOpts] = fetchSpy.mock.calls[0];
+      const body = JSON.parse(fetchOpts.body);
+      expect(body.stream).toBe(true);
+      expect(body.stream_options).toEqual({ include_usage: true });
+    });
+
+    it('throws when API key is not configured', async () => {
+      client.setApiKey('');
+      const iter = client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] });
+      await expect(iter.next()).rejects.toThrow(OpenAIError);
+    });
+  });
 });

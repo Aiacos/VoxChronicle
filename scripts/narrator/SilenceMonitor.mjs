@@ -92,6 +92,14 @@ class SilenceMonitor {
      * @private
      */
     this._consecutiveSuggestionFailures = 0;
+
+    /**
+     * Injected synchronous function that returns true when a live cycle is in flight.
+     * When true, silence events are dropped entirely to prevent duplicate suggestions.
+     * @type {function|null}
+     * @private
+     */
+    this._isCycleInFlightFn = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -108,6 +116,18 @@ class SilenceMonitor {
    */
   setGenerateSuggestionFn(fn) {
     this._generateSuggestionFn = fn;
+  }
+
+  /**
+   * Sets the synchronous function used to check if a live cycle is in flight.
+   *
+   * When this function returns true, silence events are dropped entirely
+   * to prevent duplicate suggestion generation.
+   *
+   * @param {function} fn - Synchronous function returning boolean
+   */
+  setIsCycleInFlightFn(fn) {
+    this._isCycleInFlightFn = fn;
   }
 
   // ---------------------------------------------------------------------------
@@ -273,6 +293,12 @@ class SilenceMonitor {
    * @private
    */
   async _handleSilenceEvent(silenceEvent) {
+    // Cycle-in-flight guard: drop silence events when a live cycle is active
+    if (this._isCycleInFlightFn?.()) {
+      this._logger.debug('Silence event dropped: live cycle in flight');
+      return;
+    }
+
     this._logger.info(`Processing silence event #${silenceEvent.silenceCount} (${silenceEvent.silenceDurationMs}ms)`);
 
     if (!this._generateSuggestionFn) {

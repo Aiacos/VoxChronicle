@@ -481,6 +481,79 @@ describe('SilenceMonitor', () => {
   });
 
   // =========================================================================
+  // setIsCycleInFlightFn / cycle-in-flight guard
+  // =========================================================================
+  describe('setIsCycleInFlightFn() / cycle-in-flight guard', () => {
+    it('stores the cycle-in-flight function', () => {
+      const fn = vi.fn().mockReturnValue(false);
+      monitor.setIsCycleInFlightFn(fn);
+      expect(monitor._isCycleInFlightFn).toBe(fn);
+    });
+
+    it('drops silence event when _isCycleInFlightFn returns true', async () => {
+      const generateFn = vi.fn().mockResolvedValue({ type: 'narration', content: 'test', confidence: 0.8 });
+      monitor.setGenerateSuggestionFn(generateFn);
+      monitor.setIsCycleInFlightFn(() => true);
+
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: Date.now() - 30000,
+        silenceCount: 1
+      });
+
+      expect(generateFn).not.toHaveBeenCalled();
+      expect(monitor.silenceSuggestionCount).toBe(0);
+    });
+
+    it('proceeds normally when _isCycleInFlightFn returns false', async () => {
+      const suggestion = { type: 'narration', content: 'test', confidence: 0.8 };
+      const generateFn = vi.fn().mockResolvedValue(suggestion);
+      monitor.setGenerateSuggestionFn(generateFn);
+      monitor.setIsCycleInFlightFn(() => false);
+
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: Date.now() - 30000,
+        silenceCount: 1
+      });
+
+      expect(generateFn).toHaveBeenCalled();
+      expect(monitor.silenceSuggestionCount).toBe(1);
+    });
+
+    it('proceeds normally when _isCycleInFlightFn is not set', async () => {
+      const suggestion = { type: 'narration', content: 'test', confidence: 0.8 };
+      const generateFn = vi.fn().mockResolvedValue(suggestion);
+      monitor.setGenerateSuggestionFn(generateFn);
+      // Do NOT call setIsCycleInFlightFn
+
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: Date.now() - 30000,
+        silenceCount: 1
+      });
+
+      expect(generateFn).toHaveBeenCalled();
+      expect(monitor.silenceSuggestionCount).toBe(1);
+    });
+
+    it('logs debug message when dropping silence event', async () => {
+      // Directly spy on the monitor's logger debug method
+      const loggerDebugSpy = vi.spyOn(monitor._logger, 'debug');
+      monitor.setGenerateSuggestionFn(vi.fn().mockResolvedValue({ type: 'test', content: 'x', confidence: 1 }));
+      monitor.setIsCycleInFlightFn(() => true);
+
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: Date.now() - 30000,
+        silenceCount: 1
+      });
+
+      expect(loggerDebugSpy).toHaveBeenCalledWith('Silence event dropped: live cycle in flight');
+    });
+  });
+
+  // =========================================================================
   // Integration: full lifecycle
   // =========================================================================
   describe('full lifecycle', () => {

@@ -748,6 +748,118 @@ class OpenAIClient extends BaseAPIClient {
   }
 
   /**
+   * Stream a POST request to the OpenAI API, yielding token chunks via async iterator.
+   *
+   * Bypasses the request queue and retry logic — streaming is long-lived and
+   * has its own implicit retry (next cycle). Returns an async generator that
+   * yields `{ content, usage }` objects for each SSE data chunk.
+   *
+   * @param {string} endpoint - API endpoint (e.g., '/chat/completions')
+   * @param {object} data - Request payload (stream/stream_options are added automatically)
+   * @param {object} [options] - Additional options
+   * @param {AbortSignal} [options.signal] - External AbortSignal to cancel the stream
+   * @yields {{ content: string|null, usage: object|null }} Token chunks
+   * @throws {OpenAIError} If the request fails or API key is not configured
+   */
+  async *postStream(endpoint, data, options = {}) {
+    if (!this.isConfigured) {
+      throw new OpenAIError(
+        'OpenAI API key not configured. Please add your API key in module settings.',
+        OpenAIErrorType.AUTHENTICATION_ERROR
+      );
+    }
+
+    const url = this._buildUrl(endpoint);
+    const headers = this._buildJsonHeaders();
+
+    // Create timeout controller
+    const controller = this._createTimeoutController();
+
+    // Combine external signal with timeout signal
+    let combinedSignal = controller.signal;
+    let fallbackController = null;
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        clearTimeout(controller.timeoutId);
+        throw new OpenAIError(
+          'Request aborted: external signal was already aborted',
+          OpenAIErrorType.TIMEOUT_ERROR
+        );
+      }
+
+      if (typeof AbortSignal.any === 'function') {
+        combinedSignal = AbortSignal.any([controller.signal, options.signal]);
+      } else {
+        fallbackController = new AbortController();
+        const onAbort = () => fallbackController.abort();
+        controller.signal.addEventListener('abort', onAbort, { once: true });
+        options.signal.addEventListener('abort', onAbort, { once: true });
+        combinedSignal = fallbackController.signal;
+      }
+    }
+
+    const body = JSON.stringify({
+      ...data,
+      stream: true,
+      stream_options: { include_usage: true }
+    });
+
+    this._logger.debug(`postStream: POST ${endpoint}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+      signal: combinedSignal
+    });
+
+    clearTimeout(controller.timeoutId);
+
+    if (!response.ok) {
+      const error = await this._parseErrorResponse(response);
+      throw error;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8', { stream: true });
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep the last potentially incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+          const payload = trimmed.slice(6); // Remove 'data: ' prefix
+          if (payload === '[DONE]') return;
+
+          try {
+            const json = JSON.parse(payload);
+            const content = json.choices?.[0]?.delta?.content || null;
+            const usage = json.usage || null;
+
+            yield { content, usage };
+          } catch (parseError) {
+            this._logger.debug('postStream: failed to parse SSE chunk:', parseError.message);
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  /**
    * Validate API key by making a simple API call
    *
    * @returns {Promise<boolean>} True if API key is valid
