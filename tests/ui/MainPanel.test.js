@@ -1626,4 +1626,95 @@ describe('MainPanel', () => {
       expect(panel._isScrolledToBottom(container)).toBe(false);
     });
   });
+
+  // ─── Streaming callback wiring (06-03) ────────────────────────
+
+  describe('streaming callback wiring', () => {
+    it('should register onStreamToken and onStreamComplete callbacks', () => {
+      MainPanel.getInstance(mockOrchestrator);
+      expect(mockOrchestrator.setCallbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          onStreamToken: expect.any(Function),
+          onStreamComplete: expect.any(Function)
+        })
+      );
+    });
+
+    it('_handleStreamToken should initialize streaming state on type signal', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      // No element means _createStreamingCard returns null, but state should still be attempted
+      panel._handleStreamToken({ type: 'narration' });
+      // Without element, _activeStreamingCard is null (container not found), but type is captured
+      expect(panel._streamingActiveType).toBe('narration');
+    });
+
+    it('_handleStreamToken should handle null data gracefully', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      expect(() => panel._handleStreamToken(null)).not.toThrow();
+      expect(() => panel._handleStreamToken(undefined)).not.toThrow();
+    });
+
+    it('_handleStreamComplete should clear streaming state', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      panel._activeStreamingCard = document.createElement('div');
+      panel._streamingAccumulatedText = 'some text';
+      panel._streamingActiveType = 'narration';
+
+      // Mock _finalizeStreamingCard to avoid DOM operations
+      panel._finalizeStreamingCard = vi.fn();
+
+      panel._handleStreamComplete({ text: 'full text', type: 'narration' });
+      expect(panel._activeStreamingCard).toBeNull();
+      expect(panel._streamingAccumulatedText).toBe('');
+      expect(panel._streamingActiveType).toBeNull();
+    });
+
+    it('_handleStreamComplete should store completed suggestion in orchestrator', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      panel._activeStreamingCard = document.createElement('div');
+      panel._finalizeStreamingCard = vi.fn();
+      panel._orchestrator._lastAISuggestions = [];
+
+      panel._handleStreamComplete({ text: 'suggestion text', type: 'dialogue' });
+      expect(panel._orchestrator._lastAISuggestions).toHaveLength(1);
+      expect(panel._orchestrator._lastAISuggestions[0]).toEqual({
+        type: 'dialogue',
+        content: 'suggestion text'
+      });
+    });
+
+    it('_handleStreamComplete should handle null data gracefully', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      expect(() => panel._handleStreamComplete(null)).not.toThrow();
+    });
+
+    it('_handleStreamToken should track accumulated text and compute incremental tokens', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+
+      // Create a mock card and container
+      const container = document.createElement('div');
+      container.className = 'vox-chronicle-suggestions-container';
+      const card = document.createElement('div');
+      card.className = 'vox-chronicle-suggestion vox-chronicle-suggestion--streaming';
+      card.innerHTML = '<span class="vox-chronicle-suggestion__type">narration</span><div class="vox-chronicle-suggestion__content"></div>';
+      container.appendChild(card);
+
+      panel._activeStreamingCard = card;
+      panel._streamingActiveType = 'narration';
+      panel._streamingAccumulatedText = '';
+
+      // Mock _appendStreamingToken to verify it gets called with incremental content
+      const appendSpy = vi.spyOn(panel, '_appendStreamingToken');
+
+      panel._handleStreamToken({ text: 'Hello' });
+      expect(panel._streamingAccumulatedText).toBe('Hello');
+      expect(appendSpy).toHaveBeenCalledWith(card, 'Hello');
+
+      panel._handleStreamToken({ text: 'Hello world' });
+      expect(panel._streamingAccumulatedText).toBe('Hello world');
+      expect(appendSpy).toHaveBeenCalledWith(card, ' world');
+
+      appendSpy.mockRestore();
+    });
+  });
 });

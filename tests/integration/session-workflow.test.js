@@ -1115,3 +1115,102 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Streaming & cycle-in-flight integration (06-03)
+// ---------------------------------------------------------------------------
+
+describe('Streaming & cycle-in-flight integration (06-03)', () => {
+  let services;
+  let orchestrator;
+
+  beforeEach(() => {
+    services = {
+      audioRecorder: createMockAudioRecorder({
+        getLatestChunk: vi.fn().mockResolvedValue(new Blob(['audio'], { type: 'audio/webm' }))
+      }),
+      transcriptionService: createMockTranscriptionService(),
+      aiAssistant: {
+        analyzeContext: vi.fn().mockResolvedValue({
+          suggestions: [{ type: 'narration', content: 'Describe the scene' }],
+          offTrackStatus: { isOffTrack: false },
+          usage: { prompt_tokens: 100, completion_tokens: 50 },
+          model: 'gpt-4o-mini'
+        }),
+        setAdventureContext: vi.fn(),
+        setChapterContext: vi.fn(),
+        setOnAutonomousSuggestionCallback: vi.fn(),
+        startSilenceMonitoring: vi.fn().mockReturnValue(true),
+        stopSilenceMonitoring: vi.fn(),
+        recordActivityForSilenceDetection: vi.fn().mockReturnValue(true),
+        setNPCProfiles: vi.fn(),
+        setNextChapterLookahead: vi.fn(),
+        _silenceMonitor: {
+          setIsCycleInFlightFn: vi.fn(),
+          stopMonitoring: vi.fn()
+        }
+      }
+    };
+    orchestrator = new SessionOrchestrator(services);
+  });
+
+  afterEach(() => {
+    if (orchestrator._liveCycleTimer) {
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+    }
+    orchestrator._liveMode = false;
+  });
+
+  it('should set _isCycleInFlight true during _liveCycle and false after', async () => {
+    await orchestrator.startLiveMode({ batchDuration: 999999 });
+    clearTimeout(orchestrator._liveCycleTimer);
+    orchestrator._liveCycleTimer = null;
+
+    let flagDuringAnalysis = null;
+    services.aiAssistant.analyzeContext.mockImplementation(async () => {
+      flagDuringAnalysis = orchestrator._isCycleInFlight;
+      return {
+        suggestions: [{ type: 'narration', content: 'test' }],
+        offTrackStatus: { isOffTrack: false },
+        usage: { prompt_tokens: 10, completion_tokens: 5 }
+      };
+    });
+
+    await orchestrator._liveCycle();
+    expect(flagDuringAnalysis).toBe(true);
+    expect(orchestrator._isCycleInFlight).toBe(false);
+  });
+
+  it('should inject cycle-in-flight guard into SilenceMonitor', async () => {
+    await orchestrator.startLiveMode({ batchDuration: 999999 });
+    expect(services.aiAssistant._silenceMonitor.setIsCycleInFlightFn).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('should fire onStreamToken and onStreamComplete callbacks', async () => {
+    const onStreamToken = vi.fn();
+    const onStreamComplete = vi.fn();
+    orchestrator.setCallbacks({ onStreamToken, onStreamComplete });
+
+    // Verify callbacks were registered
+    expect(orchestrator._callbacks.onStreamToken).toBe(onStreamToken);
+    expect(orchestrator._callbacks.onStreamComplete).toBe(onStreamComplete);
+  });
+
+  it('silence events should be dropped when _isCycleInFlight is true (via SilenceMonitor guard)', async () => {
+    await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+    // Get the injected function
+    const injectedFnCall = services.aiAssistant._silenceMonitor.setIsCycleInFlightFn.mock.calls[0];
+    expect(injectedFnCall).toBeDefined();
+    const guardFn = injectedFnCall[0];
+
+    // When not in flight, guard returns false
+    orchestrator._isCycleInFlight = false;
+    expect(guardFn()).toBe(false);
+
+    // When in flight, guard returns true (silence events should be dropped)
+    orchestrator._isCycleInFlight = true;
+    expect(guardFn()).toBe(true);
+  });
+});

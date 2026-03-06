@@ -88,6 +88,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._logger = Logger.createChild('MainPanel');
     this._debouncedRender = debounce(() => this.render(), 150);
 
+    // Streaming state (persists across re-renders)
+    this._activeStreamingCard = null;
+    this._streamingAccumulatedText = '';
+    this._streamingActiveType = null;
+
     // Register callbacks so UI updates immediately on state and progress changes
     if (this._orchestrator?.setCallbacks) {
       this._orchestrator.setCallbacks({
@@ -96,7 +101,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
           this.#statusMessage = data.message;
           this.#progressPercent = data.progress;
           this._debouncedRender();
-        }
+        },
+        onStreamToken: (data) => this._handleStreamToken(data),
+        onStreamComplete: (data) => this._handleStreamComplete(data)
       });
     }
   }
@@ -122,7 +129,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
             MainPanel.#instance.#statusMessage = data.message;
             MainPanel.#instance.#progressPercent = data.progress;
             MainPanel.#instance._debouncedRender();
-          }
+          },
+          onStreamToken: (data) => MainPanel.#instance._handleStreamToken(data),
+          onStreamComplete: (data) => MainPanel.#instance._handleStreamComplete(data)
         });
       }
     }
@@ -351,6 +360,18 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Start real-time updates if recording is active
     if (this._isRecordingActive()) {
       this._startRealtimeUpdates();
+    }
+
+    // Recover active streaming card after DOM replacement (Pitfall 5)
+    if (this._streamingActiveType && this._streamingAccumulatedText) {
+      const recoveredCard = this._createStreamingCard(this._streamingActiveType, null);
+      if (recoveredCard) {
+        const spinner = recoveredCard.querySelector('.vox-chronicle-suggestion__spinner');
+        if (spinner) spinner.remove();
+        const content = recoveredCard.querySelector('.vox-chronicle-suggestion__content');
+        if (content) content.textContent = this._streamingAccumulatedText;
+        this._activeStreamingCard = recoveredCard;
+      }
     }
 
     // Auto-scroll transcript to bottom
@@ -1069,6 +1090,77 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     return { title, bullets };
+  }
+
+  // ─── Streaming callback handlers (wired by Plan 03) ────────────
+
+  /**
+   * Handle a streaming token event from the orchestrator.
+   * Creates a streaming card on first call (when data.type is set),
+   * then appends accumulated text on subsequent calls.
+   *
+   * @param {object} data - Token data
+   * @param {string} [data.type] - Suggestion type (signals stream start)
+   * @param {string} [data.text] - Accumulated text so far
+   * @param {string} [data.source] - Optional source label
+   * @private
+   */
+  _handleStreamToken(data) {
+    if (!data) return;
+
+    // Stream start: create a new card
+    if (data.type && !this._activeStreamingCard) {
+      this._activeStreamingCard = this._createStreamingCard(data.type, data.source || null);
+      this._streamingActiveType = data.type;
+      this._streamingAccumulatedText = '';
+    }
+
+    // Token update: append incremental text
+    if (data.text && this._activeStreamingCard) {
+      const newContent = data.text.slice(this._streamingAccumulatedText.length);
+      if (newContent) {
+        this._appendStreamingToken(this._activeStreamingCard, newContent);
+        this._streamingAccumulatedText = data.text;
+
+        // Auto-scroll if at bottom
+        const container = this.element?.querySelector('.vox-chronicle-suggestions-container');
+        if (container && this._isScrolledToBottom(container)) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+    }
+  }
+
+  /**
+   * Handle a streaming completion event from the orchestrator.
+   * Finalizes the active streaming card and stores the completed suggestion.
+   *
+   * @param {object} data - Completion data
+   * @param {string} data.text - Full suggestion text
+   * @param {string} data.type - Suggestion type
+   * @param {object} [data.usage] - Token usage data
+   * @private
+   */
+  _handleStreamComplete(data) {
+    if (!data) return;
+
+    if (this._activeStreamingCard) {
+      this._finalizeStreamingCard(this._activeStreamingCard, data.text, data.type);
+    }
+
+    // Clear streaming state
+    this._activeStreamingCard = null;
+    this._streamingAccumulatedText = '';
+    this._streamingActiveType = null;
+
+    // Store the completed suggestion in the orchestrator's suggestions array
+    // so it persists across re-renders
+    if (this._orchestrator?._lastAISuggestions) {
+      this._orchestrator._lastAISuggestions.push({
+        type: data.type || 'narration',
+        content: data.text || ''
+      });
+    }
   }
 
   // ─── Dismiss suggestion handler ────────────────────────────────
