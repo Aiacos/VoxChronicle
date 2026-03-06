@@ -1912,4 +1912,109 @@ describe('AIAssistant', () => {
       }).not.toThrow();
     });
   });
+
+  // =========================================================================
+  // _makeChatRequestStreaming
+  // =========================================================================
+  describe('_makeChatRequestStreaming()', () => {
+    let assistant;
+
+    /**
+     * Helper: create a mock async generator that yields chunks.
+     */
+    async function* mockAsyncGenerator(chunks) {
+      for (const chunk of chunks) {
+        yield chunk;
+      }
+    }
+
+    beforeEach(() => {
+      const mockClient = createMockOpenAIClient();
+      // Add postStream mock returning an async generator
+      mockClient.postStream = vi.fn().mockImplementation(() =>
+        mockAsyncGenerator([
+          { content: 'Hello', usage: null },
+          { content: ' world', usage: null },
+          { content: null, usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }
+        ])
+      );
+      assistant = new AIAssistant({ openaiClient: mockClient });
+    });
+
+    it('yields accumulated text on each token via onToken callback', async () => {
+      const tokens = [];
+      await assistant._makeChatRequestStreaming(
+        [{ role: 'user', content: 'Hi' }],
+        { onToken: (text) => tokens.push(text) }
+      );
+
+      expect(tokens).toEqual(['Hello', 'Hello world']);
+    });
+
+    it('returns full response text when stream completes', async () => {
+      const result = await assistant._makeChatRequestStreaming(
+        [{ role: 'user', content: 'Hi' }]
+      );
+
+      expect(result.text).toBe('Hello world');
+    });
+
+    it('returns usage data from final chunk', async () => {
+      const result = await assistant._makeChatRequestStreaming(
+        [{ role: 'user', content: 'Hi' }]
+      );
+
+      expect(result.usage).toEqual({ prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 });
+    });
+
+    it('throws if circuit breaker is open', async () => {
+      assistant._circuitOpen = true;
+
+      await expect(
+        assistant._makeChatRequestStreaming([{ role: 'user', content: 'Hi' }])
+      ).rejects.toThrow('circuit breaker open');
+    });
+
+    it('resets consecutive errors on success', async () => {
+      assistant._consecutiveErrors = 3;
+
+      await assistant._makeChatRequestStreaming(
+        [{ role: 'user', content: 'Hi' }]
+      );
+
+      expect(assistant._consecutiveErrors).toBe(0);
+      expect(assistant._circuitOpen).toBe(false);
+    });
+
+    it('increments consecutive errors and opens circuit on failure', async () => {
+      const failClient = assistant._openaiClient;
+      failClient.postStream = vi.fn().mockImplementation(async function* () {
+        throw new Error('API error');
+      });
+      assistant._maxConsecutiveErrors = 2;
+      assistant._consecutiveErrors = 1;
+
+      await expect(
+        assistant._makeChatRequestStreaming([{ role: 'user', content: 'Hi' }])
+      ).rejects.toThrow('API error');
+
+      expect(assistant._consecutiveErrors).toBe(2);
+      expect(assistant._circuitOpen).toBe(true);
+    });
+
+    it('passes signal option through to postStream', async () => {
+      const controller = new AbortController();
+
+      await assistant._makeChatRequestStreaming(
+        [{ role: 'user', content: 'Hi' }],
+        { signal: controller.signal }
+      );
+
+      expect(assistant._openaiClient.postStream).toHaveBeenCalledWith(
+        '/chat/completions',
+        expect.objectContaining({ model: DEFAULT_MODEL }),
+        expect.objectContaining({ signal: controller.signal })
+      );
+    });
+  });
 });

@@ -1117,6 +1117,72 @@ class AIAssistant {
     }
   }
 
+  /**
+   * Make a streaming chat completion request to OpenAI.
+   *
+   * Uses postStream() to receive token chunks via SSE and invokes the onToken
+   * callback with accumulated text on each chunk. Returns the full response
+   * text and usage data when the stream completes.
+   *
+   * The existing _makeChatRequest() is preserved unchanged for non-streaming callers.
+   *
+   * @param {Array<{role: string, content: string}>} messages - Chat messages
+   * @param {object} [options] - Streaming options
+   * @param {function} [options.onToken] - Callback invoked with accumulated text on each token
+   * @param {AbortSignal} [options.signal] - AbortSignal to cancel the stream
+   * @returns {Promise<{text: string, usage: object|null}>} Full response text and usage data
+   * @throws {Error} If circuit breaker is open or streaming fails
+   * @private
+   */
+  async _makeChatRequestStreaming(messages, options = {}) {
+    // Circuit breaker check (same pattern as _makeChatRequest)
+    if (this._circuitOpen) {
+      throw new Error('AI suggestion circuit breaker open: too many consecutive failures');
+    }
+
+    this._logger.debug(`_makeChatRequestStreaming() — model=${this._model}, ${messages.length} messages`);
+
+    try {
+      const stream = this._openaiClient.postStream(
+        '/chat/completions',
+        {
+          model: this._model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1000
+        },
+        { signal: options.signal }
+      );
+
+      let fullText = '';
+      let usage = null;
+
+      for await (const chunk of stream) {
+        if (chunk.content) {
+          fullText += chunk.content;
+          options.onToken?.(fullText);
+        }
+        if (chunk.usage) {
+          usage = chunk.usage;
+        }
+      }
+
+      // Success: reset circuit breaker
+      this._consecutiveErrors = 0;
+      this._circuitOpen = false;
+
+      return { text: fullText, usage };
+    } catch (error) {
+      // Failure: increment error counter
+      this._consecutiveErrors++;
+      if (this._consecutiveErrors >= this._maxConsecutiveErrors) {
+        this._circuitOpen = true;
+        this._logger.warn(`Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`);
+      }
+      throw error;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Private: Prompt building delegation wrappers (for backward compatibility)
   // ---------------------------------------------------------------------------
