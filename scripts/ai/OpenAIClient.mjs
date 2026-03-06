@@ -521,6 +521,7 @@ class OpenAIClient extends BaseAPIClient {
    * @param {object} [options.headers] - Additional headers
    * @param {string|FormData} [options.body] - Request body
    * @param {number} [options.timeout] - Custom timeout for this request
+   * @param {AbortSignal} [options.signal] - External AbortSignal to cancel the request
    * @returns {Promise<object>} Parsed JSON response
    * @throws {OpenAIError} If the request fails
    * @private
@@ -547,11 +548,36 @@ class OpenAIClient extends BaseAPIClient {
     // Create timeout controller
     const controller = this._createTimeoutController(options.timeout);
 
+    // Combine external signal (if provided) with timeout signal
+    let combinedSignal = controller.signal;
+    let fallbackController = null;
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        clearTimeout(controller.timeoutId);
+        throw new OpenAIError(
+          'Request aborted: external signal was already aborted',
+          OpenAIErrorType.TIMEOUT_ERROR
+        );
+      }
+
+      if (typeof AbortSignal.any === 'function') {
+        combinedSignal = AbortSignal.any([controller.signal, options.signal]);
+      } else {
+        // Fallback: create a new controller that aborts if either signal fires
+        fallbackController = new AbortController();
+        const onAbort = () => fallbackController.abort();
+        controller.signal.addEventListener('abort', onAbort, { once: true });
+        options.signal.addEventListener('abort', onAbort, { once: true });
+        combinedSignal = fallbackController.signal;
+      }
+    }
+
     // Build fetch options
     const fetchOptions = {
       method,
       headers,
-      signal: controller.signal
+      signal: combinedSignal
     };
 
     if (options.body) {
@@ -650,6 +676,7 @@ class OpenAIClient extends BaseAPIClient {
    * @param {object} [options.headers] - Additional headers
    * @param {string|FormData} [options.body] - Request body
    * @param {number} [options.timeout] - Custom timeout for this request
+   * @param {AbortSignal} [options.signal] - External AbortSignal to cancel the request
    * @param {boolean} [options.useQueue=true] - Whether to use the sequential request queue
    * @param {boolean} [options.useRetry=true] - Whether to use retry with backoff
    * @param {number} [options.priority=0] - Queue priority (higher = processed first)
