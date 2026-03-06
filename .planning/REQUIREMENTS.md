@@ -36,10 +36,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Session Reliability
 
 - [ ] **SESS-01**: Live mode survives a full 3-4 hour D&D session without crashes or state corruption
-- [ ] **SESS-02**: Stop/restart live mode works cleanly using AbortController at all async boundaries
+- [x] **SESS-02**: Stop/restart live mode works cleanly using AbortController at all async boundaries
 - [ ] **SESS-03**: Session context uses rolling summarization (last 5 turns verbatim + summary of prior turns)
-- [ ] **SESS-04**: When OpenAI API is unavailable or slow, live mode degrades gracefully with clear DM-facing status
-- [ ] **SESS-05**: Token usage and API costs are monitored and bounded per session
+- [x] **SESS-04**: When OpenAI API is unavailable or slow, live mode degrades gracefully with clear DM-facing status
+- [x] **SESS-05**: Token usage and API costs are monitored and bounded per session
 
 ### UI & Polish
 
@@ -103,10 +103,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RULE-02 | Phase 7 | Pending |
 | RULE-03 | Phase 7 | Pending |
 | SESS-01 | Phase 4 | Pending |
-| SESS-02 | Phase 4 | Pending |
+| SESS-02 | Phase 4 | Complete |
 | SESS-03 | Phase 5 | Pending |
-| SESS-04 | Phase 4 | Pending |
-| SESS-05 | Phase 4 | Pending |
+| SESS-04 | Phase 4 | Complete |
+| SESS-05 | Phase 4 | Complete |
 | UI-01 | Phase 1 | Complete |
 | UI-02 | Phase 6 | Pending |
 
