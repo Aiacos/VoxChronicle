@@ -2213,6 +2213,358 @@ describe('SessionOrchestrator', () => {
       delete globalThis.Hooks;
     });
   });
+
+  // ── Phase 04 Plan 02: Lifecycle Hardening ────────────────────────────
+
+  describe('lifecycle hardening (04-02)', () => {
+    // ── stopLiveMode: 5-second deadline ────────────────────────────────
+    describe('stopLiveMode with deadline', () => {
+      it('should reach IDLE within 5 seconds even if current cycle hangs', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        // Simulate a hanging current cycle promise
+        orchestrator._currentCyclePromise = new Promise(() => {
+          // Never resolves
+        });
+
+        const stopPromise = orchestrator.stopLiveMode();
+        // Advance past 5-second deadline
+        vi.advanceTimersByTime(5100);
+        await stopPromise;
+
+        expect(orchestrator.state).toBe(SessionState.IDLE);
+        expect(orchestrator._isStopping).toBe(false);
+      });
+
+      it('should complete gracefully if cycle finishes before deadline', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        // Simulate a cycle that resolves quickly
+        orchestrator._currentCyclePromise = Promise.resolve();
+
+        const result = await orchestrator.stopLiveMode();
+        expect(orchestrator.state).toBe(SessionState.IDLE);
+        expect(result).toBeTruthy();
+      });
+
+      it('should abort _shutdownController when deadline fires', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        orchestrator._currentCyclePromise = new Promise(() => {});
+
+        const stopPromise = orchestrator.stopLiveMode();
+        vi.advanceTimersByTime(5100);
+        await stopPromise;
+
+        expect(orchestrator._shutdownController?.signal?.aborted).toBe(true);
+      });
+
+      it('should show session end summary notification', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        orchestrator._currentCyclePromise = Promise.resolve();
+
+        await orchestrator.stopLiveMode();
+        expect(ui.notifications.info).toHaveBeenCalledWith(
+          expect.stringContaining('VOXCHRONICLE.Live.SessionSummary')
+        );
+      });
+
+      it('should use cancel() on force-abort path (not stopRecording)', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        // Make stopRecording hang
+        services.audioRecorder.stopRecording.mockReturnValue(new Promise(() => {}));
+        orchestrator._currentCyclePromise = new Promise(() => {});
+
+        const stopPromise = orchestrator.stopLiveMode();
+        vi.advanceTimersByTime(5100);
+        await stopPromise;
+
+        // cancel should have been called on the force-abort path
+        expect(services.audioRecorder.cancel).toHaveBeenCalled();
+      });
+    });
+
+    // ── _fullTeardown ───────────────────────────────────────────────────
+    describe('_fullTeardown', () => {
+      it('should clear all registered hooks', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        // Manually add a hook to the tracking set
+        orchestrator._registeredHooks?.add({ name: 'testHook', id: 999 });
+
+        await orchestrator._fullTeardown();
+        expect(orchestrator._registeredHooks?.size || 0).toBe(0);
+      });
+
+      it('should reset all live mode state', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        orchestrator._liveTranscript = [{ text: 'test' }];
+        orchestrator._fullTranscriptText = 'test text';
+        orchestrator._discardedSegmentCount = 5;
+        orchestrator._currentCyclePromise = Promise.resolve();
+
+        await orchestrator._fullTeardown();
+
+        expect(orchestrator._liveTranscript).toEqual([]);
+        expect(orchestrator._fullTranscriptText).toBe('');
+        expect(orchestrator._discardedSegmentCount).toBe(0);
+        expect(orchestrator._currentCyclePromise).toBeNull();
+      });
+    });
+
+    // ── startLiveMode: clean slate ──────────────────────────────────────
+    describe('startLiveMode clean slate', () => {
+      it('should initialize CostTracker', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        expect(orchestrator._costTracker).toBeTruthy();
+        expect(orchestrator._costTracker.getTotalCost()).toBe(0);
+      });
+
+      it('should initialize _shutdownController', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        expect(orchestrator._shutdownController).toBeTruthy();
+        expect(orchestrator._shutdownController.signal.aborted).toBe(false);
+      });
+
+      it('should initialize _registeredHooks set', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        expect(orchestrator._registeredHooks).toBeInstanceOf(Set);
+      });
+
+      it('should initialize health tracking', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        expect(orchestrator._transcriptionHealth).toBe('healthy');
+        expect(orchestrator._aiSuggestionHealth).toBe('healthy');
+      });
+
+      it('should initialize self-monitoring state', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        expect(orchestrator._cycleDurations).toEqual([]);
+        expect(orchestrator._sessionStartTime).toBeTruthy();
+      });
+
+      it('should initialize full transcript accumulator', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        expect(orchestrator._fullTranscriptText).toBe('');
+        expect(orchestrator._discardedSegmentCount).toBe(0);
+      });
+
+      it('should start from zero after previous stop', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        orchestrator._costTracker?.addTranscriptionMinutes(5);
+        orchestrator._currentCyclePromise = Promise.resolve();
+        await orchestrator.stopLiveMode();
+
+        // Second start should be clean
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        expect(orchestrator._costTracker.getTotalCost()).toBe(0);
+        expect(orchestrator._transcriptionHealth).toBe('healthy');
+        expect(orchestrator._cycleDurations).toEqual([]);
+      });
+    });
+
+    // ── _liveCycle: rolling window ──────────────────────────────────────
+    describe('_liveCycle rolling window', () => {
+      it('should trim _liveTranscript to last 100 segments', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        // Fill with 99 segments
+        for (let i = 0; i < 99; i++) {
+          orchestrator._liveTranscript.push({ text: `seg${i}`, speaker: 'S', start: i, end: i + 1 });
+        }
+
+        // Next cycle adds 5 segments (total 104)
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'a b c d e',
+          segments: [
+            { text: 'a', speaker: 'S', start: 0, end: 1 },
+            { text: 'b', speaker: 'S', start: 1, end: 2 },
+            { text: 'c', speaker: 'S', start: 2, end: 3 },
+            { text: 'd', speaker: 'S', start: 3, end: 4 },
+            { text: 'e', speaker: 'S', start: 4, end: 5 }
+          ]
+        });
+
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._liveTranscript.length).toBeLessThanOrEqual(100);
+        expect(orchestrator._discardedSegmentCount).toBeGreaterThan(0);
+      });
+
+      it('should accumulate full transcript text', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'Hello world',
+          segments: [{ text: 'Hello world', speaker: 'S', start: 0, end: 1 }]
+        });
+
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._fullTranscriptText).toContain('Hello world');
+      });
+    });
+
+    // ── _liveCycle: health tracking ─────────────────────────────────────
+    describe('_liveCycle health tracking', () => {
+      it('should set _transcriptionHealth to healthy on successful transcription', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        orchestrator._transcriptionHealth = 'degraded';
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._transcriptionHealth).toBe('healthy');
+      });
+
+      it('should set _transcriptionHealth to degraded after 2 consecutive errors', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('fail'));
+
+        await orchestrator._liveCycle();
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._transcriptionHealth).toBe('degraded');
+      });
+
+      it('should set _transcriptionHealth to down after 5 consecutive errors', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('fail'));
+
+        for (let i = 0; i < 5; i++) {
+          await orchestrator._liveCycle();
+        }
+
+        expect(orchestrator._transcriptionHealth).toBe('down');
+      });
+
+      it('should auto-recover transcription health on success', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        // Fail 3 times
+        services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('fail'));
+        for (let i = 0; i < 3; i++) {
+          await orchestrator._liveCycle();
+        }
+        expect(orchestrator._transcriptionHealth).toBe('degraded');
+
+        // Succeed once
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+        });
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._transcriptionHealth).toBe('healthy');
+      });
+    });
+
+    // ── _liveCycle: cost cap ────────────────────────────────────────────
+    describe('_liveCycle cost cap', () => {
+      it('should pause AI suggestions when cost cap exceeded', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        // Manually set the cost above cap
+        orchestrator._costTracker.addTranscriptionMinutes(1000); // $6 (> $5 cap)
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'test', segments: [{ text: 'test', speaker: 'S', start: 0, end: 1 }]
+        });
+
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._aiSuggestionsPaused).toBe(true);
+      });
+    });
+
+    // ── getServiceHealth / getCostData ───────────────────────────────────
+    describe('getServiceHealth', () => {
+      it('should return health statuses', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        const health = orchestrator.getServiceHealth();
+        expect(health.transcription).toBe('healthy');
+        expect(health.aiSuggestions).toBe('healthy');
+      });
+    });
+
+    describe('getCostData', () => {
+      it('should return cost tracker summary', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        const data = orchestrator.getCostData();
+        expect(data).toBeTruthy();
+        expect(data.totalCost).toBe(0);
+        expect(data.totalTokens).toBe(0);
+      });
+
+      it('should return null when no cost tracker', () => {
+        const data = orchestrator.getCostData();
+        expect(data).toBeNull();
+      });
+    });
+
+    // ── Self-monitoring ────────────────────────────────────────────────
+    describe('self-monitoring', () => {
+      it('should track cycle durations in rolling array', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(null);
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._cycleDurations.length).toBe(1);
+      });
+
+      it('should keep only last 20 cycle durations', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(null);
+
+        for (let i = 0; i < 25; i++) {
+          await orchestrator._liveCycle();
+        }
+
+        expect(orchestrator._cycleDurations.length).toBe(20);
+      });
+    });
+
+    // ── _liveCycle: stores promise as _currentCyclePromise ──────────────
+    describe('_liveCycle promise tracking', () => {
+      it('should set _currentCyclePromise during execution', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        let promiseSetDuringCycle = false;
+        services.audioRecorder.getLatestChunk.mockImplementation(async () => {
+          promiseSetDuringCycle = orchestrator._currentCyclePromise != null;
+          return null;
+        });
+
+        await orchestrator._liveCycle();
+        expect(promiseSetDuringCycle).toBe(true);
+      });
+
+      it('should clear _currentCyclePromise after cycle completes', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+        services.audioRecorder.getLatestChunk.mockResolvedValue(null);
+
+        await orchestrator._liveCycle();
+        expect(orchestrator._currentCyclePromise).toBeNull();
+      });
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
