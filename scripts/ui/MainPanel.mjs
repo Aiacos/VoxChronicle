@@ -890,7 +890,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   _getChapterNavData() {
     const chapterTracker = this._orchestrator?._chapterTracker;
     if (!this._isRecordingActive() || !chapterTracker) {
-      return { currentChapter: null, prevChapter: null, nextChapter: null, indexStatus: 'gray' };
+      return { currentChapter: null, prevChapter: null, nextChapter: null, indexStatus: this._getIndexStatus() };
     }
 
     const current = chapterTracker.getCurrentChapter?.();
@@ -900,8 +900,21 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       currentChapter: current?.title || null,
       prevChapter: siblings.prev?.title || null,
       nextChapter: siblings.next?.title || null,
-      indexStatus: 'gray' // Placeholder for Plan 03 (RAG indexing pipeline)
+      indexStatus: this._getIndexStatus()
     };
+  }
+
+  /**
+   * Compute index health indicator status.
+   * @returns {'green'|'yellow'|'gray'} green=fresh, yellow=indexing, gray=no index
+   * @private
+   */
+  _getIndexStatus() {
+    if (!this._orchestrator?._ragProvider) return 'gray';
+    if (this._orchestrator?._reindexInProgress) return 'yellow';
+    const hashes = this._orchestrator?._contentHashes;
+    if (hashes && Object.keys(hashes).length > 0) return 'green';
+    return 'gray';
   }
 
   /**

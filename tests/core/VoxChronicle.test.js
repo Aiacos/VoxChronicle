@@ -47,7 +47,8 @@ const {
   }));
   const mockSessionOrchestratorInstance = {
     setTranscriptionConfig: vi.fn(),
-    setNarratorServices: vi.fn()
+    setNarratorServices: vi.fn(),
+    setRAGProvider: vi.fn()
   };
   const mockSessionOrchestrator = vi.fn().mockImplementation(() => mockSessionOrchestratorInstance);
   const mockVocabularyDictionary = vi.fn().mockImplementation(() => ({

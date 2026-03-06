@@ -184,13 +184,35 @@ Hooks.on('canvasReady', () => {
 });
 
 /**
- * Invalidate journal parser cache when journal entries are modified
- * Ensures the parser picks up changes to journal content
+ * Debounce timer for re-index operations on journal edits.
+ * @type {ReturnType<typeof setTimeout>|null}
  */
-function invalidateJournalCache() {
+let reindexTimer = null;
+
+/**
+ * Invalidate journal parser cache when journal entries are modified.
+ * Also triggers debounced RAG re-indexing during live mode for selected journals.
+ *
+ * @param {object} [journalEntry] - The JournalEntry document (first arg from Foundry hooks)
+ */
+function invalidateJournalCache(journalEntry) {
   const vc = VoxChronicle.getInstance();
   if (vc.journalParser) {
     vc.journalParser.clearAllCache?.();
+  }
+
+  // Debounced re-index during live mode only
+  if (vc.orchestrator?.isLiveMode && journalEntry?.id) {
+    const primaryId = game.settings.get(MODULE_ID, 'activeAdventureJournalId');
+    const supplementaryIds = game.settings.get(MODULE_ID, 'supplementaryJournalIds') || [];
+    const isSelected = journalEntry.id === primaryId || supplementaryIds.includes(journalEntry.id);
+
+    if (isSelected) {
+      clearTimeout(reindexTimer);
+      reindexTimer = setTimeout(() => {
+        vc.orchestrator.reindexJournal?.(journalEntry.id);
+      }, 5000);
+    }
   }
 }
 
