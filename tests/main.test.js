@@ -563,3 +563,143 @@ describe('journal entry hooks', () => {
     });
   }
 });
+
+// ── Debounced re-index hooks (02-03) ────────────────────────────────────
+
+describe('debounced re-index on journal edit', () => {
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should trigger reindexJournal after 5-second debounce for a selected journal during live mode', () => {
+    const reindexJournal = vi.fn();
+
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: null,
+      journalParser: { clearAllCache: vi.fn() },
+      orchestrator: { isLiveMode: true, reindexJournal }
+    });
+
+    globalThis.game.settings.get = vi.fn((moduleId, key) => {
+      if (key === 'activeAdventureJournalId') return 'journal-1';
+      if (key === 'supplementaryJournalIds') return [];
+      return '';
+    });
+
+    const callback = findHookCallback('updateJournalEntry');
+    callback({ id: 'journal-1' });
+
+    // Should NOT have been called yet (within debounce window)
+    expect(reindexJournal).not.toHaveBeenCalled();
+
+    // Advance past 5-second debounce
+    vi.advanceTimersByTime(5000);
+
+    expect(reindexJournal).toHaveBeenCalledWith('journal-1');
+  });
+
+  it('should NOT trigger reindexJournal for an unselected journal', () => {
+    const reindexJournal = vi.fn();
+
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: null,
+      journalParser: { clearAllCache: vi.fn() },
+      orchestrator: { isLiveMode: true, reindexJournal }
+    });
+
+    globalThis.game.settings.get = vi.fn((moduleId, key) => {
+      if (key === 'activeAdventureJournalId') return 'journal-1';
+      if (key === 'supplementaryJournalIds') return [];
+      return '';
+    });
+
+    const callback = findHookCallback('updateJournalEntry');
+    callback({ id: 'unrelated-journal' });
+
+    vi.advanceTimersByTime(5000);
+
+    expect(reindexJournal).not.toHaveBeenCalled();
+  });
+
+  it('should debounce multiple rapid edits into a single reindexJournal call', () => {
+    const reindexJournal = vi.fn();
+
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: null,
+      journalParser: { clearAllCache: vi.fn() },
+      orchestrator: { isLiveMode: true, reindexJournal }
+    });
+
+    globalThis.game.settings.get = vi.fn((moduleId, key) => {
+      if (key === 'activeAdventureJournalId') return 'journal-1';
+      if (key === 'supplementaryJournalIds') return [];
+      return '';
+    });
+
+    const callback = findHookCallback('updateJournalEntry');
+    callback({ id: 'journal-1' });
+    vi.advanceTimersByTime(2000);
+    callback({ id: 'journal-1' });
+    vi.advanceTimersByTime(2000);
+    callback({ id: 'journal-1' });
+
+    // Still within debounce window since last call
+    expect(reindexJournal).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(5000);
+
+    // Should have been called only once
+    expect(reindexJournal).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT trigger reindexJournal when not in live mode', () => {
+    const reindexJournal = vi.fn();
+
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: null,
+      journalParser: { clearAllCache: vi.fn() },
+      orchestrator: { isLiveMode: false, reindexJournal }
+    });
+
+    globalThis.game.settings.get = vi.fn((moduleId, key) => {
+      if (key === 'activeAdventureJournalId') return 'journal-1';
+      if (key === 'supplementaryJournalIds') return [];
+      return '';
+    });
+
+    const callback = findHookCallback('updateJournalEntry');
+    callback({ id: 'journal-1' });
+
+    vi.advanceTimersByTime(5000);
+
+    expect(reindexJournal).not.toHaveBeenCalled();
+  });
+
+  it('should still clear parser cache even when triggering re-index', () => {
+    const clearAllCache = vi.fn();
+    const reindexJournal = vi.fn();
+
+    VoxChronicle.getInstance.mockReturnValue({
+      chapterTracker: null,
+      journalParser: { clearAllCache },
+      orchestrator: { isLiveMode: true, reindexJournal }
+    });
+
+    globalThis.game.settings.get = vi.fn((moduleId, key) => {
+      if (key === 'activeAdventureJournalId') return 'journal-1';
+      if (key === 'supplementaryJournalIds') return [];
+      return '';
+    });
+
+    const callback = findHookCallback('updateJournalEntry');
+    callback({ id: 'journal-1' });
+
+    // Cache clear should happen immediately (not debounced)
+    expect(clearAllCache).toHaveBeenCalledTimes(1);
+  });
+});
