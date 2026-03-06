@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 5 of 8 (Rolling Context Management)
-Plan: 2 of 3 in current phase
-Status: In Progress
-Last activity: 2026-03-06 — Completed 05-02 (Token budget enforcement in PromptBuilder)
+Plan: 3 of 3 in current phase
+Status: Completed
+Last activity: 2026-03-06 — Completed 05-03 (Integration wiring: orchestrator, cost tracking, UI badge)
 
 Progress: [████████████] 100%
 
@@ -58,6 +58,7 @@ Progress: [████████████] 100%
 | Phase 05 P01 | 5min | 2 tasks | 5 files |
 | Phase 05 P02 | 4min | 2 tasks | 11 files |
 | Phase 05 P01 | 4min | 2 tasks | 4 files |
+| Phase 05 P03 | 2min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,10 @@ Recent decisions affecting current work:
 - [05-01]: Concurrency guard via simple boolean _isSummarizing (sufficient for single-user DM context)
 - [05-01]: Empty turns early-return skips API call entirely (no wasted cost)
 - [05-01]: Optional chaining on setRollingSummary to avoid breaking PromptBuilder before Plan 02
+- [05-03]: Access AIAssistant._openaiClient for RollingSummarizer init (same internal boundary pattern as NPCProfileExtractor)
+- [05-03]: Debug prompt dump in AIAssistant.analyzeContext() where messages are built (not orchestrator)
+- [05-03]: Summary badge placed above cost footer with subtle informational styling
+- [05-03]: Fallback chain for summarizedTurnCount: VoxChronicle.aiAssistant then orchestrator._aiAssistant
 
 ### Pending Todos
 
@@ -117,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T12:24:14Z
-Stopped at: Completed 05-02-PLAN.md
-Resume file: .planning/phases/05-rolling-context-management/05-03-PLAN.md
+Last session: 2026-03-06T12:29:52Z
+Stopped at: Completed 05-03-PLAN.md (Phase 05 complete)
+Resume file: Next phase

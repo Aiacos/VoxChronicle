@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Journal Context Pipeline** - Wire the journal-to-AI context path so suggestions are adventure-grounded (completed 2026-03-06)
 - [ ] **Phase 3: AI Knowledge Depth** - Surface NPC personalities, anticipate upcoming scenes, ground all suggestions in journal text
 - [ ] **Phase 4: Session Reliability** - Make live mode survivable for 4 hours with clean stop mechanics and graceful degradation
-- [ ] **Phase 5: Rolling Context Management** - Prevent context window rot with rolling summarization and bounded conversation history
+- [x] **Phase 5: Rolling Context Management** - Prevent context window rot with rolling summarization and bounded conversation history (completed 2026-03-06)
 - [ ] **Phase 6: State Machine and UI Accuracy** - Ensure the panel reflects real session state with streaming display and calibrated silence detection
 - [ ] **Phase 7: Rules Lookup Integration** - Wire RulesReference into the live cycle as a non-blocking fire-and-forget path
 - [ ] **Phase 8: Advanced Suggestion Intelligence** - Add on-demand query, scene-type adaptation, off-track detection, and speaker-aware weighting
@@ -93,11 +93,11 @@ Plans:
   2. The last 5 verbatim turns are always preserved alongside the rolling summary
   3. Token count per AI cycle stays at or below 12,000 tokens throughout a simulated 4-hour session (180+ cycles)
   4. The rolling summary content is readable in a debug view and correctly reflects what happened earlier in the session
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
-- [ ] 05-01-PLAN.md — RollingSummarizer service + AIAssistant integration (trigger at 8, evict, async summarize)
-- [ ] 05-02-PLAN.md — PromptBuilder token budget enforcement (priority-based 12K cap) + contextTokenBudget setting
-- [ ] 05-03-PLAN.md — SessionOrchestrator wiring + CostTracker integration + MainPanel summary age badge + debug logging
+- [x] 05-01-PLAN.md — RollingSummarizer service + AIAssistant integration (trigger at 8, evict, async summarize)
+- [x] 05-02-PLAN.md — PromptBuilder token budget enforcement (priority-based 12K cap) + contextTokenBudget setting
+- [x] 05-03-PLAN.md — SessionOrchestrator wiring + CostTracker integration + MainPanel summary age badge + debug logging
 
 ### Phase 6: State Machine and UI Accuracy
 **Goal**: The MainPanel always reflects the true live session state, suggestions stream with visible first tokens, silence detection triggers at the right threshold, and suggestion cards are glanceable rather than wall-of-text
@@ -144,7 +144,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Journal Context Pipeline | 3/3 | Complete   | 2026-03-06 |
 | 3. AI Knowledge Depth | 1/2 | In Progress|  |
 | 4. Session Reliability | 0/3 | Planning complete | - |
-| 5. Rolling Context Management | 1/3 | In Progress|  |
+| 5. Rolling Context Management | 3/3 | Complete   | 2026-03-06 |
 | 6. State Machine and UI Accuracy | 0/TBD | Not started | - |
 | 7. Rules Lookup Integration | 0/TBD | Not started | - |
 | 8. Advanced Suggestion Intelligence | 0/TBD | Not started | - |
