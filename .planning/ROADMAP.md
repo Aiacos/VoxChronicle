@@ -13,7 +13,7 @@ This milestone transforms VoxChronicle's live mode from untested infrastructure 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: CSS Namespace** - Eliminate 214 un-namespaced CSS classes to prevent module conflicts
-- [ ] **Phase 2: Journal Context Pipeline** - Wire the journal-to-AI context path so suggestions are adventure-grounded
+- [x] **Phase 2: Journal Context Pipeline** - Wire the journal-to-AI context path so suggestions are adventure-grounded (completed 2026-03-06)
 - [ ] **Phase 3: AI Knowledge Depth** - Surface NPC personalities, anticipate upcoming scenes, ground all suggestions in journal text
 - [ ] **Phase 4: Session Reliability** - Make live mode survivable for 4 hours with clean stop mechanics and graceful degradation
 - [ ] **Phase 5: Rolling Context Management** - Prevent context window rot with rolling summarization and bounded conversation history
@@ -48,7 +48,7 @@ Plans:
   3. Each AI suggestion cycle receives only the current chapter's text as primary context (not the entire journal) plus up to 5 RAG results for cross-chapter references
   4. The RAG vector store is configured with 1200/300-token chunking and updates automatically (debounced) when a journal page is edited
   5. A warning appears if the loaded journal text is under 500 characters or over 200,000 characters, and the DM must confirm before proceeding
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 Plans:
 - [ ] 02-01-PLAN.md — JournalPicker ApplicationV2 dialog + settings + inline confirmation banner + no-journal fallback
 - [ ] 02-02-PLAN.md — Chapter tracking wiring + chapter nav bar + chapter-scoped AI context (getCurrentChapterContentForAI)
@@ -130,7 +130,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. CSS Namespace | 0/3 | Planning complete | - |
-| 2. Journal Context Pipeline | 0/3 | Planning complete | - |
+| 2. Journal Context Pipeline | 3/3 | Complete   | 2026-03-06 |
 | 3. AI Knowledge Depth | 0/TBD | Not started | - |
 | 4. Session Reliability | 0/TBD | Not started | - |
 | 5. Rolling Context Management | 0/TBD | Not started | - |

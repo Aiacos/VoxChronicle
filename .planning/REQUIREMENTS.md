@@ -12,8 +12,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **CTX-01**: DM can select which Foundry journal is the active adventure before starting live mode
 - [x] **CTX-02**: System tracks current chapter/scene position within the selected adventure journal
 - [x] **CTX-03**: AI prompts receive chapter-scoped context (current chapter text), not the entire journal dump
-- [ ] **CTX-04**: RAG indexing uses 1200/300 token chunking for adventure content (not default 800/400)
-- [ ] **CTX-05**: RAG index updates automatically when journal pages are edited (hook-driven, debounced)
+- [x] **CTX-04**: RAG indexing uses 1200/300 token chunking for adventure content (not default 800/400)
+- [x] **CTX-05**: RAG index updates automatically when journal pages are edited (hook-driven, debounced)
 - [ ] **CTX-06**: AI surfaces NPC names, personalities, and motivations from adventure journal text when relevant
 - [ ] **CTX-07**: AI anticipates upcoming scenes from the adventure and can suggest foreshadowing seeds
 
@@ -88,8 +88,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTX-01 | Phase 2 | Complete |
 | CTX-02 | Phase 2 | Complete |
 | CTX-03 | Phase 2 | Complete |
-| CTX-04 | Phase 2 | Pending |
-| CTX-05 | Phase 2 | Pending |
+| CTX-04 | Phase 2 | Complete |
+| CTX-05 | Phase 2 | Complete |
 | CTX-06 | Phase 3 | Pending |
 | CTX-07 | Phase 3 | Pending |
 | SUG-01 | Phase 3 | Pending |

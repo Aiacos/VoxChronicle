@@ -26,28 +26,28 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 2 of 8 (Journal Context Pipeline)
-Plan: 2 of 3 in current phase
-Status: In Progress
-Last activity: 2026-03-06 — Completed 02-02 (chapter tracking + navigation bar)
+Plan: 3 of 3 in current phase
+Status: Phase Complete
+Last activity: 2026-03-06 — Completed 02-03 (RAG indexing pipeline + debounced re-index)
 
-Progress: [██░░░░░░░░] 21%
+Progress: [██░░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 6min
-- Total execution time: 0.5 hours
+- Total plans completed: 6
+- Average duration: 7min
+- Total execution time: 0.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-css-namespace | 3 | 16min | 5.3min |
-| 02-journal-context-pipeline | 2 | 13min | 6.5min |
+| 02-journal-context-pipeline | 3 | 22min | 7.3min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (6min), 01-02 (7min), 01-03 (3min), 02-01 (8min), 02-02 (5min)
+- Last 5 plans: 01-02 (7min), 01-03 (3min), 02-01 (8min), 02-02 (5min), 02-03 (9min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -70,6 +70,9 @@ Recent decisions affecting current work:
 - [01-03]: Modifier classes nested and expanded kept un-prefixed per established convention
 - [02-01]: Pre-computed boolean flags (isJournalTooShort/isJournalTooLong) instead of Handlebars eq helper for content warnings
 - [02-01]: Auto-select scene-linked journal as fallback before opening picker -- reduces DM friction
+- [02-03]: crypto.subtle.digest for SHA-256 hashing (browser-native, no external deps needed)
+- [02-03]: RAG indexing failure non-blocking -- wrapped in try/catch so live mode start is not blocked
+- [02-03]: Simple boolean flag + queue for reindexJournal concurrency guard (sufficient for single-user DM)
 - [02-02]: User-selected journal takes priority over scene-linked journal in _initializeJournalContext
 - [02-02]: getCurrentChapterContentForAI(8000) with fallback to substring(0,3000) for backward compatibility
 - [02-02]: Manual chapter navigation updates on next AI cycle, not immediately (avoids extra API calls)
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T06:50:39Z
-Stopped at: Completed 02-02-PLAN.md
-Resume file: .planning/phases/02-journal-context-pipeline/02-03-PLAN.md
+Last session: 2026-03-06T06:55:06Z
+Stopped at: Completed 02-03-PLAN.md (Phase 2 complete)
+Resume file: .planning/phases/03-ai-knowledge-depth/ (next phase)
