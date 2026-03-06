@@ -830,6 +830,19 @@ class SessionOrchestrator {
       this._updateState(SessionState.LIVE_LISTENING);
       this._scheduleLiveCycle();
 
+      // Register scene change hook for auto-updating chapter during live mode
+      this._boundOnSceneChange = () => {
+        const currentScene = typeof canvas !== 'undefined' ? canvas?.scene : null;
+        if (currentScene && this._chapterTracker) {
+          this._chapterTracker.updateFromScene(currentScene);
+          this._logger.log(`Chapter updated from scene change: ${currentScene.name || currentScene.id}`);
+        }
+      };
+      if (typeof Hooks !== 'undefined') {
+        Hooks.on('canvasReady', this._boundOnSceneChange);
+        this._logger.debug('Registered canvasReady hook for chapter auto-update');
+      }
+
       // Start silence monitoring for autonomous AI suggestions
       if (this._aiAssistant) {
         this._aiAssistant.setOnAutonomousSuggestionCallback((data) => {
@@ -862,18 +875,29 @@ class SessionOrchestrator {
     if (!this._aiAssistant || !this._journalParser) return;
 
     try {
-      // Try to find the adventure journal from the active scene
+      // 1. Check user-selected journal from settings (Plan 02-02)
       let journalId = null;
+      try {
+        journalId = globalThis.game?.settings?.get('vox-chronicle', 'activeAdventureJournalId') || null;
+        if (journalId) {
+          this._logger.log(`Using user-selected journal from settings: ${journalId}`);
+        }
+      } catch (e) {
+        this._logger.debug('Could not read activeAdventureJournalId setting:', e.message);
+      }
+
+      // 2. Fall back to scene-linked journal or first world journal
       const scene = typeof canvas !== 'undefined' ? canvas?.scene : null;
-      if (scene?.journal) {
-        journalId = scene.journal;
-        this._logger.log(`Using scene-linked journal: ${journalId}`);
-      } else if (typeof game !== 'undefined' && game?.journal?.size > 0) {
-        // Fall back to the first world journal
-        const firstJournal = game.journal.contents?.[0];
-        if (firstJournal) {
-          journalId = firstJournal.id;
-          this._logger.log(`No scene journal linked, using first world journal: ${firstJournal.name}`);
+      if (!journalId) {
+        if (scene?.journal) {
+          journalId = scene.journal;
+          this._logger.log(`Using scene-linked journal: ${journalId}`);
+        } else if (typeof game !== 'undefined' && game?.journal?.size > 0) {
+          const firstJournal = game.journal.contents?.[0];
+          if (firstJournal) {
+            journalId = firstJournal.id;
+            this._logger.log(`No scene journal linked, using first world journal: ${firstJournal.name}`);
+          }
         }
       }
 
@@ -910,7 +934,7 @@ class SessionOrchestrator {
               pageName: currentChapter.pageName || '',
               journalName: currentChapter.journalName || ''
             }] : [],
-            summary: currentChapter.content?.substring(0, 3000) || ''
+            summary: this._chapterTracker.getCurrentChapterContentForAI?.(8000) || currentChapter.content?.substring(0, 3000) || ''
           });
           this._logger.log(`Chapter context set: ${currentChapter.title}`);
         }
@@ -1005,6 +1029,13 @@ class SessionOrchestrator {
     }
 
     try {
+      // Unregister scene change hook
+      if (this._boundOnSceneChange && typeof Hooks !== 'undefined') {
+        Hooks.off('canvasReady', this._boundOnSceneChange);
+        this._logger.debug('Unregistered canvasReady hook');
+      }
+      this._boundOnSceneChange = null;
+
       // Stop silence monitoring
       if (this._aiAssistant) {
         this._aiAssistant.stopSilenceMonitoring();
@@ -1218,7 +1249,7 @@ class SessionOrchestrator {
             pageName: currentChapter.pageName || '',
             journalName: currentChapter.journalName || ''
           }] : [],
-          summary: currentChapter.content?.substring(0, 3000) || ''
+          summary: this._chapterTracker?.getCurrentChapterContentForAI?.(8000) || currentChapter.content?.substring(0, 3000) || ''
         });
       }
 

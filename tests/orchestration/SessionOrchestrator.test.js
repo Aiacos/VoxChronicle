@@ -1907,4 +1907,425 @@ describe('SessionOrchestrator', () => {
       expect(orchestrator._lastAISuggestions).toEqual([suggestionData.suggestion]);
     });
   });
+
+  // ── 02-02: User-selected journal + chapter-scoped AI context ──────────
+
+  describe('_initializeJournalContext with user-selected journal', () => {
+    it('should read activeAdventureJournalId from settings and use as primary journal', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('Adventure text');
+      const ai = createMockAIAssistant();
+      const ct = createMockChapterTracker();
+
+      orchestrator.setNarratorServices({ journalParser: jp, aiAssistant: ai, chapterTracker: ct });
+
+      // Set user-selected journal via settings
+      game.settings.get.mockImplementation((mod, key) => {
+        if (key === 'activeAdventureJournalId') return 'user-selected-journal-id';
+        return '';
+      });
+
+      // No scene journal — should use setting
+      globalThis.canvas = { scene: null };
+
+      await orchestrator._initializeJournalContext();
+
+      expect(jp.parseJournal).toHaveBeenCalledWith('user-selected-journal-id');
+      expect(ct.setSelectedJournal).toHaveBeenCalledWith('user-selected-journal-id');
+
+      delete globalThis.canvas;
+    });
+
+    it('should fall back to scene journal if activeAdventureJournalId is empty', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('Scene journal text');
+      const ai = createMockAIAssistant();
+      const ct = createMockChapterTracker();
+
+      orchestrator.setNarratorServices({ journalParser: jp, aiAssistant: ai, chapterTracker: ct });
+
+      game.settings.get.mockImplementation((mod, key) => {
+        if (key === 'activeAdventureJournalId') return '';
+        return '';
+      });
+
+      globalThis.canvas = { scene: { journal: 'scene-journal-id', name: 'Scene' } };
+
+      await orchestrator._initializeJournalContext();
+
+      expect(jp.parseJournal).toHaveBeenCalledWith('scene-journal-id');
+      expect(ct.setSelectedJournal).toHaveBeenCalledWith('scene-journal-id');
+
+      delete globalThis.canvas;
+    });
+
+    it('should call chapterTracker.updateFromScene when scene exists', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('text');
+      const ai = createMockAIAssistant();
+      const ct = createMockChapterTracker();
+
+      orchestrator.setNarratorServices({ journalParser: jp, aiAssistant: ai, chapterTracker: ct });
+
+      game.settings.get.mockImplementation((mod, key) => {
+        if (key === 'activeAdventureJournalId') return 'j1';
+        return '';
+      });
+
+      const scene = { journal: 'scene-j', name: 'Test Scene' };
+      globalThis.canvas = { scene };
+
+      await orchestrator._initializeJournalContext();
+
+      expect(ct.updateFromScene).toHaveBeenCalledWith(scene);
+
+      delete globalThis.canvas;
+    });
+  });
+
+  describe('_runAIAnalysis with chapter-scoped content', () => {
+    it('should use getCurrentChapterContentForAI(8000) for summary field', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const ct = createMockChapterTracker();
+      ct.getCurrentChapter.mockReturnValue({
+        title: 'Chapter 1',
+        subchapters: [{ title: 'Scene A' }],
+        pageId: 'p1',
+        pageName: 'Page 1',
+        journalName: 'Journal 1',
+        content: 'Long content that would be truncated at 3000 chars'
+      });
+      ct.getCurrentChapterContentForAI = vi.fn().mockReturnValue('AI-ready chapter content up to 8000 chars');
+
+      orchestrator._chapterTracker = ct;
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(ct.getCurrentChapterContentForAI).toHaveBeenCalledWith(8000);
+      expect(services.aiAssistant.setChapterContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          summary: 'AI-ready chapter content up to 8000 chars'
+        })
+      );
+    });
+
+    it('should fall back to substring(0,3000) when getCurrentChapterContentForAI is unavailable', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const ct = createMockChapterTracker();
+      ct.getCurrentChapter.mockReturnValue({
+        title: 'Chapter 1',
+        subchapters: [],
+        content: 'A'.repeat(5000)
+      });
+      // No getCurrentChapterContentForAI method
+      delete ct.getCurrentChapterContentForAI;
+
+      orchestrator._chapterTracker = ct;
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(services.aiAssistant.setChapterContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          summary: 'A'.repeat(3000)
+        })
+      );
+    });
+  });
+
+  describe('scene change hook during live mode', () => {
+    it('should register canvasReady hook in startLiveMode and update chapter', async () => {
+      const ct = createMockChapterTracker();
+      orchestrator._chapterTracker = ct;
+
+      // Track Hooks.on calls
+      const hookCalls = [];
+      globalThis.Hooks = {
+        on: vi.fn((hook, fn) => { hookCalls.push({ hook, fn }); }),
+        off: vi.fn()
+      };
+
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+      const canvasReadyHook = hookCalls.find(h => h.hook === 'canvasReady');
+      expect(canvasReadyHook).toBeDefined();
+
+      // Simulate scene change
+      globalThis.canvas = { scene: { id: 'new-scene', name: 'New Scene' } };
+      canvasReadyHook.fn();
+
+      expect(ct.updateFromScene).toHaveBeenCalledWith(canvas.scene);
+
+      delete globalThis.canvas;
+      delete globalThis.Hooks;
+    });
+
+    it('should unregister canvasReady hook in stopLiveMode', async () => {
+      globalThis.Hooks = {
+        on: vi.fn(),
+        off: vi.fn()
+      };
+
+      await orchestrator.startLiveMode({ batchDuration: 999999 });
+      await orchestrator.stopLiveMode();
+
+      expect(Hooks.off).toHaveBeenCalledWith('canvasReady', expect.any(Function));
+
+      delete globalThis.Hooks;
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RAG Indexing Pipeline (02-03)
+// ---------------------------------------------------------------------------
+
+describe('RAG Indexing Pipeline', () => {
+  let orchestrator;
+  let mockJournalParser;
+  let mockRAGProvider;
+
+  function createRAGMockJournalParser() {
+    return {
+      parseJournal: vi.fn().mockResolvedValue(),
+      getFullText: vi.fn().mockReturnValue('Adventure journal full text content'),
+      getChunksForEmbedding: vi.fn().mockResolvedValue([
+        {
+          text: 'Chunk 1 text content',
+          metadata: {
+            source: 'journal',
+            journalId: 'journal-1',
+            journalName: 'Lost Mine of Phandelver',
+            pageId: 'page-1',
+            pageName: 'Chapter 1',
+            chunkIndex: 0,
+            totalChunks: 2
+          }
+        },
+        {
+          text: 'Chunk 2 text content',
+          metadata: {
+            source: 'journal',
+            journalId: 'journal-1',
+            journalName: 'Lost Mine of Phandelver',
+            pageId: 'page-1',
+            pageName: 'Chapter 1',
+            chunkIndex: 1,
+            totalChunks: 2
+          }
+        }
+      ]),
+      clearAllCache: vi.fn(),
+      extractNPCProfiles: vi.fn().mockReturnValue([])
+    };
+  }
+
+  function createRAGMockProvider() {
+    return {
+      indexDocuments: vi.fn().mockResolvedValue({ indexed: 2, failed: 0 }),
+      removeDocument: vi.fn().mockResolvedValue(),
+      clearIndex: vi.fn().mockResolvedValue(),
+      getStatus: vi.fn().mockResolvedValue({ ready: true, documentCount: 0 })
+    };
+  }
+
+  beforeEach(() => {
+    // Mock crypto.subtle for content hashing
+    globalThis.crypto = {
+      subtle: {
+        digest: vi.fn().mockResolvedValue(new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]).buffer)
+      }
+    };
+
+    // Mock game.settings for journal IDs
+    globalThis.game = {
+      ...globalThis.game,
+      settings: {
+        ...globalThis.game?.settings,
+        get: vi.fn((moduleId, key) => {
+          if (key === 'activeAdventureJournalId') return 'journal-1';
+          if (key === 'supplementaryJournalIds') return ['journal-2'];
+          return '';
+        }),
+        set: vi.fn(),
+        register: vi.fn()
+      }
+    };
+
+    mockJournalParser = createRAGMockJournalParser();
+    mockRAGProvider = createRAGMockProvider();
+
+    orchestrator = new SessionOrchestrator({
+      audioRecorder: createMockAudioRecorder()
+    });
+    orchestrator.setNarratorServices({
+      journalParser: mockJournalParser,
+      aiAssistant: createMockAIAssistant()
+    });
+    orchestrator.setRAGProvider(mockRAGProvider);
+  });
+
+  describe('_computeContentHash', () => {
+    it('should return a consistent hex string for the same input', async () => {
+      const hash1 = await orchestrator._computeContentHash('test content');
+      const hash2 = await orchestrator._computeContentHash('test content');
+      expect(hash1).toBe(hash2);
+      expect(typeof hash1).toBe('string');
+      expect(hash1).toMatch(/^[0-9a-f]+$/);
+    });
+  });
+
+  describe('_indexJournalsForRAG', () => {
+    it('should call getChunksForEmbedding with chunkSize 4800 and overlap 1200 for primary journal', async () => {
+      await orchestrator._indexJournalsForRAG();
+      expect(mockJournalParser.getChunksForEmbedding).toHaveBeenCalledWith(
+        'journal-1',
+        expect.objectContaining({ chunkSize: 4800, overlap: 1200 })
+      );
+    });
+
+    it('should call getChunksForEmbedding for each supplementary journal', async () => {
+      mockJournalParser.getChunksForEmbedding.mockResolvedValue([]);
+      await orchestrator._indexJournalsForRAG();
+      expect(mockJournalParser.getChunksForEmbedding).toHaveBeenCalledWith(
+        'journal-2',
+        expect.objectContaining({ chunkSize: 4800, overlap: 1200 })
+      );
+    });
+
+    it('should convert chunks to RAGDocuments with correct id format', async () => {
+      // Only primary journal returns chunks
+      globalThis.game.settings.get = vi.fn((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return 'journal-1';
+        if (key === 'supplementaryJournalIds') return [];
+        return '';
+      });
+
+      await orchestrator._indexJournalsForRAG();
+
+      const docs = mockRAGProvider.indexDocuments.mock.calls[0][0];
+      expect(docs[0].id).toBe('journal-1-page-1-chunk0');
+      expect(docs[1].id).toBe('journal-1-page-1-chunk1');
+    });
+
+    it('should include journalName, pageName, and chunk index in RAGDocument title', async () => {
+      globalThis.game.settings.get = vi.fn((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return 'journal-1';
+        if (key === 'supplementaryJournalIds') return [];
+        return '';
+      });
+
+      await orchestrator._indexJournalsForRAG();
+
+      const docs = mockRAGProvider.indexDocuments.mock.calls[0][0];
+      expect(docs[0].title).toBe('Lost Mine of Phandelver > Chapter 1 [1/2]');
+      expect(docs[1].title).toBe('Lost Mine of Phandelver > Chapter 1 [2/2]');
+    });
+
+    it('should include type adventure-journal in RAGDocument metadata', async () => {
+      globalThis.game.settings.get = vi.fn((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return 'journal-1';
+        if (key === 'supplementaryJournalIds') return [];
+        return '';
+      });
+
+      await orchestrator._indexJournalsForRAG();
+
+      const docs = mockRAGProvider.indexDocuments.mock.calls[0][0];
+      expect(docs[0].metadata.type).toBe('adventure-journal');
+    });
+
+    it('should skip indexing when content hash matches stored hash (not stale)', async () => {
+      // First call indexes
+      await orchestrator._indexJournalsForRAG();
+      mockRAGProvider.indexDocuments.mockClear();
+
+      // Second call should skip (same content)
+      await orchestrator._indexJournalsForRAG();
+      expect(mockRAGProvider.indexDocuments).not.toHaveBeenCalled();
+    });
+
+    it('should proceed with indexing when content hash differs (stale)', async () => {
+      // First call
+      await orchestrator._indexJournalsForRAG();
+      mockRAGProvider.indexDocuments.mockClear();
+
+      // Change content hash by changing fullText return value
+      mockJournalParser.getFullText.mockReturnValue('Different content now');
+      // Also need to change the hash mock to return different value
+      let callCount = 0;
+      globalThis.crypto.subtle.digest = vi.fn(() => {
+        callCount++;
+        // Return different hash for the new content
+        const buffer = new Uint8Array([callCount, 0x02, 0x03, 0x04]).buffer;
+        return Promise.resolve(buffer);
+      });
+
+      await orchestrator._indexJournalsForRAG();
+      expect(mockRAGProvider.indexDocuments).toHaveBeenCalled();
+    });
+
+    it('should call onProgress callback during indexing', async () => {
+      const onProgress = vi.fn();
+      await orchestrator._indexJournalsForRAG({ onProgress });
+      // onProgress should be passed through to indexDocuments
+      expect(mockRAGProvider.indexDocuments).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ onProgress })
+      );
+    });
+  });
+
+  describe('reindexJournal', () => {
+    it('should only re-index the specified journal, not all journals', async () => {
+      // Initial index all
+      await orchestrator._indexJournalsForRAG();
+      mockRAGProvider.indexDocuments.mockClear();
+      mockJournalParser.getChunksForEmbedding.mockClear();
+
+      // Change hash mock so cleared hash causes re-index
+      let callCount = 0;
+      globalThis.crypto.subtle.digest = vi.fn(() => {
+        callCount++;
+        return Promise.resolve(new Uint8Array([callCount, 0x02]).buffer);
+      });
+
+      await orchestrator.reindexJournal('journal-1');
+
+      // Should have re-indexed (because hash was cleared for journal-1)
+      expect(mockRAGProvider.indexDocuments).toHaveBeenCalled();
+    });
+
+    it('should skip if journalId is not in the selected journals list', async () => {
+      mockRAGProvider.indexDocuments.mockClear();
+      await orchestrator.reindexJournal('unselected-journal');
+      expect(mockRAGProvider.indexDocuments).not.toHaveBeenCalled();
+    });
+
+    it('should guard against concurrent re-index operations', async () => {
+      // Make indexDocuments take time
+      let resolveIndex;
+      mockRAGProvider.indexDocuments.mockImplementation(() => new Promise(r => { resolveIndex = r; }));
+
+      // Start first re-index (will be pending)
+      const firstReindex = orchestrator.reindexJournal('journal-1');
+
+      // Start second re-index while first is in progress
+      const secondReindex = orchestrator.reindexJournal('journal-1');
+
+      // Resolve the first
+      resolveIndex({ indexed: 2, failed: 0 });
+      await firstReindex;
+
+      // Resolve again for second (it should queue)
+      resolveIndex({ indexed: 2, failed: 0 });
+      await secondReindex;
+
+      // The guard should have prevented truly concurrent operations
+      expect(orchestrator._reindexInProgress).toBe(false);
+    });
+  });
 });
