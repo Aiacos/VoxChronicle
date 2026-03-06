@@ -401,6 +401,106 @@ describe('ChapterTracker', () => {
     });
   });
 
+  // =========================================================================
+  // getNextChapterContentForAI
+  // =========================================================================
+  describe('getNextChapterContentForAI()', () => {
+    it('returns formatted content when next chapter exists', () => {
+      // Set current chapter to node-1 (Chapter 1, level 0)
+      tracker.setManualChapter('node-1');
+
+      const result = tracker.getNextChapterContentForAI(1000);
+      expect(result).toContain('NEXT CHAPTER: Chapter 2');
+      expect(result).toContain('Content of chapter 2.');
+    });
+
+    it('returns empty string when no next chapter exists', () => {
+      // Set current chapter to last page-level chapter (node-3)
+      tracker.setManualChapter('node-3');
+
+      const result = tracker.getNextChapterContentForAI(1000);
+      expect(result).toBe('');
+    });
+
+    it('truncates to maxLength and appends ellipsis', () => {
+      // Create a parser with a long content chapter
+      const longContent = 'A'.repeat(2000);
+      const customStructure = {
+        journalId: 'journal-1',
+        journalName: 'Adventure',
+        chapters: [
+          {
+            id: 'node-1', title: 'Chapter 1', level: 0, type: 'page',
+            pageId: 'page-1', pageName: 'Chapter 1', content: 'Short.',
+            children: []
+          },
+          {
+            id: 'node-3', title: 'Chapter 2', level: 0, type: 'page',
+            pageId: 'page-2', pageName: 'Chapter 2', content: longContent,
+            children: []
+          }
+        ],
+        totalHeadings: 0,
+        extractedAt: new Date()
+      };
+      mockParser.extractChapterStructure.mockReturnValue(customStructure);
+
+      tracker.setManualChapter('node-1');
+      const result = tracker.getNextChapterContentForAI(100);
+      // Header + content, content truncated to 100 chars
+      expect(result).toContain('NEXT CHAPTER: Chapter 2');
+      expect(result).toContain('...');
+      // The content portion should be at most 100 chars of the actual content
+      const contentPart = result.split('\n\n')[1];
+      expect(contentPart.length).toBeLessThanOrEqual(103); // 100 + '...'
+    });
+
+    it('returns empty string when no current chapter set', () => {
+      const result = tracker.getNextChapterContentForAI(1000);
+      expect(result).toBe('');
+    });
+
+    it('includes chapter title header', () => {
+      tracker.setManualChapter('node-1');
+      const result = tracker.getNextChapterContentForAI(1000);
+      expect(result.startsWith('NEXT CHAPTER: Chapter 2')).toBe(true);
+    });
+
+    it('returns empty string when next chapter has no content', () => {
+      // Create structure where next chapter has empty content
+      const customStructure = {
+        journalId: 'journal-1',
+        journalName: 'Adventure',
+        chapters: [
+          {
+            id: 'node-1', title: 'Chapter 1', level: 0, type: 'page',
+            pageId: 'page-1', pageName: 'Chapter 1', content: 'Something.',
+            children: []
+          },
+          {
+            id: 'node-3', title: 'Chapter 2', level: 0, type: 'page',
+            pageId: 'page-2', pageName: 'Chapter 2', content: '',
+            children: []
+          }
+        ],
+        totalHeadings: 0,
+        extractedAt: new Date()
+      };
+      mockParser.extractChapterStructure.mockReturnValue(customStructure);
+
+      tracker.setManualChapter('node-1');
+      const result = tracker.getNextChapterContentForAI(1000);
+      expect(result).toBe('');
+    });
+
+    it('does not truncate content shorter than maxLength', () => {
+      tracker.setManualChapter('node-1');
+      const result = tracker.getNextChapterContentForAI(5000);
+      expect(result).not.toContain('...');
+      expect(result).toContain('Content of chapter 2.');
+    });
+  });
+
   describe('_detectChapterByKeywords()', () => {
     it('returns null without parser', () => {
       const t = new ChapterTracker();

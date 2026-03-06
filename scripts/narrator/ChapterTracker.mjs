@@ -415,6 +415,58 @@ export class ChapterTracker {
     return parts.join('\n');
   }
 
+  /**
+   * Gets the content of the next chapter formatted for AI foreshadowing context
+   * @param {number} [maxLength=1000] - Maximum content length
+   * @returns {string} The next chapter content with title header, or empty string
+   */
+  getNextChapterContentForAI(maxLength = 1000) {
+    if (!this._currentChapter || !this._journalParser || !this._selectedJournalId) {
+      return '';
+    }
+
+    const { next } = this.getSiblingChapters();
+    if (!next) {
+      return '';
+    }
+
+    // getSiblingChapters uses _convertFlatNodeToChapterInfo which sets content: ''
+    // Fetch actual content from the chapter structure
+    const content = this._getChapterContent(next.id);
+    if (!content) {
+      return '';
+    }
+
+    let truncatedContent = content;
+    let ellipsis = '';
+    if (content.length > maxLength) {
+      truncatedContent = content.substring(0, maxLength);
+      ellipsis = '...';
+    }
+
+    return `NEXT CHAPTER: ${next.title}\n\n${truncatedContent}${ellipsis}`;
+  }
+
+  /**
+   * Gets the content of a chapter by ID from the full chapter structure
+   * @param {string} chapterId - The chapter ID to look up
+   * @returns {string} The chapter content or empty string
+   * @private
+   */
+  _getChapterContent(chapterId) {
+    if (!this._journalParser || !this._selectedJournalId) {
+      return '';
+    }
+
+    const structure = this._journalParser.extractChapterStructure(this._selectedJournalId);
+    if (!structure || !structure.chapters) {
+      return '';
+    }
+
+    const node = this._findNodeById(structure.chapters, chapterId);
+    return node?.content || '';
+  }
+
   // ---------------------------------------------------------------------------
   // Public API -- State management
   // ---------------------------------------------------------------------------
