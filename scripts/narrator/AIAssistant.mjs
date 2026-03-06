@@ -705,6 +705,8 @@ class AIAssistant {
 
       return {
         ...analysis,
+        usage: response.usage || null,
+        model: response.model || this._model,
         sceneInfo: {
           type: 'unknown',
           isTransition: false,

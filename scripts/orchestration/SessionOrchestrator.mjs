@@ -1680,6 +1680,11 @@ class SessionOrchestrator {
         detectRules: false
       });
 
+      // Track AI suggestion token costs
+      if (analysis?.usage && this._costTracker) {
+        this._costTracker.addUsage(analysis.model || 'gpt-4o-mini', analysis.usage);
+      }
+
       const analysisMs = Date.now() - analysisStart;
       if (analysis?.suggestions) {
         this._lastAISuggestions = analysis.suggestions;
