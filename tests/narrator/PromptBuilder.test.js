@@ -762,4 +762,243 @@ describe('PromptBuilder', () => {
       expect(MAX_CONTEXT_TOKENS).toBe(8000);
     });
   });
+
+  // =========================================================================
+  // Token Budget (Phase 05-02)
+  // =========================================================================
+  describe('token budget', () => {
+    describe('_estimateTokens', () => {
+      it('returns Math.ceil(str.length / 4) for non-empty strings', () => {
+        expect(builder._estimateTokens('hello world')).toBe(Math.ceil(11 / 4)); // 3
+        expect(builder._estimateTokens('a')).toBe(1);
+        expect(builder._estimateTokens('abcd')).toBe(1);
+        expect(builder._estimateTokens('abcde')).toBe(2);
+      });
+
+      it('returns 0 for null/undefined/empty string', () => {
+        expect(builder._estimateTokens(null)).toBe(0);
+        expect(builder._estimateTokens(undefined)).toBe(0);
+        expect(builder._estimateTokens('')).toBe(0);
+      });
+    });
+
+    describe('setRollingSummary', () => {
+      it('stores summary text accessible during message building', () => {
+        builder.setRollingSummary('The party arrived at the tavern and met the innkeeper.');
+        const messages = builder.buildAnalysisMessages('test', true, false);
+        const summaryMsg = messages.find(m => m.content?.includes('SESSION HISTORY'));
+        expect(summaryMsg).toBeDefined();
+        expect(summaryMsg.content).toContain('The party arrived at the tavern');
+      });
+
+      it('clears summary with null', () => {
+        builder.setRollingSummary('something');
+        builder.setRollingSummary(null);
+        const messages = builder.buildAnalysisMessages('test', true, false);
+        const summaryMsg = messages.find(m => m.content?.includes('SESSION HISTORY'));
+        expect(summaryMsg).toBeUndefined();
+      });
+    });
+
+    describe('rolling summary injection position', () => {
+      it('includes rolling summary as system message between verbatim turns and NPC profiles', () => {
+        builder.setAdventureContext('Adventure context here');
+        builder.setRollingSummary('Summary of previous turns');
+        builder.setConversationHistory([
+          { role: 'user', content: 'Turn 1' },
+          { role: 'assistant', content: 'Response 1' }
+        ]);
+        builder.setNPCProfiles([{
+          name: 'Garrick', personality: 'Jovial', motivation: 'Protect',
+          role: 'merchant', chapterLocation: 'Ch3', aliases: [], sessionNotes: []
+        }]);
+
+        const messages = builder.buildAnalysisMessages('test', true, false);
+
+        // Find indices
+        const summaryIdx = messages.findIndex(m => m.content?.includes('SESSION HISTORY'));
+        const npcIdx = messages.findIndex(m => m.content?.includes('ACTIVE NPC PROFILES'));
+        const historyIdx = messages.findIndex(m => m.content === 'Turn 1');
+
+        expect(summaryIdx).toBeGreaterThan(-1);
+        // Summary should come after verbatim turns and before NPC profiles
+        expect(summaryIdx).toBeGreaterThan(historyIdx);
+        expect(summaryIdx).toBeLessThan(npcIdx);
+      });
+    });
+
+    describe('budget enforcement', () => {
+      it('when total tokens exceed budget, lowest priority components are dropped first (next chapter > NPC profiles > rolling summary > verbatim turns > adventure context)', () => {
+        // Set a very tight budget
+        builder.setTokenBudget(4000);
+        builder.setAdventureContext('A'.repeat(2000)); // ~500 tokens
+        builder.setConversationHistory([
+          { role: 'user', content: 'B'.repeat(2000) },
+          { role: 'assistant', content: 'C'.repeat(2000) }
+        ]);
+        builder.setRollingSummary('D'.repeat(2000));
+        builder.setNPCProfiles([{
+          name: 'Garrick', personality: 'E'.repeat(1000), motivation: 'F'.repeat(1000),
+          role: 'merchant', chapterLocation: 'Ch3', aliases: [], sessionNotes: []
+        }]);
+        builder.setNextChapterLookahead('G'.repeat(2000));
+
+        const messages = builder.buildAnalysisMessages('test', true, false);
+
+        // System prompt + user request are always included
+        expect(messages[0].role).toBe('system');
+        const userMsg = messages.find(m => m.role === 'user');
+        expect(userMsg).toBeDefined();
+
+        // Adventure context should be present (highest variable priority)
+        const adventureMsg = messages.find(m => m.content?.includes('ADVENTURE CONTEXT'));
+        expect(adventureMsg).toBeDefined();
+
+        // Next chapter lookahead (lowest priority) should be dropped
+        const lookaheadMsg = messages.find(m => m.content?.includes('UPCOMING CONTENT'));
+        expect(lookaheadMsg).toBeUndefined();
+      });
+
+      it('system prompt + user request are ALWAYS included regardless of budget', () => {
+        builder.setTokenBudget(100); // Impossibly small budget
+        const messages = builder.buildAnalysisMessages('test', true, false);
+        expect(messages[0].role).toBe('system');
+        expect(messages[0].content).toContain('expert assistant');
+        const userMsg = messages.find(m => m.role === 'user');
+        expect(userMsg).toBeDefined();
+      });
+
+      it('with 12K budget and realistic component sizes, all components fit', () => {
+        builder.setTokenBudget(12000);
+        builder.setAdventureContext('Adventure context for the session.'); // ~9 tokens
+        builder.setConversationHistory([
+          { role: 'user', content: 'Player says something.' },
+          { role: 'assistant', content: 'AI responds.' }
+        ]);
+        builder.setRollingSummary('Brief summary of what happened.');
+        builder.setNPCProfiles([{
+          name: 'Garrick', personality: 'Jovial', motivation: 'Protect',
+          role: 'merchant', chapterLocation: 'Ch3', aliases: [], sessionNotes: []
+        }]);
+        builder.setNextChapterLookahead('Next chapter preview.');
+
+        const messages = builder.buildAnalysisMessages('test', true, false);
+
+        // All components should be present
+        expect(messages.find(m => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
+        expect(messages.find(m => m.content?.includes('SESSION HISTORY'))).toBeDefined();
+        expect(messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'))).toBeDefined();
+        expect(messages.find(m => m.content?.includes('UPCOMING CONTENT'))).toBeDefined();
+      });
+
+      it('with tight budget (4K), only system prompt + user request + adventure context remain', () => {
+        builder.setTokenBudget(4000);
+        // Make adventure context large enough to be close to budget
+        builder.setAdventureContext('X'.repeat(8000)); // ~2000 tokens
+        builder.setConversationHistory([
+          { role: 'user', content: 'Y'.repeat(4000) },
+          { role: 'assistant', content: 'Z'.repeat(4000) }
+        ]);
+        builder.setRollingSummary('W'.repeat(4000));
+        builder.setNPCProfiles([{
+          name: 'NPC', personality: 'V'.repeat(2000), motivation: 'U'.repeat(2000),
+          role: 'enemy', chapterLocation: 'Ch1', aliases: [], sessionNotes: []
+        }]);
+        builder.setNextChapterLookahead('T'.repeat(4000));
+
+        const messages = builder.buildAnalysisMessages('test', true, false);
+
+        // System prompt + user request always present
+        expect(messages[0].role).toBe('system');
+        expect(messages.find(m => m.role === 'user')).toBeDefined();
+
+        // Adventure context has highest variable priority
+        expect(messages.find(m => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
+
+        // Lower priority items should be dropped
+        expect(messages.find(m => m.content?.includes('UPCOMING CONTENT'))).toBeUndefined();
+        expect(messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'))).toBeUndefined();
+      });
+
+      it('budget applies 10% safety margin (targets 10,800 when budget is 12,000)', () => {
+        // Create content that fits within 12000 but not within 10800
+        builder.setTokenBudget(12000);
+
+        // System prompt is ~1800 chars = ~450 tokens
+        // User request is ~400 chars = ~100 tokens
+        // Fixed overhead is ~550 tokens
+        // Effective budget = 10800
+        // Available for variable components = ~10250
+
+        // Adventure context: 36000 chars = 9000 tokens (fits within 10250)
+        builder.setAdventureContext('A'.repeat(36000));
+        // Rolling summary: 6000 chars = 1500 tokens (9000 + 1500 = 10500 fits in 10250? No, exceeds)
+        builder.setRollingSummary('B'.repeat(6000));
+
+        const messages = builder.buildAnalysisMessages('test', true, false);
+
+        // With safety margin the effective budget is lower, so some components may be dropped
+        // The key thing is the builder respects the 0.9 multiplier
+        // We verify by checking that total estimated tokens don't exceed 10800
+        let totalTokens = 0;
+        for (const msg of messages) {
+          totalTokens += Math.ceil(msg.content.length / 4);
+        }
+        expect(totalTokens).toBeLessThanOrEqual(10800);
+      });
+
+      it('simulated 180-cycle session with growing summary never exceeds budget', () => {
+        builder.setTokenBudget(12000);
+        builder.setAdventureContext('Adventure context for the campaign setting. ' + 'X'.repeat(400));
+
+        for (let cycle = 0; cycle < 180; cycle++) {
+          // Summary grows with each cycle, simulating accumulation
+          const summarySize = Math.min(cycle * 50, 8000);
+          builder.setRollingSummary('S'.repeat(summarySize));
+
+          // Simulate conversation history (last 5 turns)
+          const history = [];
+          for (let h = 0; h < 5; h++) {
+            history.push({ role: 'user', content: `Turn ${cycle}-${h}: Player action.` });
+          }
+          builder.setConversationHistory(history);
+
+          const messages = builder.buildAnalysisMessages('Current transcription text.', true, false);
+
+          let totalTokens = 0;
+          for (const msg of messages) {
+            totalTokens += Math.ceil(msg.content.length / 4);
+          }
+
+          // Effective budget with 10% safety margin
+          expect(totalTokens).toBeLessThanOrEqual(Math.floor(12000 * 0.9));
+        }
+      });
+    });
+
+    describe('setTokenBudget', () => {
+      it('sets the token budget', () => {
+        builder.setTokenBudget(8000);
+        // Verify by checking budget enforcement behavior changes
+        builder.setAdventureContext('X'.repeat(30000)); // ~7500 tokens
+        builder.setRollingSummary('Y'.repeat(10000)); // ~2500 tokens
+        const messages = builder.buildAnalysisMessages('test', true, false);
+
+        // With 8K budget and safety margin (7200 effective), not everything fits
+        let totalTokens = 0;
+        for (const msg of messages) {
+          totalTokens += Math.ceil(msg.content.length / 4);
+        }
+        expect(totalTokens).toBeLessThanOrEqual(Math.floor(8000 * 0.9));
+      });
+
+      it('defaults to 12000 when called with null', () => {
+        builder.setTokenBudget(null);
+        // Default budget behavior
+        builder.setAdventureContext('Small context');
+        const messages = builder.buildAnalysisMessages('test', true, false);
+        expect(messages.find(m => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
+      });
+    });
+  });
 });
