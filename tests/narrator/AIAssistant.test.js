@@ -1595,4 +1595,130 @@ describe('AIAssistant', () => {
       expect(spy).toHaveBeenCalledWith('');
     });
   });
+
+  // ── Circuit Breaker ────────────────────────────────────────────────────
+
+  describe('circuit breaker', () => {
+    let cbAssistant;
+    let cbMockClient;
+
+    beforeEach(() => {
+      cbMockClient = createMockOpenAIClient();
+      cbAssistant = new AIAssistant({ openaiClient: cbMockClient });
+    });
+
+    describe('getHealthStatus()', () => {
+      it('should return "healthy" when no errors', () => {
+        expect(cbAssistant.getHealthStatus()).toBe('healthy');
+      });
+
+      it('should return "degraded" after 2 consecutive errors', () => {
+        cbAssistant._consecutiveErrors = 2;
+        expect(cbAssistant.getHealthStatus()).toBe('degraded');
+      });
+
+      it('should return "degraded" at 4 consecutive errors', () => {
+        cbAssistant._consecutiveErrors = 4;
+        expect(cbAssistant.getHealthStatus()).toBe('degraded');
+      });
+
+      it('should return "down" at 5+ consecutive errors (circuit open)', () => {
+        cbAssistant._consecutiveErrors = 5;
+        cbAssistant._circuitOpen = true;
+        expect(cbAssistant.getHealthStatus()).toBe('down');
+      });
+    });
+
+    describe('resetCircuitBreaker()', () => {
+      it('should reset error counters', () => {
+        cbAssistant._consecutiveErrors = 5;
+        cbAssistant._circuitOpen = true;
+
+        cbAssistant.resetCircuitBreaker();
+
+        expect(cbAssistant._consecutiveErrors).toBe(0);
+        expect(cbAssistant._circuitOpen).toBe(false);
+        expect(cbAssistant.getHealthStatus()).toBe('healthy');
+      });
+    });
+
+    describe('getCircuitBreakerStatus()', () => {
+      it('should return status object', () => {
+        const status = cbAssistant.getCircuitBreakerStatus();
+        expect(status).toEqual({
+          isOpen: false,
+          consecutiveErrors: 0,
+          maxErrors: 5
+        });
+      });
+
+      it('should reflect current state', () => {
+        cbAssistant._consecutiveErrors = 3;
+        cbAssistant._circuitOpen = false;
+
+        const status = cbAssistant.getCircuitBreakerStatus();
+        expect(status.consecutiveErrors).toBe(3);
+        expect(status.isOpen).toBe(false);
+      });
+    });
+
+    describe('_makeChatRequest circuit breaker integration', () => {
+      it('should throw immediately when circuit is open', async () => {
+        cbAssistant._circuitOpen = true;
+
+        await expect(
+          cbAssistant._makeChatRequest([{ role: 'user', content: 'test' }])
+        ).rejects.toThrow(/circuit breaker/i);
+
+        // Should NOT call the API
+        expect(cbMockClient.post).not.toHaveBeenCalled();
+      });
+
+      it('should reset consecutive errors on success', async () => {
+        cbAssistant._consecutiveErrors = 3;
+
+        await cbAssistant._makeChatRequest([{ role: 'user', content: 'test' }]);
+
+        expect(cbAssistant._consecutiveErrors).toBe(0);
+        expect(cbAssistant._circuitOpen).toBe(false);
+      });
+
+      it('should increment consecutive errors on failure', async () => {
+        cbMockClient.post.mockRejectedValueOnce(new Error('API error'));
+
+        await expect(
+          cbAssistant._makeChatRequest([{ role: 'user', content: 'test' }])
+        ).rejects.toThrow('API error');
+
+        expect(cbAssistant._consecutiveErrors).toBe(1);
+      });
+
+      it('should open circuit after 5 consecutive failures', async () => {
+        cbMockClient.post.mockRejectedValue(new Error('API error'));
+
+        for (let i = 0; i < 5; i++) {
+          try {
+            await cbAssistant._makeChatRequest([{ role: 'user', content: 'test' }]);
+          } catch {
+            // expected
+          }
+        }
+
+        expect(cbAssistant._consecutiveErrors).toBe(5);
+        expect(cbAssistant._circuitOpen).toBe(true);
+        expect(cbAssistant.getHealthStatus()).toBe('down');
+      });
+
+      it('should auto-recover when API call succeeds after errors', async () => {
+        cbAssistant._consecutiveErrors = 4;
+        cbAssistant._circuitOpen = false;
+
+        // Successful call
+        await cbAssistant._makeChatRequest([{ role: 'user', content: 'test' }]);
+
+        expect(cbAssistant._consecutiveErrors).toBe(0);
+        expect(cbAssistant.getHealthStatus()).toBe('healthy');
+      });
+    });
+  });
 });
