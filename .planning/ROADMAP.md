@@ -63,7 +63,10 @@ Plans:
   2. AI suggestions reference at least one specific detail (NPC name, location name, or scene-specific hook) from the loaded adventure journal — not generic D&D lore
   3. DM can request a "what's coming next" suggestion and receive a foreshadowing seed drawn from the next chapter or upcoming encounter in the journal
   4. The structured AI response includes a mandatory `source` field citing the journal chapter and page that grounded the suggestion
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 03-01-PLAN.md — NPCProfileExtractor service + PromptBuilder NPC/foreshadowing/source extensions + AIAssistant source parsing
+- [ ] 03-02-PLAN.md — ChapterTracker next-chapter lookahead + SessionOrchestrator NPC wiring + live enrichment
 
 ### Phase 4: Session Reliability
 **Goal**: Live mode can be started, run for 4 hours, and stopped cleanly at any moment without crashes, state corruption, stale hooks, or runaway API costs
@@ -131,7 +134,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. CSS Namespace | 0/3 | Planning complete | - |
 | 2. Journal Context Pipeline | 3/3 | Complete   | 2026-03-06 |
-| 3. AI Knowledge Depth | 0/TBD | Not started | - |
+| 3. AI Knowledge Depth | 0/2 | Planning complete | - |
 | 4. Session Reliability | 0/TBD | Not started | - |
 | 5. Rolling Context Management | 0/TBD | Not started | - |
 | 6. State Machine and UI Accuracy | 0/TBD | Not started | - |
