@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-06T07:53:26Z"
-last_activity: 2026-03-06 — Completed 03-01 (NPC extraction, foreshadowing, source citations)
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-06T08:02:19Z"
+last_activity: 2026-03-06 — Completed 03-02 (NPC wiring, foreshadowing lookahead, live enrichment)
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
-  percent: 29
+  completed_plans: 8
+  percent: 33
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 3 of 8 (AI Knowledge Depth)
-Plan: 1 of 3 in current phase
+Plan: 2 of 2 in current phase
 Status: In Progress
-Last activity: 2026-03-06 — Completed 03-01 (NPC extraction, foreshadowing, source citations)
+Last activity: 2026-03-06 — Completed 03-02 (NPC wiring, foreshadowing lookahead, live enrichment)
 
-Progress: [██░░░░░░░░] 29%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 7min
-- Total execution time: 0.7 hours
+- Total execution time: 0.8 hours
 
 **By Phase:**
 
@@ -45,10 +45,10 @@ Progress: [██░░░░░░░░] 29%
 |-------|-------|-------|----------|
 | 01-css-namespace | 3 | 16min | 5.3min |
 | 02-journal-context-pipeline | 3 | 22min | 7.3min |
-| 03-ai-knowledge-depth | 1 | 5min | 5min |
+| 03-ai-knowledge-depth | 2 | 10min | 5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (3min), 02-01 (8min), 02-02 (5min), 02-03 (9min), 03-01 (5min)
+- Last 5 plans: 02-01 (8min), 02-02 (5min), 02-03 (9min), 03-01 (5min), 03-02 (5min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -81,6 +81,9 @@ Recent decisions affecting current work:
 - [03-01]: Map keyed by lowercase name AND aliases for O(1) NPC lookup with deduplication by canonical name
 - [03-01]: Source field defaults to null when missing from AI response (graceful degradation, not error)
 - [03-01]: Session notes capped at 10 per NPC, detectMentionedNPCs capped at 5 results
+- [03-02]: NPC extraction + RAG indexing run in parallel via Promise.allSettled (both non-blocking)
+- [03-02]: Access AIAssistant._openaiClient to create NPCProfileExtractor (internal module boundary, avoids API change)
+- [03-02]: getNextChapterContentForAI fetches from extractChapterStructure (getFlatChapterList strips content)
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T07:53:26Z
-Stopped at: Completed 03-01-PLAN.md
-Resume file: .planning/phases/03-ai-knowledge-depth/03-01-SUMMARY.md
+Last session: 2026-03-06T08:02:19Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: .planning/phases/03-ai-knowledge-depth/03-02-SUMMARY.md
