@@ -634,6 +634,22 @@ class Settings {
     });
 
     // ==========================================
+    // Rolling Context Management Settings
+    // ==========================================
+
+    // Context token budget (world-wide)
+    // Maximum tokens per AI suggestion cycle
+    game.settings.register(MODULE_ID, 'contextTokenBudget', {
+      name: 'VOXCHRONICLE.Settings.ContextTokenBudget',
+      hint: 'VOXCHRONICLE.Settings.ContextTokenBudgetHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 4000, max: 32000, step: 1000 },
+      default: 12000
+    });
+
+    // ==========================================
     // Hidden Internal Settings (Narrator Master)
     // ==========================================
 

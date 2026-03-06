@@ -165,7 +165,11 @@
       "ActiveAdventureJournal": "Aktives Abenteuer-Journal",
       "ActiveAdventureJournalHint": "Das Hauptjournal, das den KI-Kontext im Live-Modus steuert",
       "SupplementaryJournals": "Ergänzende Journale",
-      "SupplementaryJournalsHint": "Zusätzliche Journale, die Kontext neben dem Hauptabenteuer-Journal bieten"
+      "SupplementaryJournalsHint": "Zusätzliche Journale, die Kontext neben dem Hauptabenteuer-Journal bieten",
+      "ContextTokenBudget": "Kontext-Token-Budget",
+      "ContextTokenBudgetHint": "Maximale Token pro KI-Vorschlagszyklus. Niedrigere Werte reduzieren Kosten, hoehere Werte bieten mehr Kontext. Standard: 12000",
+      "SummaryAgeBadge": "Kontext: {count} Runden zusammengefasst",
+      "SummaryAgeBadgeNone": "Kontext: noch keine Zusammenfassung"
     },
     "Panel": {
       "Title": "VoxChronicle",

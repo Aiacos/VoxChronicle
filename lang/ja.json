@@ -165,7 +165,11 @@
       "ActiveAdventureJournal": "アクティブ冒険ジャーナル",
       "ActiveAdventureJournalHint": "ライブモードでAIコンテキストを駆動するメインジャーナル",
       "SupplementaryJournals": "補助ジャーナル",
-      "SupplementaryJournalsHint": "メイン冒険ジャーナルと併せてコンテキストを提供する追加ジャーナル"
+      "SupplementaryJournalsHint": "メイン冒険ジャーナルと併せてコンテキストを提供する追加ジャーナル",
+      "ContextTokenBudget": "コンテキストトークンバジェット",
+      "ContextTokenBudgetHint": "AI提案サイクルあたりの最大トークン数。低い値はコストを削減し、高い値はより多くのコンテキストを提供します。デフォルト: 12000",
+      "SummaryAgeBadge": "コンテキスト: {count}ターン要約済み",
+      "SummaryAgeBadgeNone": "コンテキスト: 要約なし"
     },
     "Panel": {
       "Title": "VoxChronicle",

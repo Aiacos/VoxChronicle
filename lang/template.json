@@ -165,7 +165,11 @@
       "ActiveAdventureJournal": "",
       "ActiveAdventureJournalHint": "",
       "SupplementaryJournals": "",
-      "SupplementaryJournalsHint": ""
+      "SupplementaryJournalsHint": "",
+      "ContextTokenBudget": "Context Token Budget",
+      "ContextTokenBudgetHint": "Maximum tokens per AI suggestion cycle. Lower values reduce costs, higher values provide more context. Default: 12000",
+      "SummaryAgeBadge": "Context: {count} turns summarized",
+      "SummaryAgeBadgeNone": "Context: no summary yet"
     },
     "Panel": {
       "Title": "",

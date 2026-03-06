@@ -165,7 +165,11 @@
       "ActiveAdventureJournal": "Diario Avventura Attivo",
       "ActiveAdventureJournalHint": "Il diario principale che guida il contesto AI in modalità live",
       "SupplementaryJournals": "Diari Supplementari",
-      "SupplementaryJournalsHint": "Diari aggiuntivi che forniscono contesto insieme al diario avventura principale"
+      "SupplementaryJournalsHint": "Diari aggiuntivi che forniscono contesto insieme al diario avventura principale",
+      "ContextTokenBudget": "Budget Token Contesto",
+      "ContextTokenBudgetHint": "Token massimi per ciclo di suggerimenti AI. Valori bassi riducono i costi, valori alti forniscono piu contesto. Default: 12000",
+      "SummaryAgeBadge": "Contesto: {count} turni riassunti",
+      "SummaryAgeBadgeNone": "Contesto: nessun riassunto ancora"
     },
     "Panel": {
       "Title": "VoxChronicle",

@@ -165,7 +165,11 @@
       "ActiveAdventureJournal": "Journal d’Aventure Actif",
       "ActiveAdventureJournalHint": "Le journal principal qui pilote le contexte IA en mode live",
       "SupplementaryJournals": "Journaux Supplémentaires",
-      "SupplementaryJournalsHint": "Journaux supplémentaires fournissant du contexte en plus du journal d’aventure principal"
+      "SupplementaryJournalsHint": "Journaux supplémentaires fournissant du contexte en plus du journal d’aventure principal",
+      "ContextTokenBudget": "Budget de Tokens de Contexte",
+      "ContextTokenBudgetHint": "Tokens maximum par cycle de suggestions IA. Des valeurs basses reduisent les couts, des valeurs hautes fournissent plus de contexte. Par defaut: 12000",
+      "SummaryAgeBadge": "Contexte: {count} tours resumes",
+      "SummaryAgeBadgeNone": "Contexte: pas encore de resume"
     },
     "Panel": {
       "Title": "VoxChronicle",

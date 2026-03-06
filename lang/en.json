@@ -165,7 +165,11 @@
       "ActiveAdventureJournal": "Active Adventure Journal",
       "ActiveAdventureJournalHint": "The primary journal that drives AI context in live mode",
       "SupplementaryJournals": "Supplementary Journals",
-      "SupplementaryJournalsHint": "Additional journals providing context alongside the primary adventure journal"
+      "SupplementaryJournalsHint": "Additional journals providing context alongside the primary adventure journal",
+      "ContextTokenBudget": "Context Token Budget",
+      "ContextTokenBudgetHint": "Maximum tokens per AI suggestion cycle. Lower values reduce costs, higher values provide more context. Default: 12000",
+      "SummaryAgeBadge": "Context: {count} turns summarized",
+      "SummaryAgeBadgeNone": "Context: no summary yet"
     },
     "Panel": {
       "Title": "VoxChronicle",

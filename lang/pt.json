@@ -165,7 +165,11 @@
       "ActiveAdventureJournal": "Diário de Aventura Ativo",
       "ActiveAdventureJournalHint": "O diário principal que orienta o contexto de IA no modo ao vivo",
       "SupplementaryJournals": "Diários Suplementares",
-      "SupplementaryJournalsHint": "Diários adicionais que fornecem contexto junto ao diário de aventura principal"
+      "SupplementaryJournalsHint": "Diários adicionais que fornecem contexto junto ao diário de aventura principal",
+      "ContextTokenBudget": "Orcamento de Tokens de Contexto",
+      "ContextTokenBudgetHint": "Tokens maximos por ciclo de sugestoes de IA. Valores baixos reduzem custos, valores altos fornecem mais contexto. Padrao: 12000",
+      "SummaryAgeBadge": "Contexto: {count} turnos resumidos",
+      "SummaryAgeBadgeNone": "Contexto: sem resumo ainda"
     },
     "Panel": {
       "Title": "VoxChronicle",
