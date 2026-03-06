@@ -20,8 +20,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Suggestion Quality
 
 - [x] **SUG-01**: AI suggestions reference specific adventure content from the journal, not generic D&D lore
-- [ ] **SUG-02**: AI responses stream to the UI with first tokens visible in under 1 second
-- [ ] **SUG-03**: Silence detection triggers suggestions after 20-30 seconds of DM silence (calibrated threshold)
+- [x] **SUG-02**: AI responses stream to the UI with first tokens visible in under 1 second
+- [x] **SUG-03**: Silence detection triggers suggestions after 20-30 seconds of DM silence (calibrated threshold)
 - [ ] **SUG-04**: DM can type a question in the panel and receive a direct AI answer (on-demand query)
 - [ ] **SUG-05**: Suggestion prompts adapt to current scene type (narration, combat, social, exploration)
 - [ ] **SUG-06**: AI detects when players go off-track from the adventure and offers recovery suggestions
@@ -93,8 +93,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTX-06 | Phase 3 | Complete |
 | CTX-07 | Phase 3 | Complete |
 | SUG-01 | Phase 3 | Complete |
-| SUG-02 | Phase 6 | Pending |
-| SUG-03 | Phase 6 | Pending |
+| SUG-02 | Phase 6 | Complete |
+| SUG-03 | Phase 6 | Complete |
 | SUG-04 | Phase 8 | Pending |
 | SUG-05 | Phase 8 | Pending |
 | SUG-06 | Phase 8 | Pending |

@@ -10,8 +10,8 @@ progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 14
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 6 of 8 (State Machine & UI Accuracy)
-Plan: 2 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-06 — Completed 06-02 (Status badge, suggestion cards, streaming DOM helpers)
+Last activity: 2026-03-06 — Completed 06-01 (Streaming API + silence guard building blocks)
 
-Progress: [█████████████░░] 88%
+Progress: [██████████████░] 94%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████████████░░] 88%
 | Phase 05 P02 | 4min | 2 tasks | 11 files |
 | Phase 05 P01 | 4min | 2 tasks | 4 files |
 | Phase 05 P03 | 2min | 2 tasks | 6 files |
+| Phase 06 P01 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Recent decisions affecting current work:
 - [06-02]: Type badge colors: narration=blue, dialogue=green, action=orange, reference=purple
 - [06-02]: Bullet limit of 3 max per card for glanceability
 - [06-02]: Streaming card state stored on instance properties for re-render recovery
+- [06-01]: postStream bypasses queue and retry -- streaming is long-lived with implicit retry via next cycle
+- [06-01]: Cycle-in-flight guard is synchronous check, drops event entirely (no queuing)
 
 ### Pending Todos
 
@@ -126,6 +129,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T14:26:00Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-03-06T14:27:08Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: .planning/phases/06-state-machine-ui-accuracy/06-03-PLAN.md
