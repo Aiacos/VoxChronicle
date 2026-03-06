@@ -2133,12 +2133,11 @@ describe('RAG Indexing Pipeline', () => {
   }
 
   beforeEach(() => {
-    // Mock crypto.subtle for content hashing
-    globalThis.crypto = {
-      subtle: {
-        digest: vi.fn().mockResolvedValue(new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]).buffer)
-      }
-    };
+    // Mock crypto.subtle.digest for content hashing
+    // crypto is read-only on globalThis in jsdom, so we spy on the existing subtle
+    vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(
+      new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]).buffer
+    );
 
     // Mock game.settings for journal IDs
     globalThis.game = {
@@ -2257,7 +2256,7 @@ describe('RAG Indexing Pipeline', () => {
       mockJournalParser.getFullText.mockReturnValue('Different content now');
       // Also need to change the hash mock to return different value
       let callCount = 0;
-      globalThis.crypto.subtle.digest = vi.fn(() => {
+      crypto.subtle.digest.mockImplementation(() => {
         callCount++;
         // Return different hash for the new content
         const buffer = new Uint8Array([callCount, 0x02, 0x03, 0x04]).buffer;
@@ -2288,7 +2287,7 @@ describe('RAG Indexing Pipeline', () => {
 
       // Change hash mock so cleared hash causes re-index
       let callCount = 0;
-      globalThis.crypto.subtle.digest = vi.fn(() => {
+      crypto.subtle.digest.mockImplementation(() => {
         callCount++;
         return Promise.resolve(new Uint8Array([callCount, 0x02]).buffer);
       });
