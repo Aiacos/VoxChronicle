@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-03-06T14:35:43Z"
-last_activity: "2026-03-06 — Completed 06-03 (Streaming + silence guard integration wiring)"
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-03-06T15:07:44Z"
+last_activity: "2026-03-06 — Completed 06-04 (Gap closure: streaming-first _runAIAnalysis)"
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 14
-  completed_plans: 17
-  percent: 97
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 6 of 8 (State Machine & UI Accuracy) -- COMPLETE
-Plan: 3 of 3 in current phase -- DONE
-Status: Phase 6 Complete
-Last activity: 2026-03-06 — Completed 06-03 (Streaming + silence guard integration wiring)
+Plan: 4 of 4 in current phase -- DONE
+Status: Phase 6 Complete (gap closure done)
+Last activity: 2026-03-06 — Completed 06-04 (Gap closure: streaming-first _runAIAnalysis)
 
-Progress: [███████████████] 97%
+Progress: [███████████████] 100%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [███████████████] 97%
 | Phase 06 P01 | 5min | 2 tasks | 6 files |
 | Phase 06 P02 | 5min | 2 tasks | 6 files |
 | Phase 06 P03 | 5min | 2 tasks | 6 files |
+| Phase 06 P04 | 4min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [06-03]: Incremental token diffing via slice from accumulated length avoids duplicate text in streaming cards
 - [06-03]: Completed suggestions pushed to _lastAISuggestions for persistence across re-renders
 - [06-03]: Streaming card recovery in _onRender reconstructs from instance state on DOM replacement
+- [06-04]: Streaming-first path calls generateSuggestionsStreaming before analyzeContext fallback
+- [06-04]: _detectSuggestionType uses regex on first line for type inference with narration default
+- [06-04]: offTrackStatus is undefined in streaming path -- downstream code tolerates via !== undefined check
 
 ### Pending Todos
 
@@ -135,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T14:35:43Z
-Stopped at: Completed 06-03-PLAN.md (Phase 6 complete)
+Last session: 2026-03-06T15:07:44Z
+Stopped at: Completed 06-04-PLAN.md (Phase 6 gap closure complete)
 Resume file: .planning/phases/07-ux-polish/ (next phase)
