@@ -12,6 +12,7 @@ import { TranscriptionProcessor } from './TranscriptionProcessor.mjs';
 import { EntityProcessor } from './EntityProcessor.mjs';
 import { ImageProcessor } from './ImageProcessor.mjs';
 import { KankaPublisher } from './KankaPublisher.mjs';
+import { NPCProfileExtractor } from '../narrator/NPCProfileExtractor.mjs';
 
 /** Session workflow states */
 const SessionState = {
@@ -73,6 +74,9 @@ class SessionOrchestrator {
   _sceneDetector = null;
   _sessionAnalytics = null;
   _journalParser = null;
+
+  // NPC extraction
+  _npcExtractor = null;
 
   // RAG indexing
   _ragProvider = null;
@@ -890,6 +894,7 @@ class SessionOrchestrator {
   async _initializeJournalContext() {
     if (!this._aiAssistant || !this._journalParser) return;
 
+    let fullText = '';
     try {
       // 1. Check user-selected journal from settings (Plan 02-02)
       let journalId = null;
@@ -924,7 +929,7 @@ class SessionOrchestrator {
 
       // Parse the journal and feed content to AIAssistant
       await this._journalParser.parseJournal(journalId);
-      const fullText = this._journalParser.getFullText(journalId);
+      fullText = this._journalParser.getFullText(journalId);
 
       if (fullText) {
         this._aiAssistant.setAdventureContext(fullText);
@@ -963,10 +968,27 @@ class SessionOrchestrator {
       );
     }
 
+    // Parallel non-blocking tasks: NPC extraction + RAG indexing
+    const parallelTasks = [];
+
+    // NPC extraction (non-blocking)
+    if (fullText && this._aiAssistant?._openaiClient) {
+      this._npcExtractor = new NPCProfileExtractor(this._aiAssistant._openaiClient);
+      parallelTasks.push(
+        this._npcExtractor.extractProfiles(fullText)
+          .then(profiles => {
+            this._logger.log(`NPC profiles extracted: ${profiles.size} NPCs`);
+          })
+          .catch(npcError => {
+            this._logger.warn(`NPC extraction failed (non-blocking): ${npcError.message}`);
+          })
+      );
+    }
+
     // RAG indexing (non-blocking — failure does not block live mode start)
     if (this._ragProvider && this._journalParser) {
-      try {
-        await this._indexJournalsForRAG({
+      parallelTasks.push(
+        this._indexJournalsForRAG({
           onProgress: (current, total, message) => {
             if (this._callbacks.onProgress) {
               this._callbacks.onProgress({
@@ -975,10 +997,14 @@ class SessionOrchestrator {
               });
             }
           }
-        });
-      } catch (indexError) {
-        this._logger.warn(`RAG indexing failed (non-blocking): ${indexError.message}`);
-      }
+        }).catch(indexError => {
+          this._logger.warn(`RAG indexing failed (non-blocking): ${indexError.message}`);
+        })
+      );
+    }
+
+    if (parallelTasks.length > 0) {
+      await Promise.allSettled(parallelTasks);
     }
   }
 
@@ -1219,6 +1245,12 @@ class SessionOrchestrator {
         this._logger.debug('Analytics session ended');
       }
 
+      // Clean up NPC extractor
+      if (this._npcExtractor) {
+        this._npcExtractor.clear();
+        this._npcExtractor = null;
+      }
+
       const audioBlob = await this._audioRecorder.stopRecording();
       if (this._currentSession) {
         this._currentSession.endTime = Date.now();
@@ -1424,6 +1456,18 @@ class SessionOrchestrator {
         });
       }
 
+      // Detect mentioned NPCs and inject into AI context
+      if (this._npcExtractor) {
+        const mentionedNPCs = this._npcExtractor.detectMentionedNPCs(contextText);
+        this._aiAssistant.setNPCProfiles(mentionedNPCs);
+      }
+
+      // Fetch and set next chapter lookahead for foreshadowing
+      if (this._chapterTracker?.getNextChapterContentForAI) {
+        const lookahead = this._chapterTracker.getNextChapterContentForAI(1000);
+        this._aiAssistant.setNextChapterLookahead(lookahead);
+      }
+
       this._logger.log(`Running AI analysis (context: ${contextText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
 
       // Use single analyzeContext() call instead of separate generateSuggestions + detectOffTrack
@@ -1445,6 +1489,23 @@ class SessionOrchestrator {
         }
       } else {
         this._logger.debug('AI analysis returned no suggestions');
+      }
+
+      // Live enrichment: append session notes for NPC mentions in suggestions
+      if (this._npcExtractor && analysis?.suggestions) {
+        for (const suggestion of analysis.suggestions) {
+          const profiles = this._npcExtractor.getProfiles();
+          for (const [nameLower, profile] of profiles) {
+            if (nameLower.length >= 3 && suggestion.content?.toLowerCase().includes(nameLower)) {
+              const noteType = suggestion.type || 'interaction';
+              this._npcExtractor.addSessionNote(
+                profile.name,
+                `${noteType}: ${suggestion.content.substring(0, 80)}...`
+              );
+              break; // One note per suggestion
+            }
+          }
+        }
       }
 
       if (analysis?.offTrackStatus !== undefined) {

@@ -1983,6 +1983,142 @@ describe('SessionOrchestrator', () => {
     });
   });
 
+  // ── NPC extraction, detection, foreshadowing, live enrichment (03-02) ──
+
+  describe('NPC wiring in _initializeJournalContext', () => {
+    it('should create NPCProfileExtractor and call extractProfiles at session start', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('The wizard Garrick guards the tower.');
+      const ai = createMockAIAssistant();
+      ai._openaiClient = { post: vi.fn() }; // provide openai client
+
+      orchestrator.setNarratorServices({ journalParser: jp, aiAssistant: ai });
+      globalThis.canvas = { scene: { journal: 'journal-1' } };
+
+      await orchestrator._initializeJournalContext();
+
+      // NPC extractor should be created and used
+      expect(orchestrator._npcExtractor).not.toBeNull();
+
+      delete globalThis.canvas;
+    });
+
+    it('should continue if NPC extraction fails (non-blocking)', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('Journal text');
+      const ai = createMockAIAssistant();
+      // Provide a client that will cause extraction to fail
+      ai._openaiClient = {
+        post: vi.fn().mockRejectedValue(new Error('NPC extraction failed'))
+      };
+
+      orchestrator.setNarratorServices({ journalParser: jp, aiAssistant: ai });
+      globalThis.canvas = { scene: { journal: 'journal-1' } };
+
+      // Should not throw
+      await orchestrator._initializeJournalContext();
+
+      // Extractor was created even if extraction failed
+      expect(orchestrator._npcExtractor).not.toBeNull();
+
+      delete globalThis.canvas;
+    });
+  });
+
+  describe('NPC wiring in _runAIAnalysis', () => {
+    it('should call detectMentionedNPCs and setNPCProfiles on AIAssistant', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'Garrick entered the room', speaker: 'DM' }];
+
+      const mockNPCExtractor = {
+        detectMentionedNPCs: vi.fn().mockReturnValue([
+          { name: 'Garrick', personality: 'stern', role: 'guard' }
+        ]),
+        getProfiles: vi.fn().mockReturnValue(new Map()),
+        addSessionNote: vi.fn()
+      };
+      orchestrator._npcExtractor = mockNPCExtractor;
+
+      services.aiAssistant.setNPCProfiles = vi.fn();
+
+      await orchestrator._runAIAnalysis({ text: 'Garrick entered the room' });
+
+      expect(mockNPCExtractor.detectMentionedNPCs).toHaveBeenCalled();
+      expect(services.aiAssistant.setNPCProfiles).toHaveBeenCalledWith([
+        expect.objectContaining({ name: 'Garrick' })
+      ]);
+    });
+
+    it('should call getNextChapterContentForAI and setNextChapterLookahead', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const ct = createMockChapterTracker();
+      ct.getNextChapterContentForAI = vi.fn().mockReturnValue('NEXT CHAPTER: The Cave\n\nDark cave content...');
+      orchestrator._chapterTracker = ct;
+
+      services.aiAssistant.setNextChapterLookahead = vi.fn();
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(ct.getNextChapterContentForAI).toHaveBeenCalledWith(1000);
+      expect(services.aiAssistant.setNextChapterLookahead).toHaveBeenCalledWith(
+        'NEXT CHAPTER: The Cave\n\nDark cave content...'
+      );
+    });
+
+    it('should append session notes for NPC mentions in suggestions (live enrichment)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const garrickProfile = { name: 'Garrick', sessionNotes: [] };
+      const mockNPCExtractor = {
+        detectMentionedNPCs: vi.fn().mockReturnValue([]),
+        getProfiles: vi.fn().mockReturnValue(new Map([
+          ['garrick', garrickProfile]
+        ])),
+        addSessionNote: vi.fn()
+      };
+      orchestrator._npcExtractor = mockNPCExtractor;
+
+      services.aiAssistant.setNPCProfiles = vi.fn();
+      services.aiAssistant.analyzeContext.mockResolvedValue({
+        suggestions: [
+          { type: 'narration', content: 'Garrick looks suspicious as the party approaches.' }
+        ],
+        offTrackStatus: { isOffTrack: false }
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(mockNPCExtractor.addSessionNote).toHaveBeenCalledWith(
+        'Garrick',
+        expect.stringContaining('narration')
+      );
+    });
+
+    it('should work without NPC extractor (graceful fallback)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+      orchestrator._npcExtractor = null;
+
+      // Should not throw
+      await orchestrator._runAIAnalysis({ text: 'test' });
+      expect(services.aiAssistant.analyzeContext).toHaveBeenCalled();
+    });
+  });
+
+  describe('NPC cleanup in stopLiveMode', () => {
+    it('should clear NPC extractor on stop', async () => {
+      await orchestrator.startLiveMode();
+      orchestrator._npcExtractor = { clear: vi.fn() };
+
+      await orchestrator.stopLiveMode();
+
+      expect(orchestrator._npcExtractor).toBeNull();
+    });
+  });
+
   describe('_runAIAnalysis with chapter-scoped content', () => {
     it('should use getCurrentChapterContentForAI(8000) for summary field', async () => {
       orchestrator._liveMode = true;
