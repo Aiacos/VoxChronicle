@@ -10,8 +10,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### AI Context Pipeline
 
 - [x] **CTX-01**: DM can select which Foundry journal is the active adventure before starting live mode
-- [ ] **CTX-02**: System tracks current chapter/scene position within the selected adventure journal
-- [ ] **CTX-03**: AI prompts receive chapter-scoped context (current chapter text), not the entire journal dump
+- [x] **CTX-02**: System tracks current chapter/scene position within the selected adventure journal
+- [x] **CTX-03**: AI prompts receive chapter-scoped context (current chapter text), not the entire journal dump
 - [ ] **CTX-04**: RAG indexing uses 1200/300 token chunking for adventure content (not default 800/400)
 - [ ] **CTX-05**: RAG index updates automatically when journal pages are edited (hook-driven, debounced)
 - [ ] **CTX-06**: AI surfaces NPC names, personalities, and motivations from adventure journal text when relevant
@@ -86,8 +86,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CTX-01 | Phase 2 | Complete |
-| CTX-02 | Phase 2 | Pending |
-| CTX-03 | Phase 2 | Pending |
+| CTX-02 | Phase 2 | Complete |
+| CTX-03 | Phase 2 | Complete |
 | CTX-04 | Phase 2 | Pending |
 | CTX-05 | Phase 2 | Pending |
 | CTX-06 | Phase 3 | Pending |
