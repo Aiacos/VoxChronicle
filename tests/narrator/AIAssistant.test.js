@@ -1774,4 +1774,142 @@ describe('AIAssistant', () => {
       });
     });
   });
+
+  // =========================================================================
+  // Rolling Summarization
+  // =========================================================================
+  describe('rolling summarization', () => {
+    let mockSummarizer;
+
+    beforeEach(() => {
+      mockSummarizer = {
+        summarize: vi.fn().mockResolvedValue({
+          summary: 'Updated rolling summary.',
+          usage: { prompt_tokens: 150, completion_tokens: 40 }
+        })
+      };
+      assistant._rollingSummarizer = mockSummarizer;
+    });
+
+    it('should trigger summarization when history length >= 8', () => {
+      // Add 8 entries to trigger
+      for (let i = 0; i < 8; i++) {
+        assistant._addToConversationHistory('user', `Turn ${i}`);
+      }
+
+      expect(mockSummarizer.summarize).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT trigger summarization when history length < 8', () => {
+      for (let i = 0; i < 7; i++) {
+        assistant._addToConversationHistory('user', `Turn ${i}`);
+      }
+
+      expect(mockSummarizer.summarize).not.toHaveBeenCalled();
+    });
+
+    it('should keep exactly last 5 entries after eviction', () => {
+      for (let i = 0; i < 8; i++) {
+        assistant._addToConversationHistory('user', `Turn ${i}`);
+      }
+
+      expect(assistant._conversationHistory).toHaveLength(5);
+      expect(assistant._conversationHistory[0].content).toBe('Turn 3');
+      expect(assistant._conversationHistory[4].content).toBe('Turn 7');
+    });
+
+    it('should pass evicted turns as formatted text to summarizer', () => {
+      for (let i = 0; i < 8; i++) {
+        assistant._addToConversationHistory('user', `Turn ${i}`);
+      }
+
+      const callArgs = mockSummarizer.summarize.mock.calls[0];
+      const formattedTurns = callArgs[1];
+      // First 3 turns (0,1,2) should be evicted
+      expect(formattedTurns).toContain('Player/DM: Turn 0');
+      expect(formattedTurns).toContain('Player/DM: Turn 1');
+      expect(formattedTurns).toContain('Player/DM: Turn 2');
+      // Kept turns should NOT be in the evicted text
+      expect(formattedTurns).not.toContain('Turn 3');
+    });
+
+    it('should update _rollingSummary and _summarizedTurnCount after summarization', async () => {
+      for (let i = 0; i < 8; i++) {
+        assistant._addToConversationHistory('user', `Turn ${i}`);
+      }
+
+      // Wait for the fire-and-forget promise to resolve
+      await vi.waitFor(() => {
+        expect(assistant._rollingSummary).toBe('Updated rolling summary.');
+      });
+
+      expect(assistant._summarizedTurnCount).toBe(3); // 3 turns evicted
+    });
+
+    it('should be fire-and-forget (not block _addToConversationHistory)', () => {
+      // Make summarize hang indefinitely
+      mockSummarizer.summarize.mockReturnValue(new Promise(() => {}));
+
+      // This should return immediately (not hang)
+      const start = performance.now();
+      for (let i = 0; i < 8; i++) {
+        assistant._addToConversationHistory('user', `Turn ${i}`);
+      }
+      const elapsed = performance.now() - start;
+
+      // Should be near-instant (well under 100ms)
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('should pass _rollingSummary to PromptBuilder via _syncPromptBuilderState', () => {
+      assistant._rollingSummary = 'Test summary for prompt builder';
+      assistant._promptBuilder = {
+        setConversationHistory: vi.fn(),
+        setRollingSummary: vi.fn()
+      };
+
+      assistant._syncPromptBuilderState();
+
+      expect(assistant._promptBuilder.setRollingSummary).toHaveBeenCalledWith('Test summary for prompt builder');
+    });
+
+    it('should reset _rollingSummary and _summarizedTurnCount on resetSession', () => {
+      assistant._rollingSummary = 'Some summary';
+      assistant._summarizedTurnCount = 10;
+
+      assistant.resetSession();
+
+      expect(assistant._rollingSummary).toBe('');
+      expect(assistant._summarizedTurnCount).toBe(0);
+    });
+
+    it('should fire onSummarizationUsage callback with usage data', async () => {
+      const usageCallback = vi.fn();
+      assistant._onSummarizationUsage = usageCallback;
+
+      for (let i = 0; i < 8; i++) {
+        assistant._addToConversationHistory('user', `Turn ${i}`);
+      }
+
+      await vi.waitFor(() => {
+        expect(usageCallback).toHaveBeenCalledWith({ prompt_tokens: 150, completion_tokens: 40 });
+      });
+    });
+
+    it('should expose summarizedTurnCount getter', () => {
+      assistant._summarizedTurnCount = 15;
+      expect(assistant.summarizedTurnCount).toBe(15);
+    });
+
+    it('should handle missing summarizer gracefully', () => {
+      assistant._rollingSummarizer = null;
+
+      // Should not throw even when adding 8+ entries without summarizer
+      expect(() => {
+        for (let i = 0; i < 10; i++) {
+          assistant._addToConversationHistory('user', `Turn ${i}`);
+        }
+      }).not.toThrow();
+    });
+  });
 });

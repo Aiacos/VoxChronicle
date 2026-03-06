@@ -14,6 +14,7 @@
 import { Logger } from '../utils/Logger.mjs';
 import { SilenceMonitor } from './SilenceMonitor.mjs';
 import { PromptBuilder } from './PromptBuilder.mjs';
+import { RollingSummarizer } from './RollingSummarizer.mjs';
 
 /**
  * Default model for cost-effective suggestions
@@ -166,11 +167,46 @@ class AIAssistant {
     this._conversationHistory = [];
 
     /**
-     * Maximum conversation history entries to keep
+     * Maximum conversation history entries to keep (legacy, used as upper bound)
      * @type {number}
      * @private
      */
     this._maxHistorySize = 20;
+
+    /**
+     * Threshold for triggering rolling summarization
+     * @type {number}
+     * @private
+     */
+    this._summarizationTrigger = 8;
+
+    /**
+     * Rolling summarizer service instance
+     * @type {RollingSummarizer|null}
+     * @private
+     */
+    this._rollingSummarizer = null;
+
+    /**
+     * Current rolling summary of evicted conversation turns
+     * @type {string}
+     * @private
+     */
+    this._rollingSummary = '';
+
+    /**
+     * Count of conversation turns that have been summarized
+     * @type {number}
+     * @private
+     */
+    this._summarizedTurnCount = 0;
+
+    /**
+     * Callback for reporting summarization token usage to CostTracker
+     * @type {Function|null}
+     * @private
+     */
+    this._onSummarizationUsage = null;
 
     /**
      * Current session state tracking
@@ -929,6 +965,8 @@ class AIAssistant {
     this._silenceMonitor.stopMonitoring();
 
     this._conversationHistory = [];
+    this._rollingSummary = '';
+    this._summarizedTurnCount = 0;
     this._sessionState = {
       currentScene: null,
       lastOffTrackCheck: null,
@@ -966,6 +1004,25 @@ class AIAssistant {
       silenceSuggestionCount: this._silenceMonitor.silenceSuggestionCount,
       hasAutonomousSuggestionCallback: Boolean(this._silenceMonitor.getOnAutonomousSuggestionCallback())
     };
+  }
+
+  /**
+   * Number of conversation turns that have been summarized into the rolling summary
+   * @type {number}
+   */
+  get summarizedTurnCount() {
+    return this._summarizedTurnCount;
+  }
+
+  /**
+   * Initializes the rolling summarizer with the given OpenAI client.
+   * Called during service initialization or by the orchestrator.
+   *
+   * @param {Object} openaiClient - OpenAI client with createChatCompletion
+   */
+  initializeRollingSummarizer(openaiClient) {
+    this._rollingSummarizer = new RollingSummarizer(openaiClient);
+    this._logger.debug('RollingSummarizer initialized');
   }
 
   // ---------------------------------------------------------------------------
@@ -1066,6 +1123,7 @@ class AIAssistant {
    */
   _syncPromptBuilderState() {
     this._promptBuilder.setConversationHistory(this._conversationHistory);
+    this._promptBuilder.setRollingSummary?.(this._rollingSummary);
   }
 
   /**
@@ -1720,8 +1778,28 @@ class AIAssistant {
   _addToConversationHistory(role, content) {
     this._conversationHistory.push({ role, content });
 
-    if (this._conversationHistory.length > this._maxHistorySize) {
-      this._conversationHistory = this._conversationHistory.slice(-this._maxHistorySize);
+    // Trigger rolling summarization when history reaches threshold
+    if (this._conversationHistory.length >= this._summarizationTrigger) {
+      const verbatimKeep = 5;
+      const evicted = this._conversationHistory.slice(0, -verbatimKeep);
+      this._conversationHistory = this._conversationHistory.slice(-verbatimKeep);
+
+      // Format evicted turns for the summarizer
+      const formattedTurns = RollingSummarizer.formatTurnsForSummary(evicted);
+
+      // Fire-and-forget background summarization — does NOT block this method
+      this._rollingSummarizer?.summarize(this._rollingSummary, formattedTurns)
+        .then(result => {
+          this._rollingSummary = result.summary;
+          this._summarizedTurnCount += evicted.length;
+          if (result.usage && this._onSummarizationUsage) {
+            this._onSummarizationUsage(result.usage);
+          }
+          this._logger.debug(`Rolling summary updated (${this._summarizedTurnCount} turns summarized)`);
+        })
+        .catch(err => {
+          this._logger.warn('Rolling summarization failed, keeping old summary:', err.message);
+        });
     }
   }
 }
