@@ -49,6 +49,8 @@
       "RelationshipConfidenceThresholdHint": "Punteggio minimo di confidenza (1-10) affinche le relazioni rilevate vengano incluse",
       "MaxRelationships": "Relazioni Massime per Sessione",
       "MaxRelationshipsHint": "Numero massimo di relazioni da estrarre per sessione (0 per disabilitare)",
+      "SessionCostCap": "Limite Costi Sessione ($)",
+      "SessionCostCapHint": "Costo API massimo per sessione live in dollari. I suggerimenti AI si fermano al superamento. Imposta a 0 per disabilitare.",
       "SpeakerLabels": "Etichette Parlanti",
       "SpeakerLabelsHint": "Associa gli ID dei parlanti ai nomi dei giocatori per la trascrizione",
       "ConfigureSpeakers": "Configura Parlanti",

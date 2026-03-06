@@ -49,6 +49,8 @@
       "RelationshipConfidenceThresholdHint": "Minimum confidence score (1-10) for detected relationships to be included",
       "MaxRelationships": "Max Relationships Per Session",
       "MaxRelationshipsHint": "Maximum number of relationships to extract per session (0 to disable)",
+      "SessionCostCap": "Session Cost Cap ($)",
+      "SessionCostCapHint": "Maximum API cost per live session in dollars. AI suggestions pause when exceeded. Set to 0 to disable.",
       "SpeakerLabels": "Speaker Labels",
       "SpeakerLabelsHint": "Map speaker IDs to player names for transcription",
       "ConfigureSpeakers": "Configure Speakers",

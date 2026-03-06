@@ -100,6 +100,27 @@ class AIAssistant {
   _consecutiveRAGFailures = 0;
 
   /**
+   * Consecutive API errors counter for circuit breaker
+   * @type {number}
+   * @private
+   */
+  _consecutiveErrors = 0;
+
+  /**
+   * Maximum consecutive errors before circuit opens
+   * @type {number}
+   * @private
+   */
+  _maxConsecutiveErrors = 5;
+
+  /**
+   * Whether the circuit breaker is open (blocking requests)
+   * @type {boolean}
+   * @private
+   */
+  _circuitOpen = false;
+
+  /**
    * Creates a new AIAssistant instance
    *
    * @param {Object} [options={}] - Configuration options
@@ -946,29 +967,91 @@ class AIAssistant {
   }
 
   // ---------------------------------------------------------------------------
+  // Circuit Breaker
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get the health status of the AI suggestion service
+   *
+   * @returns {'healthy'|'degraded'|'down'} Health status
+   */
+  getHealthStatus() {
+    if (this._circuitOpen || this._consecutiveErrors >= this._maxConsecutiveErrors) {
+      return 'down';
+    }
+    if (this._consecutiveErrors >= 2) {
+      return 'degraded';
+    }
+    return 'healthy';
+  }
+
+  /**
+   * Reset the circuit breaker state
+   */
+  resetCircuitBreaker() {
+    this._consecutiveErrors = 0;
+    this._circuitOpen = false;
+  }
+
+  /**
+   * Get the circuit breaker status (same shape as TranscriptionService)
+   *
+   * @returns {{isOpen: boolean, consecutiveErrors: number, maxErrors: number}}
+   */
+  getCircuitBreakerStatus() {
+    return {
+      isOpen: this._circuitOpen,
+      consecutiveErrors: this._consecutiveErrors,
+      maxErrors: this._maxConsecutiveErrors
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Private: API communication
   // ---------------------------------------------------------------------------
 
   /**
    * Makes a chat completion request via the OpenAI client
+   * Includes circuit breaker: throws immediately if circuit is open,
+   * resets on success, increments error count on failure.
    *
    * @param {Array<{role: string, content: string}>} messages - Chat messages
    * @returns {Promise<Object>} The API response
    * @private
    */
   async _makeChatRequest(messages) {
+    // Circuit breaker check
+    if (this._circuitOpen) {
+      throw new Error('AI suggestion circuit breaker open: too many consecutive failures');
+    }
+
     this._logger.debug(`_makeChatRequest() — model=${this._model}, ${messages.length} messages`);
     const _chatStart = performance.now();
 
-    const response = await this._openaiClient.post('/chat/completions', {
-      model: this._model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 1000
-    });
+    try {
+      const response = await this._openaiClient.post('/chat/completions', {
+        model: this._model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1000
+      });
 
-    this._logger.debug(`_makeChatRequest() — completed in ${(performance.now() - _chatStart).toFixed(1)}ms`);
-    return response;
+      this._logger.debug(`_makeChatRequest() — completed in ${(performance.now() - _chatStart).toFixed(1)}ms`);
+
+      // Success: reset circuit breaker
+      this._consecutiveErrors = 0;
+      this._circuitOpen = false;
+
+      return response;
+    } catch (error) {
+      // Failure: increment error counter
+      this._consecutiveErrors++;
+      if (this._consecutiveErrors >= this._maxConsecutiveErrors) {
+        this._circuitOpen = true;
+        this._logger.warn(`Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`);
+      }
+      throw error;
+    }
   }
 
   // ---------------------------------------------------------------------------

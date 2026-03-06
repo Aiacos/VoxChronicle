@@ -619,6 +619,21 @@ class Settings {
     });
 
     // ==========================================
+    // Session Cost Monitoring Settings
+    // ==========================================
+
+    // Per-session cost cap (in dollars)
+    game.settings.register(MODULE_ID, 'sessionCostCap', {
+      name: 'VOXCHRONICLE.Settings.SessionCostCap',
+      hint: 'VOXCHRONICLE.Settings.SessionCostCapHint',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 0, max: 100, step: 0.5 },
+      default: 5
+    });
+
+    // ==========================================
     // Hidden Internal Settings (Narrator Master)
     // ==========================================
 

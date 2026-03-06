@@ -49,6 +49,8 @@
       "RelationshipConfidenceThresholdHint": "Minimale Konfidenzbewertung (1-10) für erkannte Beziehungen",
       "MaxRelationships": "Max. Beziehungen pro Sitzung",
       "MaxRelationshipsHint": "Maximale Anzahl zu extrahierender Beziehungen pro Sitzung (0 zum Deaktivieren)",
+      "SessionCostCap": "Sitzungskostenlimit ($)",
+      "SessionCostCapHint": "Maximale API-Kosten pro Live-Sitzung in Dollar. KI-Vorschlaege werden bei Ueberschreitung pausiert. Auf 0 setzen zum Deaktivieren.",
       "SpeakerLabels": "Sprecherbezeichnungen",
       "SpeakerLabelsHint": "Enable custom name assignment to detected speakers in transcription",
       "ConfigureSpeakers": "Sprecher konfigurieren",

@@ -49,6 +49,8 @@
       "RelationshipConfidenceThresholdHint": "",
       "MaxRelationships": "",
       "MaxRelationshipsHint": "",
+      "SessionCostCap": "",
+      "SessionCostCapHint": "",
       "SpeakerLabels": "",
       "SpeakerLabelsHint": "",
       "ConfigureSpeakers": "",
