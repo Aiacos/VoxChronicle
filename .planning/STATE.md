@@ -9,9 +9,9 @@ last_activity: 2026-02-28 — Completed 01-03 (analytics-tab + journal-picker CS
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 12
+  total_plans: 6
+  completed_plans: 4
+  percent: 17
 ---
 
 # Project State
@@ -21,33 +21,34 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** The AI must follow the adventure journal as the source of truth — knowing where the party is, what happened before, and what's coming next.
-**Current focus:** Phase 1: CSS Namespace (Complete)
+**Current focus:** Phase 2: Journal Context Pipeline
 
 ## Current Position
 
-Phase: 1 of 8 (CSS Namespace) -- COMPLETE
-Plan: 3 of 3 in current phase (all complete)
-Status: Phase Complete
-Last activity: 2026-02-28 — Completed 01-03 (analytics-tab + journal-picker CSS namespace + phase verification)
+Phase: 2 of 8 (Journal Context Pipeline)
+Plan: 1 of 3 in current phase
+Status: In Progress
+Last activity: 2026-03-06 — Completed 02-01 (journal picker + confirmation banner)
 
-Progress: [██░░░░░░░░] 12%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 5.3min
-- Total execution time: 0.27 hours
+- Total plans completed: 4
+- Average duration: 6min
+- Total execution time: 0.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-css-namespace | 3 | 16min | 5.3min |
+| 02-journal-context-pipeline | 1 | 8min | 8min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (6min), 01-02 (7min), 01-03 (3min)
-- Trend: accelerating
+- Last 5 plans: 01-01 (6min), 01-02 (7min), 01-03 (3min), 02-01 (8min)
+- Trend: stable
 
 *Updated after each plan completion*
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - [01-02]: Modifier class 'danger' kept un-prefixed -- used only with namespaced parent vox-chronicle-action-group
 - [01-03]: Replaced hidden class with vox-chronicle-hidden to avoid collision with Foundry/other modules
 - [01-03]: Modifier classes nested and expanded kept un-prefixed per established convention
+- [02-01]: Pre-computed boolean flags (isJournalTooShort/isJournalTooLong) instead of Handlebars eq helper for content warnings
+- [02-01]: Auto-select scene-linked journal as fallback before opening picker -- reduces DM friction
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T06:14:33.953Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-journal-context-pipeline/02-CONTEXT.md
+Last session: 2026-03-06T06:42:52Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: .planning/phases/02-journal-context-pipeline/02-02-PLAN.md
