@@ -125,7 +125,11 @@ Plans:
   2. Every rules answer includes a citation to the specific SRD section or compendium source (e.g., "[PHB: Grappling, p.195]") — no uncited rules answers
   3. A rules lookup failure (API error, no SRD match) does not affect suggestion generation — the suggestion cycle continues normally and the rules section shows "unavailable"
   4. DM can also type a rules question directly into the panel and receive a grounded, cited answer on demand
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 07-01-PLAN.md — RulesLookupService (compendium search + gpt-4o synthesis + cooldown)
+- [ ] 07-02-PLAN.md — SessionOrchestrator fire-and-forget wiring + VoxChronicle singleton + AIAssistant delegation
+- [ ] 07-03-PLAN.md — MainPanel rules cards (purple tint, two-phase, citations) + on-demand input + CSS + localization
 
 ### Phase 8: Advanced Suggestion Intelligence
 **Goal**: Suggestions adapt to scene type, detect when players go off-track, surface opportunities for quiet players, and the DM can query the AI directly at any time
@@ -151,5 +155,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Session Reliability | 0/3 | Planning complete | - |
 | 5. Rolling Context Management | 3/3 | Complete   | 2026-03-06 |
 | 6. State Machine and UI Accuracy | 4/4 | Complete | 2026-03-06 |
-| 7. Rules Lookup Integration | 0/TBD | Not started | - |
+| 7. Rules Lookup Integration | 0/3 | Planning complete | - |
 | 8. Advanced Suggestion Intelligence | 0/TBD | Not started | - |
