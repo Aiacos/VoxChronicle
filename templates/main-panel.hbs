@@ -143,8 +143,8 @@
   {{!-- Tab Content Panes --}}
   <div class="vox-chronicle-panel__content">
     <div class="vox-chronicle-tab-pane" data-tab-pane="live" {{#unless (eq activeTab 'live')}}hidden{{/unless}}>
-      {{#if suggestions.length}}
       <div class="vox-chronicle-suggestions-container">
+        {{#if suggestions.length}}
         {{#each suggestions}}
         <div class="vox-chronicle-suggestion" data-suggestion-index="{{@index}}">
           <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--{{this.type}}">{{this.type}}</span>
@@ -162,10 +162,10 @@
           {{#if this.source}}<span class="vox-chronicle-suggestion__source">{{this.source}}</span>{{/if}}
         </div>
         {{/each}}
+        {{else}}
+        <p class="vox-chronicle-panel__empty">{{localize "VOXCHRONICLE.Panel.NoSuggestions"}}</p>
+        {{/if}}
       </div>
-      {{else}}
-      <p class="vox-chronicle-panel__empty">{{localize "VOXCHRONICLE.Panel.NoSuggestions"}}</p>
-      {{/if}}
 
       {{!-- RAG Indexing Status & Controls --}}
       <div class="vox-chronicle-rag-status">

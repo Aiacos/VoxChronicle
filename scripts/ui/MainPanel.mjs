@@ -398,6 +398,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       }, { signal });
     }
 
+    // Process any pending rules cards queued during tab switch
+    if (this._pendingRulesCards?.length) {
+      const pending = this._pendingRulesCards;
+      this._pendingRulesCards = [];
+      for (const cardData of pending) {
+        this._handleRulesCard(cardData);
+      }
+    }
+
     // Auto-scroll transcript to bottom
     if (this._activeTab === 'transcript') {
       const container = this.element.querySelector('.vox-chronicle-panel__transcript');
@@ -1208,8 +1217,22 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   _handleRulesCard(data) {
     if (!data) return;
 
+    // Switch to live tab if not already there so the suggestions container is visible
+    if (this._activeTab !== 'live') {
+      this._activeTab = 'live';
+      // Store data and re-render — _onRender will restore rules cards
+      this._pendingRulesCards = this._pendingRulesCards || [];
+      this._pendingRulesCards.push(data);
+      this.render();
+      return;
+    }
+
     const container = this.element?.querySelector('.vox-chronicle-suggestions-container');
     if (!container) return;
+
+    // Remove the empty message if present
+    const emptyMsg = container.querySelector('.vox-chronicle-panel__empty');
+    if (emptyMsg) emptyMsg.remove();
 
     const card = document.createElement('div');
 
