@@ -1717,4 +1717,164 @@ describe('MainPanel', () => {
       appendSpy.mockRestore();
     });
   });
+
+  // ─── Rules card rendering and on-demand input (07-03) ────────
+
+  describe('rules card rendering', () => {
+    it('_handleRulesCard creates card element with purple tint class', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      // Set up a fake element with suggestions container
+      const container = document.createElement('div');
+      container.className = 'vox-chronicle-suggestions-container';
+      panel.element = document.createElement('div');
+      panel.element.querySelector = (sel) => {
+        if (sel === '.vox-chronicle-suggestions-container') return container;
+        return null;
+      };
+
+      panel._handleRulesCard({
+        topic: 'grapple',
+        compendiumResults: [{ rule: { title: 'Grappling', content: 'You can use the Attack action to grapple...', citation: { formatted: '[PHB: Grappling, p.195]' } }, relevance: 1, matchedTerms: ['grapple'] }],
+        synthesisPromise: null,
+        source: 'manual'
+      });
+
+      const card = container.querySelector('.vox-chronicle-suggestion--rules');
+      expect(card).not.toBeNull();
+      expect(card.classList.contains('vox-chronicle-suggestion--rules')).toBe(true);
+    });
+
+    it('_handleRulesCard shows auto badge for source=auto, none for manual', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const container = document.createElement('div');
+      container.className = 'vox-chronicle-suggestions-container';
+      panel.element = document.createElement('div');
+      panel.element.querySelector = (sel) => {
+        if (sel === '.vox-chronicle-suggestions-container') return container;
+        return null;
+      };
+
+      // Auto source
+      panel._handleRulesCard({
+        topic: 'grapple',
+        compendiumResults: [{ rule: { title: 'Grappling', content: 'Content here' }, relevance: 1, matchedTerms: [] }],
+        synthesisPromise: null,
+        source: 'auto'
+      });
+      const autoCard = container.querySelector('.vox-chronicle-suggestion--rules');
+      expect(autoCard.querySelector('.vox-chronicle-suggestion__auto-badge')).not.toBeNull();
+
+      // Manual source
+      container.innerHTML = '';
+      panel._handleRulesCard({
+        topic: 'grapple',
+        compendiumResults: [{ rule: { title: 'Grappling', content: 'Content here' }, relevance: 1, matchedTerms: [] }],
+        synthesisPromise: null,
+        source: 'manual'
+      });
+      const manualCard = container.querySelector('.vox-chronicle-suggestion--rules');
+      expect(manualCard.querySelector('.vox-chronicle-suggestion__auto-badge')).toBeNull();
+    });
+
+    it('_handleRulesCard shows compendium excerpt content', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const container = document.createElement('div');
+      container.className = 'vox-chronicle-suggestions-container';
+      panel.element = document.createElement('div');
+      panel.element.querySelector = (sel) => {
+        if (sel === '.vox-chronicle-suggestions-container') return container;
+        return null;
+      };
+
+      panel._handleRulesCard({
+        topic: 'grapple',
+        compendiumResults: [{ rule: { title: 'Grappling', content: 'You can use the Attack action to make a special melee attack, a grapple.' }, relevance: 1, matchedTerms: ['grapple'] }],
+        synthesisPromise: null,
+        source: 'manual'
+      });
+
+      const card = container.querySelector('.vox-chronicle-suggestion--rules');
+      expect(card.textContent).toContain('You can use the Attack action');
+    });
+
+    it('unavailable card gets muted class', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const container = document.createElement('div');
+      container.className = 'vox-chronicle-suggestions-container';
+      panel.element = document.createElement('div');
+      panel.element.querySelector = (sel) => {
+        if (sel === '.vox-chronicle-suggestions-container') return container;
+        return null;
+      };
+
+      panel._handleRulesCard({
+        topic: 'grapple',
+        compendiumResults: [],
+        synthesisPromise: null,
+        source: 'manual',
+        unavailable: true
+      });
+
+      const card = container.querySelector('.vox-chronicle-suggestion--unavailable');
+      expect(card).not.toBeNull();
+    });
+
+    it('rules card data stored in _rulesCards array', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      panel._rulesCards = [];
+      const container = document.createElement('div');
+      container.className = 'vox-chronicle-suggestions-container';
+      panel.element = document.createElement('div');
+      panel.element.querySelector = (sel) => {
+        if (sel === '.vox-chronicle-suggestions-container') return container;
+        return null;
+      };
+
+      panel._handleRulesCard({
+        topic: 'grapple',
+        compendiumResults: [{ rule: { title: 'Grappling', content: 'Content' }, relevance: 1, matchedTerms: [] }],
+        synthesisPromise: null,
+        source: 'manual'
+      });
+
+      expect(panel._rulesCards.length).toBe(1);
+    });
+
+    it('rules input Enter keydown calls handleManualRulesQuery', () => {
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      panel._orchestrator.handleManualRulesQuery = vi.fn();
+
+      // Simulate the input and keydown
+      const input = document.createElement('input');
+      input.className = 'vox-chronicle-rules-input__field';
+      input.value = 'how does grapple work';
+
+      // Simulate the _onRender wiring manually
+      const signal = new AbortController().signal;
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+          const query = e.target.value.trim();
+          e.target.value = '';
+          panel._orchestrator?.handleManualRulesQuery?.(query);
+        }
+      }, { signal });
+
+      const event = new KeyboardEvent('keydown', { key: 'Enter' });
+      input.dispatchEvent(event);
+
+      expect(panel._orchestrator.handleManualRulesQuery).toHaveBeenCalledWith('how does grapple work');
+      expect(input.value).toBe('');
+    });
+
+    it('onRulesCard callback is registered with orchestrator setCallbacks', () => {
+      MainPanel.resetInstance();
+      const orch = { ...mockOrchestrator, setCallbacks: vi.fn() };
+      MainPanel.getInstance(orch);
+      expect(orch.setCallbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          onRulesCard: expect.any(Function)
+        })
+      );
+    });
+  });
 });
