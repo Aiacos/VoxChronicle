@@ -283,6 +283,13 @@
 
   {{!-- Cost Footer (visible during live mode) --}}
   {{#if isLiveMode}}
+  {{#if summaryBadgeText}}
+  <div class="vox-chronicle-summary-badge">
+    <span class="vox-chronicle-summary-badge__text">
+      <i class="fa-solid fa-layer-group"></i> {{summaryBadgeText}}
+    </span>
+  </div>
+  {{/if}}
   <div class="vox-chronicle-cost-footer">
     <span class="vox-chronicle-cost-footer__tokens">
       <i class="fa-solid fa-microchip"></i> {{localize "VOXCHRONICLE.Live.Tokens"}}: {{tokenDisplay}}

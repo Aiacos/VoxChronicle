@@ -228,6 +228,18 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Format cost display (2 decimal places)
     const costDisplay = costData ? costData.totalCost.toFixed(2) : '0.00';
 
+    // Summary age badge — shows how many turns have been summarized
+    let summaryBadgeText = null;
+    if (isLiveMode) {
+      const summarizedCount = voxChronicle?.aiAssistant?.summarizedTurnCount
+        || this._orchestrator?._aiAssistant?.summarizedTurnCount
+        || 0;
+      if (summarizedCount > 0) {
+        summaryBadgeText = game.i18n?.format('VOXCHRONICLE.SummaryAgeBadge', { count: summarizedCount })
+          || `Context: ${summarizedCount} turns summarized`;
+      }
+    }
+
     // Cost cap warning
     let costCapWarning = null;
     if (this._orchestrator?._aiSuggestionsPaused) {
@@ -252,6 +264,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       tokenDisplay,
       costDisplay,
       costCapWarning,
+      summaryBadgeText,
       // Journal context
       adventureName: journalData.adventureName,
       supplementaryCount: journalData.supplementaryCount,

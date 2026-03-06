@@ -729,6 +729,20 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-service-health--degraded { background: #ffdc00; }
 .vox-chronicle-service-health--down { background: #ff4136; }
 
+/* Summary Age Badge */
+.vox-chronicle-summary-badge {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  color: var(--color-text-light-6, #888);
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.vox-chronicle-summary-badge__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Cost Footer */
 .vox-chronicle-cost-footer {
   display: flex;
