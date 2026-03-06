@@ -78,10 +78,11 @@ Plans:
   3. When the OpenAI API is unavailable or returns errors, the panel displays a clear status indicator (red/yellow) and suggestions degrade to "unavailable" rather than showing an error crash or silently showing stale content
   4. Token usage and estimated API cost are visible in the panel during a live session, and a configurable per-session cost cap prevents runaway spending
   5. `AudioRecorder.getLatestChunk()` is verified to exist and returns audio correctly, or is implemented if missing
-**Plans:** 2 plans
+**Plans:** 3 plans
 Plans:
 - [ ] 04-01-PLAN.md — AbortSignal threading in OpenAIClient + CostTracker class + AIAssistant circuit breaker + cost cap setting
 - [ ] 04-02-PLAN.md — SessionOrchestrator lifecycle hardening (shutdown, health, rolling window, cost, self-monitoring) + MainPanel UI (status dots, cost footer, stopping spinner)
+- [ ] 04-03-PLAN.md — Gap closure: wire AI chat completion usage into CostTracker so token footer shows actual values
 
 ### Phase 5: Rolling Context Management
 **Goal**: Conversation history stays bounded so AI suggestion quality does not degrade over a 4-hour session as the context window fills
@@ -138,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. CSS Namespace | 0/3 | Planning complete | - |
 | 2. Journal Context Pipeline | 3/3 | Complete   | 2026-03-06 |
 | 3. AI Knowledge Depth | 1/2 | In Progress|  |
-| 4. Session Reliability | 0/2 | Planning complete | - |
+| 4. Session Reliability | 0/3 | Planning complete | - |
 | 5. Rolling Context Management | 0/TBD | Not started | - |
 | 6. State Machine and UI Accuracy | 0/TBD | Not started | - |
 | 7. Rules Lookup Integration | 0/TBD | Not started | - |
