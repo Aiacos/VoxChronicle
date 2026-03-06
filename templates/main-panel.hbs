@@ -95,6 +95,23 @@
     </div>
   </div>
 
+  {{!-- Chapter Navigation Bar (visible during live mode) --}}
+  {{#if isRecording}}
+  <div class="vox-chronicle-chapter-nav">
+    <button data-action="prev-chapter" {{#unless prevChapter}}disabled{{/unless}} title="{{prevChapter}}">
+      <i class="fa-solid fa-chevron-left"></i>
+    </button>
+    <span class="vox-chronicle-chapter-nav__title">
+      <i class="fa-solid fa-bookmark"></i>
+      {{#if chapterNavTitle}}{{chapterNavTitle}}{{else}}{{localize "VOXCHRONICLE.Panel.NoChapter"}}{{/if}}
+    </span>
+    <span class="vox-chronicle-index-health vox-chronicle-index-health--{{indexStatus}}"></span>
+    <button data-action="next-chapter" {{#unless nextChapter}}disabled{{/unless}} title="{{nextChapter}}">
+      <i class="fa-solid fa-chevron-right"></i>
+    </button>
+  </div>
+  {{/if}}
+
   {{!-- 6 Tab Navigation --}}
   <nav class="vox-chronicle-panel__tabs">
     <button class="vox-chronicle-tab {{#if (eq activeTab 'live')}}vox-chronicle-tab--active{{/if}}" data-tab="live">{{localize "VOXCHRONICLE.Panel.TabLive"}}</button>

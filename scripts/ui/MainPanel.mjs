@@ -59,7 +59,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       'review-entities': MainPanel._onReviewEntities,
       'rag-build-index': MainPanel._onRAGBuildIndex,
       'rag-clear-index': MainPanel._onRAGClearIndex,
-      'change-journal': MainPanel._onChangeJournal
+      'change-journal': MainPanel._onChangeJournal,
+      'prev-chapter': MainPanel._onPrevChapter,
+      'next-chapter': MainPanel._onNextChapter
     }
   };
 
@@ -207,6 +209,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Journal selection data for confirmation banner
     const journalData = this._getJournalSelectionData();
 
+    // Chapter navigation data (visible during live mode)
+    const chapterNavData = this._getChapterNavData();
+
     return {
       isConfigured: status.settings.openaiConfigured,
       kankaConfigured: status.settings.kankaConfigured,
@@ -238,6 +243,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       hasEntities: !!session?.entities,
       chronicleDraft: this.#cachedChronicleDraft,
       hasChronicleDraft: !!this.#cachedChronicleDraft,
+      // Chapter navigation
+      chapterNavTitle: chapterNavData.currentChapter,
+      prevChapter: chapterNavData.prevChapter,
+      nextChapter: chapterNavData.nextChapter,
+      indexStatus: chapterNavData.indexStatus,
       // RAG indexing status data
       ragEnabled: ragData.enabled,
       ragStatus: ragData.status,
@@ -321,6 +331,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static async _onChangeJournal(event, target) {
     return this._handleChangeJournal();
+  }
+
+  static async _onPrevChapter(event, target) {
+    return this._handleChapterNav('prev');
+  }
+
+  static async _onNextChapter(event, target) {
+    return this._handleChapterNav('next');
   }
 
   // ─── Instance methods ──────────────────────────────────────────────
@@ -862,6 +880,56 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       isJournalTooShort,
       isJournalTooLong
     };
+  }
+
+  /**
+   * Get chapter navigation data from the orchestrator's ChapterTracker
+   * @returns {object} Chapter nav context data
+   * @private
+   */
+  _getChapterNavData() {
+    const chapterTracker = this._orchestrator?._chapterTracker;
+    if (!this._isRecordingActive() || !chapterTracker) {
+      return { currentChapter: null, prevChapter: null, nextChapter: null, indexStatus: 'gray' };
+    }
+
+    const current = chapterTracker.getCurrentChapter?.();
+    const siblings = chapterTracker.getSiblingChapters?.() || {};
+
+    return {
+      currentChapter: current?.title || null,
+      prevChapter: siblings.prev?.title || null,
+      nextChapter: siblings.next?.title || null,
+      indexStatus: 'gray' // Placeholder for Plan 03 (RAG indexing pipeline)
+    };
+  }
+
+  /**
+   * Handle chapter navigation (prev/next)
+   * Manual navigation updates context on the next natural AI cycle, not immediately.
+   * @param {'prev'|'next'} direction - Navigation direction
+   * @private
+   */
+  async _handleChapterNav(direction) {
+    const chapterTracker = this._orchestrator?._chapterTracker;
+    if (!chapterTracker) return;
+
+    try {
+      const siblings = chapterTracker.getSiblingChapters?.() || {};
+      const target = direction === 'prev' ? siblings.prev : siblings.next;
+
+      if (!target?.title) return;
+
+      chapterTracker.navigateToChapter(target.title);
+
+      const msg = game.i18n?.format('VOXCHRONICLE.Panel.ChapterUpdated', { name: target.title })
+        || `Chapter updated: ${target.title}`;
+      ui?.notifications?.info(msg);
+
+      this.render();
+    } catch (error) {
+      this._logger.error('Chapter navigation failed:', error);
+    }
   }
 
   /**

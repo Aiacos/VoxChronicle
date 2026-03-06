@@ -241,7 +241,9 @@
       "NoJournalSelected": "冒険ジャーナルが選択されていません",
       "JournalTooShort": "警告：ジャーナルの内容が非常に短いです（500文字未満）。AIコンテキストが制限される可能性があります。",
       "JournalTooLong": "警告：ジャーナルの内容が非常に大きいです（200,000文字超）。ページ数を減らすことを検討してください。",
-      "SelectJournalFirst": "まず冒険ジャーナルを選択してください。"
+      "SelectJournalFirst": "まず冒険ジャーナルを選択してください。",
+      "NoChapter": "チャプターが検出されません",
+      "ChapterUpdated": "チャプター更新: {name}"
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",

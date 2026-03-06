@@ -241,7 +241,9 @@
       "NoJournalSelected": "",
       "JournalTooShort": "",
       "JournalTooLong": "",
-      "SelectJournalFirst": ""
+      "SelectJournalFirst": "",
+      "NoChapter": "",
+      "ChapterUpdated": ""
     },
     "Validation": {
       "ValidatingOpenAI": "",

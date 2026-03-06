@@ -241,7 +241,9 @@
       "NoJournalSelected": "Nessun diario avventura selezionato",
       "JournalTooShort": "Attenzione: Il contenuto del diario è molto breve (meno di 500 caratteri). Il contesto AI potrebbe essere limitato.",
       "JournalTooLong": "Attenzione: Il contenuto del diario è molto grande (oltre 200.000 caratteri). Considera di usare meno pagine.",
-      "SelectJournalFirst": "Seleziona prima un diario avventura."
+      "SelectJournalFirst": "Seleziona prima un diario avventura.",
+      "NoChapter": "Nessun capitolo rilevato",
+      "ChapterUpdated": "Capitolo aggiornato: {name}"
     },
     "Validation": {
       "ValidatingOpenAI": "Validazione chiave API OpenAI...",

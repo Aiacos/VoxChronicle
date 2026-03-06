@@ -649,6 +649,73 @@ form .form-group .vox-chronicle-validate-button {
   font-size: 0.85em;
 }
 
+/* Chapter Navigation Bar */
+.vox-chronicle-chapter-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 30px;
+}
+
+.vox-chronicle-chapter-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 0.8em;
+}
+
+.vox-chronicle-chapter-nav button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.vox-chronicle-chapter-nav button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.vox-chronicle-chapter-nav__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.vox-chronicle-chapter-nav__title i {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.vox-chronicle-index-health {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.vox-chronicle-index-health--green { background: #4caf50; }
+.vox-chronicle-index-health--yellow { background: #ff9800; }
+.vox-chronicle-index-health--gray { background: #9e9e9e; }
+
 /* Header & Controls */
 .vox-chronicle-panel__header {
   padding: 10px 12px;

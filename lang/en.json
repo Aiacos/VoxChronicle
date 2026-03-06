@@ -241,7 +241,9 @@
       "NoJournalSelected": "No adventure journal selected",
       "JournalTooShort": "Warning: Journal content is very short (under 500 characters). AI context may be limited.",
       "JournalTooLong": "Warning: Journal content is very large (over 200,000 characters). Consider using fewer pages.",
-      "SelectJournalFirst": "Please select an adventure journal first."
+      "SelectJournalFirst": "Please select an adventure journal first.",
+      "NoChapter": "No chapter detected",
+      "ChapterUpdated": "Chapter updated: {name}"
     },
     "Validation": {
       "ValidatingOpenAI": "Validating OpenAI API key...",

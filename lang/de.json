@@ -241,7 +241,9 @@
       "NoJournalSelected": "Kein Abenteuer-Journal ausgewählt",
       "JournalTooShort": "Warnung: Der Journal-Inhalt ist sehr kurz (unter 500 Zeichen). Der KI-Kontext könnte begrenzt sein.",
       "JournalTooLong": "Warnung: Der Journal-Inhalt ist sehr groß (über 200.000 Zeichen). Erwägen Sie, weniger Seiten zu verwenden.",
-      "SelectJournalFirst": "Bitte wählen Sie zuerst ein Abenteuer-Journal aus."
+      "SelectJournalFirst": "Bitte wählen Sie zuerst ein Abenteuer-Journal aus.",
+      "NoChapter": "Kein Kapitel erkannt",
+      "ChapterUpdated": "Kapitel aktualisiert: {name}"
     },
     "Validation": {
       "ValidatingOpenAI": "OpenAI API-Schlüssel wird überprüft...",
