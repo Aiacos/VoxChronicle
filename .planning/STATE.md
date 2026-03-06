@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 5 of 8 (Rolling Context Management)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-06 — Completed 05-01 (RollingSummarizer + AIAssistant integration)
+Last activity: 2026-03-06 — Completed 05-02 (Token budget enforcement in PromptBuilder)
 
 Progress: [████████████] 100%
 
@@ -55,6 +55,8 @@ Progress: [████████████] 100%
 | Phase 04 P01 | 6min | 2 tasks | 14 files |
 | Phase 04 P02 | 14 | 2 tasks | 14 files |
 | Phase 04 P03 | 3min | 1 tasks | 4 files |
+| Phase 05 P01 | 5min | 2 tasks | 5 files |
+| Phase 05 P02 | 4min | 2 tasks | 11 files |
 | Phase 05 P01 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
@@ -96,6 +98,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Cost cap pauses AI suggestions only, transcription continues as core function
 - [Phase 04]: usage defaults to null when OpenAI response lacks usage field (graceful degradation)
 - [Phase 04]: model falls back to this._model in AIAssistant and gpt-4o-mini in orchestrator (defense in depth)
+- [05-02]: Priority order for budget enforcement: adventure context > verbatim turns > rolling summary > NPC profiles > next chapter lookahead
+- [05-02]: 10% safety margin applied (effective budget = budget * 0.9) to prevent borderline overflows
+- [05-02]: Character/4 heuristic for token estimation (simple, sufficient for budget enforcement)
 - [05-01]: Concurrency guard via simple boolean _isSummarizing (sufficient for single-user DM context)
 - [05-01]: Empty turns early-return skips API call entirely (no wasted cost)
 - [05-01]: Optional chaining on setRollingSummary to avoid breaking PromptBuilder before Plan 02
@@ -112,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T12:23:28Z
-Stopped at: Completed 05-01-PLAN.md
-Resume file: .planning/phases/05-rolling-context-management/05-01-SUMMARY.md
+Last session: 2026-03-06T12:24:14Z
+Stopped at: Completed 05-02-PLAN.md
+Resume file: .planning/phases/05-rolling-context-management/05-03-PLAN.md
