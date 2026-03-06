@@ -3228,6 +3228,239 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
     });
   });
 
+  // ── Rules Lookup Integration ────────────────────────────────────────
+
+  describe('rules lookup integration', () => {
+    function createMockRulesReference(overrides = {}) {
+      return {
+        detectRulesQuestion: vi.fn().mockReturnValue({
+          isRulesQuestion: false,
+          confidence: 0,
+          detectedTerms: [],
+          questionType: 'general',
+          extractedTopic: null
+        }),
+        ...overrides
+      };
+    }
+
+    function createMockRulesLookupService(overrides = {}) {
+      return {
+        lookup: vi.fn().mockResolvedValue({
+          topic: 'grappling',
+          compendiumResults: [{ title: 'Grappling Rules', content: 'Rules text...' }],
+          synthesisPromise: Promise.resolve('AI synthesis of grappling rules')
+        }),
+        destroy: vi.fn(),
+        ...overrides
+      };
+    }
+
+    it('should trigger rules lookup when rules question detected in transcript', async () => {
+      const mockRulesRef = createMockRulesReference({
+        detectRulesQuestion: vi.fn().mockReturnValue({
+          isRulesQuestion: true,
+          confidence: 0.9,
+          detectedTerms: ['grappling'],
+          questionType: 'combat',
+          extractedTopic: 'grappling'
+        })
+      });
+      const mockRulesLookup = createMockRulesLookupService();
+      const onRulesCard = vi.fn();
+
+      const orch = new SessionOrchestrator(createAllServices());
+      orch._rulesReference = mockRulesRef;
+      orch._rulesLookupService = mockRulesLookup;
+      orch._callbacks.onRulesCard = onRulesCard;
+      orch._liveMode = true;
+      orch._shutdownController = new AbortController();
+      orch._liveTranscript = [
+        { speaker: 'Player', text: 'How does grappling work?', start: 0, end: 1 }
+      ];
+
+      await orch._runAIAnalysis({ text: 'How does grappling work?', segments: [] });
+
+      // Rules detection was called
+      expect(mockRulesRef.detectRulesQuestion).toHaveBeenCalled();
+      // Lookup was triggered
+      expect(mockRulesLookup.lookup).toHaveBeenCalledWith('grappling', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      // Wait for fire-and-forget to settle
+      await vi.waitFor(() => expect(onRulesCard).toHaveBeenCalled());
+      expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
+        topic: 'grappling',
+        compendiumResults: expect.any(Array),
+        synthesisPromise: expect.any(Promise),
+        source: 'auto'
+      }));
+    });
+
+    it('should NOT trigger rules lookup when no rules question detected', async () => {
+      const mockRulesRef = createMockRulesReference(); // returns isRulesQuestion: false
+      const mockRulesLookup = createMockRulesLookupService();
+
+      const orch = new SessionOrchestrator(createAllServices());
+      orch._rulesReference = mockRulesRef;
+      orch._rulesLookupService = mockRulesLookup;
+      orch._liveMode = true;
+      orch._shutdownController = new AbortController();
+      orch._liveTranscript = [
+        { speaker: 'Player', text: 'I attack the goblin', start: 0, end: 1 }
+      ];
+
+      await orch._runAIAnalysis({ text: 'I attack the goblin', segments: [] });
+
+      expect(mockRulesRef.detectRulesQuestion).toHaveBeenCalled();
+      expect(mockRulesLookup.lookup).not.toHaveBeenCalled();
+    });
+
+    it('should run rules lookup in parallel with suggestion streaming', async () => {
+      const callOrder = [];
+      const mockRulesRef = createMockRulesReference({
+        detectRulesQuestion: vi.fn().mockReturnValue({
+          isRulesQuestion: true, confidence: 0.9, detectedTerms: ['grappling'],
+          questionType: 'combat', extractedTopic: 'grappling'
+        })
+      });
+      const mockRulesLookup = createMockRulesLookupService({
+        lookup: vi.fn().mockImplementation(async () => {
+          callOrder.push('lookup-start');
+          return { topic: 'grappling', compendiumResults: [], synthesisPromise: Promise.resolve('synth') };
+        })
+      });
+
+      const mockAI = createMockAIAssistant({
+        generateSuggestionsStreaming: vi.fn().mockImplementation(async () => {
+          callOrder.push('streaming-start');
+          return { text: 'Suggestion text', usage: null, model: 'gpt-4o-mini' };
+        })
+      });
+
+      const svc = createAllServices({ aiAssistant: mockAI });
+      const orch = new SessionOrchestrator(svc);
+      orch._rulesReference = mockRulesRef;
+      orch._rulesLookupService = mockRulesLookup;
+      orch._liveMode = true;
+      orch._shutdownController = new AbortController();
+      orch._liveTranscript = [{ speaker: 'P', text: 'grappling', start: 0, end: 1 }];
+
+      await orch._runAIAnalysis({ text: 'grappling', segments: [] });
+
+      // Both should have been called (lookup is fire-and-forget, streaming is awaited)
+      expect(mockRulesLookup.lookup).toHaveBeenCalled();
+      expect(mockAI.generateSuggestionsStreaming).toHaveBeenCalled();
+    });
+
+    it('should emit onRulesCard with unavailable=true when lookup fails', async () => {
+      const mockRulesRef = createMockRulesReference({
+        detectRulesQuestion: vi.fn().mockReturnValue({
+          isRulesQuestion: true, confidence: 0.9, detectedTerms: ['grappling'],
+          questionType: 'combat', extractedTopic: 'grappling'
+        })
+      });
+      const mockRulesLookup = createMockRulesLookupService({
+        lookup: vi.fn().mockRejectedValue(new Error('API error'))
+      });
+      const onRulesCard = vi.fn();
+
+      const orch = new SessionOrchestrator(createAllServices());
+      orch._rulesReference = mockRulesRef;
+      orch._rulesLookupService = mockRulesLookup;
+      orch._callbacks.onRulesCard = onRulesCard;
+      orch._liveMode = true;
+      orch._shutdownController = new AbortController();
+      orch._liveTranscript = [{ speaker: 'P', text: 'grappling', start: 0, end: 1 }];
+
+      await orch._runAIAnalysis({ text: 'grappling', segments: [] });
+
+      // Wait for the fire-and-forget rejection to settle
+      await vi.waitFor(() => expect(onRulesCard).toHaveBeenCalled());
+      expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
+        topic: 'grappling',
+        compendiumResults: [],
+        synthesisPromise: null,
+        source: 'auto',
+        unavailable: true
+      }));
+    });
+
+    it('should not crash suggestion cycle when rules lookup fails', async () => {
+      const mockRulesRef = createMockRulesReference({
+        detectRulesQuestion: vi.fn().mockReturnValue({
+          isRulesQuestion: true, confidence: 0.9, detectedTerms: ['grappling'],
+          questionType: 'combat', extractedTopic: 'grappling'
+        })
+      });
+      const mockRulesLookup = createMockRulesLookupService({
+        lookup: vi.fn().mockRejectedValue(new Error('API error'))
+      });
+
+      const mockAI = createMockAIAssistant();
+      const svc = createAllServices({ aiAssistant: mockAI });
+      const orch = new SessionOrchestrator(svc);
+      orch._rulesReference = mockRulesRef;
+      orch._rulesLookupService = mockRulesLookup;
+      orch._liveMode = true;
+      orch._shutdownController = new AbortController();
+      orch._liveTranscript = [{ speaker: 'P', text: 'grappling', start: 0, end: 1 }];
+
+      // Should not throw even though lookup fails
+      await expect(orch._runAIAnalysis({ text: 'grappling', segments: [] })).resolves.not.toThrow();
+      // Streaming/analyzeContext should still have been called
+      expect(mockAI.generateSuggestionsStreaming || mockAI.analyzeContext).toBeTruthy();
+    });
+
+    describe('handleManualRulesQuery', () => {
+      it('should perform lookup with skipCooldown=true', async () => {
+        const mockRulesLookup = createMockRulesLookupService();
+        const onRulesCard = vi.fn();
+
+        const orch = new SessionOrchestrator(createAllServices());
+        orch._rulesLookupService = mockRulesLookup;
+        orch._callbacks.onRulesCard = onRulesCard;
+        orch._shutdownController = new AbortController();
+
+        await orch.handleManualRulesQuery('How does grappling work?');
+
+        expect(mockRulesLookup.lookup).toHaveBeenCalledWith('How does grappling work?', expect.objectContaining({
+          skipCooldown: true,
+          signal: expect.any(AbortSignal)
+        }));
+        expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
+          source: 'manual'
+        }));
+      });
+
+      it('should emit unavailable when manual query fails', async () => {
+        const mockRulesLookup = createMockRulesLookupService({
+          lookup: vi.fn().mockRejectedValue(new Error('fail'))
+        });
+        const onRulesCard = vi.fn();
+
+        const orch = new SessionOrchestrator(createAllServices());
+        orch._rulesLookupService = mockRulesLookup;
+        orch._callbacks.onRulesCard = onRulesCard;
+        orch._shutdownController = new AbortController();
+
+        await orch.handleManualRulesQuery('test query');
+
+        expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
+          topic: 'test query',
+          unavailable: true,
+          source: 'manual'
+        }));
+      });
+
+      it('should no-op when no rules lookup service', async () => {
+        const orch = new SessionOrchestrator(createAllServices());
+        orch._rulesLookupService = null;
+
+        // Should not throw
+        await expect(orch.handleManualRulesQuery('test')).resolves.not.toThrow();
+      });
+    });
+  });
+
   describe('generateSuggestionsStreaming in AIAssistant', () => {
     it('should exist on AIAssistant', async () => {
       // We need a real-ish AIAssistant to test this
