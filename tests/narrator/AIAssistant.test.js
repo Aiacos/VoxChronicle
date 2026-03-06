@@ -1481,4 +1481,118 @@ describe('AIAssistant', () => {
       expect(Array.isArray(result)).toBe(true);
     });
   });
+
+  // =========================================================================
+  // Phase 03-01: Source field parsing + NPC passthrough
+  // =========================================================================
+  describe('_parseAnalysisResponse source field (Phase 03-01)', () => {
+    it('extracts source field from suggestions', () => {
+      const response = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              suggestions: [{
+                type: 'narration',
+                content: 'A dark figure emerges.',
+                confidence: 0.8,
+                source: {
+                  chapter: 'Chapter 3',
+                  page: 'The Thieves Guild',
+                  journalName: 'Lost Mine of Phandelver'
+                }
+              }],
+              offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
+              summary: 'Test'
+            })
+          }
+        }]
+      };
+      const result = assistant._parseAnalysisResponse(response);
+      expect(result.suggestions[0].source).toEqual({
+        chapter: 'Chapter 3',
+        page: 'The Thieves Guild',
+        journalName: 'Lost Mine of Phandelver'
+      });
+    });
+
+    it('defaults source to null when missing', () => {
+      const response = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              suggestions: [{
+                type: 'narration',
+                content: 'A suggestion without source.',
+                confidence: 0.7
+              }],
+              summary: 'Test'
+            })
+          }
+        }]
+      };
+      const result = assistant._parseAnalysisResponse(response);
+      expect(result.suggestions[0].source).toBeNull();
+    });
+
+    it('handles partial source (missing page) with empty string', () => {
+      const response = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              suggestions: [{
+                type: 'narration',
+                content: 'Partial source test.',
+                confidence: 0.6,
+                source: {
+                  chapter: 'Chapter 1'
+                  // page and journalName missing
+                }
+              }],
+              summary: 'Test'
+            })
+          }
+        }]
+      };
+      const result = assistant._parseAnalysisResponse(response);
+      expect(result.suggestions[0].source.chapter).toBe('Chapter 1');
+      expect(result.suggestions[0].source.page).toBe('');
+      expect(result.suggestions[0].source.journalName).toBe('');
+    });
+
+    it('sets source to null in fallback parsing', () => {
+      const response = {
+        choices: [{ message: { content: 'Not valid JSON' } }]
+      };
+      const result = assistant._parseAnalysisResponse(response);
+      expect(result.suggestions[0].source).toBeNull();
+    });
+  });
+
+  describe('NPC and lookahead passthrough setters (Phase 03-01)', () => {
+    it('setNPCProfiles passes through to promptBuilder', () => {
+      const profiles = [{ name: 'Garrick', role: 'merchant' }];
+      // Access the internal promptBuilder via the spy
+      const spy = vi.spyOn(assistant._promptBuilder, 'setNPCProfiles');
+      assistant.setNPCProfiles(profiles);
+      expect(spy).toHaveBeenCalledWith(profiles);
+    });
+
+    it('setNextChapterLookahead passes through to promptBuilder', () => {
+      const spy = vi.spyOn(assistant._promptBuilder, 'setNextChapterLookahead');
+      assistant.setNextChapterLookahead('Next chapter content');
+      expect(spy).toHaveBeenCalledWith('Next chapter content');
+    });
+
+    it('setNPCProfiles with null defaults to empty array', () => {
+      const spy = vi.spyOn(assistant._promptBuilder, 'setNPCProfiles');
+      assistant.setNPCProfiles(null);
+      expect(spy).toHaveBeenCalledWith([]);
+    });
+
+    it('setNextChapterLookahead with null defaults to empty string', () => {
+      const spy = vi.spyOn(assistant._promptBuilder, 'setNextChapterLookahead');
+      assistant.setNextChapterLookahead(null);
+      expect(spy).toHaveBeenCalledWith('');
+    });
+  });
 });

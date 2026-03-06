@@ -470,6 +470,30 @@ class AIAssistant {
   }
 
   // ---------------------------------------------------------------------------
+  // NPC and lookahead context management (Phase 03-01)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Sets the NPC profiles for context injection (passthrough to PromptBuilder)
+   *
+   * @param {Array<Object>} profiles - Array of NPCProfile objects
+   */
+  setNPCProfiles(profiles) {
+    this._npcProfiles = profiles || [];
+    this._promptBuilder.setNPCProfiles(this._npcProfiles);
+  }
+
+  /**
+   * Sets the next chapter lookahead text for foreshadowing (passthrough to PromptBuilder)
+   *
+   * @param {string} text - Preview text from the next chapter
+   */
+  setNextChapterLookahead(text) {
+    this._nextChapterLookahead = text || '';
+    this._promptBuilder.setNextChapterLookahead(this._nextChapterLookahead);
+  }
+
+  // ---------------------------------------------------------------------------
   // Chapter context management
   // ---------------------------------------------------------------------------
 
@@ -999,7 +1023,12 @@ class AIAssistant {
         pageReference: s.pageReference
           ? this._validateString(s.pageReference, 200, 'suggestion.pageReference')
           : undefined,
-        confidence: this._validateNumber(s.confidence, 0, 1, 'suggestion.confidence')
+        confidence: this._validateNumber(s.confidence, 0, 1, 'suggestion.confidence'),
+        source: s.source ? {
+          chapter: this._validateString(s.source.chapter || '', 200, 'source.chapter'),
+          page: this._validateString(s.source.page || '', 200, 'source.page'),
+          journalName: this._validateString(s.source.journalName || '', 200, 'source.journalName')
+        } : null
       }));
 
       const offTrackStatus = parsed.offTrackStatus
@@ -1033,7 +1062,8 @@ class AIAssistant {
         suggestions: [{
           type: 'narration',
           content: sanitizedContent,
-          confidence: 0.5
+          confidence: 0.5,
+          source: null
         }],
         offTrackStatus: {
           isOffTrack: false,
