@@ -247,6 +247,15 @@
       "NoChapter": "チャプターが検出されません",
       "ChapterUpdated": "チャプター更新: {name}"
     },
+    "Live": {
+      "TranscriptionHealth": "文字起こしステータス",
+      "AIHealth": "AI提案ステータス",
+      "Stopping": "停止中...",
+      "Tokens": "トークン",
+      "Cost": "コスト",
+      "CostCapReached": "コスト上限に達しました ({cap})。AI提案を一時停止中。",
+      "SessionSummary": "セッション終了: {duration}分, {suggestions}件の提案, ${cost}"
+    },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
       "ValidatingKanka": "[EN] Validating Kanka API token...",

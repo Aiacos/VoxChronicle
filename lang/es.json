@@ -247,6 +247,15 @@
       "NoChapter": "No se detectó capítulo",
       "ChapterUpdated": "Capítulo actualizado: {name}"
     },
+    "Live": {
+      "TranscriptionHealth": "Estado de transcripción",
+      "AIHealth": "Estado de sugerencias IA",
+      "Stopping": "Deteniendo...",
+      "Tokens": "Tokens",
+      "Cost": "Costo",
+      "CostCapReached": "Límite de costo alcanzado ({cap}). Sugerencias IA pausadas.",
+      "SessionSummary": "Sesión terminada: {duration}min, {suggestions} sugerencias, ${cost}"
+    },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
       "ValidatingKanka": "[EN] Validating Kanka API token...",

@@ -247,6 +247,15 @@
       "NoChapter": "",
       "ChapterUpdated": ""
     },
+    "Live": {
+      "TranscriptionHealth": "",
+      "AIHealth": "",
+      "Stopping": "",
+      "Tokens": "",
+      "Cost": "",
+      "CostCapReached": "",
+      "SessionSummary": ""
+    },
     "Validation": {
       "ValidatingOpenAI": "",
       "ValidatingKanka": "",

@@ -870,7 +870,7 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       expect(analyticsIdx).toBeLessThan(audioIdx);
     });
 
-    it('should end analytics before stopping audio in live mode stop', async () => {
+    it('should stop audio before analytics teardown in live mode stop (deadline architecture)', async () => {
       const callOrder = [];
 
       services.sessionAnalytics.endSession.mockImplementation(() => {
@@ -884,9 +884,11 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       await orchestrator.startLiveMode();
       await orchestrator.stopLiveMode();
 
+      // New behavior (04-02): audio stop is time-critical (inside deadline race),
+      // analytics cleanup happens in _fullTeardown after audio is captured
       const analyticsIdx = callOrder.indexOf('analytics.end');
       const audioIdx = callOrder.indexOf('audio.stop');
-      expect(analyticsIdx).toBeLessThan(audioIdx);
+      expect(audioIdx).toBeLessThan(analyticsIdx);
     });
   });
 

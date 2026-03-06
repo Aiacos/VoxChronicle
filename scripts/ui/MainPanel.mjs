@@ -212,12 +212,46 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Chapter navigation data (visible during live mode)
     const chapterNavData = this._getChapterNavData();
 
+    // Live mode health and cost data
+    const health = this._orchestrator?.getServiceHealth?.() || {};
+    const costData = this._orchestrator?.getCostData?.() || null;
+    const isLiveMode = !!this._orchestrator?.isLiveMode;
+    const isStopping = !!this._orchestrator?._isStopping;
+
+    // Format token display (e.g., "12.4K")
+    let tokenDisplay = '0';
+    if (costData) {
+      const tokens = costData.totalTokens || 0;
+      tokenDisplay = tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}K` : String(tokens);
+    }
+
+    // Format cost display (2 decimal places)
+    const costDisplay = costData ? costData.totalCost.toFixed(2) : '0.00';
+
+    // Cost cap warning
+    let costCapWarning = null;
+    if (this._orchestrator?._aiSuggestionsPaused) {
+      let cap = '5.00';
+      try {
+        cap = String(game?.settings?.get(MODULE_ID, 'sessionCostCap') || 5);
+      } catch (e) { /* default */ }
+      costCapWarning = game.i18n?.format('VOXCHRONICLE.Live.CostCapReached', { cap: `$${cap}` })
+        || `Cost cap reached ($${cap}). AI suggestions paused.`;
+    }
+
     return {
       isConfigured: status.settings.openaiConfigured,
       kankaConfigured: status.settings.kankaConfigured,
       hasTranscription: status.services.transcription,
       hasRAG: status.services.ragProvider,
       isRecording: this._isRecordingActive(),
+      isLiveMode,
+      isStopping,
+      transcriptionHealth: health.transcription || 'healthy',
+      aiSuggestionHealth: health.aiSuggestions || 'healthy',
+      tokenDisplay,
+      costDisplay,
+      costCapWarning,
       // Journal context
       adventureName: journalData.adventureName,
       supplementaryCount: journalData.supplementaryCount,
