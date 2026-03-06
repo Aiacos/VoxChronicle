@@ -724,6 +724,10 @@ class AIAssistant {
 
       this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext);
+
+      // Full prompt dump for developer inspection (debug level only)
+      this._logger.debug('Full prompt dump:', JSON.stringify(messages, null, 2));
+
       const response = await this._makeChatRequest(messages);
       const analysis = this._parseAnalysisResponse(response);
 

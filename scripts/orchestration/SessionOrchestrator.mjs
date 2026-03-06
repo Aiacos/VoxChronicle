@@ -902,6 +902,30 @@ class SessionOrchestrator {
         this._logger.debug('Registered canvasReady hook for chapter auto-update');
       }
 
+      // Initialize rolling summarizer and wire cost/budget (Plan 05-03)
+      if (this._aiAssistant) {
+        // Create RollingSummarizer using AIAssistant's own OpenAI client
+        if (this._aiAssistant._openaiClient) {
+          this._aiAssistant.initializeRollingSummarizer(this._aiAssistant._openaiClient);
+        }
+
+        // Read and apply token budget setting
+        let budget = 12000;
+        try {
+          budget = game?.settings?.get(MODULE_ID, 'contextTokenBudget') || 12000;
+        } catch (e) {
+          this._logger.debug('Could not read contextTokenBudget setting, using default');
+        }
+        if (this._aiAssistant._promptBuilder?.setTokenBudget) {
+          this._aiAssistant._promptBuilder.setTokenBudget(budget);
+        }
+
+        // Wire summarization cost callback to CostTracker
+        this._aiAssistant._onSummarizationUsage = (usage) => {
+          if (usage) this._costTracker?.addUsage('gpt-4o-mini', usage);
+        };
+      }
+
       // Start silence monitoring for autonomous AI suggestions
       if (this._aiAssistant) {
         this._aiAssistant.setOnAutonomousSuggestionCallback((data) => {

@@ -192,6 +192,47 @@ describe('CostTracker', () => {
     });
   });
 
+  // ── summarization cost tracking ─────────────────────────────────────────
+
+  describe('summarization cost tracking', () => {
+    it('should track summarization costs via gpt-4o-mini addUsage', () => {
+      tracker.addUsage('gpt-4o-mini', { prompt_tokens: 200, completion_tokens: 100 });
+
+      const summary = tracker.getTokenSummary();
+      expect(summary.inputTokens).toBe(200);
+      expect(summary.outputTokens).toBe(100);
+      expect(summary.totalTokens).toBe(300);
+      expect(summary.totalCost).toBeGreaterThan(0);
+    });
+
+    it('should include summarization costs in getTotalCost()', () => {
+      tracker.addUsage('gpt-4o-mini', { prompt_tokens: 200, completion_tokens: 100 });
+
+      // 200 * $0.15/1M + 100 * $0.60/1M = $0.00009
+      const expectedCost = (200 * 0.15 / 1_000_000) + (100 * 0.60 / 1_000_000);
+      expect(tracker.getTotalCost()).toBeCloseTo(expectedCost, 10);
+    });
+
+    it('should include summarization costs in isCapExceeded()', () => {
+      // Add enough cost to exceed a tiny cap
+      tracker.addUsage('gpt-4o-mini', { prompt_tokens: 1_000_000, completion_tokens: 1_000_000 });
+      // Cost = $0.75
+      expect(tracker.isCapExceeded(0.50)).toBe(true);
+    });
+
+    it('should combine summarization and AI suggestion costs', () => {
+      // Summarization usage
+      tracker.addUsage('gpt-4o-mini', { prompt_tokens: 200, completion_tokens: 100 });
+      // AI suggestion usage
+      tracker.addUsage('gpt-4o-mini', { prompt_tokens: 500, completion_tokens: 300 });
+
+      const summary = tracker.getTokenSummary();
+      expect(summary.inputTokens).toBe(700);
+      expect(summary.outputTokens).toBe(400);
+      expect(summary.totalTokens).toBe(1100);
+    });
+  });
+
   // ── reset ────────────────────────────────────────────────────────────────
 
   describe('reset()', () => {
