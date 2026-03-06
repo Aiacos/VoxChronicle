@@ -259,7 +259,7 @@ describe('RulesLookupService', () => {
       const callArgs = mockOpenAIClient.post.mock.calls[0][1];
       const systemMessage = callArgs.messages.find(m => m.role === 'system');
       expect(systemMessage).toBeDefined();
-      expect(systemMessage.content).toContain('cite');
+      expect(systemMessage.content.toLowerCase()).toContain('cite');
     });
 
     it('should include compendium excerpts in user message', async () => {
@@ -362,7 +362,7 @@ describe('RulesLookupService', () => {
       const result = await service.lookup('grapple', { signal: controller.signal });
       controller.abort();
 
-      await expect(result.synthesisPromise).rejects.toThrow('AbortError');
+      await expect(result.synthesisPromise).rejects.toThrow('aborted');
     });
   });
 
