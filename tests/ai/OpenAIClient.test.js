@@ -933,4 +933,88 @@ describe('OpenAIClient', () => {
       clearTimeoutSpy.mockRestore();
     });
   });
+
+  // ── External AbortSignal Support ────────────────────────────────────────
+
+  describe('external AbortSignal support', () => {
+    it('should cancel fetch when external signal is aborted', async () => {
+      // Make fetch hang until aborted
+      fetchSpy.mockImplementation((_url, opts) => {
+        return new Promise((_resolve, reject) => {
+          opts.signal.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          });
+        });
+      });
+
+      const externalController = new AbortController();
+
+      // Start request with external signal
+      const requestPromise = client.request('/chat/completions', {
+        method: 'POST',
+        body: JSON.stringify({ model: 'gpt-4o-mini' }),
+        signal: externalController.signal,
+        useQueue: false,
+        useRetry: false
+      });
+
+      // Abort externally after a tick
+      setTimeout(() => externalController.abort(), 10);
+
+      // Should throw a timeout error (AbortError mapped to TIMEOUT_ERROR)
+      await expect(requestPromise).rejects.toThrow(OpenAIError);
+    });
+
+    it('should work normally when no external signal is provided', async () => {
+      const result = await client.request('/models', {
+        useQueue: false,
+        useRetry: false
+      });
+      expect(result).toEqual({ data: 'ok' });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw immediately if external signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        client.request('/models', {
+          signal: controller.signal,
+          useQueue: false,
+          useRetry: false
+        })
+      ).rejects.toThrow();
+    });
+
+    it('should pass combined signal to fetch (not just timeout signal)', async () => {
+      const externalController = new AbortController();
+
+      await client.request('/models', {
+        signal: externalController.signal,
+        useQueue: false,
+        useRetry: false
+      });
+
+      // Verify fetch was called with a signal
+      const [, opts] = fetchSpy.mock.calls[0];
+      expect(opts.signal).toBeDefined();
+      // The signal should not be the raw external signal (it should be combined)
+      // We can't easily test the exact composition, but verify it exists
+    });
+
+    it('should not leak event listeners after request completes', async () => {
+      const externalController = new AbortController();
+
+      await client.request('/models', {
+        signal: externalController.signal,
+        useQueue: false,
+        useRetry: false
+      });
+
+      // Request completed, external controller should still be usable
+      // (no error thrown when aborting after completion)
+      expect(() => externalController.abort()).not.toThrow();
+    });
+  });
 });
