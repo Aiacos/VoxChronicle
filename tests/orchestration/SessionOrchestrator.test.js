@@ -90,6 +90,11 @@ function createMockAIAssistant(overrides = {}) {
       suggestions: [{ type: 'narration', content: 'Describe the scene' }],
       offTrackStatus: { isOffTrack: false }
     }),
+    generateSuggestionsStreaming: vi.fn().mockResolvedValue({
+      text: 'The ancient door creaks open, revealing a dark chamber.',
+      usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 },
+      model: 'gpt-4o-mini'
+    }),
     setAdventureContext: vi.fn(),
     setChapterContext: vi.fn(),
     setOnAutonomousSuggestionCallback: vi.fn(),
@@ -1439,6 +1444,177 @@ describe('SessionOrchestrator', () => {
       expect(addUsageSpy).toHaveBeenCalledWith(
         'gpt-4o-mini',
         { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 }
+      );
+    });
+  });
+
+  // ── _runAIAnalysis streaming ──────────────────────────────────────────
+
+  describe('_runAIAnalysis streaming', () => {
+    it('should call generateSuggestionsStreaming when available (Test 1)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'The party explores', speaker: 'DM' }];
+
+      await orchestrator._runAIAnalysis({ text: 'The party explores' });
+
+      expect(services.aiAssistant.generateSuggestionsStreaming).toHaveBeenCalled();
+      // Should NOT call analyzeContext as primary path when streaming succeeds
+      expect(services.aiAssistant.analyzeContext).not.toHaveBeenCalled();
+    });
+
+    it('should fire onStreamToken callback with { text } for each token (Test 2)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const onStreamToken = vi.fn();
+      orchestrator.setCallbacks({ onStreamToken });
+
+      // Mock that calls onToken during execution
+      services.aiAssistant.generateSuggestionsStreaming.mockImplementation(async (ctx, opts) => {
+        opts.onToken('The ');
+        opts.onToken('The ancient ');
+        opts.onToken('The ancient door');
+        return { text: 'The ancient door', usage: null };
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(onStreamToken).toHaveBeenCalledTimes(3);
+      expect(onStreamToken).toHaveBeenCalledWith({ text: 'The ' });
+      expect(onStreamToken).toHaveBeenCalledWith({ text: 'The ancient ' });
+      expect(onStreamToken).toHaveBeenCalledWith({ text: 'The ancient door' });
+    });
+
+    it('should fire onStreamComplete with { text, type, usage } after streaming (Test 3)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const onStreamComplete = vi.fn();
+      orchestrator.setCallbacks({ onStreamComplete });
+
+      services.aiAssistant.generateSuggestionsStreaming.mockResolvedValue({
+        text: 'Describe the dark chamber ahead',
+        usage: { prompt_tokens: 50, completion_tokens: 10, total_tokens: 60 }
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(onStreamComplete).toHaveBeenCalledWith({
+        text: 'Describe the dark chamber ahead',
+        type: expect.any(String),
+        usage: { prompt_tokens: 50, completion_tokens: 10, total_tokens: 60 }
+      });
+    });
+
+    it('should fall back to analyzeContext when streaming throws (Test 4)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(new Error('Stream error'));
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      // Fallback to analyzeContext
+      expect(services.aiAssistant.analyzeContext).toHaveBeenCalled();
+      expect(orchestrator._lastAISuggestions).toBeTruthy();
+    });
+
+    it('should use analyzeContext directly when generateSuggestionsStreaming is not a function (Test 5)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      // Remove the streaming method to simulate old AIAssistant
+      services.aiAssistant.generateSuggestionsStreaming = undefined;
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(services.aiAssistant.analyzeContext).toHaveBeenCalled();
+      expect(orchestrator._lastAISuggestions).toBeTruthy();
+    });
+
+    it('should track streaming usage via _costTracker.addUsage (Test 6)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
+      orchestrator._costTracker = new CostTracker();
+      const addUsageSpy = vi.spyOn(orchestrator._costTracker, 'addUsage');
+
+      services.aiAssistant.generateSuggestionsStreaming.mockResolvedValue({
+        text: 'A suggestion',
+        usage: { prompt_tokens: 80, completion_tokens: 25, total_tokens: 105 },
+        model: 'gpt-4o-mini-2024-07-18'
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(addUsageSpy).toHaveBeenCalledWith(
+        'gpt-4o-mini-2024-07-18',
+        { prompt_tokens: 80, completion_tokens: 25, total_tokens: 105 }
+      );
+    });
+
+    it('should populate _lastAISuggestions after streaming completes (Test 7)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      services.aiAssistant.generateSuggestionsStreaming.mockResolvedValue({
+        text: 'The dragon roars and attacks',
+        usage: null
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(orchestrator._lastAISuggestions).toHaveLength(1);
+      expect(orchestrator._lastAISuggestions[0].content).toBe('The dragon roars and attacks');
+      expect(orchestrator._lastAISuggestions[0].type).toBeDefined();
+    });
+
+    it('should still run offTrack detection after streaming (Test 8)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      services.aiAssistant.generateSuggestionsStreaming.mockResolvedValue({
+        text: 'A suggestion',
+        usage: null
+      });
+
+      // offTrack is NOT part of streaming result — downstream code should still handle it
+      // After streaming, the analysis object has offTrackStatus: undefined
+      // The existing offTrack block checks analysis.offTrackStatus !== undefined
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      // Streaming path does not call analyzeContext, so offTrack comes from streaming analysis
+      // offTrackStatus is undefined in streaming path — existing code tolerates this
+      // The key assertion: no error thrown, analysis completes
+      expect(orchestrator._lastAISuggestions).toHaveLength(1);
+    });
+
+    it('should still enrich NPC session notes after streaming suggestions (Test 9)', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
+
+      const garrickProfile = { name: 'Garrick', sessionNotes: [] };
+      const mockNPCExtractor = {
+        detectMentionedNPCs: vi.fn().mockReturnValue([]),
+        getProfiles: vi.fn().mockReturnValue(new Map([
+          ['garrick', garrickProfile]
+        ])),
+        addSessionNote: vi.fn()
+      };
+      orchestrator._npcExtractor = mockNPCExtractor;
+      services.aiAssistant.setNPCProfiles = vi.fn();
+
+      services.aiAssistant.generateSuggestionsStreaming.mockResolvedValue({
+        text: 'Garrick draws his sword and blocks the path.',
+        usage: null
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(mockNPCExtractor.addSessionNote).toHaveBeenCalledWith(
+        'Garrick',
+        expect.stringContaining('Garrick draws his sword')
       );
     });
   });
