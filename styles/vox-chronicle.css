@@ -599,6 +599,56 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-badge.active { background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3); }
 .vox-chronicle-badge.inactive { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); }
 
+/* Journal Confirmation Banner */
+.vox-chronicle-journal-confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85em;
+}
+
+.vox-chronicle-journal-confirmation__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vox-chronicle-journal-confirmation__label i {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.vox-chronicle-journal-confirmation__warning {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(252, 163, 17, 0.08);
+  border: 1px solid rgba(252, 163, 17, 0.3);
+  border-radius: 3px;
+  color: #fca311;
+  font-size: 0.9em;
+}
+
+.vox-chronicle-journal-confirmation__actions {
+  flex-shrink: 0;
+}
+
+.vox-chronicle-btn--small {
+  padding: 2px 8px;
+  font-size: 0.85em;
+}
+
 /* Header & Controls */
 .vox-chronicle-panel__header {
   padding: 10px 12px;

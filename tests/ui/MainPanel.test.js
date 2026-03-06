@@ -72,6 +72,14 @@ vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
   }
 }));
 
+vi.mock('../../scripts/ui/JournalPicker.mjs', () => ({
+  JournalPicker: vi.fn().mockImplementation((options) => ({
+    render: vi.fn(),
+    close: vi.fn(),
+    _onSave: options?.onSave || null
+  }))
+}));
+
 vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({
   VoxChronicle: {
     getInstance: vi.fn(() => ({
@@ -120,6 +128,9 @@ describe('MainPanel', () => {
 
   beforeEach(() => {
     MainPanel.resetInstance();
+
+    // Set a default journal ID so _handleToggleRecording doesn't block
+    game.settings.set('vox-chronicle', 'activeAdventureJournalId', 'default-test-journal');
 
     mockOrchestrator = {
       state: 'idle',
@@ -1259,6 +1270,150 @@ describe('MainPanel', () => {
         ? undefined : 1; // can't easily track setter calls on plain object, but the optimization is covered
       rafCallbacks[1]();
       expect(mockDurationSpan.textContent).toBe('0:05'); // same value, no error
+    });
+  });
+
+  // ─── Journal confirmation banner (_prepareContext) ─────────────
+
+  describe('journal confirmation banner', () => {
+    it('_prepareContext returns adventureName and supplementaryCount when journal is selected', async () => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return 'j1';
+        if (key === 'supplementaryJournalIds') return ['j2', 'j3'];
+        if (key === 'transcriptionMode') return 'auto';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+      game.journal = { get: vi.fn((id) => id === 'j1' ? { name: 'Lost Mine' } : null) };
+
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+
+      expect(ctx.adventureName).toBe('Lost Mine');
+      expect(ctx.supplementaryCount).toBe(2);
+      expect(ctx.hasJournalSelected).toBe(true);
+    });
+
+    it('_prepareContext returns adventureName=null when no journal is selected', async () => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return '';
+        if (key === 'supplementaryJournalIds') return [];
+        if (key === 'transcriptionMode') return 'auto';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+
+      expect(ctx.adventureName).toBeNull();
+      expect(ctx.hasJournalSelected).toBe(false);
+    });
+
+    it('content warning flag set when journal text is under 500 chars', async () => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return 'j1';
+        if (key === 'supplementaryJournalIds') return [];
+        if (key === 'transcriptionMode') return 'auto';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+      game.journal = {
+        get: vi.fn((id) => id === 'j1' ? {
+          name: 'Short Journal',
+          pages: { contents: [{ text: { content: 'Short text' } }] }
+        } : null)
+      };
+
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+
+      expect(ctx.isJournalTooShort).toBe(true);
+      expect(ctx.isJournalTooLong).toBe(false);
+    });
+
+    it('content warning flag set when journal text exceeds 200,000 chars', async () => {
+      const longText = 'x'.repeat(200001);
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return 'j1';
+        if (key === 'supplementaryJournalIds') return [];
+        if (key === 'transcriptionMode') return 'auto';
+        if (key === 'ragEnabled') return false;
+        return '';
+      });
+      game.journal = {
+        get: vi.fn((id) => id === 'j1' ? {
+          name: 'Long Journal',
+          pages: { contents: [{ text: { content: longText } }] }
+        } : null)
+      };
+
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const ctx = await panel._prepareContext({});
+
+      expect(ctx.isJournalTooShort).toBe(false);
+      expect(ctx.isJournalTooLong).toBe(true);
+    });
+  });
+
+  // ─── _handleToggleRecording journal fallback ──────────────────
+
+  describe('_handleToggleRecording journal fallback', () => {
+    it('with no journal selected and no scene journal opens JournalPicker', async () => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return '';
+        return '';
+      });
+      globalThis.canvas = { scene: { journal: null } };
+
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      await panel._handleToggleRecording();
+
+      // Should NOT start live mode
+      expect(mockOrchestrator.startLiveMode).not.toHaveBeenCalled();
+      expect(mockOrchestrator.startSession).not.toHaveBeenCalled();
+      // Should show notification
+      expect(ui.notifications.warn).toHaveBeenCalled();
+    });
+
+    it('with a valid journal selection proceeds to startLiveMode', async () => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return 'j1';
+        return '';
+      });
+      mockOrchestrator.hasTranscriptionService = true;
+
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      await panel._handleToggleRecording();
+
+      expect(mockOrchestrator.startLiveMode).toHaveBeenCalled();
+    });
+
+    it('with no journal selected but scene has linked journal auto-selects it', async () => {
+      game.settings.get.mockImplementation((moduleId, key) => {
+        if (key === 'activeAdventureJournalId') return '';
+        return '';
+      });
+      game.settings.set.mockResolvedValue(undefined);
+      globalThis.canvas = { scene: { journal: { id: 'scene-j1' } } };
+      mockOrchestrator.hasTranscriptionService = true;
+
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      await panel._handleToggleRecording();
+
+      // Should auto-select the scene journal
+      expect(game.settings.set).toHaveBeenCalledWith('vox-chronicle', 'activeAdventureJournalId', 'scene-j1');
+      // Should proceed to start live mode
+      expect(mockOrchestrator.startLiveMode).toHaveBeenCalled();
+    });
+  });
+
+  // ─── change-journal action ────────────────────────────────────
+
+  describe('change-journal action', () => {
+    it('change-journal action is defined in DEFAULT_OPTIONS', () => {
+      const actions = MainPanel.DEFAULT_OPTIONS.actions;
+      expect(actions['change-journal']).toBeDefined();
     });
   });
 });

@@ -58,7 +58,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       'generate-image': MainPanel._onGenerateImage,
       'review-entities': MainPanel._onReviewEntities,
       'rag-build-index': MainPanel._onRAGBuildIndex,
-      'rag-clear-index': MainPanel._onRAGClearIndex
+      'rag-clear-index': MainPanel._onRAGClearIndex,
+      'change-journal': MainPanel._onChangeJournal
     }
   };
 
@@ -203,12 +204,21 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.#lastDraftSegmentCount = 0;
     }
 
+    // Journal selection data for confirmation banner
+    const journalData = this._getJournalSelectionData();
+
     return {
       isConfigured: status.settings.openaiConfigured,
       kankaConfigured: status.settings.kankaConfigured,
       hasTranscription: status.services.transcription,
       hasRAG: status.services.ragProvider,
       isRecording: this._isRecordingActive(),
+      // Journal context
+      adventureName: journalData.adventureName,
+      supplementaryCount: journalData.supplementaryCount,
+      hasJournalSelected: journalData.hasJournalSelected,
+      isJournalTooShort: journalData.isJournalTooShort,
+      isJournalTooLong: journalData.isJournalTooLong,
       isPaused: this._orchestrator?.state === 'paused',
       isProcessing: this._orchestrator?.state === 'processing',
       statusMessage: this.#statusMessage,
@@ -307,6 +317,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static async _onRAGClearIndex(event, target) {
     return this._handleRAGClearIndex();
+  }
+
+  static async _onChangeJournal(event, target) {
+    return this._handleChangeJournal();
   }
 
   // ─── Instance methods ──────────────────────────────────────────────
@@ -449,6 +463,34 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         ui?.notifications?.info(game.i18n?.format('VOXCHRONICLE.Notifications.RecordingStopped', { duration: this._formatDuration() }) || 'Recording stopped');
       } else {
+        // Check journal selection before starting
+        let journalId = '';
+        try {
+          journalId = game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || '';
+        } catch (e) {
+          this._logger.debug('Could not read activeAdventureJournalId:', e.message);
+        }
+
+        // Auto-select scene journal if no journal is selected
+        if (!journalId) {
+          const sceneJournal = globalThis.canvas?.scene?.journal;
+          if (sceneJournal?.id) {
+            journalId = sceneJournal.id;
+            await game.settings.set(MODULE_ID, 'activeAdventureJournalId', journalId);
+            this._logger.info(`Auto-selected scene journal: ${journalId}`);
+          }
+        }
+
+        // If still no journal, open picker and return
+        if (!journalId) {
+          ui?.notifications?.warn(
+            game.i18n?.localize('VOXCHRONICLE.Panel.SelectJournalFirst') ||
+            'Please select an adventure journal first.'
+          );
+          await this._handleChangeJournal();
+          return;
+        }
+
         // Start recording - use live mode by default (real-time AI assistance)
         if (this._orchestrator.hasTranscriptionService) {
           await this._orchestrator.startLiveMode();
@@ -776,6 +818,66 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (this.#realtimeRafId !== null) {
       cancelAnimationFrame(this.#realtimeRafId);
       this.#realtimeRafId = null;
+    }
+  }
+
+  /**
+   * Get journal selection data for the confirmation banner
+   * @returns {object} Journal selection context data
+   * @private
+   */
+  _getJournalSelectionData() {
+    let primaryId = '';
+    let supplementaryIds = [];
+    try {
+      primaryId = game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || '';
+      supplementaryIds = game?.settings?.get(MODULE_ID, 'supplementaryJournalIds') || [];
+    } catch (error) {
+      this._logger.debug('Could not read journal settings:', error.message);
+    }
+
+    let adventureName = null;
+    let isJournalTooShort = false;
+    let isJournalTooLong = false;
+
+    if (primaryId) {
+      const journal = game?.journal?.get(primaryId);
+      adventureName = journal?.name || null;
+
+      // Content length warnings
+      if (journal?.pages?.contents) {
+        const fullText = journal.pages.contents
+          .map(p => stripHtml(p.text?.content || ''))
+          .filter(Boolean)
+          .join('\n\n');
+        if (fullText.length < 500) isJournalTooShort = true;
+        if (fullText.length > 200000) isJournalTooLong = true;
+      }
+    }
+
+    return {
+      adventureName,
+      supplementaryCount: supplementaryIds.length,
+      hasJournalSelected: !!primaryId && !!adventureName,
+      isJournalTooShort,
+      isJournalTooLong
+    };
+  }
+
+  /**
+   * Open the JournalPicker dialog
+   * @private
+   */
+  async _handleChangeJournal() {
+    try {
+      const { JournalPicker } = await import('./JournalPicker.mjs');
+      const picker = new JournalPicker({
+        onSave: () => this.render()
+      });
+      picker.render(true);
+    } catch (error) {
+      this._logger.error('Failed to open journal picker:', error);
+      ui?.notifications?.error(escapeHtml(error.message));
     }
   }
 

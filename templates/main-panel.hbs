@@ -20,6 +20,44 @@
     </span>
   </div>
 
+  {{!-- Journal Confirmation Banner --}}
+  {{#unless isRecording}}
+  <div class="vox-chronicle-journal-confirmation">
+    {{#if hasJournalSelected}}
+      <span class="vox-chronicle-journal-confirmation__label">
+        <i class="fa-solid fa-book"></i>
+        {{localize "VOXCHRONICLE.Panel.Adventure"}}: <strong>{{adventureName}}</strong>
+        {{#if supplementaryCount}}
+          (+ {{supplementaryCount}} {{localize "VOXCHRONICLE.Panel.Supplementary"}})
+        {{/if}}
+      </span>
+      {{#if isJournalTooShort}}
+      <div class="vox-chronicle-journal-confirmation__warning">
+        <i class="fa-solid fa-exclamation-triangle"></i>
+        {{localize "VOXCHRONICLE.Panel.JournalTooShort"}}
+      </div>
+      {{/if}}
+      {{#if isJournalTooLong}}
+      <div class="vox-chronicle-journal-confirmation__warning">
+        <i class="fa-solid fa-exclamation-triangle"></i>
+        {{localize "VOXCHRONICLE.Panel.JournalTooLong"}}
+      </div>
+      {{/if}}
+    {{else}}
+      <span class="vox-chronicle-journal-confirmation__label">
+        <i class="fa-solid fa-book"></i>
+        {{localize "VOXCHRONICLE.Panel.NoJournalSelected"}}
+      </span>
+    {{/if}}
+    <div class="vox-chronicle-journal-confirmation__actions">
+      <button data-action="change-journal" class="vox-chronicle-btn--small">
+        <i class="fa-solid fa-pen"></i>
+        {{localize "VOXCHRONICLE.Panel.ChangeJournal"}}
+      </button>
+    </div>
+  </div>
+  {{/unless}}
+
   {{!-- Header: Recording Controls --}}
   <div class="vox-chronicle-panel__header">
     <div class="vox-chronicle-panel__controls">
