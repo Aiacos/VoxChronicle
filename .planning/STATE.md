@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-06T07:20:30.797Z"
-last_activity: 2026-03-06 — Completed 02-03 (RAG indexing pipeline + debounced re-index)
+status: in_progress
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-06T07:53:26Z"
+last_activity: 2026-03-06 — Completed 03-01 (NPC extraction, foreshadowing, source citations)
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 25
+  total_plans: 9
+  completed_plans: 7
+  percent: 29
 ---
 
 # Project State
@@ -25,19 +25,19 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 2 of 8 (Journal Context Pipeline)
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-03-06 — Completed 02-03 (RAG indexing pipeline + debounced re-index)
+Phase: 3 of 8 (AI Knowledge Depth)
+Plan: 1 of 3 in current phase
+Status: In Progress
+Last activity: 2026-03-06 — Completed 03-01 (NPC extraction, foreshadowing, source citations)
 
-Progress: [██░░░░░░░░] 25%
+Progress: [██░░░░░░░░] 29%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 7min
-- Total execution time: 0.6 hours
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
@@ -45,9 +45,10 @@ Progress: [██░░░░░░░░] 25%
 |-------|-------|-------|----------|
 | 01-css-namespace | 3 | 16min | 5.3min |
 | 02-journal-context-pipeline | 3 | 22min | 7.3min |
+| 03-ai-knowledge-depth | 1 | 5min | 5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (7min), 01-03 (3min), 02-01 (8min), 02-02 (5min), 02-03 (9min)
+- Last 5 plans: 01-03 (3min), 02-01 (8min), 02-02 (5min), 02-03 (9min), 03-01 (5min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -76,6 +77,10 @@ Recent decisions affecting current work:
 - [02-02]: User-selected journal takes priority over scene-linked journal in _initializeJournalContext
 - [02-02]: getCurrentChapterContentForAI(8000) with fallback to substring(0,3000) for backward compatibility
 - [02-02]: Manual chapter navigation updates on next AI cycle, not immediately (avoids extra API calls)
+- [03-01]: gpt-4o-mini as default model for NPC extraction (cost-effective, sufficient quality for structured extraction)
+- [03-01]: Map keyed by lowercase name AND aliases for O(1) NPC lookup with deduplication by canonical name
+- [03-01]: Source field defaults to null when missing from AI response (graceful degradation, not error)
+- [03-01]: Session notes capped at 10 per NPC, detectMentionedNPCs capped at 5 results
 
 ### Pending Todos
 
@@ -89,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T07:20:30.795Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-ai-knowledge-depth/03-CONTEXT.md
+Last session: 2026-03-06T07:53:26Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-ai-knowledge-depth/03-01-SUMMARY.md

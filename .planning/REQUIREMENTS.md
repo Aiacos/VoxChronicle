@@ -14,12 +14,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **CTX-03**: AI prompts receive chapter-scoped context (current chapter text), not the entire journal dump
 - [x] **CTX-04**: RAG indexing uses 1200/300 token chunking for adventure content (not default 800/400)
 - [x] **CTX-05**: RAG index updates automatically when journal pages are edited (hook-driven, debounced)
-- [ ] **CTX-06**: AI surfaces NPC names, personalities, and motivations from adventure journal text when relevant
+- [x] **CTX-06**: AI surfaces NPC names, personalities, and motivations from adventure journal text when relevant
 - [ ] **CTX-07**: AI anticipates upcoming scenes from the adventure and can suggest foreshadowing seeds
 
 ### Suggestion Quality
 
-- [ ] **SUG-01**: AI suggestions reference specific adventure content from the journal, not generic D&D lore
+- [x] **SUG-01**: AI suggestions reference specific adventure content from the journal, not generic D&D lore
 - [ ] **SUG-02**: AI responses stream to the UI with first tokens visible in under 1 second
 - [ ] **SUG-03**: Silence detection triggers suggestions after 20-30 seconds of DM silence (calibrated threshold)
 - [ ] **SUG-04**: DM can type a question in the panel and receive a direct AI answer (on-demand query)
@@ -90,9 +90,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTX-03 | Phase 2 | Complete |
 | CTX-04 | Phase 2 | Complete |
 | CTX-05 | Phase 2 | Complete |
-| CTX-06 | Phase 3 | Pending |
+| CTX-06 | Phase 3 | Complete |
 | CTX-07 | Phase 3 | Pending |
-| SUG-01 | Phase 3 | Pending |
+| SUG-01 | Phase 3 | Complete |
 | SUG-02 | Phase 6 | Pending |
 | SUG-03 | Phase 6 | Pending |
 | SUG-04 | Phase 8 | Pending |
