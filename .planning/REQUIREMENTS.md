@@ -31,7 +31,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **RULE-01**: DM can ask D&D 5e rules questions and receive answers grounded in SRD compendium content
 - [x] **RULE-02**: Rules answers include citations to specific SRD sections/sources
-- [ ] **RULE-03**: Rules lookup integrates into the live cycle as fire-and-forget (non-blocking)
+- [x] **RULE-03**: Rules lookup integrates into the live cycle as fire-and-forget (non-blocking)
 
 ### Session Reliability
 
@@ -101,7 +101,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUG-07 | Phase 8 | Pending |
 | RULE-01 | Phase 7 | Complete |
 | RULE-02 | Phase 7 | Complete |
-| RULE-03 | Phase 7 | Pending |
+| RULE-03 | Phase 7 | Complete |
 | SESS-01 | Phase 4 | Complete |
 | SESS-02 | Phase 4 | Complete |
 | SESS-03 | Phase 5 | Complete |

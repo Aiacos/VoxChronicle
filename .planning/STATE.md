@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-06T19:29:25Z"
-last_activity: "2026-03-06 — Completed 07-01 (RulesLookupService with hybrid two-phase lookup)"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-06T19:36:00Z"
+last_activity: "2026-03-06 — Completed 07-02 (Fire-and-forget rules lookup pipeline wiring)"
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 21
-  completed_plans: 19
-  percent: 90
+  completed_plans: 20
+  percent: 95
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 7 of 8 (Rules Lookup Integration)
-Plan: 1 of 3 in current phase -- DONE
-Status: Plan 07-01 complete, continuing to 07-02
-Last activity: 2026-03-06 — Completed 07-01 (RulesLookupService with hybrid two-phase lookup)
+Plan: 2 of 3 in current phase -- DONE
+Status: Plan 07-02 complete, continuing to 07-03
+Last activity: 2026-03-06 — Completed 07-02 (Fire-and-forget rules lookup pipeline wiring)
 
-Progress: [█████████░] 90%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 90%
 | Phase 06 P03 | 5min | 2 tasks | 6 files |
 | Phase 06 P04 | 4min | 1 tasks | 2 files |
 | Phase 07 P01 | 2min | 1 tasks | 2 files |
+| Phase 07 P02 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,11 @@ Recent decisions affecting current work:
 - [07-01]: Synthesis system prompt: D&D 5e rules expert, cite sources in brackets, 2-3 sentences max
 - [07-01]: Excerpt content capped at 1500 chars per compendium result in synthesis prompt
 - [07-01]: Citation extraction falls back to rule.source when citation.formatted is missing
+- [07-02]: Fire-and-forget rules lookup runs via .then()/.catch() -- never blocks suggestion streaming
+- [07-02]: onRulesCard callback emits unavailable=true on failure (graceful degradation, not crash)
+- [07-02]: handleManualRulesQuery uses skipCooldown=true for on-demand UI queries
+- [07-02]: AIAssistant delegates _detectRulesQuestions to RulesReference with inline fallback
+- [07-02]: Rules services passed via setNarratorServices after creation (second call pattern)
 
 ### Pending Todos
 
@@ -144,6 +150,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T19:29:25Z
-Stopped at: Completed 07-01-PLAN.md
-Resume file: .planning/phases/07-rules-lookup-integration/07-02-PLAN.md
+Last session: 2026-03-06T19:36:00Z
+Stopped at: Completed 07-02-PLAN.md
+Resume file: .planning/phases/07-rules-lookup-integration/07-03-PLAN.md
