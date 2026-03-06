@@ -518,6 +518,59 @@ describe('AIAssistant', () => {
       mockClient.post.mockRejectedValue(new Error('API timeout'));
       await expect(assistant.analyzeContext('text')).rejects.toThrow('API timeout');
     });
+
+    it('returns usage from the OpenAI response', async () => {
+      const responseWithUsage = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              suggestions: [{ type: 'narration', content: 'Test', confidence: 0.8, pageReference: '' }],
+              offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
+              relevantPages: [],
+              summary: 'Test'
+            })
+          }
+        }],
+        usage: { prompt_tokens: 150, completion_tokens: 50, total_tokens: 200 },
+        model: 'gpt-4o-mini-2024-07-18'
+      };
+      mockClient.post.mockResolvedValue(responseWithUsage);
+
+      const result = await assistant.analyzeContext('The players rest at the inn.');
+      expect(result.usage).toEqual({ prompt_tokens: 150, completion_tokens: 50, total_tokens: 200 });
+    });
+
+    it('returns model from the OpenAI response', async () => {
+      const responseWithModel = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              suggestions: [],
+              offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
+              relevantPages: [],
+              summary: 'Test'
+            })
+          }
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        model: 'gpt-4o-mini-2024-07-18'
+      };
+      mockClient.post.mockResolvedValue(responseWithModel);
+
+      const result = await assistant.analyzeContext('Some text here.');
+      expect(result.model).toBe('gpt-4o-mini-2024-07-18');
+    });
+
+    it('defaults usage to null when response has no usage field', async () => {
+      // Default mock has no usage field
+      const result = await assistant.analyzeContext('The party marches on.');
+      expect(result.usage).toBeNull();
+    });
+
+    it('defaults model to configured model when response has no model field', async () => {
+      const result = await assistant.analyzeContext('The party rests.');
+      expect(result.model).toBe(DEFAULT_MODEL);
+    });
   });
 
   describe('detectOffTrack()', () => {

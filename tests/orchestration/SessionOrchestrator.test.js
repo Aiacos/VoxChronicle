@@ -1377,6 +1377,70 @@ describe('SessionOrchestrator', () => {
       await orchestrator.startLiveMode();
       expect(orchestrator._aiAnalysisErrorNotified).toBe(false);
     });
+
+    it('should call costTracker.addUsage when analysis returns usage', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'The party enters' }];
+      // Manually create costTracker so we can spy on it
+      const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
+      orchestrator._costTracker = new CostTracker();
+      const addUsageSpy = vi.spyOn(orchestrator._costTracker, 'addUsage');
+
+      services.aiAssistant.analyzeContext.mockResolvedValue({
+        suggestions: [{ type: 'narration', content: 'Describe the scene' }],
+        offTrackStatus: { isOffTrack: false },
+        usage: { prompt_tokens: 100, completion_tokens: 30, total_tokens: 130 },
+        model: 'gpt-4o-mini-2024-07-18'
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'The party enters' });
+
+      expect(addUsageSpy).toHaveBeenCalledWith(
+        'gpt-4o-mini-2024-07-18',
+        { prompt_tokens: 100, completion_tokens: 30, total_tokens: 130 }
+      );
+    });
+
+    it('should not call costTracker.addUsage when analysis has no usage', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test' }];
+      const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
+      orchestrator._costTracker = new CostTracker();
+      const addUsageSpy = vi.spyOn(orchestrator._costTracker, 'addUsage');
+
+      services.aiAssistant.analyzeContext.mockResolvedValue({
+        suggestions: [],
+        offTrackStatus: { isOffTrack: false },
+        usage: null,
+        model: 'gpt-4o-mini'
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(addUsageSpy).not.toHaveBeenCalled();
+    });
+
+    it('should default to gpt-4o-mini when analysis.model is missing', async () => {
+      orchestrator._liveMode = true;
+      orchestrator._liveTranscript = [{ text: 'test' }];
+      const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
+      orchestrator._costTracker = new CostTracker();
+      const addUsageSpy = vi.spyOn(orchestrator._costTracker, 'addUsage');
+
+      services.aiAssistant.analyzeContext.mockResolvedValue({
+        suggestions: [],
+        offTrackStatus: { isOffTrack: false },
+        usage: { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 }
+        // no model field
+      });
+
+      await orchestrator._runAIAnalysis({ text: 'test' });
+
+      expect(addUsageSpy).toHaveBeenCalledWith(
+        'gpt-4o-mini',
+        { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 }
+      );
+    });
   });
 
   // ── _handleSilence ────────────────────────────────────────────────────
