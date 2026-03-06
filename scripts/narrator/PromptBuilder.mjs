@@ -109,6 +109,20 @@ class PromptBuilder {
      * @private
      */
     this._nextChapterLookahead = '';
+
+    /**
+     * Rolling summary of previous conversation turns
+     * @type {string}
+     * @private
+     */
+    this._rollingSummary = '';
+
+    /**
+     * Token budget for AI prompt construction
+     * @type {number}
+     * @private
+     */
+    this._tokenBudget = 12000;
   }
 
   // ---------------------------------------------------------------------------
@@ -177,6 +191,24 @@ class PromptBuilder {
    */
   setNextChapterLookahead(text) {
     this._nextChapterLookahead = text || '';
+  }
+
+  /**
+   * Sets the rolling summary of previous conversation turns
+   *
+   * @param {string} summary - The rolling summary text
+   */
+  setRollingSummary(summary) {
+    this._rollingSummary = summary || '';
+  }
+
+  /**
+   * Sets the token budget for AI prompt construction
+   *
+   * @param {number} budget - Maximum tokens per AI cycle (default 12000)
+   */
+  setTokenBudget(budget) {
+    this._tokenBudget = budget || 12000;
   }
 
   /**
@@ -280,47 +312,8 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
    * @returns {Array<{role: string, content: string}>} The messages array
    */
   buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext) {
-    const messages = [
-      { role: 'system', content: this.buildSystemPrompt() }
-    ];
-
-    // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
-
-    if (context) {
-      messages.push({
-        role: 'system',
-        content: `ADVENTURE CONTEXT:\n${context}`
-      });
-    }
-
-    // Inject NPC profiles as system message (after adventure context, before history)
-    if (this._npcProfiles.length > 0) {
-      const npcLines = this._npcProfiles.map(profile => {
-        let line = `- **${profile.name}** (${profile.role}): ${profile.personality}. Motivation: ${profile.motivation}. [${profile.chapterLocation}]`;
-        if (profile.sessionNotes && profile.sessionNotes.length > 0) {
-          line += `\n  Session notes: ${profile.sessionNotes.join('; ')}`;
-        }
-        return line;
-      });
-      messages.push({
-        role: 'system',
-        content: `ACTIVE NPC PROFILES (mentioned in current conversation):\n${npcLines.join('\n')}\n\nUse these profiles to inform your suggestions. Reference NPCs by name with their personality and motivation.`
-      });
-    }
-
-    // Inject next chapter lookahead for foreshadowing (after NPC profiles)
-    if (this._nextChapterLookahead) {
-      messages.push({
-        role: 'system',
-        content: `UPCOMING CONTENT (next chapter preview - DM eyes only):\n${this._nextChapterLookahead}\n\nYou may subtly weave foreshadowing seeds from this content into your suggestions, framed as DM-only hints the DM can choose to use.`
-      });
-    }
-
-    // Add recent conversation history
-    for (const entry of this._conversationHistory.slice(-5)) {
-      messages.push(entry);
-    }
+    // --- Fixed components (always included) ---
+    const systemPromptContent = this.buildSystemPrompt();
 
     let requestContent = `Analyze this session transcription:\n\n"${transcription}"\n\n`;
 
@@ -347,6 +340,95 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
   "offTrackStatus": {"isOffTrack": boolean, "severity": 0.0-1.0, "reason": "..."},
   "summary": "..."
 }`;
+    }
+
+    // --- Calculate fixed overhead ---
+    const fixedTokens = this._estimateTokens(systemPromptContent) + this._estimateTokens(requestContent);
+    const effectiveBudget = Math.floor(this._tokenBudget * 0.9);
+    let remainingBudget = effectiveBudget - fixedTokens;
+
+    // --- Build variable components in priority order (highest first) ---
+    // Priority: adventure context > verbatim turns > rolling summary > NPC profiles > next chapter
+    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
+
+    const variableComponents = [];
+
+    // 1. Adventure context (highest variable priority)
+    if (context) {
+      variableComponents.push({
+        key: 'adventure-context',
+        message: { role: 'system', content: `ADVENTURE CONTEXT:\n${context}` }
+      });
+    }
+
+    // 2. Verbatim conversation turns
+    const historyEntries = this._conversationHistory.slice(-5);
+    if (historyEntries.length > 0) {
+      variableComponents.push({
+        key: 'verbatim-turns',
+        messages: historyEntries.map(entry => ({ ...entry }))
+      });
+    }
+
+    // 3. Rolling summary
+    if (this._rollingSummary) {
+      variableComponents.push({
+        key: 'rolling-summary',
+        message: { role: 'system', content: `SESSION HISTORY (summarized):\n${this._rollingSummary}` }
+      });
+    }
+
+    // 4. NPC profiles
+    if (this._npcProfiles.length > 0) {
+      const npcLines = this._npcProfiles.map(profile => {
+        let line = `- **${profile.name}** (${profile.role}): ${profile.personality}. Motivation: ${profile.motivation}. [${profile.chapterLocation}]`;
+        if (profile.sessionNotes && profile.sessionNotes.length > 0) {
+          line += `\n  Session notes: ${profile.sessionNotes.join('; ')}`;
+        }
+        return line;
+      });
+      variableComponents.push({
+        key: 'npc-profiles',
+        message: { role: 'system', content: `ACTIVE NPC PROFILES (mentioned in current conversation):\n${npcLines.join('\n')}\n\nUse these profiles to inform your suggestions. Reference NPCs by name with their personality and motivation.` }
+      });
+    }
+
+    // 5. Next chapter lookahead (lowest priority)
+    if (this._nextChapterLookahead) {
+      variableComponents.push({
+        key: 'next-chapter',
+        message: { role: 'system', content: `UPCOMING CONTENT (next chapter preview - DM eyes only):\n${this._nextChapterLookahead}\n\nYou may subtly weave foreshadowing seeds from this content into your suggestions, framed as DM-only hints the DM can choose to use.` }
+      });
+    }
+
+    // --- Include components that fit within budget ---
+    const includedComponents = [];
+
+    for (const component of variableComponents) {
+      let componentTokens;
+      if (component.messages) {
+        componentTokens = component.messages.reduce((sum, m) => sum + this._estimateTokens(m.content), 0);
+      } else {
+        componentTokens = this._estimateTokens(component.message.content);
+      }
+
+      if (componentTokens <= remainingBudget) {
+        includedComponents.push(component);
+        remainingBudget -= componentTokens;
+      } else {
+        this._logger.debug(`Token budget: dropping ${component.key} (${componentTokens} tokens, ${remainingBudget} remaining)`);
+      }
+    }
+
+    // --- Assemble final messages array ---
+    const messages = [{ role: 'system', content: systemPromptContent }];
+
+    for (const component of includedComponents) {
+      if (component.messages) {
+        messages.push(...component.messages);
+      } else {
+        messages.push(component.message);
+      }
     }
 
     messages.push({ role: 'user', content: requestContent });
@@ -563,6 +645,16 @@ Respond in JSON format:
   // ---------------------------------------------------------------------------
   // Utility methods
   // ---------------------------------------------------------------------------
+
+  /**
+   * Estimates token count for a string using character/4 heuristic
+   *
+   * @param {string} text - The text to estimate tokens for
+   * @returns {number} Estimated token count
+   */
+  _estimateTokens(text) {
+    return text ? Math.ceil(text.length / 4) : 0;
+  }
 
   /**
    * Truncates context to avoid exceeding token limits
