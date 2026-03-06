@@ -159,7 +159,11 @@
       "RAGFlowModelName": "RAGFlow LLM-Modell",
       "RAGFlowModelNameHint": "Name des in RAGFlow konfigurierten LLM-Modells (leer lassen für Standard)",
       "InvalidUrlScheme": "Ungueltiges URL-Schema \"{protocol}\" — nur http/https erlaubt.",
-      "InvalidUrl": "\"{url}\" ist keine gueltige URL."
+      "InvalidUrl": "\"{url}\" ist keine gueltige URL.",
+      "ActiveAdventureJournal": "Aktives Abenteuer-Journal",
+      "ActiveAdventureJournalHint": "Das Hauptjournal, das den KI-Kontext im Live-Modus steuert",
+      "SupplementaryJournals": "Ergänzende Journale",
+      "SupplementaryJournalsHint": "Zusätzliche Journale, die Kontext neben dem Hauptabenteuer-Journal bieten"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -230,7 +234,14 @@
       "Record": "Aufnehmen",
       "Stop": "Stoppen",
       "NoAnalytics": "Keine Analysedaten verfügbar. Starten Sie eine Live-Sitzung, um Analytik zu erfassen.",
-      "ChroniclePreview": "Chronik-Vorschau"
+      "ChroniclePreview": "Chronik-Vorschau",
+      "Adventure": "Abenteuer",
+      "Supplementary": "ergänzende",
+      "ChangeJournal": "Ändern",
+      "NoJournalSelected": "Kein Abenteuer-Journal ausgewählt",
+      "JournalTooShort": "Warnung: Der Journal-Inhalt ist sehr kurz (unter 500 Zeichen). Der KI-Kontext könnte begrenzt sein.",
+      "JournalTooLong": "Warnung: Der Journal-Inhalt ist sehr groß (über 200.000 Zeichen). Erwägen Sie, weniger Seiten zu verwenden.",
+      "SelectJournalFirst": "Bitte wählen Sie zuerst ein Abenteuer-Journal aus."
     },
     "Validation": {
       "ValidatingOpenAI": "OpenAI API-Schlüssel wird überprüft...",
@@ -1069,6 +1080,20 @@
       "TopicInfo": "Informationen zu: {topic}",
       "Type": "Typ",
       "Results": "Ergebnisse:"
+    },
+    "JournalPicker": {
+      "Title": "Abenteuer-Journal auswählen",
+      "SelectAll": "Alle auswählen",
+      "DeselectAll": "Alle abwählen",
+      "SelectedCount": "Ausgewählt",
+      "Folders": "Ordner",
+      "Journals": "Journale",
+      "NoJournalsAvailable": "Keine Journale in dieser Welt verfügbar.",
+      "CollapseFolder": "Ordner einklappen",
+      "ExpandFolder": "Ordner aufklappen",
+      "Save": "Auswahl speichern",
+      "Cancel": "Abbrechen",
+      "Primary": "Primär"
     }
   }
 }

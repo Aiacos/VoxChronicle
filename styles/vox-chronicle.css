@@ -771,6 +771,31 @@ form .form-group .vox-chronicle-validate-button {
 /* Journal Picker */
 .vox-chronicle-journal-picker { padding: 12px; }
 
+/* Primary Radio — inline next to journal checkbox */
+.vox-chronicle-primary-radio {
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.vox-chronicle-primary-radio:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.vox-chronicle-primary-label {
+  font-size: 0.75em;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-left: 2px;
+}
+
+.vox-chronicle-journal-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Hidden utility — used in journal-picker folder children toggle */
 .vox-chronicle-hidden { display: none; }
 

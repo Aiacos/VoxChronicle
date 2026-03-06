@@ -159,7 +159,11 @@
       "RAGFlowModelName": "[EN] RAGFlow LLM Model",
       "RAGFlowModelNameHint": "[EN] Name of the LLM model configured in RAGFlow (leave empty for default)",
       "InvalidUrlScheme": "Esquema de URL invalido \"{protocol}\" — apenas http/https sao permitidos.",
-      "InvalidUrl": "\"{url}\" nao e uma URL valida."
+      "InvalidUrl": "\"{url}\" nao e uma URL valida.",
+      "ActiveAdventureJournal": "Diário de Aventura Ativo",
+      "ActiveAdventureJournalHint": "O diário principal que orienta o contexto de IA no modo ao vivo",
+      "SupplementaryJournals": "Diários Suplementares",
+      "SupplementaryJournalsHint": "Diários adicionais que fornecem contexto junto ao diário de aventura principal"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -230,7 +234,14 @@
       "Record": "[EN] Record",
       "Stop": "[EN] Stop",
       "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics.",
-      "ChroniclePreview": "Pré-visualização da Crônica"
+      "ChroniclePreview": "Pré-visualização da Crônica",
+      "Adventure": "Aventura",
+      "Supplementary": "suplementares",
+      "ChangeJournal": "Alterar",
+      "NoJournalSelected": "Nenhum diário de aventura selecionado",
+      "JournalTooShort": "Aviso: O conteúdo do diário é muito curto (menos de 500 caracteres). O contexto de IA pode ser limitado.",
+      "JournalTooLong": "Aviso: O conteúdo do diário é muito grande (mais de 200.000 caracteres). Considere usar menos páginas.",
+      "SelectJournalFirst": "Por favor, selecione primeiro um diário de aventura."
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
@@ -1069,6 +1080,20 @@
       "TopicInfo": "Informacoes sobre: {topic}",
       "Type": "Tipo",
       "Results": "Resultados:"
+    },
+    "JournalPicker": {
+      "Title": "Selecionar Diário de Aventura",
+      "SelectAll": "Selecionar Tudo",
+      "DeselectAll": "Desselecionar Tudo",
+      "SelectedCount": "Selecionados",
+      "Folders": "Pastas",
+      "Journals": "Diários",
+      "NoJournalsAvailable": "Nenhum diário disponível neste mundo.",
+      "CollapseFolder": "Recolher pasta",
+      "ExpandFolder": "Expandir pasta",
+      "Save": "Salvar Seleção",
+      "Cancel": "Cancelar",
+      "Primary": "Principal"
     }
   }
 }

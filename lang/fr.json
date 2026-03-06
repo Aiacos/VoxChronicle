@@ -159,7 +159,11 @@
       "RAGFlowModelName": "[EN] RAGFlow LLM Model",
       "RAGFlowModelNameHint": "[EN] Name of the LLM model configured in RAGFlow (leave empty for default)",
       "InvalidUrlScheme": "Schema d'URL invalide \"{protocol}\" — seuls http/https sont autorises.",
-      "InvalidUrl": "\"{url}\" n'est pas une URL valide."
+      "InvalidUrl": "\"{url}\" n'est pas une URL valide.",
+      "ActiveAdventureJournal": "Journal d’Aventure Actif",
+      "ActiveAdventureJournalHint": "Le journal principal qui pilote le contexte IA en mode live",
+      "SupplementaryJournals": "Journaux Supplémentaires",
+      "SupplementaryJournalsHint": "Journaux supplémentaires fournissant du contexte en plus du journal d’aventure principal"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -230,7 +234,14 @@
       "Record": "[EN] Record",
       "Stop": "[EN] Stop",
       "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics.",
-      "ChroniclePreview": "Aperçu de la Chronique"
+      "ChroniclePreview": "Aperçu de la Chronique",
+      "Adventure": "Aventure",
+      "Supplementary": "supplémentaires",
+      "ChangeJournal": "Changer",
+      "NoJournalSelected": "Aucun journal d’aventure sélectionné",
+      "JournalTooShort": "Attention : Le contenu du journal est très court (moins de 500 caractères). Le contexte IA peut être limité.",
+      "JournalTooLong": "Attention : Le contenu du journal est très volumineux (plus de 200 000 caractères). Envisagez d’utiliser moins de pages.",
+      "SelectJournalFirst": "Veuillez d’abord sélectionner un journal d’aventure."
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
@@ -1069,6 +1080,20 @@
       "TopicInfo": "Informations sur: {topic}",
       "Type": "Type",
       "Results": "Resultats:"
+    },
+    "JournalPicker": {
+      "Title": "Sélectionner le Journal d’Aventure",
+      "SelectAll": "Tout Sélectionner",
+      "DeselectAll": "Tout Désélectionner",
+      "SelectedCount": "Sélectionnés",
+      "Folders": "Dossiers",
+      "Journals": "Journaux",
+      "NoJournalsAvailable": "Aucun journal disponible dans ce monde.",
+      "CollapseFolder": "Réduire le dossier",
+      "ExpandFolder": "Développer le dossier",
+      "Save": "Enregistrer la Sélection",
+      "Cancel": "Annuler",
+      "Primary": "Principal"
     }
   }
 }

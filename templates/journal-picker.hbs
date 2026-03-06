@@ -4,6 +4,7 @@
   Handlebars template for the journal picker dialog.
   Provides a multi-select journal/folder picker with hierarchical tree view
   for selecting journals to include in session context.
+  Includes primary journal designation via radio buttons.
 
   @module vox-chronicle
   @template journal-picker
@@ -68,6 +69,13 @@
                        {{#if this.selected}}checked{{/if}} />
                 <i class="fa-solid fa-book"></i>
                 <span class="vox-chronicle-journal-name">{{this.name}}</span>
+                <input type="radio"
+                       name="vox-chronicle-primary"
+                       class="vox-chronicle-primary-radio"
+                       data-id="{{this.id}}"
+                       {{#if this.isPrimary}}checked{{/if}}
+                       {{#unless this.selected}}disabled{{/unless}} />
+                <span class="vox-chronicle-primary-label" {{#unless this.selected}}style="display:none"{{/unless}}>{{@root.i18n.primary}}</span>
               </label>
             </li>
           {{/each}}
@@ -104,7 +112,7 @@
             class="vox-chronicle-folder-toggle"
             data-folder-id="{{this.id}}"
             data-action="toggle-folder"
-            title="{{#if this.expanded}}{{i18n.collapseFolder}}{{else}}{{i18n.expandFolder}}{{/if}}">
+            title="{{#if this.expanded}}{{@root.i18n.collapseFolder}}{{else}}{{@root.i18n.expandFolder}}{{/if}}">
       <i class="fa-solid {{#if this.expanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i>
     </button>
     {{else}}
@@ -145,6 +153,13 @@
                    {{#if this.selected}}checked{{/if}} />
             <i class="fa-solid fa-book"></i>
             <span class="vox-chronicle-journal-name">{{this.name}}</span>
+            <input type="radio"
+                   name="vox-chronicle-primary"
+                   class="vox-chronicle-primary-radio"
+                   data-id="{{this.id}}"
+                   {{#if this.isPrimary}}checked{{/if}}
+                   {{#unless this.selected}}disabled{{/unless}} />
+            <span class="vox-chronicle-primary-label" {{#unless this.selected}}style="display:none"{{/unless}}>{{@root.i18n.primary}}</span>
           </label>
         </li>
       {{/each}}

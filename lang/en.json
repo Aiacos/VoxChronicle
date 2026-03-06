@@ -159,7 +159,11 @@
       "RAGFlowModelName": "RAGFlow LLM Model",
       "RAGFlowModelNameHint": "Name of the LLM model configured in RAGFlow (leave empty for default)",
       "InvalidUrlScheme": "Invalid URL scheme \"{protocol}\" — only http/https allowed.",
-      "InvalidUrl": "\"{url}\" is not a valid URL."
+      "InvalidUrl": "\"{url}\" is not a valid URL.",
+      "ActiveAdventureJournal": "Active Adventure Journal",
+      "ActiveAdventureJournalHint": "The primary journal that drives AI context in live mode",
+      "SupplementaryJournals": "Supplementary Journals",
+      "SupplementaryJournalsHint": "Additional journals providing context alongside the primary adventure journal"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -230,7 +234,14 @@
       "Record": "Record",
       "Stop": "Stop",
       "NoAnalytics": "No analytics data available. Start a live session to track analytics.",
-      "ChroniclePreview": "Chronicle Preview"
+      "ChroniclePreview": "Chronicle Preview",
+      "Adventure": "Adventure",
+      "Supplementary": "supplementary",
+      "ChangeJournal": "Change",
+      "NoJournalSelected": "No adventure journal selected",
+      "JournalTooShort": "Warning: Journal content is very short (under 500 characters). AI context may be limited.",
+      "JournalTooLong": "Warning: Journal content is very large (over 200,000 characters). Consider using fewer pages.",
+      "SelectJournalFirst": "Please select an adventure journal first."
     },
     "Validation": {
       "ValidatingOpenAI": "Validating OpenAI API key...",
@@ -1062,6 +1073,20 @@
     },
     "Error": {
       "Message": "Error: {error}"
+    },
+    "JournalPicker": {
+      "Title": "Select Adventure Journal",
+      "SelectAll": "Select All",
+      "DeselectAll": "Deselect All",
+      "SelectedCount": "Selected",
+      "Folders": "Folders",
+      "Journals": "Journals",
+      "NoJournalsAvailable": "No journals available in this world.",
+      "CollapseFolder": "Collapse folder",
+      "ExpandFolder": "Expand folder",
+      "Save": "Save Selection",
+      "Cancel": "Cancel",
+      "Primary": "Primary"
     },
     "Compendium": {
       "UnnamedEntry": "Unnamed Entry",

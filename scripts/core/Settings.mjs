@@ -638,6 +638,32 @@ class Settings {
       default: {}
     });
 
+    // ==========================================
+    // Journal Context Settings
+    // ==========================================
+
+    // Active adventure journal ID (world-wide)
+    // The primary journal that drives AI context in live mode
+    game.settings.register(MODULE_ID, 'activeAdventureJournalId', {
+      name: 'VOXCHRONICLE.Settings.ActiveAdventureJournal',
+      hint: 'VOXCHRONICLE.Settings.ActiveAdventureJournalHint',
+      scope: 'world',
+      config: false,
+      type: String,
+      default: ''
+    });
+
+    // Supplementary journal IDs (world-wide)
+    // Additional journals providing context alongside the primary adventure journal
+    game.settings.register(MODULE_ID, 'supplementaryJournalIds', {
+      name: 'VOXCHRONICLE.Settings.SupplementaryJournals',
+      hint: 'VOXCHRONICLE.Settings.SupplementaryJournalsHint',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: []
+    });
+
     logger.info('Settings registered successfully');
   }
 

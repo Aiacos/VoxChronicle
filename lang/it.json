@@ -159,7 +159,11 @@
       "RAGFlowModelName": "Modello LLM RAGFlow",
       "RAGFlowModelNameHint": "Nome del modello LLM configurato in RAGFlow (lascia vuoto per il default)",
       "InvalidUrlScheme": "Schema URL non valido \"{protocol}\" — sono consentiti solo http/https.",
-      "InvalidUrl": "\"{url}\" non e un URL valido."
+      "InvalidUrl": "\"{url}\" non e un URL valido.",
+      "ActiveAdventureJournal": "Diario Avventura Attivo",
+      "ActiveAdventureJournalHint": "Il diario principale che guida il contesto AI in modalità live",
+      "SupplementaryJournals": "Diari Supplementari",
+      "SupplementaryJournalsHint": "Diari aggiuntivi che forniscono contesto insieme al diario avventura principale"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -230,7 +234,14 @@
       "Record": "Registra",
       "Stop": "Ferma",
       "NoAnalytics": "Nessun dato analitico disponibile. Avvia una sessione live per monitorare le statistiche.",
-      "ChroniclePreview": "Anteprima Cronaca"
+      "ChroniclePreview": "Anteprima Cronaca",
+      "Adventure": "Avventura",
+      "Supplementary": "supplementari",
+      "ChangeJournal": "Cambia",
+      "NoJournalSelected": "Nessun diario avventura selezionato",
+      "JournalTooShort": "Attenzione: Il contenuto del diario è molto breve (meno di 500 caratteri). Il contesto AI potrebbe essere limitato.",
+      "JournalTooLong": "Attenzione: Il contenuto del diario è molto grande (oltre 200.000 caratteri). Considera di usare meno pagine.",
+      "SelectJournalFirst": "Seleziona prima un diario avventura."
     },
     "Validation": {
       "ValidatingOpenAI": "Validazione chiave API OpenAI...",
@@ -1069,6 +1080,20 @@
       "TopicInfo": "Informazioni su: {topic}",
       "Type": "Tipo",
       "Results": "Risultati:"
+    },
+    "JournalPicker": {
+      "Title": "Seleziona Diario Avventura",
+      "SelectAll": "Seleziona Tutto",
+      "DeselectAll": "Deseleziona Tutto",
+      "SelectedCount": "Selezionati",
+      "Folders": "Cartelle",
+      "Journals": "Diari",
+      "NoJournalsAvailable": "Nessun diario disponibile in questo mondo.",
+      "CollapseFolder": "Comprimi cartella",
+      "ExpandFolder": "Espandi cartella",
+      "Save": "Salva Selezione",
+      "Cancel": "Annulla",
+      "Primary": "Principale"
     }
   }
 }

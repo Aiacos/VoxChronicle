@@ -159,7 +159,11 @@
       "RAGFlowModelName": "[EN] RAGFlow LLM Model",
       "RAGFlowModelNameHint": "[EN] Name of the LLM model configured in RAGFlow (leave empty for default)",
       "InvalidUrlScheme": "無効なURLスキーム「{protocol}」— http/httpsのみ許可されています。",
-      "InvalidUrl": "「{url}」は有効なURLではありません。"
+      "InvalidUrl": "「{url}」は有効なURLではありません。",
+      "ActiveAdventureJournal": "アクティブ冒険ジャーナル",
+      "ActiveAdventureJournalHint": "ライブモードでAIコンテキストを駆動するメインジャーナル",
+      "SupplementaryJournals": "補助ジャーナル",
+      "SupplementaryJournalsHint": "メイン冒険ジャーナルと併せてコンテキストを提供する追加ジャーナル"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -230,7 +234,14 @@
       "Record": "[EN] Record",
       "Stop": "[EN] Stop",
       "NoAnalytics": "[EN] No analytics data available. Start a live session to track analytics.",
-      "ChroniclePreview": "クロニクルプレビュー"
+      "ChroniclePreview": "クロニクルプレビュー",
+      "Adventure": "冒険",
+      "Supplementary": "補助",
+      "ChangeJournal": "変更",
+      "NoJournalSelected": "冒険ジャーナルが選択されていません",
+      "JournalTooShort": "警告：ジャーナルの内容が非常に短いです（500文字未満）。AIコンテキストが制限される可能性があります。",
+      "JournalTooLong": "警告：ジャーナルの内容が非常に大きいです（200,000文字超）。ページ数を減らすことを検討してください。",
+      "SelectJournalFirst": "まず冒険ジャーナルを選択してください。"
     },
     "Validation": {
       "ValidatingOpenAI": "[EN] Validating OpenAI API key...",
@@ -1069,6 +1080,20 @@
       "TopicInfo": "{topic}についての情報",
       "Type": "タイプ",
       "Results": "結果："
+    },
+    "JournalPicker": {
+      "Title": "冒険ジャーナルを選択",
+      "SelectAll": "すべて選択",
+      "DeselectAll": "すべて解除",
+      "SelectedCount": "選択済み",
+      "Folders": "フォルダー",
+      "Journals": "ジャーナル",
+      "NoJournalsAvailable": "このワールドにジャーナルがありません。",
+      "CollapseFolder": "フォルダーを折りたたむ",
+      "ExpandFolder": "フォルダーを展開",
+      "Save": "選択を保存",
+      "Cancel": "キャンセル",
+      "Primary": "プライマリ"
     }
   }
 }

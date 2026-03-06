@@ -159,7 +159,11 @@
       "RAGFlowModelName": "",
       "RAGFlowModelNameHint": "",
       "InvalidUrlScheme": "",
-      "InvalidUrl": ""
+      "InvalidUrl": "",
+      "ActiveAdventureJournal": "",
+      "ActiveAdventureJournalHint": "",
+      "SupplementaryJournals": "",
+      "SupplementaryJournalsHint": ""
     },
     "Panel": {
       "Title": "",
@@ -230,7 +234,14 @@
       "Record": "",
       "Stop": "",
       "NoAnalytics": "",
-      "ChroniclePreview": ""
+      "ChroniclePreview": "",
+      "Adventure": "",
+      "Supplementary": "",
+      "ChangeJournal": "",
+      "NoJournalSelected": "",
+      "JournalTooShort": "",
+      "JournalTooLong": "",
+      "SelectJournalFirst": ""
     },
     "Validation": {
       "ValidatingOpenAI": "",
@@ -1069,6 +1080,20 @@
       "TopicInfo": "",
       "Type": "",
       "Results": ""
+    },
+    "JournalPicker": {
+      "Title": "",
+      "SelectAll": "",
+      "DeselectAll": "",
+      "SelectedCount": "",
+      "Folders": "",
+      "Journals": "",
+      "NoJournalsAvailable": "",
+      "CollapseFolder": "",
+      "ExpandFolder": "",
+      "Save": "",
+      "Cancel": "",
+      "Primary": ""
     }
   }
 }
