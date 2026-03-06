@@ -109,7 +109,11 @@ Plans:
   3. The panel's status label (IDLE / ANALYZING / LIVE) matches the actual SessionOrchestrator state at all times, including after settings changes and reinitializations
   4. AI suggestions display as scannable, structured cards with a title, 2-3 bullet points, and a source badge — not as paragraph walls
   5. Navigating between Foundry scenes during live mode updates the chapter context label in the panel within the next cycle
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 06-01-PLAN.md — OpenAI streaming (postStream) + AIAssistant streaming variant + SilenceMonitor cycle-in-flight guard
+- [ ] 06-02-PLAN.md — Status badge + suggestion card CSS/template/JS restructure + streaming DOM helpers
+- [ ] 06-03-PLAN.md — Integration wiring: streaming into orchestrator live cycle, silence guard injection, MainPanel streaming callbacks
 
 ### Phase 7: Rules Lookup Integration
 **Goal**: D&D 5e rules questions detected in the transcript trigger automatic SRD lookups that appear in the panel alongside suggestions, without blocking or delaying the main suggestion cycle
@@ -145,6 +149,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. AI Knowledge Depth | 1/2 | In Progress|  |
 | 4. Session Reliability | 0/3 | Planning complete | - |
 | 5. Rolling Context Management | 3/3 | Complete   | 2026-03-06 |
-| 6. State Machine and UI Accuracy | 0/TBD | Not started | - |
+| 6. State Machine and UI Accuracy | 0/3 | Planning complete | - |
 | 7. Rules Lookup Integration | 0/TBD | Not started | - |
 | 8. Advanced Suggestion Intelligence | 0/TBD | Not started | - |
