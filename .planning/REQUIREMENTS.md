@@ -44,7 +44,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### UI & Polish
 
 - [x] **UI-01**: All 214 un-namespaced CSS classes are prefixed with `vox-chronicle-` to prevent module conflicts
-- [ ] **UI-02**: Suggestions display as glanceable, scannable content (not paragraph walls) in the floating panel
+- [x] **UI-02**: Suggestions display as glanceable, scannable content (not paragraph walls) in the floating panel
 
 ## v2 Requirements
 
@@ -108,7 +108,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-04 | Phase 4 | Complete |
 | SESS-05 | Phase 4 | Complete |
 | UI-01 | Phase 1 | Complete |
-| UI-02 | Phase 6 | Pending |
+| UI-02 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 24 total

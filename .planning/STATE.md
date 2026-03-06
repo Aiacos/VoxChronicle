@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 context gathered
+status: in_progress
+stopped_at: Completed 06-02-PLAN.md
 last_updated: "2026-03-06T12:50:28.065Z"
-last_activity: "2026-03-06 — Completed 05-03 (Integration wiring: orchestrator, cost tracking, UI badge)"
+last_activity: "2026-03-06 — Completed 06-02 (Status badge, suggestion cards, streaming DOM helpers)"
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 14
-  completed_plans: 14
-  percent: 100
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 5 of 8 (Rolling Context Management)
-Plan: 3 of 3 in current phase
-Status: Completed
-Last activity: 2026-03-06 — Completed 05-03 (Integration wiring: orchestrator, cost tracking, UI badge)
+Phase: 6 of 8 (State Machine & UI Accuracy)
+Plan: 2 of 3 in current phase
+Status: In Progress
+Last activity: 2026-03-06 — Completed 06-02 (Status badge, suggestion cards, streaming DOM helpers)
 
-Progress: [████████████] 100%
+Progress: [█████████████░░] 88%
 
 ## Performance Metrics
 
@@ -109,6 +109,10 @@ Recent decisions affecting current work:
 - [05-03]: Debug prompt dump in AIAssistant.analyzeContext() where messages are built (not orchestrator)
 - [05-03]: Summary badge placed above cost footer with subtle informational styling
 - [05-03]: Fallback chain for summarizedTurnCount: VoxChronicle.aiAssistant then orchestrator._aiAssistant
+- [06-02]: 3-state status badge mapping: idle (gray), live (green), analyzing (amber+pulse) covers all DM-visible states
+- [06-02]: Type badge colors: narration=blue, dialogue=green, action=orange, reference=purple
+- [06-02]: Bullet limit of 3 max per card for glanceability
+- [06-02]: Streaming card state stored on instance properties for re-render recovery
 
 ### Pending Todos
 
@@ -122,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T12:50:28.063Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-state-machine-ui-accuracy/06-CONTEXT.md
+Last session: 2026-03-06T14:26:00Z
+Stopped at: Completed 06-02-PLAN.md
+Resume file: .planning/phases/06-state-machine-ui-accuracy/06-03-PLAN.md
