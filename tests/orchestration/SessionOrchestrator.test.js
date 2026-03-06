@@ -1025,13 +1025,15 @@ describe('SessionOrchestrator', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle stop failure', async () => {
+    it('should handle stop failure gracefully (always reach IDLE)', async () => {
       await orchestrator.startLiveMode();
       services.audioRecorder.stopRecording.mockRejectedValue(new Error('Stop error'));
-      const onError = vi.fn();
-      orchestrator.setCallbacks({ onError });
-      await expect(orchestrator.stopLiveMode()).rejects.toThrow('Stop error');
-      expect(onError).toHaveBeenCalledWith(expect.any(Error), 'stopLiveMode');
+
+      // New behavior: stopLiveMode never throws -- it always reaches IDLE
+      const result = await orchestrator.stopLiveMode();
+      expect(orchestrator.state).toBe(SessionState.IDLE);
+      expect(orchestrator._isStopping).toBe(false);
+      expect(result).toBeTruthy();
     });
 
     it('should prevent concurrent stopLiveMode calls (race condition guard)', async () => {
@@ -2546,14 +2548,15 @@ describe('SessionOrchestrator', () => {
       it('should set _currentCyclePromise during execution', async () => {
         await orchestrator.startLiveMode({ batchDuration: 999999 });
 
-        let promiseSetDuringCycle = false;
-        services.audioRecorder.getLatestChunk.mockImplementation(async () => {
-          promiseSetDuringCycle = orchestrator._currentCyclePromise != null;
-          return null;
-        });
+        // After _liveCycle starts, _currentCyclePromise should be set
+        // We verify by starting the cycle and checking before it completes
+        const cyclePromise = orchestrator._liveCycle();
 
-        await orchestrator._liveCycle();
-        expect(promiseSetDuringCycle).toBe(true);
+        // _currentCyclePromise should be set synchronously after _liveCycle is called
+        // (before the first await inside the IIFE)
+        expect(orchestrator._currentCyclePromise).not.toBeNull();
+
+        await cyclePromise;
       });
 
       it('should clear _currentCyclePromise after cycle completes', async () => {

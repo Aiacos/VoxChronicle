@@ -13,6 +13,16 @@ import { EntityProcessor } from './EntityProcessor.mjs';
 import { ImageProcessor } from './ImageProcessor.mjs';
 import { KankaPublisher } from './KankaPublisher.mjs';
 import { NPCProfileExtractor } from '../narrator/NPCProfileExtractor.mjs';
+import { CostTracker } from './CostTracker.mjs';
+
+/** Maximum segments in _liveTranscript rolling window */
+const MAX_LIVE_SEGMENTS = 100;
+
+/** Maximum cycle durations to track for self-monitoring */
+const MAX_CYCLE_DURATIONS = 20;
+
+/** Shutdown deadline in milliseconds */
+const SHUTDOWN_DEADLINE_MS = 5000;
 
 /** Session workflow states */
 const SessionState = {
@@ -98,6 +108,20 @@ class SessionOrchestrator {
   _lastOffTrackStatus = null;
   _transcriptionConfig = null;
   _transcriptionProcessor = null;
+
+  // Lifecycle hardening (Phase 04-02)
+  _costTracker = null;
+  _shutdownController = null;
+  _registeredHooks = new Set();
+  _currentCyclePromise = null;
+  _fullTranscriptText = '';
+  _discardedSegmentCount = 0;
+  _cycleDurations = [];
+  _sessionStartTime = null;
+  _transcriptionHealth = 'healthy';
+  _aiSuggestionHealth = 'healthy';
+  _transcriptionConsecutiveErrors = 0;
+  _aiSuggestionsPaused = false;
   _entityProcessor = null;
   _imageProcessor = null;
   _kankaPublisher = null;
@@ -826,6 +850,20 @@ class SessionOrchestrator {
     this._aiAnalysisErrorNotified = false;
     this._consecutiveLiveCycleErrors = 0;
 
+    // Lifecycle hardening initializations (clean slate guarantee)
+    this._costTracker = new CostTracker();
+    this._shutdownController = new AbortController();
+    this._registeredHooks = new Set();
+    this._currentCyclePromise = null;
+    this._fullTranscriptText = '';
+    this._discardedSegmentCount = 0;
+    this._cycleDurations = [];
+    this._sessionStartTime = Date.now();
+    this._transcriptionHealth = 'healthy';
+    this._aiSuggestionHealth = 'healthy';
+    this._transcriptionConsecutiveErrors = 0;
+    this._aiSuggestionsPaused = false;
+
     if (!this._currentSession) {
       this._currentSession = this._createSessionObject({
         title: options.title || `Live Session ${new Date().toLocaleDateString()}`,
@@ -859,7 +897,8 @@ class SessionOrchestrator {
         }
       };
       if (typeof Hooks !== 'undefined') {
-        Hooks.on('canvasReady', this._boundOnSceneChange);
+        const hookId = Hooks.on('canvasReady', this._boundOnSceneChange);
+        this._registeredHooks.add({ name: 'canvasReady', id: hookId });
         this._logger.debug('Registered canvasReady hook for chapter auto-update');
       }
 
@@ -1220,62 +1259,153 @@ class SessionOrchestrator {
     this._liveMode = false;
     const stopStart = Date.now();
 
+    // Clear cycle timer immediately
     if (this._liveCycleTimer) {
       clearTimeout(this._liveCycleTimer);
       this._liveCycleTimer = null;
     }
 
+    // Create shutdown controller if not already created
+    if (!this._shutdownController) {
+      this._shutdownController = new AbortController();
+    }
+
+    let forceAborted = false;
+
     try {
-      // Unregister scene change hook
-      if (this._boundOnSceneChange && typeof Hooks !== 'undefined') {
-        Hooks.off('canvasReady', this._boundOnSceneChange);
-        this._logger.debug('Unregistered canvasReady hook');
-      }
-      this._boundOnSceneChange = null;
+      // Race: wait for current cycle OR 5-second deadline
+      const currentCycle = this._currentCyclePromise || Promise.resolve();
+      const deadline = new Promise(resolve => setTimeout(() => {
+        this._shutdownController.abort();
+        forceAborted = true;
+        resolve('timeout');
+      }, SHUTDOWN_DEADLINE_MS));
 
-      // Stop silence monitoring
-      if (this._aiAssistant) {
-        this._aiAssistant.stopSilenceMonitoring();
-        this._logger.debug('Silence monitoring stopped');
-      }
+      await Promise.race([currentCycle, deadline]);
 
-      // End analytics session before stopping recording
-      if (this._sessionAnalytics) {
-        this._sessionAnalytics.endSession();
-        this._logger.debug('Analytics session ended');
-      }
-
-      // Clean up NPC extractor
-      if (this._npcExtractor) {
-        this._npcExtractor.clear();
-        this._npcExtractor = null;
-      }
-
-      const audioBlob = await this._audioRecorder.stopRecording();
+      // Assemble final transcript
       if (this._currentSession) {
         this._currentSession.endTime = Date.now();
-        this._currentSession.audioBlob = audioBlob;
-        if (this._liveTranscript.length > 0) {
+
+        // Use _fullTranscriptText for the complete transcript text (not truncated by rolling window)
+        const transcriptText = this._fullTranscriptText || this._liveTranscript.map(s => s.text).join(' ');
+        if (this._liveTranscript.length > 0 || this._fullTranscriptText) {
           this._currentSession.transcript = {
-            text: this._liveTranscript.map(s => s.text).join(' '),
+            text: transcriptText,
             segments: this._liveTranscript,
             language: this._currentSession.language
           };
         }
-      }
 
-      this._updateState(SessionState.IDLE);
-      const segmentCount = this._liveTranscript.length;
-      const duration = this._currentSession ? this._getSessionDuration() : 0;
-      const stopMs = Date.now() - stopStart;
-      this._logger.log(`Live mode stopped (${segmentCount} segments, ${duration}s duration, shutdown: ${stopMs}ms)`);
-      return this._currentSession;
+        // Graceful audio stop (only if not force-aborted)
+        if (!forceAborted) {
+          try {
+            const audioBlob = await this._audioRecorder.stopRecording();
+            this._currentSession.audioBlob = audioBlob;
+          } catch (audioErr) {
+            this._logger.warn('Audio stop failed, using cancel:', audioErr.message);
+            this._audioRecorder?.cancel?.();
+          }
+        } else {
+          // Force-abort: use cancel() per research pitfall 5
+          this._audioRecorder?.cancel?.();
+        }
+      }
     } catch (error) {
-      this._logger.error('Failed to stop live mode:', error);
-      this._handleError(error, 'stopLiveMode');
-      throw error;
-    } finally {
-      this._isStopping = false;
+      this._logger.error('Error during stop race:', error);
+      this._audioRecorder?.cancel?.();
+    }
+
+    // Always teardown and reach IDLE
+    try {
+      await this._fullTeardown();
+    } catch (teardownErr) {
+      this._logger.error('Teardown error:', teardownErr);
+    }
+
+    // Build summary notification
+    const duration = this._sessionStartTime
+      ? Math.round((Date.now() - this._sessionStartTime) / 60000)
+      : 0;
+    const suggestionCount = this._lastAISuggestions?.length || 0;
+    const cost = this._costTracker?.getTotalCost()?.toFixed(2) || '0.00';
+    const summaryMsg = globalThis.game?.i18n?.format('VOXCHRONICLE.Live.SessionSummary', {
+      duration: String(duration),
+      suggestions: String(suggestionCount),
+      cost
+    }) || `Session ended: ${duration}min, ${suggestionCount} suggestions, $${cost}`;
+    globalThis.ui?.notifications?.info(summaryMsg);
+
+    this._updateState(SessionState.IDLE);
+    const stopMs = Date.now() - stopStart;
+    this._logger.log(`Live mode stopped (shutdown: ${stopMs}ms, force-aborted: ${forceAborted})`);
+    this._isStopping = false;
+    return this._currentSession;
+  }
+
+  /**
+   * Full teardown of all live mode state, hooks, timers, and controllers.
+   * Called from stopLiveMode() and reset(). Safe to call multiple times.
+   * @private
+   */
+  async _fullTeardown() {
+    // Unregister all tracked Foundry hooks
+    if (this._registeredHooks?.size > 0 && typeof Hooks !== 'undefined') {
+      for (const hook of this._registeredHooks) {
+        try {
+          Hooks.off(hook.name, hook.id);
+        } catch (e) {
+          this._logger.debug(`Failed to unregister hook ${hook.name}:`, e.message);
+        }
+      }
+    }
+    this._registeredHooks = new Set();
+
+    // Legacy hook cleanup (backward compat)
+    if (this._boundOnSceneChange && typeof Hooks !== 'undefined') {
+      Hooks.off('canvasReady', this._boundOnSceneChange);
+    }
+    this._boundOnSceneChange = null;
+
+    // Abort shutdown controller
+    if (this._shutdownController && !this._shutdownController.signal.aborted) {
+      this._shutdownController.abort();
+    }
+
+    // Stop silence monitoring
+    if (this._aiAssistant) {
+      this._aiAssistant.stopSilenceMonitoring?.();
+    }
+
+    // End analytics session
+    if (this._sessionAnalytics) {
+      this._sessionAnalytics.endSession?.();
+    }
+
+    // Clean up NPC extractor
+    if (this._npcExtractor) {
+      this._npcExtractor.clear?.();
+      this._npcExtractor = null;
+    }
+
+    // Reset state
+    this._liveTranscript = [];
+    this._fullTranscriptText = '';
+    this._discardedSegmentCount = 0;
+    this._currentCyclePromise = null;
+    this._cycleDurations = [];
+    this._transcriptionHealth = 'healthy';
+    this._aiSuggestionHealth = 'healthy';
+    this._transcriptionConsecutiveErrors = 0;
+    this._aiSuggestionsPaused = false;
+    this._silenceStartTime = null;
+    this._lastAISuggestions = null;
+    this._lastOffTrackStatus = null;
+    this._consecutiveLiveCycleErrors = 0;
+    this._aiAnalysisErrorNotified = false;
+
+    if (this._costTracker) {
+      this._costTracker.reset();
     }
   }
 
@@ -1297,116 +1427,187 @@ class SessionOrchestrator {
 
     const cycleStart = Date.now();
 
-    try {
-      this._updateState(SessionState.LIVE_TRANSCRIBING);
+    // Store promise reference before any async work (pitfall 2)
+    this._currentCyclePromise = (async () => {
+      try {
+        this._updateState(SessionState.LIVE_TRANSCRIBING);
 
-      const audioChunk = this._audioRecorder.getLatestChunk
-        ? await this._audioRecorder.getLatestChunk()
-        : null;
+        const audioChunk = this._audioRecorder.getLatestChunk
+          ? await this._audioRecorder.getLatestChunk()
+          : null;
 
-      // Check if live mode was stopped while we were getting the audio chunk
-      if (!this._liveMode) {
-        this._logger.debug('Live mode stopped during audio capture, aborting cycle');
-        return;
-      }
-
-      if (audioChunk && audioChunk.size > 0) {
-        this._silenceStartTime = null;
-        const chunkSizeMB = (audioChunk.size / (1024 * 1024)).toFixed(2);
-        this._logger.log(`Live cycle: got audio chunk ${chunkSizeMB}MB, transcribing...`);
-
-        const transcribeStart = Date.now();
-        const result = await this._transcriptionService.transcribe(audioChunk, {
-          language: this._currentSession?.language,
-          speakerMap: this._currentSession?.speakerMap
-        });
-
-        // Check again after async transcription — session may have been stopped
+        // Check if live mode was stopped while we were getting the audio chunk
         if (!this._liveMode) {
-          this._logger.debug('Live mode stopped during transcription, discarding result');
+          this._logger.debug('Live mode stopped during audio capture, aborting cycle');
           return;
         }
 
-        if (result?.segments?.length > 0) {
-          this._consecutiveLiveCycleErrors = 0;
-          const transcribeMs = Date.now() - transcribeStart;
-          
-          // Offset segment timestamps based on existing transcript duration
-          // Each chunk starts at 0.0, so we shift it to maintain chronological order
-          const offset = this._liveTranscript.length > 0 
-            ? this._liveTranscript[this._liveTranscript.length - 1].end 
-            : 0;
+        if (audioChunk && audioChunk.size > 0) {
+          this._silenceStartTime = null;
+          const chunkSizeMB = (audioChunk.size / (1024 * 1024)).toFixed(2);
+          this._logger.log(`Live cycle: got audio chunk ${chunkSizeMB}MB, transcribing...`);
 
-          const offsetSegments = result.segments.map(s => ({
-            ...s,
-            start: s.start + offset,
-            end: s.end + offset
-          }));
+          const transcribeStart = Date.now();
+          const result = await this._transcriptionService.transcribe(audioChunk, {
+            language: this._currentSession?.language,
+            speakerMap: this._currentSession?.speakerMap,
+            signal: this._shutdownController?.signal
+          });
 
-          // Full array needed at stopLiveMode for final transcript; AI context uses text-level windowing
-          this._liveTranscript.push(...offsetSegments);
-          this._silenceStartTime = null; // Reset silence since we got speech
+          // Track transcription cost (billed per audio minute)
+          this._costTracker?.addTranscriptionMinutes(this._liveBatchDuration / 1000 / 60);
 
-          // Reset silence detector timer since we got speech
-          if (this._aiAssistant) {
-            this._aiAssistant.recordActivityForSilenceDetection();
-          }
-
-          if (this._sessionAnalytics) {
-            for (const segment of offsetSegments) {
-              this._sessionAnalytics.addSegment(segment);
-            }
-          }
-
-          if (this._sceneDetector) {
-            this._sceneDetector.detectSceneTransition(result.text || '');
-          }
-
-          this._updateState(SessionState.LIVE_ANALYZING);
-          await this._runAIAnalysis(result);
-
-          // Check after async AI analysis — session may have been stopped
+          // Check again after async transcription — session may have been stopped
           if (!this._liveMode) {
-            this._logger.debug('Live mode stopped during AI analysis, ending cycle');
+            this._logger.debug('Live mode stopped during transcription, discarding result');
             return;
           }
+
+          if (result?.segments?.length > 0) {
+            this._consecutiveLiveCycleErrors = 0;
+
+            // Auto-recovery: successful transcription resets health to green
+            this._transcriptionConsecutiveErrors = 0;
+            this._transcriptionHealth = 'healthy';
+
+            // Offset segment timestamps based on existing transcript duration
+            const offset = this._liveTranscript.length > 0
+              ? this._liveTranscript[this._liveTranscript.length - 1].end
+              : 0;
+
+            const offsetSegments = result.segments.map(s => ({
+              ...s,
+              start: s.start + offset,
+              end: s.end + offset
+            }));
+
+            // Push new segments
+            this._liveTranscript.push(...offsetSegments);
+            this._silenceStartTime = null;
+
+            // Append to full transcript accumulator (append-only, never truncated)
+            const newText = offsetSegments.map(s => s.text).join(' ');
+            this._fullTranscriptText += (this._fullTranscriptText ? ' ' : '') + newText;
+
+            // Apply rolling window (keep last MAX_LIVE_SEGMENTS)
+            if (this._liveTranscript.length > MAX_LIVE_SEGMENTS) {
+              const excess = this._liveTranscript.length - MAX_LIVE_SEGMENTS;
+              this._discardedSegmentCount += excess;
+              this._liveTranscript = this._liveTranscript.slice(-MAX_LIVE_SEGMENTS);
+            }
+
+            // Reset silence detector timer since we got speech
+            if (this._aiAssistant) {
+              this._aiAssistant.recordActivityForSilenceDetection();
+            }
+
+            if (this._sessionAnalytics) {
+              for (const segment of offsetSegments) {
+                this._sessionAnalytics.addSegment(segment);
+              }
+            }
+
+            if (this._sceneDetector) {
+              this._sceneDetector.detectSceneTransition(result.text || '');
+            }
+
+            // Check cost cap before AI analysis
+            const costCap = this._getCostCap();
+            if (this._costTracker?.isCapExceeded(costCap)) {
+              if (!this._aiSuggestionsPaused) {
+                this._aiSuggestionsPaused = true;
+                this._logger.warn(`Cost cap exceeded ($${costCap}). AI suggestions paused.`);
+              }
+            }
+
+            // Run AI analysis unless suggestions are paused
+            if (!this._aiSuggestionsPaused) {
+              this._updateState(SessionState.LIVE_ANALYZING);
+              await this._runAIAnalysis(result);
+
+              // Update AI suggestion health on success
+              this._aiSuggestionHealth = 'healthy';
+            }
+
+            // Check after async AI analysis — session may have been stopped
+            if (!this._liveMode) {
+              this._logger.debug('Live mode stopped during AI analysis, ending cycle');
+              return;
+            }
+          } else {
+            this._logger.debug('Transcription returned no segments');
+          }
         } else {
-          this._logger.debug('Transcription returned no segments');
+          this._logger.debug('No audio data in this cycle (silence or empty chunk)');
+          this._handleSilence();
         }
-      } else {
-        this._logger.debug('No audio data in this cycle (silence or empty chunk)');
-        this._handleSilence();
-      }
-    } catch (error) {
-      this._consecutiveLiveCycleErrors++;
-      this._logger.error('Live cycle error:', error.message);
-      if (this._currentSession) {
-        this._currentSession.errors.push({
-          stage: 'live_cycle',
-          error: error.message,
-          timestamp: Date.now()
-        });
-      }
-      if (this._callbacks.onError) {
-        this._callbacks.onError(error, 'live_cycle');
-      }
-      if (this._consecutiveLiveCycleErrors === 3) {
-        ui?.notifications?.warn(
-          game.i18n?.localize('VOXCHRONICLE.Errors.LiveCycleRepeatedFailures') ||
-          'VoxChronicle: Live transcription is experiencing repeated errors. Check your API key and connection.'
-        );
-      }
-    } finally {
-      // Always reschedule and restore state if live mode is still active.
-      // This MUST be in finally so errors (e.g. getLatestChunk throwing)
-      // don't silently kill the live cycle.
-      if (this._liveMode) {
+      } catch (error) {
+        this._consecutiveLiveCycleErrors++;
+
+        // Update transcription health based on consecutive errors
+        this._transcriptionConsecutiveErrors++;
+        if (this._transcriptionConsecutiveErrors >= 5) {
+          this._transcriptionHealth = 'down';
+        } else if (this._transcriptionConsecutiveErrors >= 2) {
+          this._transcriptionHealth = 'degraded';
+        }
+
+        this._logger.error('Live cycle error:', error.message);
+        if (this._currentSession) {
+          this._currentSession.errors.push({
+            stage: 'live_cycle',
+            error: error.message,
+            timestamp: Date.now()
+          });
+        }
+        if (this._callbacks.onError) {
+          this._callbacks.onError(error, 'live_cycle');
+        }
+        if (this._consecutiveLiveCycleErrors === 3) {
+          ui?.notifications?.warn(
+            game.i18n?.localize('VOXCHRONICLE.Errors.LiveCycleRepeatedFailures') ||
+            'VoxChronicle: Live transcription is experiencing repeated errors. Check your API key and connection.'
+          );
+        }
+      } finally {
+        // Self-monitoring: record cycle duration
         const cycleDuration = Date.now() - cycleStart;
-        this._logger.debug(`Live cycle completed in ${cycleDuration}ms`);
-        this._updateState(SessionState.LIVE_LISTENING);
-        this._scheduleLiveCycle();
+        this._cycleDurations.push(cycleDuration);
+        if (this._cycleDurations.length > MAX_CYCLE_DURATIONS) {
+          this._cycleDurations = this._cycleDurations.slice(-MAX_CYCLE_DURATIONS);
+        }
+
+        // Warn if average cycle duration exceeds 2x baseline
+        if (this._cycleDurations.length >= 5) {
+          const avgDuration = this._cycleDurations.reduce((a, b) => a + b, 0) / this._cycleDurations.length;
+          const baseline = this._liveBatchDuration; // ~10-15s default
+          if (avgDuration > baseline * 2) {
+            this._logger.warn(`Self-monitoring: avg cycle duration ${Math.round(avgDuration)}ms exceeds 2x baseline (${baseline}ms)`);
+          }
+        }
+
+        // Memory monitoring (Chrome only)
+        if (typeof performance !== 'undefined' && performance.memory?.usedJSHeapSize) {
+          const heapMB = performance.memory.usedJSHeapSize / (1024 * 1024);
+          if (heapMB > 500) {
+            this._logger.warn(`Self-monitoring: JS heap ${Math.round(heapMB)}MB exceeds 500MB threshold`);
+          }
+        }
+
+        // Always reschedule and restore state if live mode is still active.
+        if (this._liveMode) {
+          this._logger.debug(`Live cycle completed in ${cycleDuration}ms`);
+          this._updateState(SessionState.LIVE_LISTENING);
+          this._scheduleLiveCycle();
+        }
+
+        // Clear promise reference
+        this._currentCyclePromise = null;
       }
-    }
+    })();
+
+    // Await the cycle (callers can also race against _currentCyclePromise)
+    await this._currentCyclePromise;
   }
 
   /**
@@ -1591,6 +1792,38 @@ class SessionOrchestrator {
    */
   getCurrentChapter() {
     return this._chapterTracker?.getCurrentChapter?.() || null;
+  }
+
+  /**
+   * Get health status for transcription and AI suggestion services
+   * @returns {{transcription: string, aiSuggestions: string}} Health statuses ('healthy'|'degraded'|'down')
+   */
+  getServiceHealth() {
+    return {
+      transcription: this._transcriptionHealth,
+      aiSuggestions: this._aiSuggestionHealth
+    };
+  }
+
+  /**
+   * Get cost tracking data for UI display
+   * @returns {object|null} Token summary from CostTracker, or null if unavailable
+   */
+  getCostData() {
+    return this._costTracker?.getTokenSummary() ?? null;
+  }
+
+  /**
+   * Get the session cost cap from Foundry settings
+   * @returns {number} Cost cap in dollars (0 = disabled)
+   * @private
+   */
+  _getCostCap() {
+    try {
+      return globalThis.game?.settings?.get(MODULE_ID, 'sessionCostCap') || 5;
+    } catch (e) {
+      return 5; // Default $5 cap
+    }
   }
 
   getSessionSummary() {
