@@ -93,8 +93,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._streamingAccumulatedText = '';
     this._streamingActiveType = null;
 
-    // Rules card state (persists across re-renders)
+    // Rules card state (persists across re-renders, cleared on session end via onStateChange)
     this._rulesCards = [];
+    this._pendingRulesCards = [];
     this._rulesInputValue = '';
     this._rulesDismissTimeouts = [];
 
@@ -381,6 +382,16 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     }
 
+    // Recover rules cards after DOM replacement (same pattern as streaming recovery)
+    if (this._rulesCards?.length) {
+      const savedCards = this._rulesCards;
+      this._rulesCards = [];
+      for (const { data } of savedCards) {
+        // Re-create card from data; skip synthesis since it already resolved/rejected
+        this._handleRulesCard({ ...data, synthesisPromise: null });
+      }
+    }
+
     // Rules input wiring — persistent input always available
     const rulesInput = this.element?.querySelector('.vox-chronicle-rules-input__field');
     if (rulesInput) {
@@ -388,9 +399,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       rulesInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && e.target.value.trim()) {
           const query = e.target.value.trim();
+          if (!this._orchestrator?.handleManualRulesQuery) {
+            this._logger.warn('Rules query submitted but orchestrator is not available');
+            return;
+          }
           e.target.value = '';
           this._rulesInputValue = '';
-          this._orchestrator?.handleManualRulesQuery?.(query);
+          this._orchestrator.handleManualRulesQuery(query);
         }
       }, { signal });
       rulesInput.addEventListener('input', (e) => {
@@ -501,9 +516,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._stopRealtimeUpdates();
     this.#listenerController?.abort();
     this._debouncedRender?.cancel?.();
-    // Clean up rules auto-dismiss timeouts
+    // Clean up rules state
     for (const t of this._rulesDismissTimeouts || []) clearTimeout(t);
     this._rulesDismissTimeouts = [];
+    this._rulesCards = [];
+    this._pendingRulesCards = [];
     return super.close(options);
   }
 
@@ -1278,13 +1295,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     container.appendChild(card);
 
-    // Store for re-render persistence
-    this._rulesCards.push({ data, element: card });
+    this._rulesCards.push({ data });
 
     // Two-phase update: when synthesis resolves, update card in-place
     if (data.synthesisPromise) {
       data.synthesisPromise.then(synthesis => {
-        if (!this.element) return; // Panel closed
+        if (!this.element || !card.isConnected) return; // Panel closed or card detached by re-render
 
         // Update card content with AI answer
         const content = card.querySelector('.vox-chronicle-suggestion__content');
@@ -1318,11 +1334,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         if (synthesis?.usage) {
           this._orchestrator?._costTracker?.addUsage?.('gpt-4o', synthesis.usage);
         }
-      }).catch(() => {
-        // Remove spinner, keep compendium content as fallback
+      }).catch((err) => {
+        this._logger.warn('Rules synthesis failed:', err.message);
+        if (!card.isConnected) return;
         card.classList.remove('vox-chronicle-suggestion--refining');
         const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
-        if (refiningEl) refiningEl.remove();
+        if (refiningEl) {
+          refiningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Synthesis unavailable'}`;
+          refiningEl.classList.add('vox-chronicle-suggestion__synthesis-failed');
+        }
       });
     }
   }

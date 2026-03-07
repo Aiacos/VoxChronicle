@@ -100,7 +100,10 @@ export class RulesLookupService {
     }
 
     // Step 5: Phase 2 — create synthesis promise (NOT awaited)
-    const synthesisPromise = this._synthesize(question, compendiumResults, { signal });
+    // Skip synthesis when no compendium results — avoids misleading "Refining..." spinner
+    const synthesisPromise = (compendiumResults && compendiumResults.length > 0)
+      ? this._synthesize(question, compendiumResults, { signal })
+      : null;
 
     // Step 6: Set cooldown (unless skipCooldown)
     if (!skipCooldown) {
@@ -151,7 +154,10 @@ export class RulesLookupService {
       max_tokens: 300
     }, { signal });
 
-    const answer = response.choices[0].message.content;
+    const answer = response?.choices?.[0]?.message?.content;
+    if (!answer) {
+      throw new Error('OpenAI returned an empty or filtered response for rules synthesis');
+    }
 
     // Extract citations from compendium results
     const citations = (compendiumResults || [])

@@ -1483,7 +1483,7 @@ class AIAssistant {
           };
         }
       } catch (err) {
-        this._logger.debug('RulesReference delegation failed, falling back:', err.message);
+        this._logger.warn('RulesReference delegation failed, falling back to regex:', err.message);
       }
     }
 

@@ -570,6 +570,7 @@ class VoxChronicle {
         sceneDetector: !!this.sceneDetector,
         aiAssistant: !!this.aiAssistant,
         rulesReference: !!this.rulesReference,
+        rulesLookupService: !!this.rulesLookupService,
         sessionAnalytics: !!this.sessionAnalytics,
         // RAG services
         ragProvider: !!this.ragProvider,

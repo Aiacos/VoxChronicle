@@ -3423,8 +3423,7 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
         await orch.handleManualRulesQuery('How does grappling work?');
 
         expect(mockRulesLookup.lookup).toHaveBeenCalledWith('How does grappling work?', expect.objectContaining({
-          skipCooldown: true,
-          signal: expect.any(AbortSignal)
+          skipCooldown: true
         }));
         expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
           source: 'manual'

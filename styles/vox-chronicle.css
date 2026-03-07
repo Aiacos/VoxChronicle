@@ -1059,6 +1059,18 @@ form .form-group .vox-chronicle-validate-button {
 }
 
 /* Refining indicator */
+.vox-chronicle-suggestion__excerpt {
+  font-size: 0.85em;
+  opacity: 0.7;
+  font-style: italic;
+  margin: 2px 0;
+}
+
+.vox-chronicle-suggestion__synthesis-failed {
+  color: #e8a040;
+  font-style: italic;
+}
+
 .vox-chronicle-suggestion__refining {
   display: flex;
   align-items: center;

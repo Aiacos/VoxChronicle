@@ -60,7 +60,8 @@ const {
   const mockSceneDetector = vi.fn().mockImplementation(() => ({}));
   const mockAIAssistantInstance = {
     setRAGProvider: vi.fn(),
-    setSilenceDetector: vi.fn()
+    setSilenceDetector: vi.fn(),
+    setRulesReference: vi.fn()
   };
   const mockAIAssistant = vi.fn().mockImplementation(() => mockAIAssistantInstance);
   const mockRulesReference = vi.fn().mockImplementation(() => ({}));
@@ -244,6 +245,7 @@ describe('VoxChronicle', () => {
     mockSceneDetector.mockImplementation(() => ({}));
     mockAIAssistantInstance.setRAGProvider = vi.fn();
     mockAIAssistantInstance.setSilenceDetector = vi.fn();
+    mockAIAssistantInstance.setRulesReference = vi.fn();
     mockAIAssistant.mockImplementation(() => mockAIAssistantInstance);
     mockRulesReference.mockImplementation(() => ({}));
     mockSessionAnalytics.mockImplementation(() => ({}));

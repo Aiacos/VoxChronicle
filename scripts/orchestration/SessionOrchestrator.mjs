@@ -721,8 +721,9 @@ class SessionOrchestrator {
     if (services.sceneDetector) this._sceneDetector = services.sceneDetector;
     if (services.sessionAnalytics) this._sessionAnalytics = services.sessionAnalytics;
     if (services.journalParser) this._journalParser = services.journalParser;
-    if (services.rulesReference) this._rulesReference = services.rulesReference;
-    if (services.rulesLookupService) this._rulesLookupService = services.rulesLookupService;
+    // Rules services support explicit null clearing (for when rulesDetection is disabled)
+    if (Object.hasOwn(services, 'rulesReference')) this._rulesReference = services.rulesReference;
+    if (Object.hasOwn(services, 'rulesLookupService')) this._rulesLookupService = services.rulesLookupService;
     this._logger.debug('Narrator services connected');
   }
 
@@ -1429,9 +1430,8 @@ class SessionOrchestrator {
       this._npcExtractor = null;
     }
 
-    // Clean up rules lookup references
-    this._rulesLookupService = null;
-    this._rulesReference = null;
+    // Rules services are stateless — keep them for reuse across sessions.
+    // Cooldown state is managed internally by RulesLookupService.
 
     // Reset state
     this._liveTranscript = [];
@@ -1723,34 +1723,38 @@ class SessionOrchestrator {
       this._logger.log(`Running AI analysis (context: ${contextText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
 
       // Fire-and-forget rules lookup (independent of suggestion cycle)
-      if (this._rulesReference && this._rulesLookupService) {
-        const detection = this._rulesReference.detectRulesQuestion(contextText);
-        if (detection?.isRulesQuestion && detection.extractedTopic) {
-          const lookupPromise = this._rulesLookupService.lookup(detection.extractedTopic, {
-            signal: this._shutdownController?.signal
-          });
-          lookupPromise.then(result => {
-            if (result && this._liveMode && this._callbacks.onRulesCard) {
-              this._callbacks.onRulesCard({
-                topic: result.topic,
-                compendiumResults: result.compendiumResults,
-                synthesisPromise: result.synthesisPromise,
-                source: 'auto'
-              });
-            }
-          }).catch(err => {
-            this._logger.warn('Rules lookup failed:', err.message);
-            if (this._liveMode && this._callbacks.onRulesCard) {
-              this._callbacks.onRulesCard({
-                topic: detection.extractedTopic,
-                compendiumResults: [],
-                synthesisPromise: null,
-                source: 'auto',
-                unavailable: true
-              });
-            }
-          });
+      try {
+        if (this._rulesReference && this._rulesLookupService) {
+          const detection = this._rulesReference.detectRulesQuestion(contextText);
+          if (detection?.isRulesQuestion && detection.extractedTopic) {
+            const lookupPromise = this._rulesLookupService.lookup(detection.extractedTopic, {
+              signal: this._shutdownController?.signal
+            });
+            lookupPromise.then(result => {
+              if (result && this._callbacks.onRulesCard) {
+                this._callbacks.onRulesCard({
+                  topic: result.topic,
+                  compendiumResults: result.compendiumResults,
+                  synthesisPromise: result.synthesisPromise,
+                  source: 'auto'
+                });
+              }
+            }).catch(err => {
+              this._logger.warn('Rules lookup failed:', err.message);
+              if (this._callbacks.onRulesCard) {
+                this._callbacks.onRulesCard({
+                  topic: detection.extractedTopic,
+                  compendiumResults: [],
+                  synthesisPromise: null,
+                  source: 'auto',
+                  unavailable: true
+                });
+              }
+            });
+          }
         }
+      } catch (err) {
+        this._logger.warn('Rules detection failed:', err.message);
       }
 
       // Try streaming path first (activates MainPanel progressive card display)
@@ -1900,11 +1904,22 @@ class SessionOrchestrator {
    * @returns {Promise<void>}
    */
   async handleManualRulesQuery(question) {
-    if (!this._rulesLookupService) return;
+    if (!this._rulesLookupService) {
+      this._logger.warn('Manual rules query ignored — rulesLookupService not available');
+      if (this._callbacks.onRulesCard) {
+        this._callbacks.onRulesCard({
+          topic: question,
+          compendiumResults: [],
+          synthesisPromise: null,
+          source: 'manual',
+          unavailable: true
+        });
+      }
+      return;
+    }
     try {
       const result = await this._rulesLookupService.lookup(question, {
-        skipCooldown: true,
-        signal: this._shutdownController?.signal
+        skipCooldown: true
       });
       if (result && this._callbacks.onRulesCard) {
         this._callbacks.onRulesCard({
