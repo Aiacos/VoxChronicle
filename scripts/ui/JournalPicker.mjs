@@ -155,15 +155,42 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
 
-    // When a checkbox is toggled, show/hide radio and auto-set primary if needed
+    // When a journal checkbox is toggled, show/hide radio and auto-set primary if needed
     this.element?.querySelectorAll('.vox-chronicle-journal-checkbox').forEach(checkbox => {
       checkbox.addEventListener('change', () => this._onCheckboxChange(), { signal });
+    });
+
+    // When a folder checkbox is toggled, cascade to all child journals
+    this.element?.querySelectorAll('.vox-chronicle-folder-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => this._onFolderCheckboxChange(e), { signal });
     });
 
     // Radio changes
     this.element?.querySelectorAll('.vox-chronicle-primary-radio').forEach(radio => {
       radio.addEventListener('change', () => this._onRadioChange(), { signal });
     });
+  }
+
+  /**
+   * Handle folder checkbox change - cascade to all child journal checkboxes
+   * @private
+   */
+  _onFolderCheckboxChange(event) {
+    const folderCheckbox = event.target;
+    const folderItem = folderCheckbox.closest('.vox-chronicle-folder-item');
+    if (!folderItem) return;
+
+    const checked = folderCheckbox.checked;
+    // Select/deselect all journal checkboxes within this folder (including nested subfolders)
+    folderItem.querySelectorAll('.vox-chronicle-journal-checkbox').forEach(cb => {
+      cb.checked = checked;
+    });
+    // Also cascade to any nested folder checkboxes
+    folderItem.querySelectorAll('.vox-chronicle-folder-checkbox').forEach(cb => {
+      if (cb !== folderCheckbox) cb.checked = checked;
+    });
+
+    this._onCheckboxChange();
   }
 
   /**
