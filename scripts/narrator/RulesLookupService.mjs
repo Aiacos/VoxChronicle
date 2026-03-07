@@ -114,7 +114,8 @@ export class RulesLookupService {
     return {
       compendiumResults,
       synthesisPromise,
-      topic
+      topic,
+      question
     };
   }
 

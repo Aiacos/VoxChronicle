@@ -1735,7 +1735,7 @@ class SessionOrchestrator {
             lookupPromise.then(result => {
               if (result && this._liveMode && this._callbacks.onRulesCard) {
                 this._callbacks.onRulesCard({
-                  topic: result.topic,
+                  topic: result.question || detection.extractedTopic,
                   compendiumResults: result.compendiumResults,
                   synthesisPromise: result.synthesisPromise,
                   source: 'auto'
@@ -1925,7 +1925,7 @@ class SessionOrchestrator {
       });
       if (result && this._callbacks.onRulesCard) {
         this._callbacks.onRulesCard({
-          topic: result.topic,
+          topic: result.question || question,
           compendiumResults: result.compendiumResults,
           synthesisPromise: result.synthesisPromise,
           source: 'manual'
