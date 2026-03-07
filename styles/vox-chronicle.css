@@ -561,6 +561,14 @@ form .form-group .vox-chronicle-validate-button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100%;
+}
+
+/* Ensure Foundry window body fills available space on resize */
+#vox-chronicle-main-panel .window-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .vox-chronicle-panel__warning {
