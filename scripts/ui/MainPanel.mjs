@@ -93,7 +93,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._streamingAccumulatedText = '';
     this._streamingActiveType = null;
 
-    // Rules card state (persists across re-renders, cleared on session end via onStateChange)
+    // Rules card state (persists across re-renders, cleared on session end)
     this._rulesCards = [];
     this._pendingRulesCards = [];
     this._rulesInputValue = '';
@@ -102,7 +102,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Register callbacks so UI updates immediately on state and progress changes
     if (this._orchestrator?.setCallbacks) {
       this._orchestrator.setCallbacks({
-        onStateChange: () => this._debouncedRender(),
+        onStateChange: (newState) => {
+          if (newState === 'idle') {
+            this._rulesCards = [];
+            this._pendingRulesCards = [];
+            for (const t of this._rulesDismissTimeouts || []) clearTimeout(t);
+            this._rulesDismissTimeouts = [];
+          }
+          this._debouncedRender();
+        },
         onProgress: (data) => {
           this.#statusMessage = data.message;
           this.#progressPercent = data.progress;

@@ -1430,8 +1430,10 @@ class SessionOrchestrator {
       this._npcExtractor = null;
     }
 
-    // Rules services are stateless — keep them for reuse across sessions.
-    // Cooldown state is managed internally by RulesLookupService.
+    // Rules services kept alive for reuse, but clear session-scoped state
+    if (this._rulesLookupService) {
+      this._rulesLookupService.destroy();
+    }
 
     // Reset state
     this._liveTranscript = [];
@@ -1731,7 +1733,7 @@ class SessionOrchestrator {
               signal: this._shutdownController?.signal
             });
             lookupPromise.then(result => {
-              if (result && this._callbacks.onRulesCard) {
+              if (result && this._liveMode && this._callbacks.onRulesCard) {
                 this._callbacks.onRulesCard({
                   topic: result.topic,
                   compendiumResults: result.compendiumResults,
@@ -1741,7 +1743,7 @@ class SessionOrchestrator {
               }
             }).catch(err => {
               this._logger.warn('Rules lookup failed:', err.message);
-              if (this._callbacks.onRulesCard) {
+              if (this._liveMode && this._callbacks.onRulesCard) {
                 this._callbacks.onRulesCard({
                   topic: detection.extractedTopic,
                   compendiumResults: [],
