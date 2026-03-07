@@ -1385,7 +1385,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const card = document.createElement('div');
     card.className = 'vox-chronicle-suggestion vox-chronicle-suggestion--streaming';
     card.innerHTML = `
-      <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--${type}">${type}</span>
+      <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--${escapeHtml(type)}">${escapeHtml(type)}</span>
       <div class="vox-chronicle-suggestion__content">
         <span class="vox-chronicle-suggestion__spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> ${game.i18n?.localize('VOXCHRONICLE.Live.AIThinking') || 'AI thinking...'}</span>
       </div>
@@ -1439,11 +1439,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const parsed = this._parseCardContent(fullText);
     const content = card.querySelector('.vox-chronicle-suggestion__content');
     if (content) {
-      let html = `<strong class="vox-chronicle-suggestion__title">${parsed.title}</strong>`;
+      let html = `<strong class="vox-chronicle-suggestion__title">${escapeHtml(parsed.title)}</strong>`;
       if (parsed.bullets.length > 0) {
         html += '<ul class="vox-chronicle-suggestion__bullets">';
         for (const bullet of parsed.bullets) {
-          html += `<li>${bullet}</li>`;
+          html += `<li>${escapeHtml(bullet)}</li>`;
         }
         html += '</ul>';
       }

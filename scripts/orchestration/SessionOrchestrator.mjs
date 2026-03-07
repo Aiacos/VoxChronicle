@@ -1313,13 +1313,17 @@ class SessionOrchestrator {
     try {
       // Race: wait for current cycle OR 5-second deadline
       const currentCycle = this._currentCyclePromise || Promise.resolve();
-      const deadline = new Promise(resolve => setTimeout(() => {
-        this._shutdownController.abort();
-        forceAborted = true;
-        resolve('timeout');
-      }, SHUTDOWN_DEADLINE_MS));
+      let deadlineTimer;
+      const deadline = new Promise(resolve => {
+        deadlineTimer = setTimeout(() => {
+          this._shutdownController.abort();
+          forceAborted = true;
+          resolve('timeout');
+        }, SHUTDOWN_DEADLINE_MS);
+      });
 
       await Promise.race([currentCycle, deadline]);
+      clearTimeout(deadlineTimer);
 
       // Assemble final transcript
       if (this._currentSession) {
