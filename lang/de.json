@@ -13,6 +13,8 @@
       "Language": "Transkriptionssprache",
       "LanguageHint": "Sprache für die Audiotranskription (Standard: Deutsch)",
       "LanguageAuto": "Automatisch erkennen",
+      "AIResponseLanguage": "KI-Antwortsprache",
+      "AIResponseLanguageHint": "Sprache für KI-Vorschläge, Regelantworten und alle KI-generierten Texte",
       "TranscriptionMode": "Transkriptionsmodus",
       "TranscriptionModeHint": "Wählen Sie zwischen Cloud-API, lokalem Whisper-Backend oder automatischer Auswahl",
       "TranscriptionModeAPI": "Nur API (OpenAI Cloud-Dienst)",

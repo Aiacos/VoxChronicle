@@ -13,6 +13,8 @@
       "Language": "Transcription Language",
       "LanguageHint": "Specify language for improved transcription accuracy, or leave on auto-detect",
       "LanguageAuto": "Auto-detect",
+      "AIResponseLanguage": "AI Response Language",
+      "AIResponseLanguageHint": "Language for AI suggestions, rules answers, and all AI-generated text",
       "TranscriptionMode": "Transcription Mode",
       "TranscriptionModeHint": "Choose between cloud API, local Whisper backend, or automatic selection",
       "TranscriptionModeAPI": "API Only (OpenAI cloud service)",

@@ -296,6 +296,26 @@ describe('RulesLookupService', () => {
       expect(userMessage.content.length).toBeLessThan(2000 + 500); // some overhead for formatting
     });
 
+    it('should include language instruction in system message when language is set', async () => {
+      const localizedService = new RulesLookupService(mockRulesReference, mockOpenAIClient, { language: 'it' });
+      const result = await localizedService.lookup('how does grapple work');
+      await result.synthesisPromise;
+
+      const callArgs = mockOpenAIClient.post.mock.calls[0][1];
+      const systemMessage = callArgs.messages.find(m => m.role === 'system');
+      expect(systemMessage.content).toContain('Italian');
+      localizedService.destroy();
+    });
+
+    it('should default to English when no language is provided', async () => {
+      const result = await service.lookup('how does grapple work');
+      await result.synthesisPromise;
+
+      const callArgs = mockOpenAIClient.post.mock.calls[0][1];
+      const systemMessage = callArgs.messages.find(m => m.role === 'system');
+      expect(systemMessage.content).toContain('English');
+    });
+
     it('should reject synthesisPromise when OpenAI post fails', async () => {
       mockOpenAIClient.post.mockRejectedValue(new Error('API error'));
 

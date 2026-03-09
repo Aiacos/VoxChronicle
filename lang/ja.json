@@ -13,6 +13,8 @@
       "Language": "[EN] Transcription Language",
       "LanguageHint": "音声文字起こしの言語（デフォルト：日本語）",
       "LanguageAuto": "[EN] Auto-detect",
+      "AIResponseLanguage": "AI応答言語",
+      "AIResponseLanguageHint": "AIの提案、ルール回答、すべてのAI生成テキストの言語",
       "TranscriptionMode": "[EN] Transcription Mode",
       "TranscriptionModeHint": "[EN] Choose between cloud API, local Whisper backend, or automatic selection",
       "TranscriptionModeAPI": "[EN] API Only (OpenAI cloud service)",

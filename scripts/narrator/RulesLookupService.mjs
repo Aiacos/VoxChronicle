@@ -50,6 +50,7 @@ export class RulesLookupService {
     this._rulesReference = rulesReference;
     this._openaiClient = openaiClient;
     this._cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS;
+    this._language = options.language || 'en';
     this._logger = options.logger || Logger.createChild('RulesLookupService');
 
     /**
@@ -137,10 +138,17 @@ export class RulesLookupService {
       return `[${citation}] ${result.rule.title}:\n${content}`;
     }).join('\n\n');
 
+    const languageNames = {
+      it: 'Italian', en: 'English', de: 'German', fr: 'French',
+      es: 'Spanish', pt: 'Portuguese', ja: 'Japanese', ko: 'Korean',
+      zh: 'Chinese', pl: 'Polish', ru: 'Russian'
+    };
+    const responseLang = languageNames[this._language] || 'English';
+
     const messages = [
       {
         role: 'system',
-        content: 'You are a D&D 5e rules expert. Answer the question using ONLY the provided source excerpts. Cite sources in brackets (e.g., [PHB p. 195]). Keep your answer to 2-3 sentences maximum. If the provided sources are insufficient to answer the question, say so honestly.'
+        content: `You are a D&D 5e rules expert. Answer the question using ONLY the provided source excerpts. Cite sources in brackets (e.g., [PHB p. 195]). Keep your answer to 2-3 sentences maximum. If the provided sources are insufficient to answer the question, say so honestly. Respond in ${responseLang}.`
       },
       {
         role: 'user',

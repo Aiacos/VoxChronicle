@@ -13,6 +13,8 @@
       "Language": "Lingua Trascrizione",
       "LanguageHint": "Specifica la lingua per migliorare la precisione della trascrizione, o lascia il rilevamento automatico",
       "LanguageAuto": "Rilevamento automatico",
+      "AIResponseLanguage": "Lingua Risposte AI",
+      "AIResponseLanguageHint": "Lingua per suggerimenti AI, risposte sulle regole e tutto il testo generato dall'AI",
       "TranscriptionMode": "Modalita Trascrizione",
       "TranscriptionModeHint": "Scegli tra API cloud, backend Whisper locale, o selezione automatica",
       "TranscriptionModeAPI": "Solo API (servizio cloud OpenAI)",

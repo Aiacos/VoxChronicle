@@ -13,6 +13,8 @@
       "Language": "",
       "LanguageHint": "",
       "LanguageAuto": "",
+      "AIResponseLanguage": "",
+      "AIResponseLanguageHint": "",
       "TranscriptionMode": "",
       "TranscriptionModeHint": "",
       "TranscriptionModeAPI": "",

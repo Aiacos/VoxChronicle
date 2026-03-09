@@ -13,6 +13,8 @@
       "Language": "[EN] Transcription Language",
       "LanguageHint": "Idioma para la transcripción de audio (predeterminado: Español)",
       "LanguageAuto": "[EN] Auto-detect",
+      "AIResponseLanguage": "Idioma de respuestas IA",
+      "AIResponseLanguageHint": "Idioma para sugerencias IA, respuestas de reglas y todo el texto generado por IA",
       "TranscriptionMode": "[EN] Transcription Mode",
       "TranscriptionModeHint": "[EN] Choose between cloud API, local Whisper backend, or automatic selection",
       "TranscriptionModeAPI": "[EN] API Only (OpenAI cloud service)",
