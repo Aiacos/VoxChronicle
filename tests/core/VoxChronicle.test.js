@@ -48,7 +48,8 @@ const {
   const mockSessionOrchestratorInstance = {
     setTranscriptionConfig: vi.fn(),
     setNarratorServices: vi.fn(),
-    setRAGProvider: vi.fn()
+    setRAGProvider: vi.fn(),
+    setCallbacks: vi.fn()
   };
   const mockSessionOrchestrator = vi.fn().mockImplementation(() => mockSessionOrchestratorInstance);
   const mockVocabularyDictionary = vi.fn().mockImplementation(() => ({
@@ -314,6 +315,36 @@ describe('VoxChronicle', () => {
   });
 
   // ====================================================================
+  // _hooksRegistered static property
+  // ====================================================================
+
+  describe('_hooksRegistered static property', () => {
+    it('should be declared as false (not undefined) before any initialization', () => {
+      // After resetInstance, _hooksRegistered must be exactly false, not undefined
+      VoxChronicle.resetInstance();
+      expect(VoxChronicle._hooksRegistered).toBe(false);
+    });
+
+    it('should be set to true after initialize registers hooks', async () => {
+      configureSettings(fullSettings());
+      VoxChronicle.resetInstance();
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+      expect(VoxChronicle._hooksRegistered).toBe(true);
+    });
+
+    it('should be reset to false by resetInstance', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+      expect(VoxChronicle._hooksRegistered).toBe(true);
+
+      VoxChronicle.resetInstance();
+      expect(VoxChronicle._hooksRegistered).toBe(false);
+    });
+  });
+
+  // ====================================================================
   // resetInstance
   // ====================================================================
 
@@ -476,11 +507,11 @@ describe('VoxChronicle', () => {
       // AI Assistant created with OpenAI key
       expect(mockAIAssistant).toHaveBeenCalledWith({
         openaiClient: expect.any(Object),
-        primaryLanguage: 'en'
+        primaryLanguage: 'it'
       });
 
       // Rules reference created
-      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'en' });
+      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'it' });
 
       // Narrator services connected to orchestrator
       expect(mockSessionOrchestratorInstance.setNarratorServices).toHaveBeenCalledWith({
@@ -673,7 +704,7 @@ describe('VoxChronicle', () => {
 
       await instance.initialize();
 
-      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'en' });
+      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'it' });
     });
 
     it('should create rules reference when rulesDetection is undefined (not explicitly false)', async () => {
@@ -695,25 +726,25 @@ describe('VoxChronicle', () => {
       expect(mockSetDebugMode).not.toHaveBeenCalled();
     });
 
-    it('should pass transcriptionLanguage to AIAssistant', async () => {
-      configureSettings(fullSettings({ transcriptionLanguage: 'it' }));
+    it('should pass aiResponseLanguage to AIAssistant', async () => {
+      configureSettings(fullSettings({ aiResponseLanguage: 'de' }));
+      const instance = VoxChronicle.getInstance();
+
+      await instance.initialize();
+
+      expect(mockAIAssistant).toHaveBeenCalledWith(
+        expect.objectContaining({ primaryLanguage: 'de' })
+      );
+    });
+
+    it('should default AIAssistant language to "it" when aiResponseLanguage not set', async () => {
+      configureSettings(fullSettings({ aiResponseLanguage: null }));
       const instance = VoxChronicle.getInstance();
 
       await instance.initialize();
 
       expect(mockAIAssistant).toHaveBeenCalledWith(
         expect.objectContaining({ primaryLanguage: 'it' })
-      );
-    });
-
-    it('should default AIAssistant language to "en" when transcriptionLanguage not set', async () => {
-      configureSettings(fullSettings({ transcriptionLanguage: null }));
-      const instance = VoxChronicle.getInstance();
-
-      await instance.initialize();
-
-      expect(mockAIAssistant).toHaveBeenCalledWith(
-        expect.objectContaining({ primaryLanguage: 'en' })
       );
     });
 
@@ -1494,6 +1525,60 @@ describe('VoxChronicle', () => {
 
       expect(instance._reinitializePending).toBe(false);
       expect(instance.isInitialized).toBe(true);
+    });
+
+    it('should register onSessionEnd callback that triggers reinitialize when pending', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      mockTranscriptionFactoryCreate.mockResolvedValue({ type: 'cloud' });
+      mockNarrativeExporter.mockImplementation(() => ({ setOpenAIClient: vi.fn() }));
+      mockSettingsModule.getRAGSettings.mockReturnValue({ enabled: false });
+      mockSettingsModule.validateServerUrls = vi.fn();
+
+      await instance.initialize();
+
+      // Verify setCallbacks was called with onSessionEnd
+      const setCallbacksCalls = instance.sessionOrchestrator.setCallbacks.mock.calls;
+      const callWithOnSessionEnd = setCallbacksCalls.find(call => call[0]?.onSessionEnd);
+      expect(callWithOnSessionEnd).toBeTruthy();
+
+      // Extract the onSessionEnd callback
+      const onSessionEnd = callWithOnSessionEnd[0].onSessionEnd;
+
+      // Set pending flag
+      instance._reinitializePending = true;
+      const reinitSpy = vi.spyOn(instance, 'reinitialize').mockResolvedValue(undefined);
+
+      // Call the callback — should trigger reinitialize
+      onSessionEnd();
+
+      expect(reinitSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
+      reinitSpy.mockRestore();
+    });
+
+    it('should NOT trigger reinitialize on session end when not pending', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+
+      mockTranscriptionFactoryCreate.mockResolvedValue({ type: 'cloud' });
+      mockNarrativeExporter.mockImplementation(() => ({ setOpenAIClient: vi.fn() }));
+      mockSettingsModule.getRAGSettings.mockReturnValue({ enabled: false });
+      mockSettingsModule.validateServerUrls = vi.fn();
+
+      await instance.initialize();
+
+      const setCallbacksCalls = instance.sessionOrchestrator.setCallbacks.mock.calls;
+      const callWithOnSessionEnd = setCallbacksCalls.find(call => call[0]?.onSessionEnd);
+      const onSessionEnd = callWithOnSessionEnd[0].onSessionEnd;
+
+      // _reinitializePending is false (default)
+      const reinitSpy = vi.spyOn(instance, 'reinitialize').mockResolvedValue(undefined);
+
+      onSessionEnd();
+
+      expect(reinitSpy).not.toHaveBeenCalled();
+      reinitSpy.mockRestore();
     });
   });
 

@@ -582,7 +582,7 @@ describe('debounced re-index on journal edit', () => {
     VoxChronicle.getInstance.mockReturnValue({
       chapterTracker: null,
       journalParser: { clearAllCache: vi.fn() },
-      orchestrator: { isLiveMode: true, reindexJournal }
+      sessionOrchestrator: { isLiveMode: true, reindexJournal }
     });
 
     globalThis.game.settings.get = vi.fn((moduleId, key) => {
@@ -609,7 +609,7 @@ describe('debounced re-index on journal edit', () => {
     VoxChronicle.getInstance.mockReturnValue({
       chapterTracker: null,
       journalParser: { clearAllCache: vi.fn() },
-      orchestrator: { isLiveMode: true, reindexJournal }
+      sessionOrchestrator: { isLiveMode: true, reindexJournal }
     });
 
     globalThis.game.settings.get = vi.fn((moduleId, key) => {
@@ -632,7 +632,7 @@ describe('debounced re-index on journal edit', () => {
     VoxChronicle.getInstance.mockReturnValue({
       chapterTracker: null,
       journalParser: { clearAllCache: vi.fn() },
-      orchestrator: { isLiveMode: true, reindexJournal }
+      sessionOrchestrator: { isLiveMode: true, reindexJournal }
     });
 
     globalThis.game.settings.get = vi.fn((moduleId, key) => {
@@ -663,7 +663,7 @@ describe('debounced re-index on journal edit', () => {
     VoxChronicle.getInstance.mockReturnValue({
       chapterTracker: null,
       journalParser: { clearAllCache: vi.fn() },
-      orchestrator: { isLiveMode: false, reindexJournal }
+      sessionOrchestrator: { isLiveMode: false, reindexJournal }
     });
 
     globalThis.game.settings.get = vi.fn((moduleId, key) => {
@@ -687,7 +687,7 @@ describe('debounced re-index on journal edit', () => {
     VoxChronicle.getInstance.mockReturnValue({
       chapterTracker: null,
       journalParser: { clearAllCache },
-      orchestrator: { isLiveMode: true, reindexJournal }
+      sessionOrchestrator: { isLiveMode: true, reindexJournal }
     });
 
     globalThis.game.settings.get = vi.fn((moduleId, key) => {

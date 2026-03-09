@@ -200,10 +200,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const session = this._orchestrator?.currentSession;
     const ragData = this._getRAGData();
 
-    // Map images to include a displayable src (cached on source object to avoid rebuild per render)
+    // Map images to include a displayable src (shallow copy to avoid mutating source objects)
     const images = (session?.images || []).map(img => {
       if (!img.src && (img.base64 || img.b64_json)) {
-        img.src = `data:image/png;base64,${img.base64 || img.b64_json}`;
+        return { ...img, src: `data:image/png;base64,${img.base64 || img.b64_json}` };
       }
       return img;
     });

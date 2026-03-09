@@ -202,7 +202,7 @@ function invalidateJournalCache(journalEntry) {
   }
 
   // Debounced re-index during live mode only
-  if (vc.orchestrator?.isLiveMode && journalEntry?.id) {
+  if (vc.sessionOrchestrator?.isLiveMode && journalEntry?.id) {
     const primaryId = game.settings.get(MODULE_ID, 'activeAdventureJournalId');
     const supplementaryIds = game.settings.get(MODULE_ID, 'supplementaryJournalIds') || [];
     const isSelected = journalEntry.id === primaryId || supplementaryIds.includes(journalEntry.id);
@@ -210,7 +210,7 @@ function invalidateJournalCache(journalEntry) {
     if (isSelected) {
       clearTimeout(reindexTimer);
       reindexTimer = setTimeout(() => {
-        vc.orchestrator.reindexJournal?.(journalEntry.id);
+        vc.sessionOrchestrator.reindexJournal?.(journalEntry.id);
       }, 5000);
     }
   }

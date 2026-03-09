@@ -551,6 +551,7 @@ class OpenAIClient extends BaseAPIClient {
     // Combine external signal (if provided) with timeout signal
     let combinedSignal = controller.signal;
     let fallbackController = null;
+    let listenerCleanup = null;
 
     if (options.signal) {
       if (options.signal.aborted) {
@@ -566,9 +567,10 @@ class OpenAIClient extends BaseAPIClient {
       } else {
         // Fallback: create a new controller that aborts if either signal fires
         fallbackController = new AbortController();
+        listenerCleanup = new AbortController();
         const onAbort = () => fallbackController.abort();
-        controller.signal.addEventListener('abort', onAbort, { once: true });
-        options.signal.addEventListener('abort', onAbort, { once: true });
+        controller.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
+        options.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
         combinedSignal = fallbackController.signal;
       }
     }
@@ -659,6 +661,8 @@ class OpenAIClient extends BaseAPIClient {
     } finally {
       // Guarantee timeout cleanup even if rate limiter itself throws
       clearTimeout(controller.timeoutId);
+      // Clean up fallback abort listeners to prevent memory leaks
+      listenerCleanup?.abort();
     }
   }
 
@@ -778,6 +782,7 @@ class OpenAIClient extends BaseAPIClient {
     // Combine external signal with timeout signal
     let combinedSignal = controller.signal;
     let fallbackController = null;
+    let listenerCleanup = null;
 
     if (options.signal) {
       if (options.signal.aborted) {
@@ -792,9 +797,10 @@ class OpenAIClient extends BaseAPIClient {
         combinedSignal = AbortSignal.any([controller.signal, options.signal]);
       } else {
         fallbackController = new AbortController();
+        listenerCleanup = new AbortController();
         const onAbort = () => fallbackController.abort();
-        controller.signal.addEventListener('abort', onAbort, { once: true });
-        options.signal.addEventListener('abort', onAbort, { once: true });
+        controller.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
+        options.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
         combinedSignal = fallbackController.signal;
       }
     }
@@ -856,6 +862,8 @@ class OpenAIClient extends BaseAPIClient {
       }
     } finally {
       reader.releaseLock();
+      // Clean up fallback abort listeners to prevent memory leaks
+      listenerCleanup?.abort();
     }
   }
 

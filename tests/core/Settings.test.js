@@ -85,6 +85,8 @@ describe('Settings', () => {
         'apiRetryBaseDelay',
         'apiRetryMaxDelay',
         'apiQueueMaxSize',
+        // AI Response Language
+        'aiResponseLanguage',
         // Hidden internal
         'imageGallery',
         'panelPosition'
@@ -116,7 +118,7 @@ describe('Settings', () => {
       expect(call[2].config).toBe(true);
       expect(call[2].type).toBe(String);
       expect(call[2].default).toBe('');
-      expect(typeof call[2].onChange).toBe('function');
+      // No onChange — world-scope settings are handled by updateSetting hook
     });
 
     it('should register kankaCampaignId as world-scoped string', () => {
@@ -127,6 +129,20 @@ describe('Settings', () => {
       expect(call[2].scope).toBe('world');
       expect(call[2].type).toBe(String);
       expect(call[2].default).toBe('');
+    });
+
+    it('should register aiResponseLanguage with language choices and default it', () => {
+      Settings.registerSettings();
+
+      const call = game.settings.register.mock.calls.find(
+        (c) => c[1] === 'aiResponseLanguage'
+      );
+      expect(call).toBeDefined();
+      expect(call[2].choices).toBeDefined();
+      expect(call[2].choices.it).toBe('Italiano');
+      expect(call[2].choices.en).toBe('English');
+      expect(call[2].default).toBe('it');
+      expect(call[2].scope).toBe('world');
     });
 
     it('should register transcriptionLanguage with language choices', () => {
@@ -478,16 +494,11 @@ describe('Settings', () => {
       spy.mockRestore();
     });
 
-    it('should register onChange handler for kankaApiToken that calls _onApiKeyChange', () => {
+    it('should NOT register onChange handler for kankaApiToken (updateSetting hook handles world-scope settings)', () => {
       Settings.registerSettings();
 
       const call = game.settings.register.mock.calls.find((c) => c[1] === 'kankaApiToken');
-      const spy = vi.spyOn(Settings, '_onApiKeyChange');
-
-      call[2].onChange();
-
-      expect(spy).toHaveBeenCalledWith('kanka');
-      spy.mockRestore();
+      expect(call[2].onChange).toBeUndefined();
     });
   });
 
@@ -780,6 +791,36 @@ describe('Settings', () => {
       game.settings.get.mockReturnValue('ja');
 
       expect(Settings.getTranscriptionLanguage()).toBe('ja');
+    });
+  });
+
+  describe('getAIResponseLanguage', () => {
+    beforeEach(() => {
+      Settings.registerSettings();
+    });
+
+    it('should return the language code when set', () => {
+      game.settings.get.mockReturnValue('en');
+
+      expect(Settings.getAIResponseLanguage()).toBe('en');
+    });
+
+    it('should return it as default when setting is empty', () => {
+      game.settings.get.mockReturnValue('');
+
+      expect(Settings.getAIResponseLanguage()).toBe('it');
+    });
+
+    it('should return it as default when setting is null', () => {
+      game.settings.get.mockReturnValue(null);
+
+      expect(Settings.getAIResponseLanguage()).toBe('it');
+    });
+
+    it('should return the exact language code for non-default languages', () => {
+      game.settings.get.mockReturnValue('ja');
+
+      expect(Settings.getAIResponseLanguage()).toBe('ja');
     });
   });
 

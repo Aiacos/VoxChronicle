@@ -384,6 +384,20 @@ describe('MainPanel', () => {
       expect(ctx).toHaveProperty('ragStatus');
       expect(ctx).toHaveProperty('ragProgress');
     });
+
+    it('should not mutate original image objects when adding src', async () => {
+      const originalImg = { base64: 'abc123' };
+      mockOrchestrator.currentSession = {
+        images: [originalImg],
+        transcript: null,
+        entities: null
+      };
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      await panel._prepareContext({});
+
+      // Original object should NOT have src added
+      expect(originalImg).not.toHaveProperty('src');
+    });
   });
 
   // ─── switchTab ──────────────────────────────────────────────────

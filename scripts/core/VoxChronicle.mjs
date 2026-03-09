@@ -45,6 +45,9 @@ class VoxChronicle {
   /** @type {VoxChronicle|null} Singleton instance */
   static #instance = null;
 
+  /** @type {boolean} Whether hooks have been registered (prevents double-registration on reinitialize) */
+  static _hooksRegistered = false;
+
   /**
    * Private constructor - use getInstance() to access
    * @private
@@ -231,6 +234,7 @@ class VoxChronicle {
       const transcriptionMode = this._getSetting('transcriptionMode') || 'auto';
       const whisperBackendUrl = this._getSetting('whisperBackendUrl');
       const transcriptionLanguage = this._getSetting('transcriptionLanguage');
+      const aiResponseLanguage = this._getSetting('aiResponseLanguage') || 'it';
 
       // Initialize audio recorder (if not exists)
       if (!this.audioRecorder) {
@@ -257,7 +261,7 @@ class VoxChronicle {
         this.entityExtractor = new EntityExtractor(openaiApiKey);
         this.aiAssistant = new AIAssistant({
           openaiClient: new OpenAIClient(openaiApiKey),
-          primaryLanguage: transcriptionLanguage || 'en'
+          primaryLanguage: aiResponseLanguage
         });
       } else {
         this.imageGenerationService = null;
@@ -296,6 +300,18 @@ class VoxChronicle {
         this.sessionOrchestrator.setServices(services);
       }
 
+      // Register session end callback to handle deferred reinitialize
+      this.sessionOrchestrator.setCallbacks({
+        onSessionEnd: () => {
+          if (this._reinitializePending) {
+            logger.info('Session ended — applying deferred reinitialize');
+            this.reinitialize().catch(err => {
+              logger.error('Deferred reinitialization failed:', err);
+            });
+          }
+        }
+      });
+
       // Sync transcription config
       this.sessionOrchestrator.setTranscriptionConfig({
         mode: transcriptionMode,
@@ -323,14 +339,14 @@ class VoxChronicle {
 
       // Initialize rules reference and lookup service
       if (this._getSetting('rulesDetection') !== false) {
-        this.rulesReference = new RulesReference({ language: transcriptionLanguage || 'en' });
+        this.rulesReference = new RulesReference({ language: aiResponseLanguage });
 
         // Create lookup service if we have an OpenAI client for AI synthesis
         if (openaiApiKey) {
           this.rulesLookupService = new RulesLookupService(
             this.rulesReference,
             new OpenAIClient(openaiApiKey),
-            { cooldownMs: 5 * 60 * 1000 }
+            { cooldownMs: 5 * 60 * 1000, language: aiResponseLanguage }
           );
         }
 

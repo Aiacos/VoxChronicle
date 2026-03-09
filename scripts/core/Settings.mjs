@@ -51,16 +51,15 @@ class Settings {
 
     // Kanka API Token (world-wide, shared across all users)
     // Typically the GM's token for campaign management
+    // kankaApiToken is world-scope — the updateSetting hook in VoxChronicle._registerHooks()
+    // already handles reinitialization for world-scope settings. No onChange needed here.
     game.settings.register(MODULE_ID, 'kankaApiToken', {
       name: 'VOXCHRONICLE.Settings.KankaToken',
       hint: 'VOXCHRONICLE.Settings.KankaTokenHint',
       scope: 'world',
       config: true,
       type: String,
-      default: '',
-      onChange: () => {
-        Settings._onApiKeyChange('kanka');
-      }
+      default: ''
     });
 
     // ==========================================
@@ -81,6 +80,29 @@ class Settings {
     // ==========================================
     // Transcription Settings
     // ==========================================
+
+    // AI Response Language (world-wide)
+    // Controls the language used for AI suggestions, rules answers, and all AI-generated text
+    game.settings.register(MODULE_ID, 'aiResponseLanguage', {
+      name: 'VOXCHRONICLE.Settings.AIResponseLanguage',
+      hint: 'VOXCHRONICLE.Settings.AIResponseLanguageHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        it: 'Italiano',
+        en: 'English',
+        es: 'Español',
+        de: 'Deutsch',
+        fr: 'Français',
+        pt: 'Português',
+        pl: 'Polski',
+        ru: 'Русский',
+        ja: '日本語',
+        zh: '中文'
+      },
+      default: 'it'
+    });
 
     // Transcription Language (world-wide)
     // Specifying language improves transcription accuracy
@@ -873,6 +895,17 @@ class Settings {
   static getTranscriptionLanguage() {
     const lang = Settings.get('transcriptionLanguage');
     return lang && lang.trim().length > 0 ? lang : null;
+  }
+
+  /**
+   * Get the AI response language setting
+   *
+   * @returns {string} Language code (defaults to 'it' for Italian)
+   * @static
+   */
+  static getAIResponseLanguage() {
+    const lang = Settings.get('aiResponseLanguage');
+    return lang && lang.trim().length > 0 ? lang : 'it';
   }
 
   /**

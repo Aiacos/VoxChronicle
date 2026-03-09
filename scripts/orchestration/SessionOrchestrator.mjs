@@ -75,6 +75,7 @@ class SessionOrchestrator {
     onProgress: null,
     onError: null,
     onSessionComplete: null,
+    onSessionEnd: null,
     onSilenceDetected: null,
     onAISuggestion: null,
     onStreamToken: null,
@@ -100,7 +101,7 @@ class SessionOrchestrator {
   _ragProvider = null;
   _contentHashes = {};
   _reindexInProgress = false;
-  _reindexQueue = null;
+  _reindexQueue = new Set();
 
   // Live mode state
   _liveMode = false;
@@ -129,6 +130,7 @@ class SessionOrchestrator {
   _transcriptionHealth = 'healthy';
   _aiSuggestionHealth = 'healthy';
   _transcriptionConsecutiveErrors = 0;
+  _aiSuggestionConsecutiveErrors = 0;
   _aiSuggestionsPaused = false;
   _entityProcessor = null;
   _imageProcessor = null;
@@ -212,7 +214,7 @@ class SessionOrchestrator {
   /**
    * Set event callback handlers
    *
-   * @param {object} callbacks - Callback functions (onStateChange, onProgress, onError, onSessionComplete)
+   * @param {object} callbacks - Callback functions (onStateChange, onProgress, onError, onSessionComplete, onSessionEnd)
    */
   setCallbacks(callbacks) {
     this._callbacks = { ...this._callbacks, ...callbacks };
@@ -336,6 +338,7 @@ class SessionOrchestrator {
         this._updateState(SessionState.IDLE, { session: this._currentSession });
       }
 
+      this._callbacks.onSessionEnd?.();
       return this._currentSession;
     } catch (error) {
       this._logger.error('Failed to stop session:', error);
@@ -873,6 +876,7 @@ class SessionOrchestrator {
     this._transcriptionHealth = 'healthy';
     this._aiSuggestionHealth = 'healthy';
     this._transcriptionConsecutiveErrors = 0;
+    this._aiSuggestionConsecutiveErrors = 0;
     this._aiSuggestionsPaused = false;
 
     if (!this._currentSession) {
@@ -1190,7 +1194,7 @@ class SessionOrchestrator {
 
     // Concurrency guard — queue if already in progress
     if (this._reindexInProgress) {
-      this._reindexQueue = journalId;
+      this._reindexQueue.add(journalId);
       this._logger.debug(`Re-index in progress, queued ${journalId}`);
       return;
     }
@@ -1213,11 +1217,13 @@ class SessionOrchestrator {
     } finally {
       this._reindexInProgress = false;
 
-      // Process queued request if any
-      if (this._reindexQueue) {
-        const queuedId = this._reindexQueue;
-        this._reindexQueue = null;
-        await this.reindexJournal(queuedId);
+      // Process all queued journal IDs
+      if (this._reindexQueue.size > 0) {
+        const queuedIds = [...this._reindexQueue];
+        this._reindexQueue.clear();
+        for (const queuedId of queuedIds) {
+          await this.reindexJournal(queuedId);
+        }
       }
     }
   }
@@ -1236,15 +1242,17 @@ class SessionOrchestrator {
 
     const enrichStart = Date.now();
     try {
-      // Find the adventure journal (same logic as _initializeJournalContext)
-      let journalId = null;
-      const scene = typeof canvas !== 'undefined' ? canvas?.scene : null;
-      if (scene?.journal) {
-        journalId = scene.journal;
-      } else if (typeof game !== 'undefined' && game?.journal?.size > 0) {
-        const firstJournal = game.journal.contents?.[0];
-        if (firstJournal) {
-          journalId = firstJournal.id;
+      // Use user-selected journal first, then fall back to scene/first journal
+      let journalId = globalThis.game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || null;
+      if (!journalId) {
+        const scene = typeof canvas !== 'undefined' ? canvas?.scene : null;
+        if (scene?.journal) {
+          journalId = scene.journal;
+        } else if (typeof game !== 'undefined' && game?.journal?.size > 0) {
+          const firstJournal = game.journal.contents?.[0];
+          if (firstJournal) {
+            journalId = firstJournal.id;
+          }
         }
       }
 
@@ -1382,6 +1390,7 @@ class SessionOrchestrator {
     const stopMs = Date.now() - stopStart;
     this._logger.log(`Live mode stopped (shutdown: ${stopMs}ms, force-aborted: ${forceAborted})`);
     this._isStopping = false;
+    this._callbacks.onSessionEnd?.();
     return this._currentSession;
   }
 
@@ -1409,10 +1418,11 @@ class SessionOrchestrator {
     }
     this._boundOnSceneChange = null;
 
-    // Abort shutdown controller
+    // Abort shutdown controller and null it for fresh creation on next start
     if (this._shutdownController && !this._shutdownController.signal.aborted) {
       this._shutdownController.abort();
     }
+    this._shutdownController = null;
 
     // Stop silence monitoring and clear cycle-in-flight guard
     if (this._aiAssistant) {
@@ -1448,6 +1458,7 @@ class SessionOrchestrator {
     this._transcriptionHealth = 'healthy';
     this._aiSuggestionHealth = 'healthy';
     this._transcriptionConsecutiveErrors = 0;
+    this._aiSuggestionConsecutiveErrors = 0;
     this._aiSuggestionsPaused = false;
     this._silenceStartTime = null;
     this._lastAISuggestions = null;
@@ -1577,10 +1588,21 @@ class SessionOrchestrator {
             // Run AI analysis unless suggestions are paused
             if (!this._aiSuggestionsPaused) {
               this._updateState(SessionState.LIVE_ANALYZING);
-              await this._runAIAnalysis(result);
+              try {
+                await this._runAIAnalysis(result);
 
-              // Update AI suggestion health on success
-              this._aiSuggestionHealth = 'healthy';
+                // Update AI suggestion health on success
+                this._aiSuggestionHealth = 'healthy';
+                this._aiSuggestionConsecutiveErrors = 0;
+              } catch (aiError) {
+                this._aiSuggestionConsecutiveErrors++;
+                if (this._aiSuggestionConsecutiveErrors >= 5) {
+                  this._aiSuggestionHealth = 'down';
+                } else {
+                  this._aiSuggestionHealth = 'degraded';
+                }
+                this._logger.error('AI analysis error:', aiError.message);
+              }
             }
 
             // Check after async AI analysis — session may have been stopped

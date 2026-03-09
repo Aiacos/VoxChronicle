@@ -397,6 +397,20 @@ describe('SessionOrchestrator', () => {
       await expect(orchestrator.stopSession()).rejects.toThrow('Stop failed');
       expect(onError).toHaveBeenCalledWith(expect.any(Error), 'stopSession');
     });
+
+    it('should call onSessionEnd callback after stopping session', async () => {
+      const onSessionEnd = vi.fn();
+      orchestrator.setCallbacks({ onSessionEnd });
+      await orchestrator.stopSession({ processImmediately: false });
+      expect(onSessionEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onSessionEnd callback after stopping session with processImmediately', async () => {
+      const onSessionEnd = vi.fn();
+      orchestrator.setCallbacks({ onSessionEnd });
+      await orchestrator.stopSession();
+      expect(onSessionEnd).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ── pauseRecording / resumeRecording ──────────────────────────────────
@@ -1083,6 +1097,32 @@ describe('SessionOrchestrator', () => {
         // expected
       }
       expect(orchestrator._isStopping).toBe(false);
+    });
+
+    it('should call onSessionEnd callback after stopping live mode', async () => {
+      const onSessionEnd = vi.fn();
+      orchestrator.setCallbacks({ onSessionEnd });
+      await orchestrator.startLiveMode();
+      await orchestrator.stopLiveMode();
+      expect(onSessionEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it('should null _shutdownController after stopping live mode', async () => {
+      await orchestrator.startLiveMode();
+      expect(orchestrator._shutdownController).toBeInstanceOf(AbortController);
+      await orchestrator.stopLiveMode();
+      expect(orchestrator._shutdownController).toBeNull();
+    });
+
+    it('should create fresh _shutdownController on subsequent startLiveMode', async () => {
+      await orchestrator.startLiveMode();
+      const firstController = orchestrator._shutdownController;
+      await orchestrator.stopLiveMode();
+      expect(orchestrator._shutdownController).toBeNull();
+
+      await orchestrator.startLiveMode();
+      expect(orchestrator._shutdownController).toBeInstanceOf(AbortController);
+      expect(orchestrator._shutdownController).not.toBe(firstController);
     });
   });
 
@@ -1962,6 +2002,33 @@ describe('SessionOrchestrator', () => {
 
       delete globalThis.canvas;
     });
+
+    it('should prefer activeAdventureJournalId setting over canvas scene journal', async () => {
+      const jp = createMockJournalParser();
+      jp.getFullText.mockReturnValue('User selected journal text.');
+      jp.extractNPCProfiles.mockReturnValue([]);
+
+      orchestrator.setNarratorServices({ journalParser: jp });
+      orchestrator._currentSession = {
+        id: 'session-1',
+        title: 'Test Session',
+        errors: []
+      };
+
+      // Both a setting and canvas exist — setting should win
+      globalThis.game.settings.get.mockImplementation((mod, key) => {
+        if (key === 'activeAdventureJournalId') return 'user-selected-journal';
+        return '';
+      });
+      globalThis.canvas = { scene: { journal: 'scene-journal' } };
+
+      await orchestrator._enrichSessionWithJournalContext();
+
+      // Should use the user-selected journal, not the scene journal
+      expect(jp.parseJournal).toHaveBeenCalledWith('user-selected-journal');
+
+      delete globalThis.canvas;
+    });
   });
 
   // ── _initializeJournalContext ─────────────────────────────────────────
@@ -2496,16 +2563,20 @@ describe('SessionOrchestrator', () => {
         expect(result).toBeTruthy();
       });
 
-      it('should abort _shutdownController when deadline fires', async () => {
+      it('should abort _shutdownController when deadline fires then null it after teardown', async () => {
         await orchestrator.startLiveMode({ batchDuration: 999999 });
 
+        // Capture the controller before stop to verify it was aborted
+        const controller = orchestrator._shutdownController;
         orchestrator._currentCyclePromise = new Promise(() => {});
 
         const stopPromise = orchestrator.stopLiveMode();
         vi.advanceTimersByTime(5100);
         await stopPromise;
 
-        expect(orchestrator._shutdownController?.signal?.aborted).toBe(true);
+        // Controller was aborted during deadline, then nulled by teardown
+        expect(controller.signal.aborted).toBe(true);
+        expect(orchestrator._shutdownController).toBeNull();
       });
 
       it('should show session end summary notification', async () => {
@@ -2718,6 +2789,109 @@ describe('SessionOrchestrator', () => {
         await orchestrator._liveCycle();
 
         expect(orchestrator._transcriptionHealth).toBe('healthy');
+      });
+    });
+
+    // ── _liveCycle: AI suggestion health tracking ──────────────────────
+    describe('_liveCycle AI suggestion health tracking', () => {
+      it('should set _aiSuggestionHealth to degraded after 1 AI analysis failure', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+        });
+        vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
+
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._aiSuggestionHealth).toBe('degraded');
+      });
+
+      it('should set _aiSuggestionHealth to down after 5 consecutive AI failures', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+        });
+        vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
+
+        for (let i = 0; i < 5; i++) {
+          await orchestrator._liveCycle();
+        }
+
+        expect(orchestrator._aiSuggestionHealth).toBe('down');
+      });
+
+      it('should reset _aiSuggestionHealth to healthy on AI success after failures', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+        });
+
+        // Fail 3 times
+        const spy = vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
+        for (let i = 0; i < 3; i++) {
+          await orchestrator._liveCycle();
+        }
+        expect(orchestrator._aiSuggestionHealth).toBe('degraded');
+
+        // Succeed once
+        spy.mockResolvedValue(undefined);
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._aiSuggestionHealth).toBe('healthy');
+      });
+
+      it('should reset _aiSuggestionConsecutiveErrors on success', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+        });
+
+        // Fail 3 times
+        const spy = vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
+        for (let i = 0; i < 3; i++) {
+          await orchestrator._liveCycle();
+        }
+        expect(orchestrator._aiSuggestionConsecutiveErrors).toBe(3);
+
+        // Succeed once — counter resets
+        spy.mockResolvedValue(undefined);
+        await orchestrator._liveCycle();
+
+        expect(orchestrator._aiSuggestionConsecutiveErrors).toBe(0);
+      });
+
+      it('should NOT update transcription health when only AI analysis fails', async () => {
+        await orchestrator.startLiveMode({ batchDuration: 999999 });
+
+        services.audioRecorder.getLatestChunk.mockResolvedValue(
+          new Blob(['audio'], { type: 'audio/webm' })
+        );
+        services.transcriptionService.transcribe.mockResolvedValue({
+          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+        });
+        vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
+
+        await orchestrator._liveCycle();
+
+        // Transcription succeeded — its health should remain healthy
+        expect(orchestrator._transcriptionHealth).toBe('healthy');
+        expect(orchestrator._aiSuggestionHealth).toBe('degraded');
       });
     });
 
@@ -3075,6 +3249,43 @@ describe('RAG Indexing Pipeline', () => {
 
       // Concurrency should never exceed 1
       expect(maxConcurrentCalls).toBeLessThanOrEqual(1);
+      expect(orchestrator._reindexInProgress).toBe(false);
+    });
+
+    it('should queue multiple distinct journal IDs without overwriting', async () => {
+      // Make indexDocuments slow so we can queue multiple IDs
+      mockRAGProvider.indexDocuments.mockImplementation(async () => {
+        await new Promise(r => setTimeout(r, 20));
+        return { indexed: 1, failed: 0 };
+      });
+
+      // Add a second journal to the selected set
+      globalThis.game.settings.get.mockImplementation((mod, key) => {
+        if (key === 'activeAdventureJournalId') return 'journal-1';
+        if (key === 'supplementaryJournalIds') return ['journal-2'];
+        return '';
+      });
+
+      orchestrator._contentHashes = {};
+
+      // Start first re-index
+      const firstReindex = orchestrator.reindexJournal('journal-1');
+      await new Promise(r => setTimeout(r, 0));
+      expect(orchestrator._reindexInProgress).toBe(true);
+
+      // Queue two different journals — both should be processed
+      orchestrator.reindexJournal('journal-1');
+      orchestrator.reindexJournal('journal-2');
+
+      // _reindexQueue should be a Set containing both IDs
+      expect(orchestrator._reindexQueue).toBeInstanceOf(Set);
+      expect(orchestrator._reindexQueue.has('journal-1')).toBe(true);
+      expect(orchestrator._reindexQueue.has('journal-2')).toBe(true);
+
+      await firstReindex;
+      // Give queued re-indexes time to complete
+      await new Promise(r => setTimeout(r, 200));
+
       expect(orchestrator._reindexInProgress).toBe(false);
     });
   });
