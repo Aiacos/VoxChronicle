@@ -1124,6 +1124,13 @@
       "Save": "",
       "Cancel": "",
       "Primary": ""
+    },
+    "EventBus": {
+      "Error": {
+        "InvalidFormat": "",
+        "ChannelNotFound": "",
+        "InvalidPayload": ""
+      }
     }
   }
 }

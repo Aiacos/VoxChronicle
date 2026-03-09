@@ -1124,6 +1124,13 @@
       "TopicInfo": "Information about: {topic}",
       "Type": "Type",
       "Results": "Results:"
+    },
+    "EventBus": {
+      "Error": {
+        "InvalidFormat": "Invalid event format. Expected \"channel:action\".",
+        "ChannelNotFound": "Unknown event channel. Valid channels: ai, audio, scene, session, ui, error, analytics",
+        "InvalidPayload": "Event payload must be a plain object"
+      }
     }
   }
 }

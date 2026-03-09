@@ -1124,6 +1124,13 @@
       "Save": "Salvar Seleção",
       "Cancel": "Cancelar",
       "Primary": "Principal"
+    },
+    "EventBus": {
+      "Error": {
+        "InvalidFormat": "Formato de evento inválido. Esperado: \"canal:ação\".",
+        "ChannelNotFound": "Canal de evento desconhecido. Canais válidos: ai, audio, scene, session, ui, error, analytics",
+        "InvalidPayload": "O payload do evento deve ser um objeto"
+      }
     }
   }
 }

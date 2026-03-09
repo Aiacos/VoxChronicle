@@ -1124,6 +1124,13 @@
       "Save": "選択を保存",
       "Cancel": "キャンセル",
       "Primary": "プライマリ"
+    },
+    "EventBus": {
+      "Error": {
+        "InvalidFormat": "無効なイベント形式。「チャンネル:アクション」の形式が必要です。",
+        "ChannelNotFound": "不明なイベントチャンネル。有効なチャンネル: ai, audio, scene, session, ui, error, analytics",
+        "InvalidPayload": "イベントペイロードはオブジェクトである必要があります"
+      }
     }
   }
 }
