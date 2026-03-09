@@ -338,12 +338,13 @@ class SessionOrchestrator {
         this._updateState(SessionState.IDLE, { session: this._currentSession });
       }
 
-      this._callbacks.onSessionEnd?.();
       return this._currentSession;
     } catch (error) {
       this._logger.error('Failed to stop session:', error);
       this._handleError(error, 'stopSession');
       throw error;
+    } finally {
+      this._callbacks.onSessionEnd?.();
     }
   }
 
@@ -1396,7 +1397,7 @@ class SessionOrchestrator {
 
   /**
    * Full teardown of all live mode state, hooks, timers, and controllers.
-   * Called from stopLiveMode() and reset(). Safe to call multiple times.
+   * Called from stopLiveMode(). Safe to call multiple times.
    * @private
    */
   async _fullTeardown() {
@@ -1465,6 +1466,9 @@ class SessionOrchestrator {
     this._lastOffTrackStatus = null;
     this._consecutiveLiveCycleErrors = 0;
     this._aiAnalysisErrorNotified = false;
+
+    // Clear stale reindex queue
+    this._reindexQueue.clear();
 
     if (this._costTracker) {
       this._costTracker.reset();
