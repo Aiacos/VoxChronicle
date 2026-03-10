@@ -47,7 +47,8 @@ class TranscriptionFactory {
    *
    * @param {object} config - Configuration object
    * @param {string} config.mode - Transcription mode ('api', 'local', or 'auto')
-   * @param {string} [config.openaiApiKey] - OpenAI API key (required for 'api' and 'auto' modes)
+   * @param {import('./providers/TranscriptionProvider.mjs').TranscriptionProvider} [config.provider] - Transcription provider instance (required for 'api' and 'auto' API fallback modes)
+   * @param {string} [config.openaiApiKey] - OpenAI API key (legacy, ignored when provider is given)
    * @param {string} [config.whisperBackendUrl] - Local Whisper backend URL (required for 'local' and 'auto' modes)
    * @param {object} [config.options] - Additional options for the service
    * @param {string} [config.options.defaultLanguage] - Default transcription language
@@ -57,10 +58,11 @@ class TranscriptionFactory {
    * @throws {Error} If configuration is invalid or required parameters are missing
    *
    * @example
-   * // Create API-based service
+   * // Create API-based service with provider
+   * const provider = new OpenAITranscriptionProvider('sk-...');
    * const service = await TranscriptionFactory.create({
    *   mode: 'api',
-   *   openaiApiKey: 'sk-...'
+   *   provider
    * });
    *
    * @example
@@ -72,14 +74,15 @@ class TranscriptionFactory {
    *
    * @example
    * // Create auto-fallback service
+   * const provider = new OpenAITranscriptionProvider('sk-...');
    * const service = await TranscriptionFactory.create({
    *   mode: 'auto',
-   *   openaiApiKey: 'sk-...',
+   *   provider,
    *   whisperBackendUrl: 'http://localhost:8080'
    * });
    */
   static async create(config) {
-    this._logger.debug('create called', { mode: config?.mode, hasApiKey: Boolean(config?.openaiApiKey), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
+    this._logger.debug('create called', { mode: config?.mode, hasProvider: Boolean(config?.provider), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
     const t0 = Date.now();
 
     if (!config || typeof config !== 'object') {
@@ -94,7 +97,7 @@ class TranscriptionFactory {
     let service;
     switch (mode) {
       case TranscriptionMode.API:
-        service = this._createApiService(config.openaiApiKey, options);
+        service = this._createApiService(config.provider, options);
         break;
 
       case TranscriptionMode.LOCAL:
@@ -102,12 +105,12 @@ class TranscriptionFactory {
         break;
 
       case TranscriptionMode.AUTO:
-        service = await this._createAutoService(config.openaiApiKey, config.whisperBackendUrl, options);
+        service = await this._createAutoService(config.provider, config.whisperBackendUrl, options);
         break;
 
       default:
         this._logger.warn(`Unknown transcription mode: ${mode}, falling back to 'api'`);
-        service = this._createApiService(config.openaiApiKey, options);
+        service = this._createApiService(config.provider, options);
         break;
     }
 
@@ -118,21 +121,21 @@ class TranscriptionFactory {
   /**
    * Create OpenAI API-based transcription service
    *
-   * @param {string} apiKey - OpenAI API key
+   * @param {import('./providers/TranscriptionProvider.mjs').TranscriptionProvider} provider - Transcription provider instance
    * @param {object} [options] - Service options
    * @returns {TranscriptionService} OpenAI transcription service
-   * @throws {Error} If API key is missing
+   * @throws {Error} If provider is missing
    * @private
    */
-  static _createApiService(apiKey, options = {}) {
+  static _createApiService(provider, options = {}) {
     this._logger.debug('_createApiService called');
-    if (!apiKey) {
-      throw new Error('OpenAI API key is required for API transcription mode');
+    if (!provider) {
+      throw new Error('A transcription provider is required for API transcription mode');
     }
 
     this._logger.log('Creating OpenAI TranscriptionService');
 
-    return new TranscriptionService(apiKey, options);
+    return new TranscriptionService(provider, options);
   }
 
   /**
@@ -159,15 +162,15 @@ class TranscriptionFactory {
    * Create auto-fallback transcription service
    * Tries local first, falls back to API if local is unavailable
    *
-   * @param {string} apiKey - OpenAI API key
+   * @param {import('./providers/TranscriptionProvider.mjs').TranscriptionProvider} provider - Transcription provider instance for API fallback
    * @param {string} backendUrl - Whisper backend URL
    * @param {object} [options] - Service options
    * @returns {Promise<object>} Transcription service (local or API)
    * @throws {Error} If both services are unavailable
    * @private
    */
-  static async _createAutoService(apiKey, backendUrl, options = {}) {
-    this._logger.debug('_createAutoService called', { hasApiKey: Boolean(apiKey), backendUrl });
+  static async _createAutoService(provider, backendUrl, options = {}) {
+    this._logger.debug('_createAutoService called', { hasProvider: Boolean(provider), backendUrl });
     this._logger.log('Auto mode: checking local Whisper backend availability...');
 
     // Try local service first
@@ -195,7 +198,7 @@ class TranscriptionFactory {
     }
 
     // Fallback to API service
-    if (!apiKey) {
+    if (!provider) {
       throw new Error(
         'Auto mode failed: local backend unavailable and no OpenAI API key configured. ' +
           'Please configure either a local Whisper backend or an OpenAI API key.'
@@ -203,7 +206,7 @@ class TranscriptionFactory {
     }
 
     this._logger.log('Falling back to OpenAI TranscriptionService');
-    return new TranscriptionService(apiKey, options);
+    return new TranscriptionService(provider, options);
   }
 
   /**
@@ -255,7 +258,7 @@ class TranscriptionFactory {
    * // Returns 'auto' since both are available
    */
   static getRecommendedMode(config) {
-    this._logger.debug('getRecommendedMode called', { hasApiKey: Boolean(config?.openaiApiKey), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
+    this._logger.debug('getRecommendedMode called', { hasApiKey: Boolean(config?.openaiApiKey), hasProvider: Boolean(config?.provider), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
     const hasApiKey = Boolean(config.openaiApiKey);
     const hasBackendUrl = Boolean(config.whisperBackendUrl);
 

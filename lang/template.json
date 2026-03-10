@@ -1131,6 +1131,47 @@
         "ChannelNotFound": "",
         "InvalidPayload": ""
       }
+    },
+    "Resilience": {
+      "Error": {
+        "CircuitOpen": "",
+        "AllFallbacksFailed": "",
+        "ServiceNotRegistered": ""
+      },
+      "Status": {
+        "Recovered": ""
+      }
+    },
+    "Provider": {
+      "Error": {
+        "NotImplemented": "",
+        "NoProvider": "",
+        "AlreadyRegistered": "",
+        "NotFound": "",
+        "InvalidCapability": "",
+        "ProviderCapabilityMismatch": ""
+      },
+      "OpenAI": {
+        "ConnectionFailed": "",
+        "InvalidResponse": "",
+        "StreamError": ""
+      }
+    },
+    "Session": {
+      "State": {
+        "Idle": "",
+        "Configuring": "",
+        "Live": "",
+        "Transitioning": "",
+        "Chronicle": "",
+        "Publishing": "",
+        "Complete": "",
+        "Error": ""
+      },
+      "Error": {
+        "InvalidTransition": "",
+        "GuardFailed": ""
+      }
     }
   }
 }

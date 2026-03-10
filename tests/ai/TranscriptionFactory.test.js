@@ -35,8 +35,8 @@ const localWhisperMocks = vi.hoisted(() => ({
 // Mock TranscriptionService
 vi.mock('../../scripts/ai/TranscriptionService.mjs', () => {
   class MockTranscriptionService {
-    constructor(apiKey, options = {}) {
-      this.apiKey = apiKey;
+    constructor(provider, options = {}) {
+      this.provider = provider;
       this.options = options;
       this.type = 'TranscriptionService';
     }
@@ -61,6 +61,15 @@ vi.mock('../../scripts/ai/LocalWhisperService.mjs', () => {
   }
   return { LocalWhisperService: MockLocalWhisperService };
 });
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Create a minimal mock TranscriptionProvider for tests */
+function mockProvider() {
+  return { transcribe: vi.fn(), type: 'MockProvider' };
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -110,18 +119,19 @@ describe('TranscriptionFactory', () => {
 
     it('should default to API mode', async () => {
       const service = await TranscriptionFactory.create({
-        openaiApiKey: 'sk-test'
+        provider: mockProvider()
       });
       expect(service.type).toBe('TranscriptionService');
     });
 
     it('should create API service for api mode', async () => {
+      const provider = mockProvider();
       const service = await TranscriptionFactory.create({
         mode: 'api',
-        openaiApiKey: 'sk-test'
+        provider
       });
       expect(service.type).toBe('TranscriptionService');
-      expect(service.apiKey).toBe('sk-test');
+      expect(service.provider).toBe(provider);
     });
 
     it('should create local service for local mode', async () => {
@@ -136,7 +146,7 @@ describe('TranscriptionFactory', () => {
     it('should create auto service for auto mode', async () => {
       const service = await TranscriptionFactory.create({
         mode: 'auto',
-        openaiApiKey: 'sk-test',
+        provider: mockProvider(),
         whisperBackendUrl: 'http://localhost:8080'
       });
       // Should be local service since healthCheck returns true
@@ -146,7 +156,7 @@ describe('TranscriptionFactory', () => {
     it('should fall back to API for unknown mode', async () => {
       const service = await TranscriptionFactory.create({
         mode: 'unknown-mode',
-        openaiApiKey: 'sk-test'
+        provider: mockProvider()
       });
       expect(service.type).toBe('TranscriptionService');
     });
@@ -154,7 +164,7 @@ describe('TranscriptionFactory', () => {
     it('should pass options to API service', async () => {
       const service = await TranscriptionFactory.create({
         mode: 'api',
-        openaiApiKey: 'sk-test',
+        provider: mockProvider(),
         options: { defaultLanguage: 'it' }
       });
       expect(service.options.defaultLanguage).toBe('it');
@@ -173,16 +183,16 @@ describe('TranscriptionFactory', () => {
   // ── API mode ──────────────────────────────────────────────────────
 
   describe('API mode', () => {
-    it('should throw if no API key provided', async () => {
+    it('should throw if no provider provided', async () => {
       await expect(
         TranscriptionFactory.create({ mode: 'api' })
-      ).rejects.toThrow('OpenAI API key is required');
+      ).rejects.toThrow('A transcription provider is required');
     });
 
-    it('should throw if API key is empty', async () => {
+    it('should throw if provider is null', async () => {
       await expect(
-        TranscriptionFactory.create({ mode: 'api', openaiApiKey: '' })
-      ).rejects.toThrow('OpenAI API key is required');
+        TranscriptionFactory.create({ mode: 'api', provider: null })
+      ).rejects.toThrow('A transcription provider is required');
     });
   });
 
@@ -210,7 +220,7 @@ describe('TranscriptionFactory', () => {
 
       const service = await TranscriptionFactory.create({
         mode: 'auto',
-        openaiApiKey: 'sk-test',
+        provider: mockProvider(),
         whisperBackendUrl: 'http://localhost:8080'
       });
       expect(service.type).toBe('LocalWhisperService');
@@ -221,7 +231,7 @@ describe('TranscriptionFactory', () => {
 
       const service = await TranscriptionFactory.create({
         mode: 'auto',
-        openaiApiKey: 'sk-test',
+        provider: mockProvider(),
         whisperBackendUrl: 'http://localhost:8080'
       });
       expect(service.type).toBe('TranscriptionService');
@@ -232,7 +242,7 @@ describe('TranscriptionFactory', () => {
 
       const service = await TranscriptionFactory.create({
         mode: 'auto',
-        openaiApiKey: 'sk-test',
+        provider: mockProvider(),
         whisperBackendUrl: 'http://localhost:8080'
       });
       expect(service.type).toBe('TranscriptionService');
@@ -241,7 +251,7 @@ describe('TranscriptionFactory', () => {
     it('should fall back to API when no backend URL configured', async () => {
       const service = await TranscriptionFactory.create({
         mode: 'auto',
-        openaiApiKey: 'sk-test'
+        provider: mockProvider()
       });
       expect(service.type).toBe('TranscriptionService');
     });
@@ -253,12 +263,12 @@ describe('TranscriptionFactory', () => {
         TranscriptionFactory.create({
           mode: 'auto',
           whisperBackendUrl: 'http://localhost:8080'
-          // no API key
+          // no provider
         })
       ).rejects.toThrow('Auto mode failed');
     });
 
-    it('should throw when no backend URL and no API key', async () => {
+    it('should throw when no backend URL and no provider', async () => {
       await expect(
         TranscriptionFactory.create({ mode: 'auto' })
       ).rejects.toThrow('Auto mode failed');
@@ -269,7 +279,7 @@ describe('TranscriptionFactory', () => {
 
       const service = await TranscriptionFactory.create({
         mode: 'auto',
-        openaiApiKey: 'sk-test',
+        provider: mockProvider(),
         whisperBackendUrl: 'http://localhost:8080',
         options: { defaultLanguage: 'de' }
       });
@@ -281,7 +291,7 @@ describe('TranscriptionFactory', () => {
 
       const service = await TranscriptionFactory.create({
         mode: 'auto',
-        openaiApiKey: 'sk-test',
+        provider: mockProvider(),
         whisperBackendUrl: 'http://localhost:8080',
         options: { defaultLanguage: 'ja' }
       });

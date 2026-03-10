@@ -35,7 +35,13 @@ const {
   mockRAGProviderInstance,
   mockRAGProviderFactoryCreate,
   mockSilenceDetector,
-  mockSettingsModule
+  mockSettingsModule,
+  mockOpenAIChatProvider,
+  mockOpenAITranscriptionProvider,
+  mockOpenAIImageProvider,
+  mockOpenAIEmbeddingProvider,
+  mockProviderRegistryInstance,
+  mockProviderRegistry
 } = vi.hoisted(() => {
   const mockAudioRecorder = vi.fn().mockImplementation(() => ({}));
   const mockTranscriptionFactoryCreate = vi.fn().mockResolvedValue({ type: 'cloud' });
@@ -94,6 +100,23 @@ const {
     setRAGVectorStoreId: vi.fn().mockResolvedValue(undefined),
     validateServerUrls: vi.fn()
   };
+
+  // OpenAI provider mocks (Story 2.2)
+  const mockOpenAIChatProvider = vi.fn().mockImplementation(() => ({ type: 'chat' }));
+  const mockOpenAITranscriptionProvider = vi.fn().mockImplementation(() => ({ type: 'transcription' }));
+  const mockOpenAIImageProvider = vi.fn().mockImplementation(() => ({ type: 'image' }));
+  const mockOpenAIEmbeddingProvider = vi.fn().mockImplementation(() => ({ type: 'embedding' }));
+
+  const mockProviderRegistryInstance = {
+    register: vi.fn(),
+    getProvider: vi.fn().mockImplementation((capability) => ({ capability, type: 'mock-provider' })),
+    resetInstance: vi.fn()
+  };
+  const mockProviderRegistry = {
+    getInstance: vi.fn().mockReturnValue(mockProviderRegistryInstance),
+    resetInstance: vi.fn()
+  };
+
   return {
     mockAudioRecorder, mockTranscriptionFactoryCreate, mockImageGenerationService,
     mockKankaService, mockEntityExtractor, mockNarrativeExporter,
@@ -102,7 +125,10 @@ const {
     mockAIAssistantInstance, mockAIAssistant, mockRulesReference, mockSessionAnalytics,
     mockOpenAIClient, mockLoggerChild, mockSetDebugMode,
     mockRAGProviderInstance, mockRAGProviderFactoryCreate, mockSilenceDetector,
-    mockSettingsModule
+    mockSettingsModule,
+    mockOpenAIChatProvider, mockOpenAITranscriptionProvider,
+    mockOpenAIImageProvider, mockOpenAIEmbeddingProvider,
+    mockProviderRegistryInstance, mockProviderRegistry
   };
 });
 
@@ -170,6 +196,21 @@ vi.mock('../../scripts/narrator/SilenceDetector.mjs', () => ({
 }));
 vi.mock('../../scripts/core/Settings.mjs', () => ({
   Settings: mockSettingsModule
+}));
+vi.mock('../../scripts/ai/providers/OpenAIChatProvider.mjs', () => ({
+  OpenAIChatProvider: mockOpenAIChatProvider
+}));
+vi.mock('../../scripts/ai/providers/OpenAITranscriptionProvider.mjs', () => ({
+  OpenAITranscriptionProvider: mockOpenAITranscriptionProvider
+}));
+vi.mock('../../scripts/ai/providers/OpenAIImageProvider.mjs', () => ({
+  OpenAIImageProvider: mockOpenAIImageProvider
+}));
+vi.mock('../../scripts/ai/providers/OpenAIEmbeddingProvider.mjs', () => ({
+  OpenAIEmbeddingProvider: mockOpenAIEmbeddingProvider
+}));
+vi.mock('../../scripts/ai/providers/ProviderRegistry.mjs', () => ({
+  ProviderRegistry: mockProviderRegistry
 }));
 
 // ── Import the class under test (after all vi.mock calls) ───────────────
@@ -267,6 +308,16 @@ describe('VoxChronicle', () => {
     });
     mockSettingsModule.setRAGVectorStoreId = vi.fn().mockResolvedValue(undefined);
     mockSettingsModule.validateServerUrls = vi.fn();
+
+    // Reset provider mocks
+    mockOpenAIChatProvider.mockImplementation(() => ({ type: 'chat' }));
+    mockOpenAITranscriptionProvider.mockImplementation(() => ({ type: 'transcription' }));
+    mockOpenAIImageProvider.mockImplementation(() => ({ type: 'image' }));
+    mockOpenAIEmbeddingProvider.mockImplementation(() => ({ type: 'embedding' }));
+    mockProviderRegistryInstance.register = vi.fn();
+    mockProviderRegistryInstance.getProvider = vi.fn().mockImplementation((capability) => ({ capability, type: 'mock-provider' }));
+    mockProviderRegistry.getInstance = vi.fn().mockReturnValue(mockProviderRegistryInstance);
+    mockProviderRegistry.resetInstance = vi.fn();
 
     // Configure default settings that return null for everything (simulates unconfigured)
     configureSettings({});
@@ -466,16 +517,22 @@ describe('VoxChronicle', () => {
         noiseSuppression: true
       });
 
-      // Transcription factory called
+      // Transcription factory called with provider (not raw apiKey)
       expect(mockTranscriptionFactoryCreate).toHaveBeenCalledWith({
         mode: 'cloud',
-        openaiApiKey: 'sk-test-key-123',
+        provider: expect.any(Object),
         whisperBackendUrl: ''
       });
 
-      // OpenAI-dependent services created
-      expect(mockImageGenerationService).toHaveBeenCalledWith('sk-test-key-123');
-      expect(mockEntityExtractor).toHaveBeenCalledWith('sk-test-key-123');
+      // OpenAI-dependent services created with providers from registry (not raw apiKey)
+      expect(mockImageGenerationService).toHaveBeenCalledWith(expect.any(Object));
+      expect(mockEntityExtractor).toHaveBeenCalledWith(expect.any(Object));
+
+      // All 4 providers registered with ProviderRegistry
+      expect(mockProviderRegistryInstance.register).toHaveBeenCalledWith('openai-chat', expect.any(Object), { default: true });
+      expect(mockProviderRegistryInstance.register).toHaveBeenCalledWith('openai-transcription', expect.any(Object), { default: true });
+      expect(mockProviderRegistryInstance.register).toHaveBeenCalledWith('openai-image', expect.any(Object), { default: true });
+      expect(mockProviderRegistryInstance.register).toHaveBeenCalledWith('openai-embedding', expect.any(Object), { default: true });
 
       // Kanka services created
       expect(mockKankaService).toHaveBeenCalledWith('kanka-token-abc', 'camp-456');

@@ -9,7 +9,7 @@
  * @module vox-chronicle
  */
 
-import { OpenAIClient, OpenAIError, OpenAIErrorType } from './OpenAIClient.mjs';
+import { OpenAIError, OpenAIErrorType } from './OpenAIClient.mjs';
 import { Logger } from '../utils/Logger.mjs';
 
 /**
@@ -64,14 +64,23 @@ const DEFAULT_MAX_MOMENTS = 3;
 /**
  * EntityExtractor class for AI-powered entity extraction from transcripts
  *
- * @augments OpenAIClient
+ * Uses a ChatProvider for all API communication, following the composition
+ * over inheritance pattern established in Story 2.2.
+ *
  * @example
- * const extractor = new EntityExtractor('your-api-key');
+ * const provider = new OpenAIChatProvider('your-api-key');
+ * const extractor = new EntityExtractor(provider);
  * const entities = await extractor.extractEntities(transcriptText, {
  *   existingEntities: ['Gandalf', 'Mordor']
  * });
  */
-class EntityExtractor extends OpenAIClient {
+class EntityExtractor {
+  /**
+   * Chat provider for API communication
+   * @type {import('./providers/ChatProvider.mjs').ChatProvider}
+   */
+  #provider;
+
   /**
    * Logger instance for this class
    * @type {object}
@@ -110,19 +119,18 @@ class EntityExtractor extends OpenAIClient {
   /**
    * Create a new EntityExtractor instance
    *
-   * @param {string} apiKey - OpenAI API key
+   * @param {import('./providers/ChatProvider.mjs').ChatProvider} provider - Chat provider instance
    * @param {object} [options] - Configuration options
    * @param {string} [options.model='gpt-4o'] - Model to use for extraction
    * @param {number} [options.extractionTemperature=0.3] - Temperature for entity extraction
    * @param {number} [options.momentTemperature=0.7] - Temperature for moment identification
    * @param {string[]} [options.knownEntities] - Initial list of known entity names
-   * @param {number} [options.timeout=180000] - Request timeout in milliseconds
    */
-  constructor(apiKey, options = {}) {
-    super(apiKey, {
-      ...options,
-      timeout: options.timeout || ENTITY_EXTRACTION_TIMEOUT_MS
-    });
+  constructor(provider, options = {}) {
+    if (!provider) {
+      throw new Error('EntityExtractor requires a ChatProvider instance');
+    }
+    this.#provider = provider;
 
     this._model = options.model || 'gpt-4o';
     this._extractionTemperature = options.extractionTemperature ?? 0.3;
@@ -171,40 +179,41 @@ class EntityExtractor extends OpenAIClient {
     this._logger.log(`Extracting entities from transcript (${processedText.length} chars)`);
 
     try {
-      const response = await this.post('/chat/completions', {
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Extract entities from this RPG session transcript:\n\n${processedText}`
+        }
+      ];
+
+      const result = await this.#provider.chat(messages, {
         model: this._model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: `Extract entities from this RPG session transcript:\n\n${processedText}`
-          }
-        ],
-        response_format: { type: 'json_object' },
-        temperature: this._extractionTemperature
+        temperature: this._extractionTemperature,
+        responseFormat: { type: 'json_object' }
       });
 
-      const content = response?.choices?.[0]?.message?.content;
+      const content = result.content;
       if (!content) {
-        throw new Error(`Entity extraction received empty response. choices: ${response?.choices?.length ?? 'undefined'}`);
+        throw new Error('Entity extraction received empty response from provider');
       }
       const extracted = JSON.parse(content);
 
       // Validate and normalize the response
-      const result = this._normalizeExtractionResult(extracted, options);
+      const normalized = this._normalizeExtractionResult(extracted, options);
 
       this._logger.log(
-        `Extracted ${result.characters.length} characters, ` +
-          `${result.locations.length} locations, ${result.items.length} items`
+        `Extracted ${normalized.characters.length} characters, ` +
+          `${normalized.locations.length} locations, ${normalized.items.length} items`
       );
 
       this._logger.debug(`extractEntities completed in ${Date.now() - t0}ms`, {
-        characters: result.characters.length,
-        locations: result.locations.length,
-        items: result.items.length,
-        totalCount: result.totalCount
+        characters: normalized.characters.length,
+        locations: normalized.locations.length,
+        items: normalized.items.length,
+        totalCount: normalized.totalCount
       });
-      return result;
+      return normalized;
     } catch (error) {
       if (error instanceof SyntaxError) {
         this._logger.error(`extractEntities failed after ${Date.now() - t0}ms: Failed to parse extraction response as JSON`);
@@ -244,22 +253,23 @@ class EntityExtractor extends OpenAIClient {
     this._logger.log(`Identifying up to ${maxMoments} salient moments`);
 
     try {
-      const response = await this.post('/chat/completions', {
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Identify the most dramatic moments from this session:\n\n${processedText}`
+        }
+      ];
+
+      const result = await this.#provider.chat(messages, {
         model: this._model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: `Identify the most dramatic moments from this session:\n\n${processedText}`
-          }
-        ],
-        response_format: { type: 'json_object' },
-        temperature: this._momentTemperature
+        temperature: this._momentTemperature,
+        responseFormat: { type: 'json_object' }
       });
 
-      const content = response?.choices?.[0]?.message?.content;
+      const content = result.content;
       if (!content) {
-        throw new Error(`Moment extraction received empty response. choices: ${response?.choices?.length ?? 'undefined'}`);
+        throw new Error('Moment extraction received empty response from provider');
       }
       const parsed = JSON.parse(content);
 
@@ -333,32 +343,33 @@ class EntityExtractor extends OpenAIClient {
     this._logger.log(`Extracting relationships between ${entityNames.length} entities`);
 
     try {
-      const response = await this.post('/chat/completions', {
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Analyze relationships between entities in this RPG session transcript:\n\n${processedText}`
+        }
+      ];
+
+      const result = await this.#provider.chat(messages, {
         model: this._model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: `Analyze relationships between entities in this RPG session transcript:\n\n${processedText}`
-          }
-        ],
-        response_format: { type: 'json_object' },
-        temperature: this._extractionTemperature
+        temperature: this._extractionTemperature,
+        responseFormat: { type: 'json_object' }
       });
 
-      const content = response?.choices?.[0]?.message?.content;
+      const content = result.content;
       if (!content) {
-        throw new Error(`Relationship extraction received empty response. choices: ${response?.choices?.length ?? 'undefined'}`);
+        throw new Error('Relationship extraction received empty response from provider');
       }
       const extracted = JSON.parse(content);
 
       // Validate and normalize the response
-      const result = this._normalizeRelationshipResult(extracted, entityNames, options);
+      const normalized = this._normalizeRelationshipResult(extracted, entityNames, options);
 
-      this._logger.log(`Extracted ${result.length} relationships`);
+      this._logger.log(`Extracted ${normalized.length} relationships`);
 
-      this._logger.debug(`extractRelationships completed in ${Date.now() - t0}ms`, { relationshipCount: result.length });
-      return result;
+      this._logger.debug(`extractRelationships completed in ${Date.now() - t0}ms`, { relationshipCount: normalized.length });
+      return normalized;
     } catch (error) {
       if (error instanceof SyntaxError) {
         this._logger.error(`extractRelationships failed after ${Date.now() - t0}ms: Failed to parse relationship response as JSON`);

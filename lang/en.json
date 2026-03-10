@@ -1131,6 +1131,47 @@
         "ChannelNotFound": "Unknown event channel. Valid channels: ai, audio, scene, session, ui, error, analytics",
         "InvalidPayload": "Event payload must be a plain object"
       }
+    },
+    "Resilience": {
+      "Error": {
+        "CircuitOpen": "Service {service} temporarily unavailable",
+        "AllFallbacksFailed": "All recovery options exhausted for {service}",
+        "ServiceNotRegistered": "Service {service} is not registered"
+      },
+      "Status": {
+        "Recovered": "Service {service} recovered"
+      }
+    },
+    "Provider": {
+      "Error": {
+        "NotImplemented": "Method {method} must be implemented by provider subclass",
+        "NoProvider": "No provider registered for capability: {capability}",
+        "AlreadyRegistered": "Provider '{name}' is already registered, overwriting",
+        "NotFound": "Provider '{name}' not found in registry",
+        "InvalidCapability": "Unknown capability: {capability}",
+        "ProviderCapabilityMismatch": "Provider '{name}' does not support capability: {capability}"
+      },
+      "OpenAI": {
+        "ConnectionFailed": "Failed to connect to OpenAI API: {error}",
+        "InvalidResponse": "Invalid response from OpenAI API: {details}",
+        "StreamError": "Error during OpenAI streaming: {error}"
+      }
+    },
+    "Session": {
+      "State": {
+        "Idle": "Idle",
+        "Configuring": "Configuring",
+        "Live": "Live",
+        "Transitioning": "Transitioning",
+        "Chronicle": "Chronicle",
+        "Publishing": "Publishing",
+        "Complete": "Complete",
+        "Error": "Error"
+      },
+      "Error": {
+        "InvalidTransition": "Invalid transition: event \"{event}\" is not valid in state \"{state}\"",
+        "GuardFailed": "Transition blocked by guard condition"
+      }
     }
   }
 }

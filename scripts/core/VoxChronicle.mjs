@@ -33,6 +33,12 @@ import { Logger } from '../utils/Logger.mjs';
 import { RAGProviderFactory } from '../rag/RAGProviderFactory.mjs';
 import { SilenceDetector } from '../narrator/SilenceDetector.mjs';
 import { Settings } from './Settings.mjs';
+// OpenAI provider implementations (Story 2.2)
+import { OpenAIChatProvider } from '../ai/providers/OpenAIChatProvider.mjs';
+import { OpenAITranscriptionProvider } from '../ai/providers/OpenAITranscriptionProvider.mjs';
+import { OpenAIImageProvider } from '../ai/providers/OpenAIImageProvider.mjs';
+import { OpenAIEmbeddingProvider } from '../ai/providers/OpenAIEmbeddingProvider.mjs';
+import { ProviderRegistry } from '../ai/providers/ProviderRegistry.mjs';
 
 // Create logger instance for VoxChronicle
 const logger = Logger.createChild('VoxChronicle');
@@ -144,6 +150,7 @@ class VoxChronicle {
       VoxChronicle._hooksRegistered = false;
     }
     VoxChronicle.#instance = null;
+    ProviderRegistry.resetInstance();
   }
 
   /**
@@ -163,6 +170,7 @@ class VoxChronicle {
     this.audioRecorder?.cancel();
     this.silenceDetector?.stop?.();
     this.sessionOrchestrator?.reset?.();
+    ProviderRegistry.resetInstance();
     this.isInitialized = false;
     this._reinitializePending = false;
     return this.initialize();
@@ -219,8 +227,21 @@ class VoxChronicle {
       const kankaApiToken = this._getSetting('kankaApiToken')?.trim();
       const kankaCampaignId = this._getSetting('kankaCampaignId')?.trim();
       
+      const registry = ProviderRegistry.getInstance();
+
       if (openaiApiKey) {
         logger.info('OpenAI API key loaded');
+        // Register OpenAI providers in ProviderRegistry
+        const chatProvider = new OpenAIChatProvider(openaiApiKey);
+        const transcriptionProvider = new OpenAITranscriptionProvider(openaiApiKey);
+        const imageProvider = new OpenAIImageProvider(openaiApiKey);
+        const embeddingProvider = new OpenAIEmbeddingProvider(openaiApiKey);
+
+        registry.register('openai-chat', chatProvider, { default: true });
+        registry.register('openai-transcription', transcriptionProvider, { default: true });
+        registry.register('openai-image', imageProvider, { default: true });
+        registry.register('openai-embedding', embeddingProvider, { default: true });
+        logger.info('OpenAI providers registered');
       } else {
         logger.warn('OpenAI API key is empty or not configured');
       }
@@ -244,9 +265,10 @@ class VoxChronicle {
 
       // Initialize transcription service using factory
       try {
+        const transcriptionProvider = openaiApiKey ? registry.getProvider('transcribe') : null;
         this.transcriptionService = await TranscriptionFactory.create({
           mode: transcriptionMode,
-          openaiApiKey: openaiApiKey,
+          provider: transcriptionProvider,
           whisperBackendUrl: whisperBackendUrl
         });
         logger.info(`Transcription service ready (mode: ${transcriptionMode})`);
@@ -257,8 +279,8 @@ class VoxChronicle {
 
       // Initialize other OpenAI services (if API key configured)
       if (openaiApiKey) {
-        this.imageGenerationService = new ImageGenerationService(openaiApiKey);
-        this.entityExtractor = new EntityExtractor(openaiApiKey);
+        this.imageGenerationService = new ImageGenerationService(registry.getProvider('generateImage'));
+        this.entityExtractor = new EntityExtractor(registry.getProvider('chat'));
         this.aiAssistant = new AIAssistant({
           openaiClient: new OpenAIClient(openaiApiKey),
           primaryLanguage: aiResponseLanguage

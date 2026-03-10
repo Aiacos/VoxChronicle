@@ -1131,6 +1131,47 @@
         "ChannelNotFound": "Unbekannter Event-Kanal. Gültige Kanäle: ai, audio, scene, session, ui, error, analytics",
         "InvalidPayload": "Event-Payload muss ein einfaches Objekt sein"
       }
+    },
+    "Resilience": {
+      "Error": {
+        "CircuitOpen": "Dienst {service} vorübergehend nicht verfügbar",
+        "AllFallbacksFailed": "Alle Wiederherstellungsoptionen für {service} erschöpft",
+        "ServiceNotRegistered": "Dienst {service} ist nicht registriert"
+      },
+      "Status": {
+        "Recovered": "Dienst {service} wiederhergestellt"
+      }
+    },
+    "Provider": {
+      "Error": {
+        "NotImplemented": "Methode {method} muss von der Provider-Unterklasse implementiert werden",
+        "NoProvider": "Kein Provider für Fähigkeit registriert: {capability}",
+        "AlreadyRegistered": "Provider '{name}' ist bereits registriert, wird überschrieben",
+        "NotFound": "Provider '{name}' nicht im Registry gefunden",
+        "InvalidCapability": "Unbekannte Fähigkeit: {capability}",
+        "ProviderCapabilityMismatch": "Provider '{name}' unterstützt die Fähigkeit nicht: {capability}"
+      },
+      "OpenAI": {
+        "ConnectionFailed": "Verbindung zur OpenAI-API fehlgeschlagen: {error}",
+        "InvalidResponse": "Ungültige Antwort von der OpenAI-API: {details}",
+        "StreamError": "Fehler beim OpenAI-Streaming: {error}"
+      }
+    },
+    "Session": {
+      "State": {
+        "Idle": "Inaktiv",
+        "Configuring": "Konfiguration",
+        "Live": "Live",
+        "Transitioning": "Übergang",
+        "Chronicle": "Chronik",
+        "Publishing": "Veröffentlichung",
+        "Complete": "Abgeschlossen",
+        "Error": "Fehler"
+      },
+      "Error": {
+        "InvalidTransition": "Ungültiger Übergang: Ereignis \"{event}\" ist im Zustand \"{state}\" nicht gültig",
+        "GuardFailed": "Übergang durch Schutzbedingung blockiert"
+      }
     }
   }
 }

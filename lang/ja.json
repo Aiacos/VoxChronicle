@@ -1131,6 +1131,47 @@
         "ChannelNotFound": "不明なイベントチャンネル。有効なチャンネル: ai, audio, scene, session, ui, error, analytics",
         "InvalidPayload": "イベントペイロードはオブジェクトである必要があります"
       }
+    },
+    "Resilience": {
+      "Error": {
+        "CircuitOpen": "サービス {service} は一時的に利用できません",
+        "AllFallbacksFailed": "サービス {service} のすべての回復オプションが使い果たされました",
+        "ServiceNotRegistered": "サービス {service} は登録されていません"
+      },
+      "Status": {
+        "Recovered": "サービス {service} が復旧しました"
+      }
+    },
+    "Provider": {
+      "Error": {
+        "NotImplemented": "メソッド {method} はプロバイダーサブクラスで実装する必要があります",
+        "NoProvider": "機能 {capability} に登録されたプロバイダーがありません",
+        "AlreadyRegistered": "プロバイダー '{name}' は既に登録されています。上書きします",
+        "NotFound": "プロバイダー '{name}' がレジストリに見つかりません",
+        "InvalidCapability": "不明な機能: {capability}",
+        "ProviderCapabilityMismatch": "プロバイダー '{name}' は機能をサポートしていません: {capability}"
+      },
+      "OpenAI": {
+        "ConnectionFailed": "OpenAI APIへの接続に失敗しました: {error}",
+        "InvalidResponse": "OpenAI APIからの無効なレスポンス: {details}",
+        "StreamError": "OpenAIストリーミング中にエラーが発生しました: {error}"
+      }
+    },
+    "Session": {
+      "State": {
+        "Idle": "待機中",
+        "Configuring": "設定中",
+        "Live": "ライブ",
+        "Transitioning": "移行中",
+        "Chronicle": "クロニクル",
+        "Publishing": "公開中",
+        "Complete": "完了",
+        "Error": "エラー"
+      },
+      "Error": {
+        "InvalidTransition": "無効な遷移: イベント \"{event}\" は状態 \"{state}\" では有効ではありません",
+        "GuardFailed": "ガード条件により遷移がブロックされました"
+      }
     }
   }
 }

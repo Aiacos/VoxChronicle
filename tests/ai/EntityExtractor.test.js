@@ -34,55 +34,9 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
   }
 }));
 
-// Mock RateLimiter
-vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
-  class MockRateLimiter {
-    constructor() {
-      this.throttle = vi.fn((fn) => fn());
-      this.executeWithRetry = vi.fn((fn) => fn());
-      this.pause = vi.fn();
-      this.reset = vi.fn();
-      this.getStats = vi.fn().mockReturnValue({});
-    }
-    static fromPreset() {
-      return new MockRateLimiter();
-    }
-  }
-  return { RateLimiter: MockRateLimiter };
-});
-
-// Mock SensitiveDataFilter
-vi.mock('../../scripts/utils/SensitiveDataFilter.mjs', () => ({
-  SensitiveDataFilter: {
-    sanitizeUrl: vi.fn((url) => url),
-    sanitizeString: vi.fn((s) => s),
-    sanitizeObject: vi.fn((o) => o)
-  }
-}));
-
 // ---------------------------------------------------------------------------
-// Helpers
+// Sample API response data
 // ---------------------------------------------------------------------------
-
-function mockResponse(body, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    statusText: status === 200 ? 'OK' : 'Error',
-    headers: new Headers(),
-    json: vi.fn().mockResolvedValue(body),
-    text: vi.fn().mockResolvedValue(JSON.stringify(body)),
-    blob: vi.fn().mockResolvedValue(new Blob())
-  };
-}
-
-function mockChatResponse(content) {
-  return mockResponse({
-    choices: [{
-      message: { content: JSON.stringify(content) }
-    }]
-  });
-}
 
 const SAMPLE_ENTITIES_RESPONSE = {
   characters: [
@@ -136,19 +90,34 @@ const SAMPLE_RELATIONSHIPS_RESPONSE = {
 };
 
 // ---------------------------------------------------------------------------
+// Mock provider factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a mock ChatProvider with a pre-configured chat() response.
+ * @param {object} responseData - The JSON object that the provider returns as content.
+ * @returns {{ chat: import('vitest').Mock }}
+ */
+function createMockProvider(responseData = SAMPLE_ENTITIES_RESPONSE) {
+  return {
+    chat: vi.fn().mockResolvedValue({
+      content: JSON.stringify(responseData),
+      usage: { prompt_tokens: 100, completion_tokens: 50 }
+    })
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('EntityExtractor', () => {
   let extractor;
-  let fetchSpy;
+  let mockProvider;
 
   beforeEach(() => {
-    fetchSpy = vi.fn().mockResolvedValue(mockChatResponse(SAMPLE_ENTITIES_RESPONSE));
-    globalThis.fetch = fetchSpy;
-
-    extractor = new EntityExtractor('sk-test-key', {
-      retryEnabled: false,
+    mockProvider = createMockProvider(SAMPLE_ENTITIES_RESPONSE);
+    extractor = new EntityExtractor(mockProvider, {
       timeout: 5000
     });
   });
@@ -197,8 +166,12 @@ describe('EntityExtractor', () => {
   // ── Constructor ────────────────────────────────────────────────────
 
   describe('constructor', () => {
-    it('should create instance with API key', () => {
-      expect(extractor.isConfigured).toBe(true);
+    it('should create instance with a provider', () => {
+      expect(extractor).toBeInstanceOf(EntityExtractor);
+    });
+
+    it('should throw when no provider is supplied', () => {
+      expect(() => new EntityExtractor(null)).toThrow('ChatProvider');
     });
 
     it('should default model to gpt-4o', () => {
@@ -206,7 +179,7 @@ describe('EntityExtractor', () => {
     });
 
     it('should accept custom model', () => {
-      const ext = new EntityExtractor('sk-test', { model: 'gpt-4o-mini' });
+      const ext = new EntityExtractor(createMockProvider(), { model: 'gpt-4o-mini' });
       expect(ext._model).toBe('gpt-4o-mini');
     });
 
@@ -215,7 +188,7 @@ describe('EntityExtractor', () => {
     });
 
     it('should accept custom extraction temperature', () => {
-      const ext = new EntityExtractor('sk-test', { extractionTemperature: 0.5 });
+      const ext = new EntityExtractor(createMockProvider(), { extractionTemperature: 0.5 });
       expect(ext._extractionTemperature).toBe(0.5);
     });
 
@@ -224,12 +197,12 @@ describe('EntityExtractor', () => {
     });
 
     it('should accept custom moment temperature', () => {
-      const ext = new EntityExtractor('sk-test', { momentTemperature: 0.9 });
+      const ext = new EntityExtractor(createMockProvider(), { momentTemperature: 0.9 });
       expect(ext._momentTemperature).toBe(0.9);
     });
 
     it('should accept initial known entities', () => {
-      const ext = new EntityExtractor('sk-test', {
+      const ext = new EntityExtractor(createMockProvider(), {
         knownEntities: ['Gandalf', 'Frodo']
       });
       expect(ext.getKnownEntities()).toContain('gandalf');
@@ -265,30 +238,33 @@ describe('EntityExtractor', () => {
       await expect(extractor.extractEntities(123)).rejects.toThrow('Invalid transcript');
     });
 
-    it('should include existing entities in ignore list', async () => {
+    it('should call provider with messages and options', async () => {
       await extractor.extractEntities('test transcript', {
         existingEntities: ['Gandalf']
       });
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(mockProvider.chat).toHaveBeenCalled();
+      const [messages, options] = mockProvider.chat.mock.calls[0];
+      expect(Array.isArray(messages)).toBe(true);
+      expect(options.model).toBe('gpt-4o');
+      expect(options.responseFormat).toEqual({ type: 'json_object' });
     });
 
-    it('should include known entities in ignore list', async () => {
+    it('should include known entities in ignore list via system prompt', async () => {
       extractor.addKnownEntities(['Gandalf']);
       await extractor.extractEntities('test transcript');
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(mockProvider.chat).toHaveBeenCalled();
+      const [messages] = mockProvider.chat.mock.calls[0];
+      // Known entities are stored lowercase, so the prompt contains the lowercase form
+      expect(messages[0].content).toContain('gandalf');
     });
 
-    it('should handle API returning invalid JSON', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({
-          choices: [{ message: { content: 'not valid json' } }]
-        })
-      );
+    it('should handle provider returning invalid JSON', async () => {
+      mockProvider.chat.mockResolvedValueOnce({ content: 'not valid json', usage: {} });
       await expect(extractor.extractEntities('test')).rejects.toThrow('invalid JSON');
     });
 
-    it('should handle API error', async () => {
-      fetchSpy.mockRejectedValueOnce(new Error('API error'));
+    it('should handle provider error', async () => {
+      mockProvider.chat.mockRejectedValueOnce(new Error('API error'));
       await expect(extractor.extractEntities('test')).rejects.toThrow('API error');
     });
 
@@ -296,14 +272,14 @@ describe('EntityExtractor', () => {
       await extractor.extractEntities('test', {
         campaignContext: 'A Lord of the Rings campaign'
       });
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(mockProvider.chat).toHaveBeenCalled();
     });
 
     it('should accept includePlayerCharacters option', async () => {
       await extractor.extractEntities('test', {
         includePlayerCharacters: true
       });
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(mockProvider.chat).toHaveBeenCalled();
     });
   });
 
@@ -311,7 +287,10 @@ describe('EntityExtractor', () => {
 
   describe('identifySalientMoments', () => {
     beforeEach(() => {
-      fetchSpy.mockResolvedValue(mockChatResponse(SAMPLE_MOMENTS_RESPONSE));
+      mockProvider.chat.mockResolvedValue({
+        content: JSON.stringify(SAMPLE_MOMENTS_RESPONSE),
+        usage: { prompt_tokens: 100, completion_tokens: 50 }
+      });
     });
 
     it('should identify salient moments', async () => {
@@ -337,7 +316,7 @@ describe('EntityExtractor', () => {
 
     it('should default maxMoments to DEFAULT_MAX_MOMENTS', async () => {
       await extractor.identifySalientMoments('test');
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(mockProvider.chat).toHaveBeenCalled();
     });
 
     it('should include moment id', async () => {
@@ -347,21 +326,17 @@ describe('EntityExtractor', () => {
     });
 
     it('should handle invalid JSON response', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({
-          choices: [{ message: { content: 'not json' } }]
-        })
-      );
+      mockProvider.chat.mockResolvedValueOnce({ content: 'not json', usage: {} });
       await expect(extractor.identifySalientMoments('test')).rejects.toThrow('invalid JSON');
     });
 
     it('should accept style option', async () => {
       await extractor.identifySalientMoments('test', { style: 'watercolor' });
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(mockProvider.chat).toHaveBeenCalled();
     });
 
-    it('should handle API error', async () => {
-      fetchSpy.mockRejectedValueOnce(new Error('API down'));
+    it('should handle provider error', async () => {
+      mockProvider.chat.mockRejectedValueOnce(new Error('API down'));
       await expect(extractor.identifySalientMoments('test')).rejects.toThrow('API down');
     });
   });
@@ -375,7 +350,10 @@ describe('EntityExtractor', () => {
     ];
 
     beforeEach(() => {
-      fetchSpy.mockResolvedValue(mockChatResponse(SAMPLE_RELATIONSHIPS_RESPONSE));
+      mockProvider.chat.mockResolvedValue({
+        content: JSON.stringify(SAMPLE_RELATIONSHIPS_RESPONSE),
+        usage: { prompt_tokens: 100, completion_tokens: 50 }
+      });
     });
 
     it('should extract relationships', async () => {
@@ -409,33 +387,42 @@ describe('EntityExtractor', () => {
     });
 
     it('should filter by minimum confidence', async () => {
-      fetchSpy.mockResolvedValueOnce(mockChatResponse({
-        relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 3, description: 'low' },
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'ally', confidence: 8, description: 'high' }
-        ]
-      }));
+      mockProvider.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          relationships: [
+            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 3, description: 'low' },
+            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'ally', confidence: 8, description: 'high' }
+          ]
+        }),
+        usage: {}
+      });
       const result = await extractor.extractRelationships('test', entities, { minConfidence: 5 });
       expect(result).toHaveLength(1);
       expect(result[0].confidence).toBe(8);
     });
 
     it('should filter out self-relationships', async () => {
-      fetchSpy.mockResolvedValueOnce(mockChatResponse({
-        relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Gandalf', relationType: 'neutral', confidence: 9, description: 'self' }
-        ]
-      }));
+      mockProvider.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          relationships: [
+            { sourceEntity: 'Gandalf', targetEntity: 'Gandalf', relationType: 'neutral', confidence: 9, description: 'self' }
+          ]
+        }),
+        usage: {}
+      });
       const result = await extractor.extractRelationships('test', entities);
       expect(result).toHaveLength(0);
     });
 
     it('should filter out entities not in valid list', async () => {
-      fetchSpy.mockResolvedValueOnce(mockChatResponse({
-        relationships: [
-          { sourceEntity: 'Sauron', targetEntity: 'Frodo', relationType: 'enemy', confidence: 9, description: 'evil' }
-        ]
-      }));
+      mockProvider.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          relationships: [
+            { sourceEntity: 'Sauron', targetEntity: 'Frodo', relationType: 'enemy', confidence: 9, description: 'evil' }
+          ]
+        }),
+        usage: {}
+      });
       const result = await extractor.extractRelationships('test', entities);
       expect(result).toHaveLength(0);
     });
@@ -446,32 +433,34 @@ describe('EntityExtractor', () => {
     });
 
     it('should normalize unknown relationship types to unknown', async () => {
-      fetchSpy.mockResolvedValueOnce(mockChatResponse({
-        relationships: [
-          { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'bestie', confidence: 9, description: 'close' }
-        ]
-      }));
+      mockProvider.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          relationships: [
+            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'bestie', confidence: 9, description: 'close' }
+          ]
+        }),
+        usage: {}
+      });
       const result = await extractor.extractRelationships('test', entities);
       expect(result[0].relationType).toBe('unknown');
     });
 
     it('should handle invalid JSON response', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({
-          choices: [{ message: { content: 'not json' } }]
-        })
-      );
+      mockProvider.chat.mockResolvedValueOnce({ content: 'not json', usage: {} });
       await expect(
         extractor.extractRelationships('test', entities)
       ).rejects.toThrow('invalid JSON');
     });
 
     it('should handle case-insensitive entity matching', async () => {
-      fetchSpy.mockResolvedValueOnce(mockChatResponse({
-        relationships: [
-          { sourceEntity: 'gandalf', targetEntity: 'frodo', relationType: 'friend', confidence: 9, description: 'friends' }
-        ]
-      }));
+      mockProvider.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          relationships: [
+            { sourceEntity: 'gandalf', targetEntity: 'frodo', relationType: 'friend', confidence: 9, description: 'friends' }
+          ]
+        }),
+        usage: {}
+      });
       const result = await extractor.extractRelationships('test', entities);
       expect(result).toHaveLength(1);
     });
@@ -482,9 +471,9 @@ describe('EntityExtractor', () => {
   describe('extractAll', () => {
     it('should extract both entities and moments', async () => {
       // First call returns entities, second returns moments
-      fetchSpy
-        .mockResolvedValueOnce(mockChatResponse(SAMPLE_ENTITIES_RESPONSE))
-        .mockResolvedValueOnce(mockChatResponse(SAMPLE_MOMENTS_RESPONSE));
+      mockProvider.chat
+        .mockResolvedValueOnce({ content: JSON.stringify(SAMPLE_ENTITIES_RESPONSE), usage: {} })
+        .mockResolvedValueOnce({ content: JSON.stringify(SAMPLE_MOMENTS_RESPONSE), usage: {} });
 
       const result = await extractor.extractAll('test transcript');
       expect(result.characters).toBeDefined();
@@ -494,7 +483,7 @@ describe('EntityExtractor', () => {
     });
 
     it('should return empty results when sub-extractions fail', async () => {
-      fetchSpy.mockRejectedValue(new Error('API error'));
+      mockProvider.chat.mockRejectedValue(new Error('API error'));
       const result = await extractor.extractAll('test');
       expect(result.characters).toEqual([]);
       expect(result.locations).toEqual([]);

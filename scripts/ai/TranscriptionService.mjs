@@ -1,15 +1,19 @@
 /**
- * TranscriptionService - OpenAI Audio Transcription with Speaker Diarization
+ * TranscriptionService - Audio Transcription with Speaker Diarization
  *
- * Provides audio transcription using OpenAI's GPT-4o-transcribe-diarize model
- * with support for speaker identification and mapping. Handles large audio files
- * by chunking and includes automatic retry logic for reliability.
+ * Orchestrates audio transcription via an injected TranscriptionProvider.
+ * Handles large audio files by chunking, maps speaker IDs to human-readable
+ * names, applies multi-language tagging, and guards against cascading failures
+ * via a circuit breaker.
+ *
+ * The HTTP layer is fully delegated to the provider; all business logic
+ * (chunking, speaker mapping, circuit breaker, vocabulary prompts) lives here.
  *
  * @class TranscriptionService
  * @module vox-chronicle
  */
 
-import { OpenAIClient, OpenAIError, OpenAIErrorType } from './OpenAIClient.mjs';
+import { OpenAIError, OpenAIErrorType } from './OpenAIClient.mjs';
 import { AudioChunker } from '../audio/AudioChunker.mjs';
 import { Logger } from '../utils/Logger.mjs';
 import { AudioUtils } from '../utils/AudioUtils.mjs';
@@ -59,24 +63,30 @@ const ChunkingStrategy = {
 };
 
 /**
- * Default timeout for transcription requests (10 minutes)
- * Transcription can take longer than typical API calls
+ * Default timeout for transcription requests (10 minutes).
+ * Transcription can take longer than typical API calls.
  * @constant {number}
  */
 const TRANSCRIPTION_TIMEOUT_MS = 600000;
 
 /**
- * TranscriptionService class for audio transcription with speaker diarization
+ * TranscriptionService orchestrates audio transcription via a TranscriptionProvider.
  *
- * @augments OpenAIClient
  * @example
- * const service = new TranscriptionService('your-api-key');
- * const result = await service.transcribe(audioBlob, {
- *   language: 'en',
- *   speakerMap: { 'SPEAKER_00': 'Game Master', 'SPEAKER_01': 'Player 1' }
+ * const provider = new OpenAITranscriptionProvider('your-api-key');
+ * const service = new TranscriptionService(provider, {
+ *   defaultLanguage: 'en',
+ *   defaultSpeakerMap: { 'SPEAKER_00': 'Game Master', 'SPEAKER_01': 'Player 1' }
  * });
+ * const result = await service.transcribe(audioBlob);
  */
-class TranscriptionService extends OpenAIClient {
+class TranscriptionService {
+  /**
+   * TranscriptionProvider instance used for API calls
+   * @type {import('./providers/TranscriptionProvider.mjs').TranscriptionProvider}
+   */
+  #provider;
+
   /**
    * Logger instance for this class
    * @type {object}
@@ -134,21 +144,17 @@ class TranscriptionService extends OpenAIClient {
   _circuitOpen = false;
 
   /**
-   * Create a new TranscriptionService instance
+   * Create a new TranscriptionService instance.
    *
-   * @param {string} apiKey - OpenAI API key
+   * @param {import('./providers/TranscriptionProvider.mjs').TranscriptionProvider} provider - Transcription provider instance
    * @param {object} [options] - Configuration options
    * @param {string} [options.defaultLanguage] - Default transcription language (e.g., 'en', 'it')
    * @param {object} [options.defaultSpeakerMap] - Default speaker ID to name mapping
-   * @param {number} [options.timeout=600000] - Request timeout in milliseconds
    * @param {boolean} [options.multiLanguageMode=false] - Enable multi-language mode with auto-detection
    * @param {number} [options.maxConsecutiveErrors=5] - Max consecutive errors before circuit opens
    */
-  constructor(apiKey, options = {}) {
-    super(apiKey, {
-      ...options,
-      timeout: options.timeout || TRANSCRIPTION_TIMEOUT_MS
-    });
+  constructor(provider, options = {}) {
+    this.#provider = provider;
 
     this._defaultLanguage = options.defaultLanguage || null;
     this._defaultSpeakerMap = options.defaultSpeakerMap || {};
@@ -160,7 +166,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Transcribe audio with speaker diarization
+   * Transcribe audio with speaker diarization.
    *
    * @param {Blob|File} audioBlob - Audio file to transcribe
    * @param {object} [options] - Transcription options
@@ -265,7 +271,10 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Transcribe a single audio blob (under size limit)
+   * Transcribe a single audio blob (under size limit).
+   *
+   * Delegates the HTTP request to the injected provider and post-processes
+   * the normalized `{ text, segments }` response with speaker mapping.
    *
    * @param {Blob} audioBlob - Audio blob to transcribe
    * @param {object} options - Transcription options
@@ -277,46 +286,38 @@ class TranscriptionService extends OpenAIClient {
     const speakerMap = options.speakerMap || this._defaultSpeakerMap;
     const language = options.language || this._defaultLanguage;
     const model = options.model || TranscriptionModel.GPT4O_DIARIZE;
-    const responseFormat = options.responseFormat || TranscriptionResponseFormat.DIARIZED_JSON;
+    const isDiarizeModel = model === TranscriptionModel.GPT4O_DIARIZE;
 
     this._logger.log(
       `Starting transcription: ${AudioUtils.getBlobSizeMB(audioBlob)}MB, model: ${model}`
     );
 
-    // Build FormData for multipart/form-data request
-    const formData = new FormData();
+    // Map service-level options to the provider interface.
+    // The provider is responsible for building FormData and calling the API.
+    const providerOptions = {
+      model,
+      diarize: isDiarizeModel
+    };
 
-    // Append audio file
-    const audioFile = AudioUtils.blobToFile(audioBlob, 'session');
-    formData.append('file', audioFile);
-
-    // Append required parameters
-    formData.append('model', model);
-    formData.append('response_format', responseFormat);
-
-    // Include chunking_strategy for optimal handling of longer audio
-    formData.append('chunking_strategy', ChunkingStrategy.AUTO);
-
-    // Optional: specify language for improved accuracy
-    // When multi-language mode is enabled, omit the language parameter to let
-    // the API auto-detect language per segment
+    // Only pass language when not in multi-language auto-detect mode
     if (language && !this._multiLanguageMode) {
-      formData.append('language', language);
+      providerOptions.language = language;
       this._logger.debug(`Using language: ${language}`);
     } else if (this._multiLanguageMode) {
       this._logger.debug('Multi-language mode: language parameter omitted for auto-detection');
     }
 
-    // Optional: context prompt (NOT supported by diarization models)
-    if (options.prompt && model !== TranscriptionModel.GPT4O_DIARIZE) {
-      formData.append('prompt', options.prompt);
+    // Prompt is only valid for non-diarize models; callers are expected to
+    // have already stripped the prompt for diarize models (transcribe() does this).
+    if (options.prompt && !isDiarizeModel) {
+      providerOptions.prompt = options.prompt;
     }
 
     try {
-      const response = await this.postFormData('/audio/transcriptions', formData);
+      const response = await this.#provider.transcribe(audioBlob, providerOptions);
 
       // Debug log for troubleshooting empty segments
-      this._logger.debug('OpenAI raw response:', response);
+      this._logger.debug('Provider response:', response);
 
       // Map speakers to names
       let mappedResult = this._mapSpeakersToNames(response, speakerMap);
@@ -350,7 +351,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Transcribe a large audio file by splitting into chunks
+   * Transcribe a large audio file by splitting into chunks.
    *
    * @param {Blob} audioBlob - Large audio blob to transcribe
    * @param {object} options - Transcription options
@@ -385,7 +386,7 @@ class TranscriptionService extends OpenAIClient {
         });
       }
 
-      // Transcribe this chunk without speaker mapping
+      // Transcribe this chunk without speaker mapping.
       // IMPORTANT: We pass an empty speakerMap here because OpenAI's diarization
       // assigns consistent speaker IDs (SPEAKER_00, SPEAKER_01, etc.) across chunks.
       // The same person will get the same ID in each chunk, so we can safely defer
@@ -396,18 +397,18 @@ class TranscriptionService extends OpenAIClient {
         speakerMap: {} // Delay mapping until combination phase
       });
 
-      // Track duration offset for proper timing across chunks
+      // Track duration offset for proper timing across chunks.
       // Each chunk's timestamps start at 0, so we need to adjust them based on
-      // the cumulative duration of previous chunks to maintain chronological order
+      // the cumulative duration of previous chunks to maintain chronological order.
       if (chunkResult.segments) {
         chunkResult.segments.forEach((segment) => {
           // Offset timestamps to account for previous chunks
           segment.start += totalDuration;
           segment.end += totalDuration;
 
-          // Collect all unique speaker IDs across all chunks
+          // Collect all unique speaker IDs across all chunks.
           // The diarization model preserves speaker identity between chunks,
-          // so SPEAKER_00 in chunk 1 is the same person as SPEAKER_00 in chunk 2
+          // so SPEAKER_00 in chunk 1 is the same person as SPEAKER_00 in chunk 2.
           if (segment.speaker) {
             allSpeakers.add(segment.speaker);
           }
@@ -433,7 +434,7 @@ class TranscriptionService extends OpenAIClient {
     // Combine all chunk results with properly adjusted timestamps
     const combinedResult = this._combineChunkResults(results, allSpeakers);
 
-    // Apply speaker mapping to the final combined result
+    // Apply speaker mapping to the final combined result.
     // By deferring speaker name mapping until this point, we ensure that:
     // 1. All chunks use consistent speaker IDs (SPEAKER_00, SPEAKER_01, etc.)
     // 2. The same speaker gets the same human-readable name across the entire transcription
@@ -450,7 +451,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Combine transcription results from multiple chunks
+   * Combine transcription results from multiple chunks.
    *
    * @param {Array<object>} chunkResults - Results from each chunk
    * @param {Set<string>} allSpeakers - Set of all unique speakers
@@ -489,15 +490,15 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Map speaker IDs to human-readable names
+   * Map speaker IDs to human-readable names.
    *
-   * @param {object} result - Raw transcription result
+   * @param {object} result - Raw transcription result from provider
    * @param {object} speakerMap - Map of speaker IDs to names
    * @returns {TranscriptionResult} Result with mapped speaker names
    * @private
    */
   _mapSpeakersToNames(result, speakerMap = {}) {
-    // Edge case 4: Empty speakerMap parameter
+    // Edge case 4: Empty speakerMap parameter.
     // When no speaker mapping is provided (e.g., during chunked transcription or initial
     // transcription before user has labeled speakers), we default to an empty object.
     // This allows the algorithm to proceed and preserve the original speaker IDs, which
@@ -507,7 +508,7 @@ class TranscriptionService extends OpenAIClient {
       return { text: '', segments: [], speakers: [] };
     }
 
-    // Edge case 1: No segments in result
+    // Edge case 1: No segments in result.
     // OpenAI API may return empty segments for silent audio or transcription failures.
     // Return a valid but empty result structure to prevent downstream code from breaking
     // when trying to iterate over segments that don't exist.
@@ -520,16 +521,16 @@ class TranscriptionService extends OpenAIClient {
       };
     }
 
-    // Collect unique speaker IDs from all segments
+    // Collect unique speaker IDs from all segments.
     // OpenAI diarization returns speaker IDs like "SPEAKER_00", "SPEAKER_01", etc.
-    // We use a Set to automatically deduplicate as we encounter the same speaker across segments
+    // We use a Set to automatically deduplicate as we encounter the same speaker across segments.
     const uniqueSpeakers = new Set();
 
-    // Map segments with speaker names
+    // Map segments with speaker names.
     // For each segment, we replace the AI-generated speaker ID (e.g., "SPEAKER_00")
-    // with the human-readable name provided in speakerMap (e.g., "Game Master")
+    // with the human-readable name provided in speakerMap (e.g., "Game Master").
     const mappedSegments = result.segments.map((segment) => {
-      // Edge case 3: Missing speaker field in segment
+      // Edge case 3: Missing speaker field in segment.
       // Some segments may lack a speaker field if the audio is unclear or if the diarization
       // model couldn't confidently identify a speaker. Default to "Unknown" to maintain
       // data integrity and prevent undefined values in the output.
@@ -538,13 +539,11 @@ class TranscriptionService extends OpenAIClient {
       // Track this speaker ID in our set of unique speakers
       uniqueSpeakers.add(originalSpeaker);
 
-      // Edge case 2: Speaker ID not in map
+      // Edge case 2: Speaker ID not in map.
       // Users may not have mapped all detected speakers yet, especially in first-time
       // transcriptions or when new speakers join mid-session. Fall back to the original
       // speaker ID (e.g., "SPEAKER_00") so the segment remains identifiable and can be
       // mapped later without losing the speaker identity.
-      // Example: speakerMap["SPEAKER_00"] = "Game Master" → mappedName = "Game Master"
-      // Example: speakerMap["SPEAKER_02"] = undefined → mappedName = "SPEAKER_02" (fallback)
       const mappedName = speakerMap[originalSpeaker] || originalSpeaker;
 
       const mapped = {
@@ -563,9 +562,9 @@ class TranscriptionService extends OpenAIClient {
       return mapped;
     });
 
-    // Build speaker list with mapping info
+    // Build speaker list with mapping info.
     // Convert Set to Array and create metadata for each speaker showing
-    // both their original ID and mapped name (if any)
+    // both their original ID and mapped name (if any).
     const speakers = Array.from(uniqueSpeakers).map((speakerId) => ({
       id: speakerId, // Original: "SPEAKER_00"
       name: speakerMap[speakerId] || speakerId, // Mapped: "Game Master" or fallback "SPEAKER_00"
@@ -588,7 +587,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Set the default speaker mapping
+   * Set the default speaker mapping.
    *
    * @param {object} speakerMap - Map of speaker IDs to names
    * @example
@@ -606,7 +605,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Get the current speaker mapping
+   * Get the current speaker mapping.
    *
    * @returns {object} Current speaker map
    */
@@ -615,7 +614,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Set the default transcription language
+   * Set the default transcription language.
    *
    * @param {string|null} language - ISO language code or null for auto-detect
    */
@@ -625,7 +624,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Get the current default language
+   * Get the current default language.
    *
    * @returns {string|null} Current default language
    */
@@ -638,7 +637,7 @@ class TranscriptionService extends OpenAIClient {
   // ---------------------------------------------------------------------------
 
   /**
-   * Enable or disable multi-language mode
+   * Enable or disable multi-language mode.
    *
    * When enabled, the language parameter is omitted from API calls to allow
    * automatic per-segment language detection. After transcription, segments
@@ -652,7 +651,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Check if multi-language mode is enabled
+   * Check if multi-language mode is enabled.
    *
    * @returns {boolean} True if multi-language mode is enabled
    */
@@ -661,7 +660,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Tag segments with detected language information
+   * Tag segments with detected language information.
    *
    * When multi-language mode is active, each segment's speaker label is
    * augmented with the detected language code, e.g., "Speaker (en): text".
@@ -701,7 +700,7 @@ class TranscriptionService extends OpenAIClient {
   // ---------------------------------------------------------------------------
 
   /**
-   * Check if the circuit breaker is currently open
+   * Check if the circuit breaker is currently open.
    *
    * @returns {boolean} True if the circuit is open (blocking requests)
    * @private
@@ -711,7 +710,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Manually reset the circuit breaker
+   * Manually reset the circuit breaker.
    *
    * Resets the consecutive error counter and closes the circuit,
    * allowing transcription requests to proceed again.
@@ -723,12 +722,9 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Get the current circuit breaker status
+   * Get the current circuit breaker status.
    *
-   * @returns {object} Circuit breaker status
-   * @returns {boolean} returns.isOpen - Whether the circuit is open
-   * @returns {number} returns.consecutiveErrors - Current consecutive error count
-   * @returns {number} returns.maxErrors - Maximum errors before circuit opens
+   * @returns {{ isOpen: boolean, consecutiveErrors: number, maxErrors: number }}
    */
   getCircuitBreakerStatus() {
     return {
@@ -739,8 +735,8 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Transcribe with basic settings (no diarization)
-   * Useful for quick transcription without speaker identification
+   * Transcribe with basic settings (no diarization).
+   * Useful for quick transcription without speaker identification.
    *
    * @param {Blob} audioBlob - Audio to transcribe
    * @param {string} [language] - Language code
@@ -756,7 +752,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Get supported languages for transcription
+   * Get supported languages for transcription.
    *
    * @returns {Array<object>} List of supported languages
    */
@@ -777,7 +773,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Get available transcription models
+   * Get available transcription models.
    *
    * @returns {Array<object>} List of available models
    */
@@ -805,7 +801,7 @@ class TranscriptionService extends OpenAIClient {
   }
 
   /**
-   * Estimate transcription cost for an audio file
+   * Estimate transcription cost for an audio file.
    *
    * @param {Blob} audioBlob - Audio to estimate cost for
    * @param {string} [model] - Model to use
@@ -837,7 +833,7 @@ class TranscriptionService extends OpenAIClient {
  * @property {number} [duration] - Audio duration in seconds
  * @property {boolean} [chunked] - Whether transcription was chunked
  * @property {number} [chunkCount] - Number of chunks if chunked
- * @property {object} [raw] - Raw API response
+ * @property {object} [raw] - Raw provider response
  */
 
 /**

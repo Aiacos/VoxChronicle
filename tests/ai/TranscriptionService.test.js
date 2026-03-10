@@ -1,12 +1,15 @@
 /**
- * Tests for TranscriptionService - OpenAI Audio Transcription with Speaker Diarization
+ * Tests for TranscriptionService - Audio Transcription with Speaker Diarization
  *
  * Covers: exports, constructor, transcribe (single/chunked), speaker mapping,
  * language settings, multi-language mode, circuit breaker, basic transcription,
  * static methods, cost estimation, and error handling.
+ *
+ * API calls are mocked at the provider level (mockProvider.transcribe),
+ * not at the fetch level, since TranscriptionService now uses composition.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
   TranscriptionService,
@@ -65,59 +68,29 @@ vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({
   }))
 }));
 
-// Mock RateLimiter
-vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
-  const mockRateLimiterInstance = {
-    throttle: vi.fn((fn) => fn()),
-    executeWithRetry: vi.fn((fn) => fn()),
-    pause: vi.fn(),
-    reset: vi.fn(),
-    getStats: vi.fn().mockReturnValue({})
-  };
-  class MockRateLimiter {
-    constructor() {
-      Object.assign(this, {
-        throttle: vi.fn((fn) => fn()),
-        executeWithRetry: vi.fn((fn) => fn()),
-        pause: vi.fn(),
-        reset: vi.fn(),
-        getStats: vi.fn().mockReturnValue({})
-      });
-    }
-    static fromPreset() {
-      return new MockRateLimiter();
-    }
-  }
-  return { RateLimiter: MockRateLimiter };
-});
-
-// Mock SensitiveDataFilter
-vi.mock('../../scripts/utils/SensitiveDataFilter.mjs', () => ({
-  SensitiveDataFilter: {
-    sanitizeUrl: vi.fn((url) => url),
-    sanitizeString: vi.fn((s) => s),
-    sanitizeObject: vi.fn((o) => o)
-  }
-}));
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function mockResponse(body, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    statusText: status === 200 ? 'OK' : 'Error',
-    headers: new Headers(),
-    json: vi.fn().mockResolvedValue(body),
-    text: vi.fn().mockResolvedValue(JSON.stringify(body)),
-    blob: vi.fn().mockResolvedValue(new Blob([JSON.stringify(body)]))
-  };
-}
-
 function createAudioBlob(size = 1024) {
   return new Blob([new ArrayBuffer(size)], { type: 'audio/webm' });
+}
+
+/**
+ * Create a mock TranscriptionProvider with a default successful response.
+ * @param {object} [overrides] - Properties to override on the mock
+ */
+function createMockProvider(overrides = {}) {
+  return {
+    transcribe: vi.fn().mockResolvedValue({
+      text: 'Hello world',
+      segments: [
+        { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1.5 },
+        { speaker: 'SPEAKER_01', text: 'world', start: 1.5, end: 3.0 }
+      ]
+    }),
+    ...overrides
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +99,7 @@ function createAudioBlob(size = 1024) {
 
 describe('TranscriptionService', () => {
   let service;
-  let fetchSpy;
+  let mockProvider;
 
   beforeEach(() => {
     // Re-initialize hoisted mocks (vi.restoreAllMocks clears them)
@@ -135,25 +108,8 @@ describe('TranscriptionService', () => {
     audioUtilsMocks.blobToFile.mockImplementation((blob, _name) => blob);
     audioUtilsMocks.estimateDuration.mockReturnValue(300);
 
-    fetchSpy = vi.fn().mockResolvedValue(
-      mockResponse({
-        text: 'Hello world',
-        segments: [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1.5 },
-          { speaker: 'SPEAKER_01', text: 'world', start: 1.5, end: 3.0 }
-        ]
-      })
-    );
-    globalThis.fetch = fetchSpy;
-
-    service = new TranscriptionService('sk-test-key-12345', {
-      retryEnabled: false,
-      timeout: 5000
-    });
-  });
-
-  afterEach(() => {
-    service.clearQueue();
+    mockProvider = createMockProvider();
+    service = new TranscriptionService(mockProvider);
   });
 
   // ── Exports ──────────────────────────────────────────────────────────
@@ -192,19 +148,19 @@ describe('TranscriptionService', () => {
   // ── Constructor ────────────────────────────────────────────────────
 
   describe('constructor', () => {
-    it('should create instance with API key', () => {
-      const svc = new TranscriptionService('sk-test');
-      expect(svc.isConfigured).toBe(true);
+    it('should create instance with a provider', () => {
+      const svc = new TranscriptionService(createMockProvider());
+      expect(svc).toBeDefined();
     });
 
     it('should accept defaultLanguage option', () => {
-      const svc = new TranscriptionService('sk-test', { defaultLanguage: 'it' });
+      const svc = new TranscriptionService(createMockProvider(), { defaultLanguage: 'it' });
       expect(svc.getLanguage()).toBe('it');
     });
 
     it('should accept defaultSpeakerMap option', () => {
       const map = { SPEAKER_00: 'GM' };
-      const svc = new TranscriptionService('sk-test', { defaultSpeakerMap: map });
+      const svc = new TranscriptionService(createMockProvider(), { defaultSpeakerMap: map });
       expect(svc.getSpeakerMap()).toEqual(map);
     });
 
@@ -213,7 +169,7 @@ describe('TranscriptionService', () => {
     });
 
     it('should accept multiLanguageMode option', () => {
-      const svc = new TranscriptionService('sk-test', { multiLanguageMode: true });
+      const svc = new TranscriptionService(createMockProvider(), { multiLanguageMode: true });
       expect(svc.isMultiLanguageMode()).toBe(true);
     });
 
@@ -223,7 +179,7 @@ describe('TranscriptionService', () => {
     });
 
     it('should accept maxConsecutiveErrors option', () => {
-      const svc = new TranscriptionService('sk-test', { maxConsecutiveErrors: 3 });
+      const svc = new TranscriptionService(createMockProvider(), { maxConsecutiveErrors: 3 });
       expect(svc.getCircuitBreakerStatus().maxErrors).toBe(3);
     });
 
@@ -258,11 +214,10 @@ describe('TranscriptionService', () => {
     });
 
     it('should use default speaker map from constructor', async () => {
-      const svc = new TranscriptionService('sk-test', {
-        defaultSpeakerMap: { SPEAKER_00: 'GM' },
-        retryEnabled: false
+      const provider = createMockProvider();
+      const svc = new TranscriptionService(provider, {
+        defaultSpeakerMap: { SPEAKER_00: 'GM' }
       });
-      svc._rateLimiter.executeWithRetry = async (fn) => fn();
 
       const blob = createAudioBlob();
       const result = await svc.transcribe(blob);
@@ -280,14 +235,14 @@ describe('TranscriptionService', () => {
       expect(gmSegment).toBeDefined();
     });
 
-    it('should strip prompt for diarize model', async () => {
+    it('should strip prompt for diarize model and not pass it to provider', async () => {
       const blob = createAudioBlob();
       await service.transcribe(blob, {
         prompt: 'some prompt',
         model: TranscriptionModel.GPT4O_DIARIZE
       });
-      // Verifies the method did not throw and completed
-      expect(fetchSpy).toHaveBeenCalled();
+      const providerCall = mockProvider.transcribe.mock.calls[0][1];
+      expect(providerCall.prompt).toBeUndefined();
     });
 
     it('should generate vocabulary prompt for non-diarize model', async () => {
@@ -295,7 +250,7 @@ describe('TranscriptionService', () => {
       await service.transcribe(blob, {
         model: TranscriptionModel.GPT4O
       });
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(mockProvider.transcribe).toHaveBeenCalled();
     });
 
     it('should warn but continue when audio blob is not valid', async () => {
@@ -317,17 +272,18 @@ describe('TranscriptionService', () => {
     });
 
     it('should increment consecutive errors on failure', async () => {
-      fetchSpy.mockRejectedValueOnce(new Error('network failure'));
+      mockProvider.transcribe.mockRejectedValueOnce(new Error('network failure'));
 
       const blob = createAudioBlob();
       await expect(service.transcribe(blob)).rejects.toThrow();
       expect(service.getCircuitBreakerStatus().consecutiveErrors).toBe(1);
     });
 
-    it('should use language option when provided', async () => {
+    it('should pass language option to provider', async () => {
       const blob = createAudioBlob();
       await service.transcribe(blob, { language: 'es' });
-      expect(fetchSpy).toHaveBeenCalled();
+      const providerCall = mockProvider.transcribe.mock.calls[0][1];
+      expect(providerCall.language).toBe('es');
     });
 
     it('should not mutate the caller\'s options object', async () => {
@@ -377,14 +333,12 @@ describe('TranscriptionService', () => {
     });
 
     it('should create synthetic fallback segment when diarization returns text but zero segments', async () => {
-      // Simulate OpenAI returning text but empty segments (diarization fails silently)
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({
-          text: 'The adventurers entered the dungeon.',
-          segments: [],
-          duration: 5.0
-        })
-      );
+      // Simulate provider returning text but empty segments (diarization fails silently)
+      mockProvider.transcribe.mockResolvedValueOnce({
+        text: 'The adventurers entered the dungeon.',
+        segments: [],
+        duration: 5.0
+      });
 
       const blob = createAudioBlob();
       const result = await service.transcribe(blob);
@@ -404,13 +358,11 @@ describe('TranscriptionService', () => {
     });
 
     it('should use mapped name for synthetic fallback segment when speakerMap has Unknown key', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({
-          text: 'A mysterious voice echoed.',
-          segments: [],
-          duration: 3.0
-        })
-      );
+      mockProvider.transcribe.mockResolvedValueOnce({
+        text: 'A mysterious voice echoed.',
+        segments: [],
+        duration: 3.0
+      });
 
       const blob = createAudioBlob();
       const result = await service.transcribe(blob, {
@@ -427,20 +379,45 @@ describe('TranscriptionService', () => {
     it('should enable multi-language tagging when mode is active', async () => {
       service.setMultiLanguageMode(true);
 
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({
-          text: 'Hola world',
-          language: 'es',
-          segments: [
-            { speaker: 'SPEAKER_00', text: 'Hola', start: 0, end: 1, language: 'es' },
-            { speaker: 'SPEAKER_01', text: 'world', start: 1, end: 2, language: 'en' }
-          ]
-        })
-      );
+      mockProvider.transcribe.mockResolvedValueOnce({
+        text: 'Hola world',
+        language: 'es',
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Hola', start: 0, end: 1, language: 'es' },
+          { speaker: 'SPEAKER_01', text: 'world', start: 1, end: 2, language: 'en' }
+        ]
+      });
 
       const blob = createAudioBlob();
       const result = await service.transcribe(blob);
       expect(result.segments[0].language).toBe('es');
+    });
+
+    it('should call provider with diarize:true for default model', async () => {
+      const blob = createAudioBlob();
+      await service.transcribe(blob);
+      const providerCall = mockProvider.transcribe.mock.calls[0][1];
+      expect(providerCall.diarize).toBe(true);
+      expect(providerCall.model).toBe(TranscriptionModel.GPT4O_DIARIZE);
+    });
+
+    it('should call provider with diarize:false for non-diarize model', async () => {
+      const blob = createAudioBlob();
+      await service.transcribe(blob, { model: TranscriptionModel.GPT4O });
+      const providerCall = mockProvider.transcribe.mock.calls[0][1];
+      expect(providerCall.diarize).toBe(false);
+    });
+
+    it('should omit language from provider options in multi-language mode', async () => {
+      service.setMultiLanguageMode(true);
+      const provider = createMockProvider();
+      const svc = new TranscriptionService(provider, { defaultLanguage: 'en', multiLanguageMode: true });
+
+      mockProvider.transcribe.mockResolvedValueOnce({ text: 'hi', segments: [] });
+      const blob = createAudioBlob();
+      await svc.transcribe(blob);
+      const providerCall = provider.transcribe.mock.calls[0][1];
+      expect(providerCall.language).toBeUndefined();
     });
   });
 
@@ -795,13 +772,10 @@ describe('TranscriptionService', () => {
 
   describe('circuit breaker', () => {
     it('should open circuit after max consecutive errors', async () => {
-      const svc = new TranscriptionService('sk-test', {
-        maxConsecutiveErrors: 2,
-        retryEnabled: false
-      });
-      svc._rateLimiter.executeWithRetry = async (fn) => fn();
+      const provider = createMockProvider();
+      const svc = new TranscriptionService(provider, { maxConsecutiveErrors: 2 });
 
-      fetchSpy.mockRejectedValue(new Error('fail'));
+      provider.transcribe.mockRejectedValue(new Error('fail'));
 
       const blob = createAudioBlob();
       await expect(svc.transcribe(blob)).rejects.toThrow();
@@ -844,17 +818,19 @@ describe('TranscriptionService', () => {
       expect(result).toBeDefined();
     });
 
-    it('should use provided language', async () => {
+    it('should pass language to provider', async () => {
       const blob = createAudioBlob();
       await service.transcribeBasic(blob, 'de');
-      expect(fetchSpy).toHaveBeenCalled();
+      const providerCall = mockProvider.transcribe.mock.calls[0][1];
+      expect(providerCall.language).toBe('de');
     });
 
     it('should use default language when none provided', async () => {
       service.setLanguage('it');
       const blob = createAudioBlob();
       await service.transcribeBasic(blob);
-      expect(fetchSpy).toHaveBeenCalled();
+      const providerCall = mockProvider.transcribe.mock.calls[0][1];
+      expect(providerCall.language).toBe('it');
     });
   });
 

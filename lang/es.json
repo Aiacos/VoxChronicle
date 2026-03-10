@@ -1131,6 +1131,47 @@
         "ChannelNotFound": "Canal de evento desconocido. Canales válidos: ai, audio, scene, session, ui, error, analytics",
         "InvalidPayload": "El payload del evento debe ser un objeto"
       }
+    },
+    "Resilience": {
+      "Error": {
+        "CircuitOpen": "Servicio {service} temporalmente no disponible",
+        "AllFallbacksFailed": "Todas las opciones de recuperación agotadas para {service}",
+        "ServiceNotRegistered": "El servicio {service} no está registrado"
+      },
+      "Status": {
+        "Recovered": "Servicio {service} recuperado"
+      }
+    },
+    "Provider": {
+      "Error": {
+        "NotImplemented": "El método {method} debe ser implementado por la subclase del proveedor",
+        "NoProvider": "No hay proveedor registrado para la capacidad: {capability}",
+        "AlreadyRegistered": "El proveedor '{name}' ya está registrado, sobrescribiendo",
+        "NotFound": "Proveedor '{name}' no encontrado en el registro",
+        "InvalidCapability": "Capacidad desconocida: {capability}",
+        "ProviderCapabilityMismatch": "El proveedor '{name}' no soporta la capacidad: {capability}"
+      },
+      "OpenAI": {
+        "ConnectionFailed": "Error al conectar con la API de OpenAI: {error}",
+        "InvalidResponse": "Respuesta no válida de la API de OpenAI: {details}",
+        "StreamError": "Error durante el streaming de OpenAI: {error}"
+      }
+    },
+    "Session": {
+      "State": {
+        "Idle": "Inactivo",
+        "Configuring": "Configurando",
+        "Live": "En vivo",
+        "Transitioning": "Transición",
+        "Chronicle": "Crónica",
+        "Publishing": "Publicando",
+        "Complete": "Completado",
+        "Error": "Error"
+      },
+      "Error": {
+        "InvalidTransition": "Transición inválida: evento \"{event}\" no es válido en estado \"{state}\"",
+        "GuardFailed": "Transición bloqueada por condición de guarda"
+      }
     }
   }
 }

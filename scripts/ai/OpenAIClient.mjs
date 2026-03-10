@@ -4,8 +4,8 @@
  * Extends BaseAPIClient with OpenAI-specific functionality:
  * retry with exponential backoff, sequential request queue,
  * operation history, and error handling for OpenAI's REST API.
- * Used as a base for TranscriptionService, ImageGenerationService,
- * and EntityExtractor.
+ * Used internally by OpenAI provider classes (OpenAIChatProvider,
+ * OpenAITranscriptionProvider, etc.) as HTTP transport layer.
  *
  * Retry/queue system adapted from Narrator Master's OpenAIServiceBase.
  *

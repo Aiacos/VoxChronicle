@@ -64,37 +64,14 @@ vi.mock('../../scripts/utils/CacheManager.mjs', () => {
   return { CacheManager: MockCacheManager };
 });
 
-// Mock RateLimiter
-vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
-  class MockRateLimiter {
-    constructor() {
-      this.throttle = vi.fn((fn) => fn());
-      this.executeWithRetry = vi.fn((fn) => fn());
-      this.pause = vi.fn();
-      this.reset = vi.fn();
-      this.getStats = vi.fn().mockReturnValue({});
-    }
-    static fromPreset() {
-      return new MockRateLimiter();
-    }
-  }
-  return { RateLimiter: MockRateLimiter };
-});
-
-// Mock SensitiveDataFilter
-vi.mock('../../scripts/utils/SensitiveDataFilter.mjs', () => ({
-  SensitiveDataFilter: {
-    sanitizeUrl: vi.fn((url) => url),
-    sanitizeString: vi.fn((s) => s),
-    sanitizeObject: vi.fn((o) => o)
-  }
-}));
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function mockResponse(body, status = 200) {
+/**
+ * Create a mock fetch response for downloadImage tests.
+ */
+function mockFetchResponse(body, status = 200) {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -106,27 +83,30 @@ function mockResponse(body, status = 200) {
   };
 }
 
+/**
+ * Create a default mock ImageProvider.
+ */
+function createMockProvider(overrides = {}) {
+  return {
+    generateImage: vi.fn().mockResolvedValue({ data: 'base64imagedata', format: 'png' }),
+    ...overrides
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('ImageGenerationService', () => {
   let service;
+  let mockProvider;
   let fetchSpy;
 
   beforeEach(() => {
-    fetchSpy = vi.fn().mockResolvedValue(
-      mockResponse({
-        data: [{
-          b64_json: 'base64imagedata',
-          revised_prompt: 'Revised prompt'
-        }]
-      })
-    );
-    globalThis.fetch = fetchSpy;
+    vi.clearAllMocks();
+    mockProvider = createMockProvider();
 
-    service = new ImageGenerationService('sk-test-key', {
-      retryEnabled: false,
+    service = new ImageGenerationService(mockProvider, {
       timeout: 5000
     });
   });
@@ -179,8 +159,8 @@ describe('ImageGenerationService', () => {
   // ── Constructor ────────────────────────────────────────────────────
 
   describe('constructor', () => {
-    it('should create instance with API key', () => {
-      expect(service.isConfigured).toBe(true);
+    it('should create instance with provider', () => {
+      expect(service).toBeInstanceOf(ImageGenerationService);
     });
 
     it('should default quality to high', () => {
@@ -188,12 +168,12 @@ describe('ImageGenerationService', () => {
     });
 
     it('should accept quality option', () => {
-      const svc = new ImageGenerationService('sk-test', { quality: ImageQuality.LOW });
+      const svc = new ImageGenerationService(mockProvider, { quality: ImageQuality.LOW });
       expect(svc._defaultQuality).toBe(ImageQuality.LOW);
     });
 
     it('should accept campaignStyle option', () => {
-      const svc = new ImageGenerationService('sk-test', { campaignStyle: 'dark fantasy' });
+      const svc = new ImageGenerationService(mockProvider, { campaignStyle: 'dark fantasy' });
       expect(svc.getCampaignStyle()).toBe('dark fantasy');
     });
 
@@ -215,6 +195,16 @@ describe('ImageGenerationService', () => {
       expect(result.entityType).toBe('character');
       expect(result.originalDescription).toBe('A brave warrior');
       expect(result.base64).toBe('base64imagedata');
+    });
+
+    it('should delegate to provider.generateImage', async () => {
+      await service.generatePortrait('character', 'A warrior');
+      expect(mockProvider.generateImage).toHaveBeenCalledOnce();
+      const [prompt, opts] = mockProvider.generateImage.mock.calls[0];
+      expect(prompt).toContain('A warrior');
+      expect(opts.model).toBe(ImageModel.GPT_IMAGE_1);
+      expect(opts.size).toBe(ImageSize.SQUARE);
+      expect(opts.quality).toBe(ImageQuality.HIGH);
     });
 
     it('should throw for empty description', async () => {
@@ -259,11 +249,6 @@ describe('ImageGenerationService', () => {
       expect(result.quality).toBe(ImageQuality.LOW);
     });
 
-    it('should include revisedPrompt in result', async () => {
-      const result = await service.generatePortrait('character', 'A warrior');
-      expect(result.revisedPrompt).toBe('Revised prompt');
-    });
-
     it('should set generatedAt timestamp', async () => {
       const before = Date.now();
       const result = await service.generatePortrait('character', 'A warrior');
@@ -275,8 +260,8 @@ describe('ImageGenerationService', () => {
       expect(result.expiresAt).toBeGreaterThan(result.generatedAt);
     });
 
-    it('should handle API error', async () => {
-      fetchSpy.mockRejectedValueOnce(new Error('API error'));
+    it('should handle provider error', async () => {
+      mockProvider.generateImage.mockRejectedValueOnce(new Error('API error'));
       await expect(
         service.generatePortrait('character', 'A warrior')
       ).rejects.toThrow('API error');
@@ -292,33 +277,26 @@ describe('ImageGenerationService', () => {
       expect(result.entityType).toBe('character');
     });
 
-    it('should cache URL-only results', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({
-          data: [{
-            url: 'https://example.com/image.png',
-            revised_prompt: 'Prompt'
-          }]
-        })
-      );
-      // Second fetch is for caching the image
-      fetchSpy.mockResolvedValueOnce(mockResponse(''));
-
+    it('should cache base64 after generation', async () => {
       const result = await service.generatePortrait('character', 'A warrior');
-      expect(result.url).toBe('https://example.com/image.png');
+      expect(result.base64).toBe('base64imagedata');
+      const prompt = service._buildPrompt('character', 'A warrior');
+      expect(service.getCachedImage(prompt)).toBe('base64imagedata');
     });
 
     it('should add campaign style to prompt', async () => {
       service.setCampaignStyle('dark fantasy');
-      const result = await service.generatePortrait('character', 'A warrior');
-      expect(result).toBeDefined();
+      await service.generatePortrait('character', 'A warrior');
+      const [prompt] = mockProvider.generateImage.mock.calls[0];
+      expect(prompt).toContain('dark fantasy');
     });
 
     it('should add additional context to prompt', async () => {
-      const result = await service.generatePortrait('character', 'A warrior', {
+      await service.generatePortrait('character', 'A warrior', {
         additionalContext: 'Set in a snowy mountain'
       });
-      expect(result).toBeDefined();
+      const [prompt] = mockProvider.generateImage.mock.calls[0];
+      expect(prompt).toContain('Set in a snowy mountain');
     });
   });
 
@@ -382,10 +360,8 @@ describe('ImageGenerationService', () => {
     });
 
     it('should handle individual failures in batch', async () => {
-      fetchSpy
-        .mockResolvedValueOnce(
-          mockResponse({ data: [{ b64_json: 'data1', revised_prompt: 'p1' }] })
-        )
+      mockProvider.generateImage
+        .mockResolvedValueOnce({ data: 'data1', format: 'png' })
         .mockRejectedValueOnce(new Error('API error'));
 
       const requests = [
@@ -427,8 +403,13 @@ describe('ImageGenerationService', () => {
   // ── downloadImage ──────────────────────────────────────────────────
 
   describe('downloadImage', () => {
+    beforeEach(() => {
+      fetchSpy = vi.fn().mockResolvedValue(mockFetchResponse(''));
+      globalThis.fetch = fetchSpy;
+    });
+
     it('should download image from URL', async () => {
-      fetchSpy.mockResolvedValueOnce(mockResponse(''));
+      fetchSpy.mockResolvedValueOnce(mockFetchResponse(''));
       const blob = await service.downloadImage('https://example.com/image.png');
       expect(blob).toBeInstanceOf(Blob);
     });
@@ -442,7 +423,7 @@ describe('ImageGenerationService', () => {
     });
 
     it('should throw on HTTP error', async () => {
-      fetchSpy.mockResolvedValueOnce(mockResponse('', 404));
+      fetchSpy.mockResolvedValueOnce(mockFetchResponse('', 404));
       await expect(
         service.downloadImage('https://example.com/missing.png')
       ).rejects.toThrow('Failed to download');
@@ -471,10 +452,8 @@ describe('ImageGenerationService', () => {
 
     it('should cache base64 images after generation', async () => {
       await service.generatePortrait('character', 'A warrior');
-      // The base64 should be cached
-      const cached = service.getCachedImage('Fantasy RPG character portrait: A warrior. Detailed, high quality, dramatic lighting, painterly style.');
-      // May or may not find it depending on exact cache key generation
-      // but the method should not throw
+      const prompt = service._buildPrompt('character', 'A warrior');
+      expect(service.getCachedImage(prompt)).toBe('base64imagedata');
     });
   });
 

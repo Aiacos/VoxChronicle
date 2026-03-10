@@ -1131,6 +1131,47 @@
         "ChannelNotFound": "Canale evento sconosciuto. Canali validi: ai, audio, scene, session, ui, error, analytics",
         "InvalidPayload": "Il payload dell'evento deve essere un oggetto"
       }
+    },
+    "Resilience": {
+      "Error": {
+        "CircuitOpen": "Servizio {service} temporaneamente non disponibile",
+        "AllFallbacksFailed": "Tutte le opzioni di recupero esaurite per {service}",
+        "ServiceNotRegistered": "Il servizio {service} non è registrato"
+      },
+      "Status": {
+        "Recovered": "Servizio {service} ripristinato"
+      }
+    },
+    "Provider": {
+      "Error": {
+        "NotImplemented": "Il metodo {method} deve essere implementato dalla sottoclasse del provider",
+        "NoProvider": "Nessun provider registrato per la capability: {capability}",
+        "AlreadyRegistered": "Il provider '{name}' è già registrato, sovrascrittura in corso",
+        "NotFound": "Provider '{name}' non trovato nel registry",
+        "InvalidCapability": "Capability sconosciuta: {capability}",
+        "ProviderCapabilityMismatch": "Il provider '{name}' non supporta la capability: {capability}"
+      },
+      "OpenAI": {
+        "ConnectionFailed": "Connessione all'API OpenAI fallita: {error}",
+        "InvalidResponse": "Risposta non valida dall'API OpenAI: {details}",
+        "StreamError": "Errore durante lo streaming OpenAI: {error}"
+      }
+    },
+    "Session": {
+      "State": {
+        "Idle": "Inattivo",
+        "Configuring": "Configurazione",
+        "Live": "In diretta",
+        "Transitioning": "Transizione",
+        "Chronicle": "Cronaca",
+        "Publishing": "Pubblicazione",
+        "Complete": "Completato",
+        "Error": "Errore"
+      },
+      "Error": {
+        "InvalidTransition": "Transizione non valida: evento \"{event}\" non valido nello stato \"{state}\"",
+        "GuardFailed": "Transizione bloccata dalla condizione di guardia"
+      }
     }
   }
 }
