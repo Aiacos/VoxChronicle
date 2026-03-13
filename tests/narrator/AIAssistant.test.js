@@ -13,26 +13,27 @@ beforeEach(() => {
 /**
  * Creates a mock OpenAI client for testing
  */
-function createMockOpenAIClient(responseOverride = null) {
+function createMockChatProvider(responseOverride = null) {
   const defaultResponse = {
-    choices: [{
-      message: {
-        content: JSON.stringify({
-          suggestions: [
-            { type: 'narration', content: 'A dark figure emerges from the shadows.', confidence: 0.8, pageReference: 'Chapter 1' }
-          ],
-          offTrackStatus: { isOffTrack: false, severity: 0, reason: 'On track' },
-          relevantPages: ['page-1'],
-          summary: 'The party is exploring the tavern.'
-        })
-      }
-    }]
+    content: JSON.stringify({
+      suggestions: [
+        { type: 'narration', content: 'A dark figure emerges from the shadows.', confidence: 0.8, pageReference: 'Chapter 1' }
+      ],
+      offTrackStatus: { isOffTrack: false, severity: 0, reason: 'On track' },
+      relevantPages: ['page-1'],
+      summary: 'The party is exploring the tavern.'
+    }),
+    usage: {}
   };
 
   return {
-    isConfigured: true,
-    post: vi.fn().mockResolvedValue(responseOverride || defaultResponse)
+    chat: vi.fn().mockResolvedValue(responseOverride || defaultResponse)
   };
+}
+
+/** @deprecated Alias for backward compatibility in tests */
+function createMockOpenAIClient(responseOverride = null) {
+  return createMockChatProvider(responseOverride);
 }
 
 /**
@@ -67,8 +68,8 @@ describe('AIAssistant', () => {
   let mockClient;
 
   beforeEach(() => {
-    mockClient = createMockOpenAIClient();
-    assistant = new AIAssistant({ openaiClient: mockClient });
+    mockClient = createMockChatProvider();
+    assistant = new AIAssistant({ chatProvider: mockClient });
   });
 
   // =========================================================================
@@ -94,7 +95,7 @@ describe('AIAssistant', () => {
       const callback = vi.fn();
 
       const a = new AIAssistant({
-        openaiClient: mockClient,
+        chatProvider: mockClient,
         model: 'gpt-4',
         sensitivity: 'high',
         primaryLanguage: 'it',
@@ -134,15 +135,15 @@ describe('AIAssistant', () => {
       expect(a.isConfigured()).toBe(false);
     });
 
-    it('isConfigured() returns false when client has isConfigured=false', () => {
-      const a = new AIAssistant({ openaiClient: { isConfigured: false } });
-      expect(a.isConfigured()).toBe(false);
+    it('isConfigured() returns true when chatProvider is set', () => {
+      const a = new AIAssistant({ chatProvider: { chat: vi.fn() } });
+      expect(a.isConfigured()).toBe(true);
     });
 
-    it('setOpenAIClient() updates the client', () => {
+    it('setChatProvider() updates the provider', () => {
       const a = new AIAssistant();
       expect(a.isConfigured()).toBe(false);
-      a.setOpenAIClient(mockClient);
+      a.setChatProvider(mockClient);
       expect(a.isConfigured()).toBe(true);
     });
 
@@ -487,18 +488,14 @@ describe('AIAssistant', () => {
 
     it('detects rules questions when enabled', async () => {
       const response = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [],
               offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
               relevantPages: [],
               summary: 'rules question'
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(response);
+      mockClient.chat.mockResolvedValue(response);
 
       const result = await assistant.analyzeContext('how does grappling work?');
       expect(result.rulesQuestions.length).toBeGreaterThan(0);
@@ -515,26 +512,22 @@ describe('AIAssistant', () => {
     });
 
     it('propagates API errors', async () => {
-      mockClient.post.mockRejectedValue(new Error('API timeout'));
+      mockClient.chat.mockRejectedValue(new Error('API timeout'));
       await expect(assistant.analyzeContext('text')).rejects.toThrow('API timeout');
     });
 
     it('returns usage from the OpenAI response', async () => {
       const responseWithUsage = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{ type: 'narration', content: 'Test', confidence: 0.8, pageReference: '' }],
               offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
               relevantPages: [],
               summary: 'Test'
-            })
-          }
-        }],
+            }), usage: {},
         usage: { prompt_tokens: 150, completion_tokens: 50, total_tokens: 200 },
         model: 'gpt-4o-mini-2024-07-18'
       };
-      mockClient.post.mockResolvedValue(responseWithUsage);
+      mockClient.chat.mockResolvedValue(responseWithUsage);
 
       const result = await assistant.analyzeContext('The players rest at the inn.');
       expect(result.usage).toEqual({ prompt_tokens: 150, completion_tokens: 50, total_tokens: 200 });
@@ -542,29 +535,24 @@ describe('AIAssistant', () => {
 
     it('returns model from the OpenAI response', async () => {
       const responseWithModel = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [],
               offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
               relevantPages: [],
               summary: 'Test'
-            })
-          }
-        }],
+            }), usage: {},
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
         model: 'gpt-4o-mini-2024-07-18'
       };
-      mockClient.post.mockResolvedValue(responseWithModel);
+      mockClient.chat.mockResolvedValue(responseWithModel);
 
       const result = await assistant.analyzeContext('Some text here.');
       expect(result.model).toBe('gpt-4o-mini-2024-07-18');
     });
 
-    it('defaults usage to null when response has no usage field', async () => {
-      // Default mock has no usage field
+    it('returns usage from provider response', async () => {
       const result = await assistant.analyzeContext('The party marches on.');
-      expect(result.usage).toBeNull();
+      expect(result.usage).toEqual({});
     });
 
     it('defaults model to configured model when response has no model field', async () => {
@@ -587,18 +575,14 @@ describe('AIAssistant', () => {
 
     it('performs detection when adventure context is set', async () => {
       const offTrackResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               isOffTrack: true,
               severity: 0.7,
               reason: 'Players discussing real-world events',
               narrativeBridge: 'A loud crash from the tavern grabs attention.'
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(offTrackResponse);
+      mockClient.chat.mockResolvedValue(offTrackResponse);
       assistant.setAdventureContext('The adventure takes place in a dark forest.');
 
       const result = await assistant.detectOffTrack('We should order pizza tonight.');
@@ -611,9 +595,9 @@ describe('AIAssistant', () => {
       const rag = createMockRAGProvider();
       assistant.setRAGProvider(rag);
       const offTrackResponse = {
-        choices: [{ message: { content: '{"isOffTrack": false, "severity": 0, "reason": "ok"}' } }]
+        content: '{"isOffTrack": false, "severity": 0, "reason": "ok"}', usage: {}
       };
-      mockClient.post.mockResolvedValue(offTrackResponse);
+      mockClient.chat.mockResolvedValue(offTrackResponse);
 
       await assistant.detectOffTrack('The heroes continue their quest.');
       expect(rag.query).toHaveBeenCalled();
@@ -621,7 +605,7 @@ describe('AIAssistant', () => {
 
     it('propagates API errors', async () => {
       assistant.setAdventureContext('context');
-      mockClient.post.mockRejectedValue(new Error('Network error'));
+      mockClient.chat.mockRejectedValue(new Error('Network error'));
       await expect(assistant.detectOffTrack('text')).rejects.toThrow('Network error');
     });
   });
@@ -634,18 +618,14 @@ describe('AIAssistant', () => {
 
     it('returns suggestions', async () => {
       const suggResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [
                 { type: 'dialogue', content: 'NPC speaks.', confidence: 0.9 },
                 { type: 'action', content: 'Roll perception.', confidence: 0.7 }
               ]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(suggResponse);
+      mockClient.chat.mockResolvedValue(suggResponse);
 
       const result = await assistant.generateSuggestions('The party listens.');
       expect(result).toHaveLength(2);
@@ -654,26 +634,22 @@ describe('AIAssistant', () => {
 
     it('respects maxSuggestions option', async () => {
       const suggResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [
                 { type: 'narration', content: 'A', confidence: 0.9 },
                 { type: 'narration', content: 'B', confidence: 0.8 },
                 { type: 'narration', content: 'C', confidence: 0.7 }
               ]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(suggResponse);
+      mockClient.chat.mockResolvedValue(suggResponse);
 
       const result = await assistant.generateSuggestions('text', { maxSuggestions: 2 });
       expect(result).toHaveLength(2);
     });
 
     it('propagates errors', async () => {
-      mockClient.post.mockRejectedValue(new Error('fail'));
+      mockClient.chat.mockRejectedValue(new Error('fail'));
       await expect(assistant.generateSuggestions('text')).rejects.toThrow('fail');
     });
   });
@@ -686,11 +662,9 @@ describe('AIAssistant', () => {
 
     it('returns narrative bridge text', async () => {
       const bridgeResponse = {
-        choices: [{
-          message: { content: 'A sudden gust of wind carries the scent of adventure.' }
-        }]
+        content: 'A sudden gust of wind carries the scent of adventure.', usage: {}
       };
-      mockClient.post.mockResolvedValue(bridgeResponse);
+      mockClient.chat.mockResolvedValue(bridgeResponse);
 
       const result = await assistant.generateNarrativeBridge('Shopping', 'Forest quest');
       expect(result).toBe('A sudden gust of wind carries the scent of adventure.');
@@ -698,9 +672,9 @@ describe('AIAssistant', () => {
 
     it('trims whitespace from response', async () => {
       const bridgeResponse = {
-        choices: [{ message: { content: '  Some text with spaces  ' } }]
+        content: '  Some text with spaces  ', usage: {}
       };
-      mockClient.post.mockResolvedValue(bridgeResponse);
+      mockClient.chat.mockResolvedValue(bridgeResponse);
 
       const result = await assistant.generateNarrativeBridge('a', 'b');
       expect(result).toBe('Some text with spaces');
@@ -723,19 +697,15 @@ describe('AIAssistant', () => {
 
     it('returns dialogue options', async () => {
       const dialogueResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               dialogueOptions: [
                 'Welcome to my tavern, travelers!',
                 'What can I get you?',
                 'Be careful out there tonight.'
               ]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(dialogueResponse);
+      mockClient.chat.mockResolvedValue(dialogueResponse);
 
       const result = await assistant.generateNPCDialogue('Thane', 'Gruff bartender', 'Players sit at bar.');
       expect(result).toHaveLength(3);
@@ -977,7 +947,7 @@ describe('AIAssistant', () => {
   describe('_parseAnalysisResponse() fallback', () => {
     it('handles non-JSON response gracefully', () => {
       const response = {
-        choices: [{ message: { content: 'Not valid JSON at all' } }]
+        content: 'Not valid JSON at all', usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions).toHaveLength(1);
@@ -995,7 +965,7 @@ describe('AIAssistant', () => {
   describe('_parseOffTrackResponse() fallback', () => {
     it('handles non-JSON response', () => {
       const response = {
-        choices: [{ message: { content: 'unparseable' } }]
+        content: 'unparseable', usage: {}
       };
       const result = assistant._parseOffTrackResponse(response);
       expect(result.isOffTrack).toBe(false);
@@ -1006,7 +976,7 @@ describe('AIAssistant', () => {
   describe('_parseSuggestionsResponse() fallback', () => {
     it('handles non-JSON response', () => {
       const response = {
-        choices: [{ message: { content: 'Some plain text suggestion' } }]
+        content: 'Some plain text suggestion', usage: {}
       };
       const result = assistant._parseSuggestionsResponse(response, 3);
       expect(result).toHaveLength(1);
@@ -1017,14 +987,14 @@ describe('AIAssistant', () => {
   describe('_parseNPCDialogueResponse() fallback', () => {
     it('handles non-JSON response with content', () => {
       const response = {
-        choices: [{ message: { content: 'A single dialogue line' } }]
+        content: 'A single dialogue line', usage: {}
       };
       const result = assistant._parseNPCDialogueResponse(response, 3);
       expect(result).toHaveLength(1);
     });
 
     it('returns empty array for empty response', () => {
-      const response = { choices: [{ message: { content: '' } }] };
+      const response = { content: '', usage: {} };
       const result = assistant._parseNPCDialogueResponse(response, 3);
       expect(result).toEqual([]);
     });
@@ -1140,15 +1110,11 @@ describe('AIAssistant', () => {
       assistant.setOnAutonomousSuggestionCallback(callback);
 
       const suggResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{ type: 'narration', content: 'A suggestion', confidence: 0.8 }]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(suggResponse);
+      mockClient.chat.mockResolvedValue(suggResponse);
 
       // Call through the SilenceMonitor (which delegates suggestion generation to AIAssistant)
       await assistant._silenceMonitor._handleSilenceEvent({
@@ -1176,22 +1142,18 @@ describe('AIAssistant', () => {
       assistant.setOnAutonomousSuggestionCallback(callback);
 
       const suggResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{ type: 'narration', content: 'suggestion', confidence: 0.8 }]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(suggResponse);
+      mockClient.chat.mockResolvedValue(suggResponse);
 
       // Should not throw
       await assistant._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
     });
 
     it('handles API error gracefully', async () => {
-      mockClient.post.mockRejectedValue(new Error('API down'));
+      mockClient.chat.mockRejectedValue(new Error('API down'));
       // Should not throw
       await assistant._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
     });
@@ -1202,15 +1164,11 @@ describe('AIAssistant', () => {
       assistant.setChapterContext({ chapterName: 'Forest', summary: 'A dark forest.' });
 
       const suggResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{ type: 'narration', content: 'suggestion', confidence: 0.8 }]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(suggResponse);
+      mockClient.chat.mockResolvedValue(suggResponse);
 
       const result = await assistant._generateAutonomousSuggestion();
       expect(result).not.toBeNull();
@@ -1221,15 +1179,11 @@ describe('AIAssistant', () => {
       assistant._previousTranscription = 'The heroes fought bravely.';
 
       const suggResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{ type: 'action', content: 'Next action', confidence: 0.7 }]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(suggResponse);
+      mockClient.chat.mockResolvedValue(suggResponse);
 
       const result = await assistant._generateAutonomousSuggestion();
       expect(result).not.toBeNull();
@@ -1237,15 +1191,11 @@ describe('AIAssistant', () => {
 
     it('uses generic prompt when no context', async () => {
       const suggResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{ type: 'narration', content: 'generic', confidence: 0.5 }]
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(suggResponse);
+      mockClient.chat.mockResolvedValue(suggResponse);
 
       const result = await assistant._generateAutonomousSuggestion();
       expect(result).not.toBeNull();
@@ -1253,9 +1203,9 @@ describe('AIAssistant', () => {
 
     it('returns null when no suggestions generated', async () => {
       const emptyResponse = {
-        choices: [{ message: { content: JSON.stringify({ suggestions: [] }) } }]
+        content: JSON.stringify({ suggestions: [] }), usage: {}
       };
-      mockClient.post.mockResolvedValue(emptyResponse);
+      mockClient.chat.mockResolvedValue(emptyResponse);
 
       const result = await assistant._generateAutonomousSuggestion();
       // Fallback will create one from the raw response, but with empty suggestions array
@@ -1271,21 +1221,17 @@ describe('AIAssistant', () => {
   describe('analyzeContext() with selective options', () => {
     it('sends only off-track request when includeSuggestions is false', async () => {
       const response = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               offTrackStatus: { isOffTrack: true, severity: 0.6, reason: 'Players discussing food' },
               summary: 'Off topic discussion'
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(response);
+      mockClient.chat.mockResolvedValue(response);
 
       const result = await assistant.analyzeContext('Let us order some pizza.', { includeSuggestions: false });
 
       // Verify the prompt only contains off-track assessment (not suggestion generation)
-      const userMessage = mockClient.post.mock.calls[0][1].messages.find(m => m.role === 'user');
+      const userMessage = mockClient.chat.mock.calls[0][0].find(m => m.role === 'user');
       expect(userMessage.content).toContain('off-track');
       expect(userMessage.content).not.toContain('"suggestions"');
 
@@ -1299,23 +1245,19 @@ describe('AIAssistant', () => {
 
     it('sends only suggestions request when checkOffTrack is false', async () => {
       const response = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [
                 { type: 'narration', content: 'The merchant beckons.', confidence: 0.85 }
               ],
               summary: 'Players at the market'
-            })
-          }
-        }]
+            }), usage: {}
       };
-      mockClient.post.mockResolvedValue(response);
+      mockClient.chat.mockResolvedValue(response);
 
       const result = await assistant.analyzeContext('We browse the market stalls.', { checkOffTrack: false });
 
       // Verify the prompt only contains suggestion generation (not off-track assessment)
-      const userMessage = mockClient.post.mock.calls[0][1].messages.find(m => m.role === 'user');
+      const userMessage = mockClient.chat.mock.calls[0][0].find(m => m.role === 'user');
       expect(userMessage.content).toContain('suggestions');
       expect(userMessage.content).not.toContain('"offTrackStatus"');
 
@@ -1358,22 +1300,22 @@ describe('AIAssistant', () => {
   // generateNarrativeBridge with empty response
   // =========================================================================
   describe('generateNarrativeBridge() edge cases', () => {
-    it('returns empty string for empty choices array', async () => {
-      mockClient.post.mockResolvedValue({ choices: [] });
+    it('returns empty string for empty content', async () => {
+      mockClient.chat.mockResolvedValue({ content: '', usage: {} });
 
       const result = await assistant.generateNarrativeBridge('Players are shopping', 'Return to dungeon');
       expect(result).toBe('');
     });
 
     it('returns empty string for missing message content', async () => {
-      mockClient.post.mockResolvedValue({ choices: [{ message: {} }] });
+      mockClient.chat.mockResolvedValue({ content: '', usage: {} });
 
       const result = await assistant.generateNarrativeBridge('Situation', 'Target');
       expect(result).toBe('');
     });
 
-    it('returns empty string for null choices', async () => {
-      mockClient.post.mockResolvedValue({});
+    it('returns empty string for null content', async () => {
+      mockClient.chat.mockResolvedValue({});
 
       const result = await assistant.generateNarrativeBridge('Situation', 'Target');
       expect(result).toBe('');
@@ -1383,8 +1325,8 @@ describe('AIAssistant', () => {
       const rag = createMockRAGProvider();
       assistant.setRAGProvider(rag);
 
-      mockClient.post.mockResolvedValue({
-        choices: [{ message: { content: 'A bridge narrative.' } }]
+      mockClient.chat.mockResolvedValue({
+        content: 'A bridge narrative.', usage: {}
       });
 
       const result = await assistant.generateNarrativeBridge('Lost in town', 'Dragon lair');
@@ -1490,7 +1432,7 @@ describe('AIAssistant', () => {
   describe('parse methods log warnings with error details (H-7b)', () => {
     it('_parseAnalysisResponse should log error.message on parse failure', () => {
       const response = {
-        choices: [{ message: { content: 'not valid json {{{' } }]
+        content: 'not valid json {{{', usage: {}
       };
 
       const result = assistant._parseAnalysisResponse(response);
@@ -1502,7 +1444,7 @@ describe('AIAssistant', () => {
 
     it('_parseOffTrackResponse should log error.message on parse failure', () => {
       const response = {
-        choices: [{ message: { content: '<<<not json>>>' } }]
+        content: '<<<not json>>>', usage: {}
       };
 
       const result = assistant._parseOffTrackResponse(response);
@@ -1513,7 +1455,7 @@ describe('AIAssistant', () => {
 
     it('_parseSuggestionsResponse should log error.message on parse failure', () => {
       const response = {
-        choices: [{ message: { content: '<<<broken json>>>' } }]
+        content: '<<<broken json>>>', usage: {}
       };
 
       const result = assistant._parseSuggestionsResponse(response, 3);
@@ -1525,7 +1467,7 @@ describe('AIAssistant', () => {
 
     it('_parseNPCDialogueResponse should log error.message on parse failure', () => {
       const response = {
-        choices: [{ message: { content: '<<<invalid>>>' } }]
+        content: '<<<invalid>>>', usage: {}
       };
 
       const result = assistant._parseNPCDialogueResponse(response, 3);
@@ -1541,9 +1483,7 @@ describe('AIAssistant', () => {
   describe('_parseAnalysisResponse source field (Phase 03-01)', () => {
     it('extracts source field from suggestions', () => {
       const response = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{
                 type: 'narration',
                 content: 'A dark figure emerges.',
@@ -1556,9 +1496,8 @@ describe('AIAssistant', () => {
               }],
               offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
               summary: 'Test'
-            })
-          }
-        }]
+            }),
+        usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions[0].source).toEqual({
@@ -1570,18 +1509,14 @@ describe('AIAssistant', () => {
 
     it('defaults source to null when missing', () => {
       const response = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{
                 type: 'narration',
                 content: 'A suggestion without source.',
                 confidence: 0.7
               }],
               summary: 'Test'
-            })
-          }
-        }]
+            }), usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions[0].source).toBeNull();
@@ -1589,9 +1524,7 @@ describe('AIAssistant', () => {
 
     it('handles partial source (missing page) with empty string', () => {
       const response = {
-        choices: [{
-          message: {
-            content: JSON.stringify({
+        content: JSON.stringify({
               suggestions: [{
                 type: 'narration',
                 content: 'Partial source test.',
@@ -1602,9 +1535,8 @@ describe('AIAssistant', () => {
                 }
               }],
               summary: 'Test'
-            })
-          }
-        }]
+            }),
+        usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions[0].source.chapter).toBe('Chapter 1');
@@ -1614,7 +1546,7 @@ describe('AIAssistant', () => {
 
     it('sets source to null in fallback parsing', () => {
       const response = {
-        choices: [{ message: { content: 'Not valid JSON' } }]
+        content: 'Not valid JSON', usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions[0].source).toBeNull();
@@ -1657,7 +1589,7 @@ describe('AIAssistant', () => {
 
     beforeEach(() => {
       cbMockClient = createMockOpenAIClient();
-      cbAssistant = new AIAssistant({ openaiClient: cbMockClient });
+      cbAssistant = new AIAssistant({ chatProvider: cbMockClient });
     });
 
     describe('getHealthStatus()', () => {
@@ -1724,7 +1656,7 @@ describe('AIAssistant', () => {
         ).rejects.toThrow(/circuit breaker/i);
 
         // Should NOT call the API
-        expect(cbMockClient.post).not.toHaveBeenCalled();
+        expect(cbMockClient.chat).not.toHaveBeenCalled();
       });
 
       it('should reset consecutive errors on success', async () => {
@@ -1737,7 +1669,7 @@ describe('AIAssistant', () => {
       });
 
       it('should increment consecutive errors on failure', async () => {
-        cbMockClient.post.mockRejectedValueOnce(new Error('API error'));
+        cbMockClient.chat.mockRejectedValueOnce(new Error('API error'));
 
         await expect(
           cbAssistant._makeChatRequest([{ role: 'user', content: 'test' }])
@@ -1747,7 +1679,7 @@ describe('AIAssistant', () => {
       });
 
       it('should open circuit after 5 consecutive failures', async () => {
-        cbMockClient.post.mockRejectedValue(new Error('API error'));
+        cbMockClient.chat.mockRejectedValue(new Error('API error'));
 
         for (let i = 0; i < 5; i++) {
           try {
@@ -1929,16 +1861,16 @@ describe('AIAssistant', () => {
     }
 
     beforeEach(() => {
-      const mockClient = createMockOpenAIClient();
-      // Add postStream mock returning an async generator
-      mockClient.postStream = vi.fn().mockImplementation(() =>
+      const mockClient = createMockChatProvider();
+      // Add chatStream mock returning an async generator
+      mockClient.chatStream = vi.fn().mockImplementation(() =>
         mockAsyncGenerator([
-          { content: 'Hello', usage: null },
-          { content: ' world', usage: null },
-          { content: null, usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }
+          { token: 'Hello', done: false },
+          { token: ' world', done: false },
+          { token: '', done: true, usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }
         ])
       );
-      assistant = new AIAssistant({ openaiClient: mockClient });
+      assistant = new AIAssistant({ chatProvider: mockClient });
     });
 
     it('yields accumulated text on each token via onToken callback', async () => {
@@ -1987,8 +1919,8 @@ describe('AIAssistant', () => {
     });
 
     it('increments consecutive errors and opens circuit on failure', async () => {
-      const failClient = assistant._openaiClient;
-      failClient.postStream = vi.fn().mockImplementation(async function* () {
+      const failClient = assistant._chatProvider;
+      failClient.chatStream = vi.fn().mockImplementation(async function* () {
         throw new Error('API error');
       });
       assistant._maxConsecutiveErrors = 2;
@@ -2002,7 +1934,7 @@ describe('AIAssistant', () => {
       expect(assistant._circuitOpen).toBe(true);
     });
 
-    it('passes signal option through to postStream', async () => {
+    it('passes signal option through to chatStream', async () => {
       const controller = new AbortController();
 
       await assistant._makeChatRequestStreaming(
@@ -2010,10 +1942,9 @@ describe('AIAssistant', () => {
         { signal: controller.signal }
       );
 
-      expect(assistant._openaiClient.postStream).toHaveBeenCalledWith(
-        '/chat/completions',
-        expect.objectContaining({ model: DEFAULT_MODEL }),
-        expect.objectContaining({ signal: controller.signal })
+      expect(assistant._chatProvider.chatStream).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ abortSignal: controller.signal })
       );
     });
   });
@@ -2030,46 +1961,46 @@ describe('AIAssistant', () => {
 
     it('should accept cache option in constructor', () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
-      const a = new AIAssistant({ openaiClient: mockClient, cache });
+      const a = new AIAssistant({ chatProvider: mockClient, cache });
       expect(a).toBeDefined();
     });
 
     it('should accept eventBus option in constructor', () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
       const eventBus = { on: vi.fn() };
-      const a = new AIAssistant({ openaiClient: mockClient, cache, eventBus });
+      const a = new AIAssistant({ chatProvider: mockClient, cache, eventBus });
       expect(eventBus.on).toHaveBeenCalledWith('scene:changed', expect.any(Function));
     });
 
     it('should return cached result on analyzeContext cache hit', async () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
-      const a = new AIAssistant({ openaiClient: mockClient, cache });
+      const a = new AIAssistant({ chatProvider: mockClient, cache });
 
       const result1 = await a.analyzeContext('The party enters the tavern.');
-      mockClient.post.mockClear();
+      mockClient.chat.mockClear();
 
       const result2 = await a.analyzeContext('The party enters the tavern.');
-      expect(mockClient.post).not.toHaveBeenCalled();
+      expect(mockClient.chat).not.toHaveBeenCalled();
       expect(result2.suggestions).toEqual(result1.suggestions);
     });
 
     it('should call API on cache miss', async () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
-      const a = new AIAssistant({ openaiClient: mockClient, cache });
+      const a = new AIAssistant({ chatProvider: mockClient, cache });
 
       await a.analyzeContext('Unique transcription text.');
-      expect(mockClient.post).toHaveBeenCalledTimes(1);
+      expect(mockClient.chat).toHaveBeenCalledTimes(1);
     });
 
     it('should bypass cache with skipCache option', async () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
-      const a = new AIAssistant({ openaiClient: mockClient, cache });
+      const a = new AIAssistant({ chatProvider: mockClient, cache });
 
       await a.analyzeContext('Skip cache test text.');
-      mockClient.post.mockClear();
+      mockClient.chat.mockClear();
 
       await a.analyzeContext('Skip cache test text.', { skipCache: true });
-      expect(mockClient.post).toHaveBeenCalledTimes(1);
+      expect(mockClient.chat).toHaveBeenCalledTimes(1);
     });
 
     it('should invalidate suggestion cache on scene:changed event', async () => {
@@ -2078,7 +2009,7 @@ describe('AIAssistant', () => {
       const eventBus = {
         on: vi.fn((event, cb) => { if (event === 'scene:changed') sceneChangedCallback = cb; })
       };
-      const a = new AIAssistant({ openaiClient: mockClient, cache, eventBus });
+      const a = new AIAssistant({ chatProvider: mockClient, cache, eventBus });
 
       await a.analyzeContext('Cache invalidation test.');
       expect(cache.size()).toBeGreaterThan(0);
@@ -2088,44 +2019,44 @@ describe('AIAssistant', () => {
     });
 
     it('should work without cache (backward compatible)', async () => {
-      const a = new AIAssistant({ openaiClient: mockClient });
+      const a = new AIAssistant({ chatProvider: mockClient });
       const result = await a.analyzeContext('No cache test.');
       expect(result.suggestions).toBeDefined();
     });
 
     it('should differentiate cache keys by transcription', async () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
-      const a = new AIAssistant({ openaiClient: mockClient, cache });
+      const a = new AIAssistant({ chatProvider: mockClient, cache });
 
       await a.analyzeContext('First transcription.');
       await a.analyzeContext('Second transcription.');
 
-      expect(mockClient.post).toHaveBeenCalledTimes(2);
+      expect(mockClient.chat).toHaveBeenCalledTimes(2);
       expect(cache.size()).toBe(2);
     });
 
     it('should use configurable cacheTTL', async () => {
       vi.useFakeTimers();
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
-      const a = new AIAssistant({ openaiClient: mockClient, cache, cacheTTL: 1000 });
+      const a = new AIAssistant({ chatProvider: mockClient, cache, cacheTTL: 1000 });
 
       await a.analyzeContext('TTL test text.');
-      mockClient.post.mockClear();
+      mockClient.chat.mockClear();
 
       vi.advanceTimersByTime(500);
       await a.analyzeContext('TTL test text.');
-      expect(mockClient.post).not.toHaveBeenCalled(); // cached
+      expect(mockClient.chat).not.toHaveBeenCalled(); // cached
 
       vi.advanceTimersByTime(600);
       await a.analyzeContext('TTL test text.');
-      expect(mockClient.post).toHaveBeenCalledTimes(1); // expired
+      expect(mockClient.chat).toHaveBeenCalledTimes(1); // expired
 
       vi.useRealTimers();
     });
 
     it('should track cache stats', async () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
-      const a = new AIAssistant({ openaiClient: mockClient, cache });
+      const a = new AIAssistant({ chatProvider: mockClient, cache });
 
       await a.analyzeContext('Stats test.'); // miss
       await a.analyzeContext('Stats test.'); // hit
@@ -2136,7 +2067,7 @@ describe('AIAssistant', () => {
 
     it('should not register eventBus listener without cache', () => {
       const eventBus = { on: vi.fn() };
-      new AIAssistant({ openaiClient: mockClient, eventBus }); // no cache
+      new AIAssistant({ chatProvider: mockClient, eventBus }); // no cache
       expect(eventBus.on).not.toHaveBeenCalled();
     });
   });

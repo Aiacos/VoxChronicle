@@ -327,7 +327,7 @@ class VoxChronicle {
         // Create L1 cache for narrator suggestions (Story 2.3)
         this._l1SuggestionsCache = new CacheManager({ name: 'l1-suggestions', maxSize: 50 });
         this.aiAssistant = new AIAssistant({
-          openaiClient: new OpenAIClient(openaiApiKey),
+          chatProvider: registry.getProvider('chat'),
           primaryLanguage: aiResponseLanguage,
           cache: this._l1SuggestionsCache,
           eventBus

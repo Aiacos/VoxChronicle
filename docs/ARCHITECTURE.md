@@ -2,7 +2,7 @@
 
 This document describes the system architecture, components, and data flow of the VoxChronicle Foundry VTT module.
 
-**Last updated:** 2026-02-20 (v3.0.3)
+**Last updated:** 2026-03-13 (v3.1.0)
 
 ## Table of Contents
 
@@ -14,12 +14,13 @@ This document describes the system architecture, components, and data flow of th
 6. [RAG Architecture](#rag-architecture)
 7. [Data Flow](#data-flow)
 8. [Module Initialization](#module-initialization)
-9. [UI Architecture](#ui-architecture)
-10. [Design Patterns](#design-patterns)
-11. [External Integrations](#external-integrations)
-12. [Security Considerations](#security-considerations)
-13. [Error Handling Strategy](#error-handling-strategy)
-14. [v3.0 Changes (Released 2026-02-19)](#v30-changes-released-2026-02-19)
+9. [EventBus Architecture](#eventbus-architecture)
+10. [UI Architecture](#ui-architecture)
+11. [Design Patterns](#design-patterns)
+12. [External Integrations](#external-integrations)
+13. [Security Considerations](#security-considerations)
+14. [Error Handling Strategy](#error-handling-strategy)
+15. [v3.0-3.1 Changes](#v30-31-changes-released-2026-02-19-to-2026-03-13)
 
 ---
 
@@ -43,7 +44,7 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 | RAG | Modular RAGProvider: OpenAI File Search + RAGFlow (v3.0) |
 | Campaign Management | Kanka.io API v1.0 |
 | Styling | CSS with BEM-style `.vox-chronicle` namespace |
-| Testing | Vitest with jsdom (3600+ tests across 61+ files) |
+| Testing | Vitest with jsdom (5151 tests across 69 files) |
 
 ---
 
@@ -71,14 +72,14 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 │  │  │  Service Layer  └───────┬───────┘                                  │  │
 │  │  │                         │                                          │  │
 │  │  │  ┌──────────┐ ┌────────┴─────┐ ┌──────────────┐ ┌─────────────┐  │  │
-│  │  │  │  Audio   │ │     AI       │ │   Narrator   │ │    Kanka    │  │  │
+│  │  │  │  Audio   │ │AI Providers  │ │   Narrator   │ │    Kanka    │  │  │
 │  │  │  │          │ │              │ │              │ │             │  │  │
-│  │  │  │ Recorder │ │ OpenAIClient │ │ AIAssistant  │ │ KankaClient │  │  │
-│  │  │  │ Chunker  │ │ Transcription│ │ SceneDetect  │ │ KankaService│  │  │
-│  │  │  │          │ │ ImageGen     │ │ ChapterTrack │ │ EntityMgr   │  │  │
-│  │  │  │          │ │ EntityExtract│ │ RulesRef     │ │ Narrative   │  │  │
-│  │  │  │          │ │ WhisperLocal │ │ Analytics    │ │  Exporter   │  │  │
-│  │  │  │          │ │              │ │ SilenceDetect│ │             │  │  │
+│  │  │  │ Recorder │ │ChatProvider  │ │ AIAssistant  │ │ KankaClient │  │  │
+│  │  │  │ Chunker  │ │Transcription │ │ SceneDetect  │ │ KankaService│  │  │
+│  │  │  │          │ │ImageProvider │ │ ChapterTrack │ │ EntityMgr   │  │  │
+│  │  │  │          │ │EmbedProvider │ │ RulesRef     │ │ Narrative   │  │  │
+│  │  │  │          │ │CachingDec.   │ │ Analytics    │ │  Exporter   │  │  │
+│  │  │  │          │ │ProviderReg.  │ │ SilenceDetect│ │             │  │  │
 │  │  │  └──────────┘ └──────────────┘ └──────────────┘ └─────────────┘  │  │
 │  │  │                                                                    │  │
 │  │  │  ┌──────────────────────────────────────────────────────────────┐  │  │
@@ -88,8 +89,7 @@ VoxChronicle is a Foundry VTT module that provides AI-powered session transcript
 │  │  │                                                                    │  │
 │  │  │  ┌──────────────────────────────────────────────────────────────┐  │  │
 │  │  │  │  Utils: Logger, RateLimiter, AudioUtils, CacheManager,      │  │  │
-│  │  │  │         HtmlUtils, DomUtils, SensitiveDataFilter,           │  │  │
-│  │  │  │         ErrorNotificationHelper                             │  │  │
+│  │  │  │         HtmlUtils, DomUtils, SensitiveDataFilter, EventBus  │  │  │
 │  │  │  └──────────────────────────────────────────────────────────────┘  │  │
 │  │  └────────────────────────────────────────────────────────────────────┘  │
 │  └────────────────────────────────────────────────────────────────────────┘  │
@@ -130,8 +130,21 @@ scripts/
 │   ├── AudioRecorder.mjs             # MediaRecorder wrapper, WebRTC/mic, level metering
 │   └── AudioChunker.mjs             # Split >25MB files for API limit
 │
-├── ai/                               # OpenAI API services
+├── ai/                               # AI providers and services
 │   ├── OpenAIClient.mjs              # Base client: auth, retry, queue, circuit breaker
+│   ├── providers/                    # AI provider interfaces (v3.1)
+│   │   ├── ChatProvider.mjs          # Abstract chat interface
+│   │   ├── TranscriptionProvider.mjs # Abstract transcription interface
+│   │   ├── ImageProvider.mjs         # Abstract image generation interface
+│   │   ├── EmbeddingProvider.mjs     # Abstract embedding interface
+│   │   ├── OpenAIChatProvider.mjs    # OpenAI chat implementation
+│   │   ├── OpenAITranscriptionProvider.mjs # OpenAI transcription implementation
+│   │   ├── OpenAIImageProvider.mjs   # OpenAI image generation implementation
+│   │   ├── OpenAIEmbeddingProvider.mjs # OpenAI embedding implementation
+│   │   ├── CachingChatDecorator.mjs  # L2 caching for chat responses
+│   │   ├── CachingEmbeddingDecorator.mjs # L2 caching for embeddings
+│   │   ├── ProviderRegistry.mjs      # Service locator for providers
+│   │   └── ProviderFactory.mjs       # Factory for creating providers
 │   ├── TranscriptionService.mjs      # GPT-4o-transcribe-diarize, speaker mapping
 │   ├── TranscriptionFactory.mjs      # Cloud/local/auto mode factory
 │   ├── LocalWhisperService.mjs       # Local Whisper backend client
@@ -169,11 +182,13 @@ scripts/
 │   └── KankaPublisher.mjs            # Entities + images → Kanka workflow
 │
 ├── ui/                               # ApplicationV2 UI components
-│   ├── MainPanel.mjs                 # 6-tab floating panel (singleton)
+│   ├── MainPanel.mjs                 # 6-tab floating panel (singleton) with PARTS pattern
 │   ├── EntityPreview.mjs             # Entity review before Kanka publish
 │   ├── SpeakerLabeling.mjs           # Speaker ID → player name mapping
 │   ├── RelationshipGraph.mjs         # vis-network entity relationship graph
-│   └── VocabularyManager.mjs         # Custom vocabulary management
+│   ├── VocabularyManager.mjs         # Custom vocabulary management
+│   ├── TranscriptReview.mjs          # Inline transcript editing with speaker colors
+│   └── StreamController.mjs          # Streaming UI component for AI responses
 │
 ├── data/
 │   └── dnd-vocabulary.mjs            # Built-in D&D vocabulary
@@ -186,7 +201,7 @@ scripts/
     ├── HtmlUtils.mjs                 # HTML sanitization
     ├── DomUtils.mjs                  # DOM manipulation helpers
     ├── SensitiveDataFilter.mjs       # Filter API keys from logs
-    └── ErrorNotificationHelper.mjs   # User-facing error notifications
+    └── EventBus.mjs                  # Typed channels with middleware pipeline
 ```
 
 ---
@@ -211,17 +226,27 @@ Hooks.on('getSceneControlButtons', (controls) => { /* v13 object format */ });
 
 ### Layer 3: Audio (`audio/`)
 
-- **AudioRecorder** — MediaRecorder wrapper using **Header Injection** strategy for gapless capture. Prepends the EBML header to live chunks to ensure standalone validity without stopping the stream.
-- **AudioChunker** — Splits audio >25MB for OpenAI API limit.
+**EventBus Integration (Epic 3):**
+- **EventBus Channels** — `audio:recordingStarted`, `audio:recordingStopped`, `audio:chunkReady`, `audio:error`, `audio:levelChange`, `audio:chunkingStarted`, `audio:chunkCreated`, `audio:chunkingComplete`
+- **AudioRecorder** — MediaRecorder wrapper with Safari codec fallback (MP4/AAC), crash recovery via IndexedDB, WebRTC peer capture. Uses **Header Injection** strategy for gapless capture. Emits events for recording lifecycle.
+- **AudioChunker** — Splits audio >25MB for OpenAI API limit. Emits chunking progress events.
 
 ### Layer 4: AI Services (`ai/`)
 
+**Provider Architecture (v3.1):**
+- **Provider Interfaces** — `ChatProvider`, `TranscriptionProvider`, `ImageProvider`, `EmbeddingProvider` define abstract API
+- **OpenAI Implementations** — `OpenAIChatProvider`, `OpenAITranscriptionProvider`, `OpenAIImageProvider`, `OpenAIEmbeddingProvider` handle API calls
+- **Caching Decorators** — `CachingChatDecorator`, `CachingEmbeddingDecorator` provide L2 caching layer
+- **ProviderRegistry** — Service locator for accessing providers by type
+- **ProviderFactory** — Creates providers based on configuration
+
+**Services (use composition with providers):**
 - **OpenAIClient** — Base client with Bearer auth, exponential backoff + jitter retry, sequential request queue, circuit breaker
-- **TranscriptionService** — GPT-4o-transcribe-diarize with speaker mapping, multi-language
+- **TranscriptionService** — Receives `TranscriptionProvider`, handles speaker mapping, chunking, diarization
+- **ImageGenerationService** — Receives `ImageProvider`, handles prompt generation, gallery management, caching
+- **EntityExtractor** — Receives `ChatProvider`, handles entity extraction, JSON parsing, salient moments
 - **TranscriptionFactory** — Factory for cloud/local/auto transcription modes
 - **LocalWhisperService** / **WhisperBackend** — Local Whisper backend for offline transcription
-- **ImageGenerationService** — gpt-image-1 (base64 responses, NOT URLs), 3 valid sizes: 1024x1024, 1024x1536, 1536x1024
-- **EntityExtractor** — GPT-4o structured JSON output for NPCs, locations, items, salient moments
 
 ### Layer 5: RAG System (`rag/`)
 
@@ -236,7 +261,7 @@ Modular RAG provider architecture (v3.0):
 
 Real-time DM assistant services for Live Mode:
 
-- **AIAssistant** — Contextual suggestions (narration, dialogue, action, reference) with RAG context injection via `ragProvider.query()`
+- **AIAssistant** — Contextual suggestions (narration, dialogue, action, reference) using `ChatProvider`, RAG context injection via `ragProvider.query()`
 - **ChapterTracker** — Track current chapter/scene from Foundry journal entries
 - **CompendiumParser** — Parse Foundry compendiums for rules content + text chunking for RAG
 - **JournalParser** — Parse Foundry journals for story context + text chunking for RAG
@@ -255,20 +280,22 @@ Real-time DM assistant services for Live Mode:
 ### Layer 8: Orchestration (`orchestration/`)
 
 - **SessionOrchestrator** — Dual-mode workflow coordinator (live + chronicle)
-- **TranscriptionProcessor** — Audio → transcript with auto-fallback (cloud/local)
+- **TranscriptionProcessor** — Audio → transcript with auto-fallback (cloud/local). Emits: `ai:transcriptionStarted`, `ai:transcriptionReady`, `ai:transcriptionError`, `ai:speakersDetected`. Auto-applies saved speaker labels and registers new speakers.
 - **EntityProcessor** — Transcript → extracted entities
 - **ImageProcessor** — Entities/moments → generated images
 - **KankaPublisher** — Journal + entities + images → Kanka
 
 ### Layer 9: UI (`ui/`)
 
-All 5 components use ApplicationV2 + HandlebarsApplicationMixin (v13):
+All components use ApplicationV2 + HandlebarsApplicationMixin (v13) with PARTS pattern:
 
-- **MainPanel** — Singleton 6-tab floating panel (Live, Chronicle, Images, Transcript, Entities, Analytics)
+- **MainPanel** — Singleton 6-tab floating panel with PARTS: `main`, `liveMode`, `chronicleMode`, `images`, `transcript`, `entities`, `analytics`. TranscriptReview part with inline editing and speaker color coding.
+- **TranscriptReview** — Inline transcript editor with speaker colors, segment playback, speaker remapping
 - **EntityPreview** — Review and select entities before Kanka publish
-- **SpeakerLabeling** — Map speaker IDs to player names with inline rename
+- **SpeakerLabeling** — Map speaker IDs to player names with inline rename, opened from MainPanel with onClose callback
 - **RelationshipGraph** — vis-network entity relationship visualization
 - **VocabularyManager** — Manage custom vocabulary dictionaries
+- **StreamController** — Streaming UI component for real-time AI responses
 
 ### Layer 10: Utilities (`utils/`)
 
@@ -279,7 +306,7 @@ All 5 components use ApplicationV2 + HandlebarsApplicationMixin (v13):
 - **HtmlUtils** — HTML sanitization and escaping
 - **DomUtils** — DOM manipulation helpers
 - **SensitiveDataFilter** — Strip API keys from log output
-- **ErrorNotificationHelper** — Consistent user-facing error notifications
+- **EventBus** — Typed channels with middleware pipeline for pub/sub across services
 
 ---
 
@@ -555,6 +582,50 @@ Foundry VTT Startup
 
 ---
 
+## EventBus Architecture
+
+EventBus provides typed, pub/sub communication across services to decouple components (Epic 1):
+
+```javascript
+// Emit event
+eventBus.emit('audio:recordingStarted', { timestamp: Date.now() });
+
+// Subscribe to channel
+eventBus.on('audio:chunkReady', (chunk) => {
+  console.log('New chunk ready:', chunk);
+});
+
+// Middleware pipeline for logging, filtering, etc.
+eventBus.use((channel, data, next) => {
+  console.log(`Event: ${channel}`);
+  return next(data);
+});
+```
+
+**Key Channels:**
+- **Audio**: `audio:recordingStarted`, `audio:recordingStopped`, `audio:chunkReady`, `audio:chunkingStarted`, `audio:chunkCreated`, `audio:chunkingComplete`, `audio:error`, `audio:levelChange`
+- **AI**: `ai:transcriptionStarted`, `ai:transcriptionReady`, `ai:transcriptionError`, `ai:speakersDetected`, `ai:imageGenerated`, `ai:entityExtracted`
+- **UI**: `ui:panelOpened`, `ui:panelClosed`, `ui:tabChanged`, `ui:speakerMapped`, `ui:entitySelected`
+- **Session**: `session:started`, `session:paused`, `session:resumed`, `session:completed`, `session:error`
+
+**Optional Integration:** Constructor injection with `#emitSafe()` wrapper for error-tolerant event emission:
+
+```javascript
+constructor(eventBus) {
+  this.eventBus = eventBus;
+}
+
+#emitSafe(channel, data) {
+  try {
+    this.eventBus?.emit(channel, data);
+  } catch (error) {
+    this.logger.warn(`EventBus error on ${channel}:`, error);
+  }
+}
+```
+
+---
+
 ## UI Architecture
 
 ### ApplicationV2 + HandlebarsApplicationMixin (v13)
@@ -757,16 +828,24 @@ Exponential backoff + jitter with sequential queue and automatic circuit breakin
 
 ---
 
-## v3.0 Changes (Released 2026-02-19)
+## v3.0-3.1 Changes (Released 2026-02-19 to 2026-03-13)
 
 See `docs/plans/2026-02-19-v3-rewrite-plan.md` for the original plan.
 
-**What changed in v3.0:**
+**v3.0 (2026-02-19):**
 1. **RAG:** Replaced custom stack (EmbeddingService + RAGVectorStore + RAGRetriever) with modular RAGProvider interface + OpenAI File Search + RAGFlow providers
 2. **UI:** Fixed memory leaks in all 5 components using AbortController pattern; CSS-only tab switching in MainPanel
 3. **Workflow:** Simplified to 2-3 session scene images (no entity portraits); focus on journal publishing
 4. **Documentation:** This file, API_REFERENCE.md, CLAUDE.md — all updated
 5. **Tests:** Complete rewrite — 3742 tests across 46 files with 95%+ coverage
+
+**v3.1.0 (2026-03-13, Epics 1-3):**
+1. **AI Provider Architecture:** Introduced `ChatProvider`, `TranscriptionProvider`, `ImageProvider`, `EmbeddingProvider` interfaces with OpenAI implementations. Services use composition instead of inheritance. Caching decorators for chat/embeddings. ProviderRegistry for service location.
+2. **EventBus System:** Typed pub/sub channels with middleware pipeline for decoupled service communication. Audio, AI, UI, and Session event channels. Optional constructor injection with `#emitSafe()` wrapper.
+3. **Audio Enhancements:** Safari codec fallback (MP4/AAC), crash recovery via IndexedDB, WebRTC peer capture, EventBus integration for recording lifecycle and chunking progress.
+4. **Transcription Workflow:** TranscriptionProcessor emits EventBus events, auto-applies saved speaker labels, registers new speakers.
+5. **UI Improvements:** MainPanel uses PARTS pattern, TranscriptReview component with inline editing and speaker color coding, SpeakerLabeling modal integration, StreamController for real-time responses.
+6. **Test Expansion:** 5151 tests across 69 files (40% increase from v3.0)
 
 ---
 

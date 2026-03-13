@@ -624,7 +624,7 @@ describe('VoxChronicle', () => {
       // AI Assistant created with OpenAI key, L1 cache, and eventBus
       expect(mockAIAssistant).toHaveBeenCalledWith(
         expect.objectContaining({
-          openaiClient: expect.any(Object),
+          chatProvider: expect.any(Object),
           primaryLanguage: 'it',
           cache: expect.any(Object),
           eventBus: expect.any(Object)

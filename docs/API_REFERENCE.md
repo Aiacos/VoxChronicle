@@ -2,7 +2,7 @@
 
 This document provides detailed API documentation for all service classes in the VoxChronicle module.
 
-**Last updated:** 2026-02-19 (v3.0.3)
+**Last updated:** 2026-03-13 (v3.1.0)
 
 ## Table of Contents
 
@@ -18,12 +18,23 @@ This document provides detailed API documentation for all service classes in the
    - [ImageGenerationService](#imagegenerationservice)
    - [EntityExtractor](#entityextractor)
    - [TranscriptionFactory](#transcriptionfactory)
-4. [RAG Services](#rag-services)
+4. [Provider System](#provider-system)
+   - [ChatProvider (Abstract)](#chatprovider-abstract)
+   - [TranscriptionProvider (Abstract)](#transcriptionprovider-abstract)
+   - [ImageProvider (Abstract)](#imageprovider-abstract)
+   - [EmbeddingProvider (Abstract)](#embeddingprovider-abstract)
+   - [OpenAIChatProvider](#openaiagencyprovider)
+   - [OpenAITranscriptionProvider](#openaitranscriptionprovider)
+   - [OpenAIImageProvider](#openaiimageprovider)
+   - [OpenAIEmbeddingProvider](#openaiembeddingprovider)
+   - [ProviderRegistry](#providerregistry)
+   - [CachingProviderDecorator](#cachingovider-decorator)
+5. [RAG Services](#rag-services)
    - [RAGProvider (Abstract)](#ragprovider-abstract)
    - [RAGProviderFactory](#ragproviderfactory)
    - [OpenAIFileSearchProvider](#openaifilesearchprovider)
    - [RAGFlowProvider](#ragflowprovider)
-5. [Narrator Services](#narrator-services)
+6. [Narrator Services](#narrator-services)
    - [AIAssistant](#aiassistant)
    - [ChapterTracker](#chaptertracker)
    - [CompendiumParser](#compendiumparser)
@@ -32,28 +43,28 @@ This document provides detailed API documentation for all service classes in the
    - [SceneDetector](#scenedetector)
    - [SessionAnalytics](#sessionanalytics)
    - [SilenceDetector](#silencedetector)
-6. [Kanka Services](#kanka-services)
+7. [Kanka Services](#kanka-services)
    - [KankaClient](#kankaclient)
    - [KankaService](#kankaservice)
    - [KankaEntityManager](#kankaentitymanager)
    - [NarrativeExporter](#narrativeexporter)
-7. [Orchestration](#orchestration)
+8. [Orchestration](#orchestration)
    - [SessionOrchestrator](#sessionorchestrator)
    - [TranscriptionProcessor](#transcriptionprocessor)
    - [EntityProcessor](#entityprocessor)
    - [ImageProcessor](#imageprocessor)
    - [KankaPublisher](#kankapublisher)
-8. [Utilities](#utilities)
+9. [Utilities](#utilities)
    - [Logger](#logger)
    - [RateLimiter](#ratelimiter)
    - [AudioUtils](#audioutils)
    - [CacheManager](#cachemanager)
    - [HtmlUtils](#htmlutils)
    - [DomUtils](#domutils)
-   - [ErrorNotificationHelper](#errornotificationhelper)
    - [SensitiveDataFilter](#sensitivedatafilter)
-8. [Type Definitions](#type-definitions)
-9. [Enumerations](#enumerations)
+   - [StreamController](#streamcontroller)
+10. [Type Definitions](#type-definitions)
+11. [Enumerations](#enumerations)
 
 ---
 
@@ -132,7 +143,11 @@ import { AudioRecorder, RecordingState, CaptureSource } from './scripts/audio/Au
 #### Constructor
 
 ```javascript
-const recorder = new AudioRecorder();
+const recorder = new AudioRecorder({
+  echoCancellation: true,
+  noiseSuppression: true,
+  eventBus: eventBusInstance  // Optional EventBus for event emission
+});
 ```
 
 #### Properties
@@ -205,6 +220,72 @@ recorder.setCallbacks({
   onStateChange: (newState, oldState) => { ... }
 });
 ```
+
+##### `_detectOptimalCodec()`
+Detect the best supported audio codec for the browser.
+
+```javascript
+const mimeType = recorder._detectOptimalCodec();
+// Returns a supported MIME type like 'audio/webm' or 'audio/wav'
+```
+
+**Returns:** `string` - Supported MIME type
+
+##### `_persistChunk(blob, index)`
+Persist a chunk to IndexedDB for crash recovery.
+
+```javascript
+recorder._persistChunk(audioBlob, 0);
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `blob` | `Blob` | Audio chunk to persist |
+| `index` | `number` | Chunk index for ordering |
+
+##### `async recoverChunks()`
+Recover persisted chunks from IndexedDB after a crash.
+
+```javascript
+const chunks = await recorder.recoverChunks();
+// [Blob, Blob, ...] in original order
+```
+
+**Returns:** `Promise<Blob[]>` - Recovered audio chunks
+
+##### `clearPersistedChunks()`
+Clear all persisted chunks from IndexedDB.
+
+```javascript
+recorder.clearPersistedChunks();
+```
+
+##### `_captureWebRTCStream()`
+Capture audio from WebRTC peer connections (Foundry VTT players).
+
+```javascript
+const peerTracks = recorder._captureWebRTCStream();
+// Returns array of MediaStreamAudioTrack from active peer connections
+```
+
+**Returns:** `MediaStreamAudioTrack[]` - Tracks from peer connections
+
+##### `_createMixedStream(micStream, peerTracks)`
+Combine microphone stream with WebRTC peer audio.
+
+```javascript
+const mixedStream = recorder._createMixedStream(
+  microphoneStream,
+  peerAudioTracks
+);
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `micStream` | `MediaStream` | Microphone audio stream |
+| `peerTracks` | `MediaStreamAudioTrack[]` | Array of peer audio tracks |
+
+**Returns:** `MediaStream` - Mixed audio stream
 
 ---
 
@@ -669,6 +750,341 @@ const cost = extractor.estimateCost(transcriptText);
 
 ---
 
+## Provider System
+
+Modular AI provider system supporting multiple implementations for chat, transcription, images, and embeddings. All providers follow a plugin architecture with capability-based registration via ProviderRegistry.
+
+### ChatProvider (Abstract)
+
+Abstract base class for chat completion providers.
+
+**Import:**
+```javascript
+import { ChatProvider } from './scripts/ai/providers/ChatProvider.mjs';
+```
+
+#### Methods
+
+##### `chat(messages, options)`
+Send a chat completion request.
+
+```javascript
+const result = await provider.chat(
+  [{ role: 'user', content: 'Hello' }],
+  { model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 200 }
+);
+// { content: '...response...', usage: { inputTokens, outputTokens } }
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `messages` | `Array` | Message array with `{role, content}` |
+| `options.model` | `string` | Model override |
+| `options.temperature` | `number` | Temperature (0-2) |
+| `options.maxTokens` | `number` | Max completion tokens |
+| `options.abortSignal` | `AbortSignal` | Abort signal for cancellation |
+
+**Returns:** `Promise<{content: string, usage: Object}>`
+
+##### `chatStream(messages, options)`
+Send a streaming chat completion request.
+
+```javascript
+for await (const chunk of provider.chatStream(messages, options)) {
+  console.log(chunk.token);  // Each token as received
+  if (chunk.done) break;
+}
+```
+
+**Returns:** `AsyncGenerator<{token: string, done: boolean}>`
+
+---
+
+### TranscriptionProvider (Abstract)
+
+Abstract base class for audio transcription providers.
+
+**Import:**
+```javascript
+import { TranscriptionProvider } from './scripts/ai/providers/TranscriptionProvider.mjs';
+```
+
+#### Methods
+
+##### `transcribe(audioBlob, options)`
+Transcribe audio with speaker diarization.
+
+```javascript
+const result = await provider.transcribe(audioBlob, {
+  language: 'en',
+  model: 'gpt-4o-transcribe-diarize'
+});
+// { text: '...', segments: [{speaker, text, start, end}, ...] }
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `audioBlob` | `Blob` | Audio blob (WAV, WebM, MP3, etc.) |
+| `options.language` | `string` | Language code (e.g., 'en', 'it') |
+| `options.model` | `string` | Model override |
+
+**Returns:** `Promise<{text: string, segments: Array}>`
+
+---
+
+### ImageProvider (Abstract)
+
+Abstract base class for image generation providers.
+
+**Import:**
+```javascript
+import { ImageProvider } from './scripts/ai/providers/ImageProvider.mjs';
+```
+
+#### Methods
+
+##### `generateImage(prompt, options)`
+Generate an image from a text prompt.
+
+```javascript
+const result = await provider.generateImage('A dark forest at night', {
+  size: '1024x1024',
+  quality: 'medium'
+});
+// { data: 'base64-encoded-png', format: 'png' }
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `prompt` | `string` | Image description |
+| `options.size` | `string` | Image size (1024x1024, 1024x1536, 1536x1024, auto) |
+| `options.quality` | `string` | Quality level (low, medium, high) |
+
+**Returns:** `Promise<{data: string, format: string}>`
+
+---
+
+### EmbeddingProvider (Abstract)
+
+Abstract base class for text embedding providers.
+
+**Import:**
+```javascript
+import { EmbeddingProvider } from './scripts/ai/providers/EmbeddingProvider.mjs';
+```
+
+#### Methods
+
+##### `embed(text, options)`
+Generate vector embeddings for text.
+
+```javascript
+const result = await provider.embed('Sample text for embedding', {
+  model: 'text-embedding-3-small',
+  dimensions: 1536
+});
+// { embedding: [...float values...], dimensions: 1536 }
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `text` | `string` | Text to embed |
+| `options.model` | `string` | Model override |
+| `options.dimensions` | `number` | Vector dimensions |
+
+**Returns:** `Promise<{embedding: Array<number>, dimensions: number}>`
+
+---
+
+### OpenAIChatProvider
+
+OpenAI implementation of ChatProvider using gpt-4o and gpt-4o-mini models.
+
+**Import:**
+```javascript
+import { OpenAIChatProvider } from './scripts/ai/providers/OpenAIChatProvider.mjs';
+```
+
+#### Constructor
+
+```javascript
+const provider = new OpenAIChatProvider(openAIClient, {
+  model: 'gpt-4o-mini',
+  defaultTemperature: 0.7
+});
+```
+
+#### Features
+
+- Supports streaming and non-streaming chat
+- Automatic model selection (gpt-4o for complex tasks, gpt-4o-mini for suggestions)
+- Graceful timeout and error handling
+- Compatible with CachingProviderDecorator for L2 caching
+
+---
+
+### OpenAITranscriptionProvider
+
+OpenAI implementation of TranscriptionProvider using gpt-4o-transcribe with diarization.
+
+**Import:**
+```javascript
+import { OpenAITranscriptionProvider } from './scripts/ai/providers/OpenAITranscriptionProvider.mjs';
+```
+
+#### Features
+
+- Automatic model selection (gpt-4o-transcribe-diarize for diarization)
+- Speaker label mapping (SPEAKER_00, SPEAKER_01, ...)
+- Multi-language support with auto-detection
+- Audio chunking for files > 25MB
+- FormData compliance for API submission
+
+---
+
+### OpenAIImageProvider
+
+OpenAI implementation of ImageProvider using gpt-image-1.
+
+**Import:**
+```javascript
+import { OpenAIImageProvider } from './scripts/ai/providers/OpenAIImageProvider.mjs';
+```
+
+#### Features
+
+- Returns base64-encoded PNG data (not URLs)
+- Supports three size options: 1024x1024, 1024x1536, 1536x1024
+- Quality levels: low (faster), medium (balanced), high (most detailed)
+- No post-download required — ready for Kanka upload
+
+---
+
+### OpenAIEmbeddingProvider
+
+OpenAI implementation of EmbeddingProvider using text-embedding-3-small.
+
+**Import:**
+```javascript
+import { OpenAIEmbeddingProvider } from './scripts/ai/providers/OpenAIEmbeddingProvider.mjs';
+```
+
+#### Features
+
+- Dimensionality flexibility (output dimension independent of model dimension)
+- Batch processing support
+- L2 normalized embeddings for cosine similarity
+
+---
+
+### ProviderRegistry
+
+Central registry for managing AI provider instances with capability-based dispatch.
+
+**Import:**
+```javascript
+import { ProviderRegistry } from './scripts/ai/providers/ProviderRegistry.mjs';
+```
+
+#### Static Methods
+
+##### `getInstance()`
+Get the singleton registry instance.
+
+```javascript
+const registry = ProviderRegistry.getInstance();
+```
+
+#### Instance Methods
+
+##### `register(name, providerInstance, options)`
+Register a provider with the registry.
+
+```javascript
+registry.register('openai-chat', chatProvider, { default: true });
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` | Unique provider name |
+| `providerInstance` | `Object` | Provider instance (must have static `capabilities` array) |
+| `options.default` | `boolean` | Set as default for all capabilities |
+
+##### `getProvider(capability)`
+Retrieve the default provider for a capability.
+
+```javascript
+const provider = registry.getProvider('chat');
+const result = await provider.chat(messages);
+```
+
+**Parameters:**
+- `capability` (string): Capability name ('chat', 'transcribe', 'image', 'embed')
+
+**Returns:** Provider instance
+
+**Throws:** Error if no provider registered for capability
+
+##### `listProviders()`
+List all registered providers and their capabilities.
+
+```javascript
+const list = registry.listProviders();
+// { 'openai-chat': ['chat', 'chatStream'], 'openai-embed': ['embed'] }
+```
+
+---
+
+### CachingProviderDecorator
+
+Decorator pattern for adding L2 caching to ChatProvider and EmbeddingProvider.
+
+**Import:**
+```javascript
+import { CachingChatDecorator, CachingEmbeddingDecorator } from './scripts/ai/providers/CachingProviderDecorator.mjs';
+```
+
+#### CachingChatDecorator
+
+Wraps a ChatProvider with transparent caching. Non-streaming `chat()` calls are cached; `chatStream()` always passes through.
+
+```javascript
+const cached = new CachingChatDecorator(chatProvider, cacheManager, {
+  ttl: 3600000  // 1 hour default
+});
+
+// Cached request
+const result1 = await cached.chat(messages);  // API call
+const result2 = await cached.chat(messages);  // Cache hit
+
+// Streaming bypass
+for await (const chunk of cached.chatStream(messages)) {
+  // Always live, never cached
+}
+```
+
+#### CachingEmbeddingDecorator
+
+Wraps an EmbeddingProvider with transparent caching for `embed()` calls.
+
+```javascript
+const cached = new CachingEmbeddingDecorator(embedProvider, cacheManager, {
+  ttl: 604800000  // 7 days default
+});
+```
+
+**Features:**
+- Cache key includes messages/text, model, temperature, and other parameters
+- TTL-based expiration with configurable defaults
+- Can be explicitly bypassed with `{ skipCache: true }` option
+- Metrics: cache hits/misses logged at debug level
+
+---
+
 ### RAGProvider (Abstract)
 
 Abstract base class defining the RAG provider interface. All providers extend this class.
@@ -788,11 +1204,15 @@ import { AIAssistant } from './scripts/narrator/AIAssistant.mjs';
 #### Constructor
 
 ```javascript
-const assistant = new AIAssistant(openAIClient, {
-  model: 'gpt-4o-mini',
-  ragRetriever: ragRetrieverInstance
+const assistant = new AIAssistant(chatProvider, {
+  model: 'gpt-4o-mini'
 });
 ```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `chatProvider` | `ChatProvider` | Chat provider instance (from ProviderRegistry) |
+| `options.model` | `string` | Default model for suggestions (gpt-4o-mini) |
 
 #### Methods
 
@@ -823,6 +1243,24 @@ Set the full adventure text for context-aware suggestions.
 
 ##### `setChapterContext(chapter)`
 Set the current chapter for focused suggestions.
+
+##### `setChatProvider(provider)`
+Set or replace the chat provider instance.
+
+```javascript
+assistant.setChatProvider(newChatProvider);
+```
+
+##### `isConfigured()`
+Check if the assistant is properly configured.
+
+```javascript
+if (assistant.isConfigured()) {
+  // Ready for suggestions
+}
+```
+
+**Returns:** `boolean` — True if chat provider is available
 
 ---
 
@@ -1605,23 +2043,58 @@ Reset to idle state.
 
 ### TranscriptionProcessor
 
-Audio transcription workflow with auto-fallback between cloud and local.
+Audio transcription workflow with auto-fallback between cloud and local, EventBus integration, and automatic speaker label wiring.
 
 **Import:**
 ```javascript
 import { TranscriptionProcessor } from './scripts/orchestration/TranscriptionProcessor.mjs';
 ```
 
+#### Constructor
+
+```javascript
+const processor = new TranscriptionProcessor(transcriptionService, eventBus, {
+  autoWireSpeakers: true
+});
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `transcriptionService` | `TranscriptionService` | Transcription service instance |
+| `eventBus` | `EventBus` | EventBus instance for emitting events |
+| `options.autoWireSpeakers` | `boolean` | Auto-apply saved speaker labels to results |
+
 #### Methods
 
 ##### `process(audioBlob, options)`
-Process audio blob into a transcript.
+Process audio blob into a transcript with EventBus integration.
 
 ```javascript
 const transcript = await processor.process(audioBlob, {
-  speakerMap, language, onProgress
+  speakerMap,
+  language,
+  onProgress
 });
 ```
+
+**Emitted Events:**
+- `ai:transcriptionStarted` — Transcription begins
+- `ai:speakersDetected` — Speaker IDs identified
+- `ai:transcriptionReady` — Transcript complete with segments
+- `ai:transcriptionError` — Transcription failed
+
+**Example EventBus listener:**
+```javascript
+eventBus.on('ai:transcriptionReady', (data) => {
+  console.log('Transcript segments:', data.segments);
+  console.log('Speakers:', data.speakerIds);
+});
+```
+
+##### `#wireSpeakers(transcriptResult)`
+Extract speaker IDs from transcript and auto-apply saved labels. Automatically called by `process()` if `autoWireSpeakers` is enabled.
+
+**Internal method** — extracts speaker IDs in order of appearance and applies any previously saved speaker name mappings from settings.
 
 ---
 
@@ -1979,33 +2452,72 @@ import { DomUtils } from './scripts/utils/DomUtils.mjs';
 
 ---
 
-### ErrorNotificationHelper
+### StreamController
 
-Consistent user-facing error notifications.
+Streaming text rendering engine for real-time AI responses.
 
 **Import:**
 ```javascript
-import { ErrorNotificationHelper } from './scripts/utils/ErrorNotificationHelper.mjs';
+import { StreamController } from './scripts/ai/StreamController.mjs';
 ```
 
-#### Static Methods
-
-##### `notify(type, error, options)`
-Show a user-friendly error notification.
+#### Constructor
 
 ```javascript
-ErrorNotificationHelper.notify('transcription', error, {
-  context: 'recording session',
-  showDetails: true
+const stream = new StreamController(targetElement, {
+  flushInterval: 16,        // Min ms between DOM flushes (16ms = 60fps)
+  onToken: (token) => {},   // Called for each token received
+  onComplete: () => {},     // Called when stream finishes
+  onError: (error) => {},   // Called on stream error
+  eventBus: eventBusInstance // Optional EventBus for stream events
 });
+```
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `state` | `string` | Current stream state: 'idle', 'streaming', 'complete', 'cancelled', 'error' |
+| `fullText` | `string` | Complete accumulated text from the stream |
+
+#### Methods
+
+##### `async stream(asyncIterator, abortSignal)`
+Consume an async iterator from `ChatProvider.chatStream()` and render to DOM.
+
+```javascript
+const iterator = chatProvider.chatStream(messages);
+await stream.stream(iterator, abortSignal);
+// Tokens are automatically rendered to the target element as they arrive
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `type` | `string` | Error category: 'transcription', 'image', 'kanka', 'recording' |
-| `error` | `Error` | The error object |
-| `options.context` | `string` | Additional context for the error message |
-| `options.showDetails` | `boolean` | Show technical details in notification |
+| `asyncIterator` | `AsyncIterable` | Iterator yielding `{token, done}` objects |
+| `abortSignal` | `AbortSignal` | Optional signal to cancel streaming |
+
+**Returns:** `Promise<void>`
+
+##### `cancel()`
+Cancel an active stream.
+
+```javascript
+stream.cancel();
+```
+
+##### `reset()`
+Reset to idle state (clears text buffer).
+
+```javascript
+stream.reset();
+```
+
+#### Events (via EventBus)
+
+- `ai:streamStart` — Stream begins
+- `ai:streamToken` — Token received and rendered
+- `ai:streamComplete` — Stream finished successfully
+- `ai:streamError` — Stream encountered error
 
 ---
 

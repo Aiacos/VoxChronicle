@@ -25,7 +25,7 @@ Core capabilities:
 - **UI Framework**: Foundry VTT ApplicationV2 + HandlebarsApplicationMixin
 - **Templates**: Handlebars (.hbs)
 - **Styling**: CSS with `.vox-chronicle` namespace
-- **Testing**: Vitest with jsdom environment (3888+ tests across 46+ files)
+- **Testing**: Vitest with jsdom environment (5151+ tests across 69+ files)
 - **External APIs**: OpenAI (transcription, images, chat, embeddings), Kanka (campaign management)
 - **RAG**: Modular provider system — OpenAI File Search (default) or self-hosted RAGFlow
 
@@ -42,8 +42,8 @@ VoxChronicle/
 │   │   ├── Settings.mjs           # Foundry settings registration
 │   │   └── VocabularyDictionary.mjs # Custom vocabulary for transcription accuracy
 │   ├── audio/
-│   │   ├── AudioRecorder.mjs      # MediaRecorder wrapper, WebRTC/mic capture, level metering
-│   │   └── AudioChunker.mjs       # Split large audio for 25MB API limit
+│   │   ├── AudioRecorder.mjs      # MediaRecorder wrapper, WebRTC/mic capture, level metering, Safari codec fallback, crash recovery (IndexedDB), EventBus integration
+│   │   └── AudioChunker.mjs       # Split large audio for 25MB API limit, EventBus integration
 │   ├── ai/
 │   │   ├── OpenAIClient.mjs       # Base API client with auth, retry, queue, circuit breaker
 │   │   ├── TranscriptionService.mjs  # GPT-4o transcribe with diarization, multi-language
@@ -51,14 +51,25 @@ VoxChronicle/
 │   │   ├── LocalWhisperService.mjs   # Local Whisper backend client
 │   │   ├── WhisperBackend.mjs        # HTTP client for whisper.cpp server
 │   │   ├── ImageGenerationService.mjs # gpt-image-1 image generation
-│   │   └── EntityExtractor.mjs    # Extract NPCs/locations/items from text
+│   │   ├── EntityExtractor.mjs    # Extract NPCs/locations/items from text
+│   │   └── providers/             # AI Provider abstraction layer (Epic 2)
+│   │       ├── ChatProvider.mjs          # Abstract chat interface
+│   │       ├── TranscriptionProvider.mjs # Abstract transcription interface
+│   │       ├── ImageProvider.mjs         # Abstract image generation interface
+│   │       ├── EmbeddingProvider.mjs     # Abstract embedding interface
+│   │       ├── OpenAIChatProvider.mjs    # OpenAI chat implementation
+│   │       ├── OpenAITranscriptionProvider.mjs # OpenAI transcription
+│   │       ├── OpenAIImageProvider.mjs   # OpenAI gpt-image-1
+│   │       ├── OpenAIEmbeddingProvider.mjs # OpenAI embeddings
+│   │       ├── ProviderRegistry.mjs      # Service locator for providers
+│   │       └── CachingProviderDecorator.mjs # L2 cache decorator
 │   ├── rag/                        # Modular RAG provider system (v3.0)
 │   │   ├── RAGProvider.mjs         # Abstract base class (interface)
 │   │   ├── RAGProviderFactory.mjs  # Factory for creating providers
 │   │   ├── OpenAIFileSearchProvider.mjs # OpenAI Responses API + file_search
 │   │   └── RAGFlowProvider.mjs     # Self-hosted RAGFlow API integration
 │   ├── narrator/                   # Real-time DM assistant services (from Narrator Master)
-│   │   ├── AIAssistant.mjs         # Contextual AI suggestions with RAG context injection
+│   │   ├── AIAssistant.mjs         # Contextual AI suggestions with RAG context injection (uses ChatProvider)
 │   │   ├── ChapterTracker.mjs      # Chapter/scene tracking from Foundry journals
 │   │   ├── CompendiumParser.mjs    # Parse Foundry compendiums for rules content + text chunking
 │   │   ├── JournalParser.mjs       # Parse Foundry journal entries for story context + text chunking
@@ -80,8 +91,8 @@ VoxChronicle/
 │   ├── data/
 │   │   └── dnd-vocabulary.mjs     # D&D vocabulary dictionary
 │   ├── ui/
-│   │   ├── MainPanel.mjs          # Unified floating panel (6 tabs) - singleton
-│   │   ├── SpeakerLabeling.mjs    # Map speaker IDs to player names (inline rename)
+│   │   ├── MainPanel.mjs          # Unified floating panel (6 tabs) - singleton, PARTS pattern (transcriptReview)
+│   │   ├── SpeakerLabeling.mjs    # Map speaker IDs to player names (inline rename, onClose callback)
 │   │   ├── EntityPreview.mjs      # Review entities before Kanka publish
 │   │   ├── RelationshipGraph.mjs  # Visualize entity relationships
 │   │   └── VocabularyManager.mjs  # Custom vocabulary management UI
@@ -92,8 +103,7 @@ VoxChronicle/
 │       ├── SensitiveDataFilter.mjs # Filter API keys from logs
 │       ├── HtmlUtils.mjs          # HTML sanitization and formatting
 │       ├── CacheManager.mjs       # Generic cache with TTL and invalidation
-│       ├── DomUtils.mjs           # DOM manipulation helpers
-│       └── ErrorNotificationHelper.mjs # Consistent error notifications to users
+│       └── DomUtils.mjs           # DOM manipulation helpers
 ├── styles/
 │   └── vox-chronicle.css          # All module styles with .vox-chronicle prefix
 ├── templates/
@@ -104,7 +114,9 @@ VoxChronicle/
 │   ├── relationship-graph.hbs     # Relationship visualization template
 │   ├── vocabulary-manager.hbs     # Vocabulary management template
 │   ├── analytics-tab.hbs          # Session analytics tab
-│   └── journal-picker.hbs         # Journal/chapter picker for live mode
+│   ├── journal-picker.hbs         # Journal/chapter picker for live mode
+│   └── parts/
+│       └── transcript-review.hbs  # PART: Transcript review with inline editing
 ├── lang/
 │   ├── en.json                    # English (775 keys)
 │   ├── it.json                    # Italian
@@ -115,7 +127,7 @@ VoxChronicle/
 │   ├── pt.json                    # Portuguese
 │   └── template.json             # Translation template
 ├── tests/
-│   └── ...                        # 46+ test files, 3888+ tests
+│   └── ...                        # 69+ test files, 5151+ tests
 ├── docs/
 │   ├── ARCHITECTURE.md            # System design documentation
 │   ├── API_REFERENCE.md           # Service class documentation
@@ -262,20 +274,6 @@ class OpenAIClient {
     }
   }
 }
-```
-
-### ErrorNotificationHelper Pattern
-
-Consistent user-facing error notifications:
-
-```javascript
-import { ErrorNotificationHelper } from '../utils/ErrorNotificationHelper.mjs';
-
-// Instead of scattered ui.notifications.error() calls:
-ErrorNotificationHelper.notify('transcription', error, {
-  context: 'recording session',
-  showDetails: true
-});
 ```
 
 ### Foundry VTT Hooks
@@ -690,7 +688,6 @@ Before starting any work, check `TODO.md` for known issues and open tasks. After
 - Use `const MODULE_ID = 'vox-chronicle'` for all settings/storage keys
 - Use Logger utility for all console output
 - Handle errors with try/catch and user-friendly notifications
-- Use ErrorNotificationHelper for consistent user-facing error messages
 - Use localization for ALL user-facing strings (7 languages + template)
 - Namespace all CSS classes with `vox-chronicle`
 - Document public methods with JSDoc comments
@@ -734,7 +731,7 @@ Run tests with:
 
 ```bash
 npm install      # Install dependencies
-npm test         # Run all 3888+ tests across 46+ files
+npm test         # Run all 5151+ tests across 69+ files
 npm run test:ui  # Run with Vitest UI
 ```
 

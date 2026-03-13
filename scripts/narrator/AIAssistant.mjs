@@ -133,11 +133,11 @@ class AIAssistant {
    */
   constructor(options = {}) {
     /**
-     * OpenAI client instance (composition)
-     * @type {import('../ai/OpenAIClient.mjs').OpenAIClient}
+     * ChatProvider instance (composition over inheritance)
+     * @type {import('../ai/providers/ChatProvider.mjs').ChatProvider}
      * @private
      */
-    this._openaiClient = options.openaiClient || null;
+    this._chatProvider = options.chatProvider || options.openaiClient || null;
 
     /**
      * Model to use for chat completions
@@ -355,16 +355,23 @@ class AIAssistant {
    * @returns {boolean} True if configured
    */
   isConfigured() {
-    return Boolean(this._openaiClient && this._openaiClient.isConfigured);
+    return Boolean(this._chatProvider);
   }
 
   /**
-   * Sets the OpenAI client instance
+   * Sets the ChatProvider instance
    *
-   * @param {import('../ai/OpenAIClient.mjs').OpenAIClient} client - OpenAI client
+   * @param {import('../ai/providers/ChatProvider.mjs').ChatProvider} provider - Chat provider
+   */
+  setChatProvider(provider) {
+    this._chatProvider = provider;
+  }
+
+  /**
+   * @deprecated Use setChatProvider() instead
    */
   setOpenAIClient(client) {
-    this._openaiClient = client;
+    this._chatProvider = client;
   }
 
   /**
@@ -983,7 +990,7 @@ class AIAssistant {
       this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
       const response = await this._makeChatRequest(messages);
-      const content = response.choices?.[0]?.message?.content ?? response.content ?? '';
+      const content = response.content ?? '';
       const result = content.trim();
 
       this._logger.debug(`generateNarrativeBridge() exit — result length: ${result.length}, ${(performance.now() - _bridgeStart).toFixed(1)}ms`);
@@ -1213,11 +1220,10 @@ class AIAssistant {
     const _chatStart = performance.now();
 
     try {
-      const response = await this._openaiClient.post('/chat/completions', {
+      const response = await this._chatProvider.chat(messages, {
         model: this._model,
-        messages,
         temperature: 0.7,
-        max_tokens: 1000
+        maxTokens: 1000
       });
 
       this._logger.debug(`_makeChatRequest() — completed in ${(performance.now() - _chatStart).toFixed(1)}ms`);
@@ -1264,23 +1270,19 @@ class AIAssistant {
     this._logger.debug(`_makeChatRequestStreaming() — model=${this._model}, ${messages.length} messages`);
 
     try {
-      const stream = this._openaiClient.postStream(
-        '/chat/completions',
-        {
-          model: this._model,
-          messages,
-          temperature: 0.7,
-          max_tokens: 1000
-        },
-        { signal: options.signal }
-      );
+      const stream = this._chatProvider.chatStream(messages, {
+        model: this._model,
+        temperature: 0.7,
+        maxTokens: 1000,
+        abortSignal: options.signal
+      });
 
       let fullText = '';
       let usage = null;
 
       for await (const chunk of stream) {
-        if (chunk.content) {
-          fullText += chunk.content;
+        if (chunk.token) {
+          fullText += chunk.token;
           options.onToken?.(fullText);
         }
         if (chunk.usage) {
@@ -1342,7 +1344,7 @@ class AIAssistant {
    * @private
    */
   _parseAnalysisResponse(response) {
-    const content = response.choices?.[0]?.message?.content || '{}';
+    const content = response.content || '{}';
 
     try {
       const parsed = JSON.parse(this._extractJson(content));
@@ -1419,7 +1421,7 @@ class AIAssistant {
    * @private
    */
   _parseOffTrackResponse(response) {
-    const content = response.choices?.[0]?.message?.content || '{}';
+    const content = response.content || '{}';
 
     try {
       const parsed = JSON.parse(this._extractJson(content));
@@ -1451,7 +1453,7 @@ class AIAssistant {
    * @private
    */
   _parseSuggestionsResponse(response, maxSuggestions) {
-    const content = response.choices?.[0]?.message?.content || '{}';
+    const content = response.content || '{}';
 
     try {
       const parsed = JSON.parse(this._extractJson(content));
@@ -1493,7 +1495,7 @@ class AIAssistant {
    * @private
    */
   _parseNPCDialogueResponse(response, maxOptions) {
-    const content = response.choices?.[0]?.message?.content || '{}';
+    const content = response.content || '{}';
 
     try {
       const parsed = JSON.parse(this._extractJson(content));
