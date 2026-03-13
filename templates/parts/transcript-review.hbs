@@ -1,0 +1,30 @@
+<div class="vox-chronicle-transcript-review">
+  {{#if hasTranscriptSegments}}
+  <div class="vox-chronicle-transcript-review__header">
+    <h4 class="vox-chronicle-transcript-review__title">
+      <i class="fa-solid fa-scroll"></i>
+      {{localize "VOXCHRONICLE.TranscriptReview.Title"}}
+    </h4>
+    <button class="vox-chronicle-transcript-review__map-btn" data-action="open-speaker-labeling">
+      <i class="fa-solid fa-users"></i>
+      {{localize "VOXCHRONICLE.TranscriptReview.MapSpeakers"}}
+    </button>
+  </div>
+  <div class="vox-chronicle-transcript-review__segments">
+    {{#each transcriptSegments}}
+    <div class="vox-chronicle-transcript-review__segment" data-segment-index="{{@index}}" data-speaker="{{this.speaker}}">
+      <span class="vox-chronicle-transcript-review__timestamp">{{this.timestamp}}</span>
+      <span class="vox-chronicle-transcript-review__speaker vox-chronicle-transcript-review__speaker--color-{{this.colorIndex}}" title="{{this.speaker}}">
+        {{#if this.isMapped}}{{this.displayName}}{{else}}{{this.speaker}}{{/if}}
+      </span>
+      <span class="vox-chronicle-transcript-review__text" data-editable="true">{{this.text}}</span>
+    </div>
+    {{/each}}
+  </div>
+  {{else}}
+  <p class="vox-chronicle-transcript-review__empty">
+    <i class="fa-solid fa-microphone-slash"></i>
+    {{localize "VOXCHRONICLE.TranscriptReview.NoTranscript"}}
+  </p>
+  {{/if}}
+</div>

@@ -253,6 +253,33 @@ describe('TranscriptionService', () => {
       expect(mockProvider.transcribe).toHaveBeenCalled();
     });
 
+    it('should continue without prompt when VocabularyDictionary throws', async () => {
+      const { VocabularyDictionary } = await import('../../scripts/core/VocabularyDictionary.mjs');
+      VocabularyDictionary.mockImplementationOnce(() => ({
+        generatePrompt: vi.fn().mockImplementation(() => {
+          throw new Error('Dictionary load failed');
+        })
+      }));
+
+      const blob = createAudioBlob();
+      // Should not throw — fallback to no prompt
+      const result = await service.transcribe(blob, { model: TranscriptionModel.GPT4O });
+      expect(result).toBeDefined();
+      expect(result.text).toBe('Hello world');
+    });
+
+    it('should not pass prompt to provider when VocabularyDictionary returns empty string', async () => {
+      const { VocabularyDictionary } = await import('../../scripts/core/VocabularyDictionary.mjs');
+      VocabularyDictionary.mockImplementationOnce(() => ({
+        generatePrompt: vi.fn().mockReturnValue('')
+      }));
+
+      const blob = createAudioBlob();
+      await service.transcribe(blob, { model: TranscriptionModel.GPT4O });
+      const providerCall = mockProvider.transcribe.mock.calls[0][1];
+      expect(providerCall.prompt).toBeUndefined();
+    });
+
     it('should warn but continue when audio blob is not valid', async () => {
       const { AudioUtils } = await import('../../scripts/utils/AudioUtils.mjs');
       AudioUtils.isValidAudioBlob.mockReturnValueOnce(false);
@@ -460,6 +487,79 @@ describe('TranscriptionService', () => {
       expect(onProgress).toHaveBeenCalled();
       const lastCall = onProgress.mock.calls[onProgress.mock.calls.length - 1][0];
       expect(lastCall.progress).toBe(100);
+    });
+
+    it('should offset timestamps across chunks for chronological ordering', async () => {
+      const { AudioChunker } = await import('../../scripts/audio/AudioChunker.mjs');
+      const chunkerInstance = new AudioChunker();
+      service._chunker = chunkerInstance;
+
+      chunkerInstance.needsChunking.mockReturnValue(true);
+      chunkerInstance.splitIfNeeded.mockResolvedValue([
+        createAudioBlob(1024),
+        createAudioBlob(1024)
+      ]);
+
+      // Chunk 1 returns segments with timestamps starting at 0
+      // Chunk 2 returns segments with timestamps starting at 0
+      // After offsetting, chunk 2 timestamps should be shifted by chunk 1 estimated duration
+      let callCount = 0;
+      mockProvider.transcribe.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve({
+            text: 'Chunk one',
+            segments: [{ speaker: 'SPEAKER_00', text: 'Chunk one', start: 0, end: 5 }]
+          });
+        }
+        return Promise.resolve({
+          text: 'Chunk two',
+          segments: [{ speaker: 'SPEAKER_00', text: 'Chunk two', start: 0, end: 3 }]
+        });
+      });
+
+      const blob = createAudioBlob();
+      const result = await service.transcribe(blob);
+
+      // estimateDuration mock returns 300 seconds, so chunk 2 timestamps should be offset by 300
+      expect(result.segments).toHaveLength(2);
+      expect(result.segments[0].start).toBe(0);
+      expect(result.segments[1].start).toBe(300); // offset by estimateDuration(chunk1) = 300
+    });
+
+    it('should maintain speaker consistency across chunks', async () => {
+      const { AudioChunker } = await import('../../scripts/audio/AudioChunker.mjs');
+      const chunkerInstance = new AudioChunker();
+      service._chunker = chunkerInstance;
+
+      chunkerInstance.needsChunking.mockReturnValue(true);
+      chunkerInstance.splitIfNeeded.mockResolvedValue([
+        createAudioBlob(1024),
+        createAudioBlob(1024)
+      ]);
+
+      let callCount = 0;
+      mockProvider.transcribe.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve({
+            text: 'Hello',
+            segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
+          });
+        }
+        return Promise.resolve({
+          text: 'World',
+          segments: [{ speaker: 'SPEAKER_00', text: 'World', start: 0, end: 1 }]
+        });
+      });
+
+      const blob = createAudioBlob();
+      service.setSpeakerMap({ SPEAKER_00: 'Game Master' });
+      const result = await service.transcribe(blob);
+
+      // Same SPEAKER_00 across chunks should map to same name
+      expect(result.segments[0].speaker).toBe('Game Master');
+      expect(result.segments[1].speaker).toBe('Game Master');
     });
   });
 

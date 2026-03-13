@@ -29,6 +29,12 @@
       "AudioSourceAuto": "Automatico (prova prima Foundry VTT, poi microfono)",
       "AudioSourceMicrophone": "Microfono Browser",
       "AudioSourceWebRTC": "WebRTC Foundry VTT",
+      "AudioSourceMixed": "Misto (Microfono + WebRTC)",
+      "HasAudioRecovery": "Recupero Audio Disponibile",
+      "HasAudioRecoveryHint": "Indica che esistono chunk audio recuperabili da un crash precedente",
+      "PreferredCodec": "Codec Audio Preferito",
+      "PreferredCodecHint": "Codec audio da usare per la registrazione. Rilevamento automatico consigliato per la migliore compatibilità.",
+      "PreferredCodecAuto": "Rilevamento automatico (consigliato)",
       "EchoCancellation": "Cancellazione Eco",
       "EchoCancellationHint": "Abilita la cancellazione dell'eco per registrazioni piu chiare",
       "NoiseSuppression": "Soppressione Rumore",
@@ -327,7 +333,14 @@
       "SpeakerUnknown": "Parlante Sconosciuto",
       "ProcessingChunk": "Elaborazione segmento {current} di {total}...",
       "EstimatedTime": "Tempo rimanente stimato: {time}",
-      "Cost": "Costo stimato: ${cost}"
+      "Cost": "Costo stimato: ${cost}",
+      "Started": "Trascrizione avviata (modalità {mode})",
+      "Ready": "Trascrizione pronta ({segments} segmenti, {durationMs}ms)",
+      "Error": "Errore trascrizione: {error}",
+      "FallingBackToAPI": "Passaggio all'API di trascrizione...",
+      "FallbackComplete": "Trascrizione completata (via API fallback)",
+      "LanguageDetected": "Lingua rilevata: {language}",
+      "ChunkingStarted": "Audio richiede segmentazione: {sizeMB}MB"
     },
     "SpeakerLabeling": {
       "Title": "Etichettatura Parlanti",
@@ -357,6 +370,16 @@
       "HelpQuickAssign": "Usa il menu a tendina per assegnare rapidamente il nome di un utente di gioco a uno slot parlante.",
       "HelpAutoDetect": "Riempie automaticamente gli slot parlanti vuoti con i nomi degli utenti di gioco in ordine.",
       "Help": "Aiuto"
+    },
+    "TranscriptReview": {
+      "Title": "Revisione Trascrizione",
+      "EditSegment": "Modifica Segmento",
+      "MapSpeakers": "Mappa Speaker",
+      "NoTranscript": "Nessuna trascrizione disponibile. Registra prima una sessione.",
+      "Timestamp": "Timestamp",
+      "SpeakerUnmapped": "Speaker Non Mappato",
+      "EditSaved": "Modifica segmento salvata",
+      "SegmentPlaceholder": "Inserisci il testo corretto..."
     },
     "Vocabulary": {
       "Title": "Gestione Vocabolario",

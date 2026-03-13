@@ -29,6 +29,12 @@
       "AudioSourceAuto": "[EN] Automatic (try Foundry VTT first, then microphone)",
       "AudioSourceMicrophone": "[EN] Browser Microphone",
       "AudioSourceWebRTC": "[EN] Foundry VTT WebRTC",
+      "AudioSourceMixed": "ミックス（マイク + WebRTC）",
+      "HasAudioRecovery": "オーディオリカバリ利用可能",
+      "HasAudioRecoveryHint": "前回のクラッシュから回復可能なオーディオチャンクが存在することを示します",
+      "PreferredCodec": "優先オーディオコーデック",
+      "PreferredCodecHint": "録音に使用するオーディオコーデック。最高の互換性のために自動検出を推奨します。",
+      "PreferredCodecAuto": "自動検出（推奨）",
       "EchoCancellation": "[EN] Echo Cancellation",
       "EchoCancellationHint": "[EN] Enable echo cancellation for clearer recordings",
       "NoiseSuppression": "[EN] Noise Suppression",
@@ -327,7 +333,14 @@
       "SpeakerUnknown": "[EN] Unknown Speaker",
       "ProcessingChunk": "[EN] Processing chunk {current} of {total}...",
       "EstimatedTime": "[EN] Estimated time remaining: {time}",
-      "Cost": "[EN] Estimated cost: ${cost}"
+      "Cost": "[EN] Estimated cost: ${cost}",
+      "Started": "文字起こし開始（{mode}モード）",
+      "Ready": "文字起こし完了（{segments}セグメント、{durationMs}ms）",
+      "Error": "文字起こしエラー: {error}",
+      "FallingBackToAPI": "API文字起こしに切り替え中...",
+      "FallbackComplete": "文字起こし完了（APIフォールバック経由）",
+      "LanguageDetected": "検出された言語: {language}",
+      "ChunkingStarted": "オーディオの分割が必要: {sizeMB}MB"
     },
     "SpeakerLabeling": {
       "Title": "[EN] Speaker Labeling",
@@ -357,6 +370,16 @@
       "HelpQuickAssign": "[EN] Use the dropdown to quickly assign a game user's name to a speaker slot.",
       "HelpAutoDetect": "[EN] Automatically fills empty speaker slots with game user names in order.",
       "Help": "[EN] Help"
+    },
+    "TranscriptReview": {
+      "Title": "文字起こしレビュー",
+      "EditSegment": "セグメントを編集",
+      "MapSpeakers": "スピーカーを割り当て",
+      "NoTranscript": "文字起こしがありません。まずセッションを録音してください。",
+      "Timestamp": "タイムスタンプ",
+      "SpeakerUnmapped": "未割り当てのスピーカー",
+      "EditSaved": "セグメント編集を保存しました",
+      "SegmentPlaceholder": "修正テキストを入力..."
     },
     "Vocabulary": {
       "Title": "[EN] Vocabulary Manager",

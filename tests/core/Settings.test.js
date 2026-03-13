@@ -829,6 +829,7 @@ describe('Settings', () => {
       Settings.registerSettings();
       game.settings.get.mockImplementation((_module, key) => {
         if (key === 'audioCaptureSource') return 'microphone';
+        if (key === 'preferredCodec') return 'auto';
         if (key === 'echoCancellation') return true;
         if (key === 'noiseSuppression') return false;
         return '';
@@ -836,6 +837,8 @@ describe('Settings', () => {
 
       expect(Settings.getAudioSettings()).toEqual({
         source: 'microphone',
+        captureMode: 'microphone',
+        preferredCodec: null,
         echoCancellation: true,
         noiseSuppression: false
       });
@@ -848,6 +851,8 @@ describe('Settings', () => {
 
       expect(result).toEqual({
         source: 'auto',
+        captureMode: 'microphone',
+        preferredCodec: null,
         echoCancellation: true,
         noiseSuppression: true
       });

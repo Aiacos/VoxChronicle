@@ -52,6 +52,16 @@ vi.mock('../../scripts/ai/TranscriptionFactory.mjs', () => ({
   }
 }));
 
+// Mock SpeakerLabeling static methods
+vi.mock('../../scripts/ui/SpeakerLabeling.mjs', () => ({
+  SpeakerLabeling: {
+    addKnownSpeakers: vi.fn().mockResolvedValue(undefined),
+    applyLabelsToSegments: vi.fn((segments) => segments)
+  }
+}));
+
+import { SpeakerLabeling } from '../../scripts/ui/SpeakerLabeling.mjs';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -746,6 +756,721 @@ describe('TranscriptionProcessor', () => {
         const result = await processor.processTranscription(blob);
         expect(result).toBeDefined();
       });
+    });
+  });
+
+  // ── EventBus Integration (Task 1.2) ─────────────────────────────────────
+
+  describe('EventBus integration', () => {
+    let mockEventBus;
+    let ebProcessor;
+
+    beforeEach(() => {
+      mockEventBus = {
+        emit: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn()
+      };
+      ebProcessor = new TranscriptionProcessor({
+        transcriptionService: mockService,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+    });
+
+    it('should accept optional eventBus in constructor', () => {
+      expect(ebProcessor).toBeDefined();
+    });
+
+    it('should work without eventBus (optional)', () => {
+      const p = new TranscriptionProcessor({
+        transcriptionService: mockService,
+        config: { mode: 'api' }
+      });
+      expect(p).toBeDefined();
+    });
+
+    it('should emit ai:transcriptionStarted when processTranscription begins', async () => {
+      const blob = createAudioBlob();
+      await ebProcessor.processTranscription(blob);
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionStarted',
+        expect.objectContaining({
+          blobSize: blob.size,
+          mode: 'api'
+        })
+      );
+    });
+
+    it('should emit ai:transcriptionReady when transcription succeeds', async () => {
+      const blob = createAudioBlob();
+      await ebProcessor.processTranscription(blob);
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionReady',
+        expect.objectContaining({
+          text: 'Hello world',
+          segmentCount: 1
+        })
+      );
+    });
+
+    it('should emit ai:transcriptionError when transcription fails', async () => {
+      const failService = createMockTranscriptionService({
+        transcribe: vi.fn().mockRejectedValue(new Error('Transcription failed'))
+      });
+      const p = new TranscriptionProcessor({
+        transcriptionService: failService,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('Transcription failed');
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionError',
+        expect.objectContaining({
+          error: expect.stringContaining('Transcription failed')
+        })
+      );
+    });
+
+    it('should emit ai:transcriptionStarted BEFORE ai:transcriptionReady', async () => {
+      const callOrder = [];
+      mockEventBus.emit.mockImplementation((event) => {
+        callOrder.push(event);
+      });
+
+      await ebProcessor.processTranscription(createAudioBlob());
+
+      const startIdx = callOrder.indexOf('ai:transcriptionStarted');
+      const readyIdx = callOrder.indexOf('ai:transcriptionReady');
+      expect(startIdx).toBeLessThan(readyIdx);
+    });
+
+    it('should not throw if eventBus.emit throws (error isolation)', async () => {
+      mockEventBus.emit.mockImplementation(() => {
+        throw new Error('EventBus broken');
+      });
+
+      // Should still return result despite EventBus failure
+      const result = await ebProcessor.processTranscription(createAudioBlob());
+      expect(result.text).toBe('Hello world');
+    });
+
+    it('should not emit events when no eventBus is provided', async () => {
+      const p = new TranscriptionProcessor({
+        transcriptionService: mockService,
+        config: { mode: 'api' }
+      });
+
+      // Should not throw - no eventBus to emit on
+      const result = await p.processTranscription(createAudioBlob());
+      expect(result).toBeDefined();
+    });
+
+    it('should include duration in ai:transcriptionReady event', async () => {
+      await ebProcessor.processTranscription(createAudioBlob());
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionReady',
+        expect.objectContaining({
+          durationMs: expect.any(Number)
+        })
+      );
+    });
+  });
+
+  // ── Flow: blob → TranscriptionProcessor → TranscriptionService (Task 1.3) ──
+
+  describe('processTranscription flow verification', () => {
+    it('should pass model option to transcription service', async () => {
+      const blob = createAudioBlob();
+      await processor.processTranscription(blob, {
+        speakerMap: { SPEAKER_00: 'GM' },
+        language: 'it'
+      });
+
+      expect(mockService.transcribe).toHaveBeenCalledWith(
+        blob,
+        expect.objectContaining({
+          speakerMap: { SPEAKER_00: 'GM' },
+          language: 'it'
+        })
+      );
+    });
+
+    it('should propagate transcription result with all fields intact', async () => {
+      const fullResult = {
+        text: 'Full text',
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 },
+          { speaker: 'SPEAKER_01', text: 'World', start: 1, end: 2 }
+        ],
+        speakers: [{ id: 'SPEAKER_00', name: 'GM' }],
+        language: 'it',
+        duration: 5.0
+      };
+      mockService.transcribe.mockResolvedValue(fullResult);
+
+      const result = await processor.processTranscription(createAudioBlob());
+
+      expect(result.text).toBe('Full text');
+      expect(result.segments).toHaveLength(2);
+      expect(result.language).toBe('it');
+      expect(result.duration).toBe(5.0);
+    });
+  });
+
+  // ── Multi-language passthrough (Task 2) ────────────────────────────────
+
+  describe('multi-language passthrough', () => {
+    it('should pass explicit language to transcription service', async () => {
+      const blob = createAudioBlob();
+      await processor.processTranscription(blob, { language: 'it' });
+
+      expect(mockService.transcribe).toHaveBeenCalledWith(
+        blob,
+        expect.objectContaining({ language: 'it' })
+      );
+    });
+
+    it('should pass undefined language when not specified (auto-detect)', async () => {
+      const blob = createAudioBlob();
+      await processor.processTranscription(blob);
+
+      const callArgs = mockService.transcribe.mock.calls[0][1];
+      expect(callArgs.language).toBeUndefined();
+    });
+
+    it('should preserve language segments in result', async () => {
+      mockService.transcribe.mockResolvedValue({
+        text: 'Hola world',
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Hola', start: 0, end: 1, language: 'es' },
+          { speaker: 'SPEAKER_01', text: 'world', start: 1, end: 2, language: 'en' }
+        ]
+      });
+
+      const result = await processor.processTranscription(createAudioBlob());
+      expect(result.segments[0].language).toBe('es');
+      expect(result.segments[1].language).toBe('en');
+    });
+
+    it('should include language in ai:transcriptionStarted event', async () => {
+      const mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+      const p = new TranscriptionProcessor({
+        transcriptionService: mockService,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob(), { language: 'ja' });
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionStarted',
+        expect.objectContaining({ language: 'ja' })
+      );
+    });
+  });
+
+  // ── E2E integration tests (Task 5) ─────────────────────────────────────
+
+  describe('E2E integration flows', () => {
+    it('E2E: blob → TranscriptionProcessor → TranscriptionService → result with speaker segments', async () => {
+      const speakerResult = {
+        text: 'Welcome adventurers. Let us begin.',
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Welcome adventurers.', start: 0, end: 2.5 },
+          { speaker: 'SPEAKER_01', text: 'Let us begin.', start: 3.0, end: 4.5 }
+        ],
+        speakers: [
+          { id: 'SPEAKER_00', name: 'SPEAKER_00', isMapped: false },
+          { id: 'SPEAKER_01', name: 'SPEAKER_01', isMapped: false }
+        ],
+        language: 'en',
+        duration: 4.5
+      };
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue(speakerResult)
+      });
+
+      const mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      const blob = createAudioBlob();
+      const result = await p.processTranscription(blob, {
+        speakerMap: { SPEAKER_00: 'Game Master', SPEAKER_01: 'Player 1' },
+        language: 'en'
+      });
+
+      // Verify complete flow
+      expect(result.text).toBe('Welcome adventurers. Let us begin.');
+      expect(result.segments).toHaveLength(2);
+      expect(result.segments[0].speaker).toBe('SPEAKER_00');
+      expect(result.segments[1].speaker).toBe('SPEAKER_01');
+
+      // Verify EventBus was notified
+      expect(mockEventBus.emit).toHaveBeenCalledWith('ai:transcriptionStarted', expect.any(Object));
+      expect(mockEventBus.emit).toHaveBeenCalledWith('ai:transcriptionReady', expect.any(Object));
+    });
+
+    it('E2E: language config passes through to provider', async () => {
+      const service = createMockTranscriptionService();
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' }
+      });
+
+      await p.processTranscription(createAudioBlob(), { language: 'it' });
+
+      expect(service.transcribe).toHaveBeenCalledWith(
+        expect.any(Blob),
+        expect.objectContaining({ language: 'it' })
+      );
+    });
+
+    it('E2E: error flow emits transcriptionError and re-throws', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockRejectedValue(new Error('API rate limit exceeded'))
+      });
+
+      const mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('API rate limit exceeded');
+
+      // Verify started was emitted before error
+      expect(mockEventBus.emit).toHaveBeenCalledWith('ai:transcriptionStarted', expect.any(Object));
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionError',
+        expect.objectContaining({ error: 'API rate limit exceeded' })
+      );
+    });
+
+    it('E2E: auto-mode local failure → API fallback → success with events', async () => {
+      const localService = createMockLocalWhisperService({
+        transcribe: vi.fn().mockRejectedValue(new Error('Whisper server down'))
+      });
+
+      const fallbackResult = {
+        text: 'Fallback transcript',
+        segments: [{ speaker: 'SPEAKER_00', text: 'Fallback transcript', start: 0, end: 2 }]
+      };
+      MockTranscriptionServiceClass.mockImplementation(() => ({
+        transcribe: vi.fn().mockResolvedValue(fallbackResult)
+      }));
+
+      const mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'auto', openaiApiKey: 'sk-test' },
+        eventBus: mockEventBus
+      });
+
+      const result = await p.processTranscription(createAudioBlob());
+
+      expect(result.text).toBe('Fallback transcript');
+      expect(mockEventBus.emit).toHaveBeenCalledWith('ai:transcriptionStarted', expect.any(Object));
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionReady',
+        expect.objectContaining({
+          text: 'Fallback transcript',
+          segmentCount: 1,
+          fallback: true
+        })
+      );
+    });
+
+    it('E2E: auto-mode both local and API fail → emits ai:transcriptionError with fallback flag', async () => {
+      const localService = createMockLocalWhisperService({
+        transcribe: vi.fn().mockRejectedValue(new Error('Whisper offline'))
+      });
+
+      MockTranscriptionServiceClass.mockImplementation(() => ({
+        transcribe: vi.fn().mockRejectedValue(new Error('API quota exceeded'))
+      }));
+
+      const mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'auto', openaiApiKey: 'sk-test' },
+        eventBus: mockEventBus
+      });
+
+      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('Both local and API');
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:transcriptionError',
+        expect.objectContaining({
+          fallback: true,
+          error: expect.stringContaining('API quota exceeded')
+        })
+      );
+    });
+  });
+
+  // ── Circuit breaker verification (Task 1.4) ──────────────────────────────
+
+  describe('circuit breaker passthrough', () => {
+    it('should propagate circuit breaker error from TranscriptionService', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockRejectedValue(
+          new Error('Circuit breaker is open: too many consecutive transcription failures.')
+        )
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' }
+      });
+
+      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow(
+        'Circuit breaker is open'
+      );
+    });
+
+    it('should propagate circuit breaker error without triggering fallback in API mode', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockRejectedValue(
+          new Error('Circuit breaker is open')
+        )
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api', openaiApiKey: 'sk-test' }
+      });
+
+      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow(
+        'Circuit breaker is open'
+      );
+      // Should NOT create a fallback TranscriptionService
+      expect(MockTranscriptionServiceClass).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Speaker Wiring (Story 3.3 Task 1) ─────────────────────────────────
+
+  describe('speaker wiring', () => {
+    let mockEventBus;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+      // Reset SpeakerLabeling mocks
+      SpeakerLabeling.addKnownSpeakers.mockResolvedValue(undefined);
+      SpeakerLabeling.applyLabelsToSegments.mockImplementation((segments) => segments);
+    });
+
+    // Task 1.1 — addKnownSpeakers called after transcription
+    it('should call SpeakerLabeling.addKnownSpeakers with unique speaker IDs after transcription', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({
+          text: 'Hello world',
+          segments: [
+            { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 },
+            { speaker: 'SPEAKER_01', text: 'world', start: 1, end: 2 },
+            { speaker: 'SPEAKER_00', text: 'again', start: 2, end: 3 }
+          ]
+        })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      expect(SpeakerLabeling.addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00', 'SPEAKER_01']);
+    });
+
+    it('should not call addKnownSpeakers when segments is empty', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({ text: 'empty', segments: [] })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      expect(SpeakerLabeling.addKnownSpeakers).not.toHaveBeenCalled();
+    });
+
+    it('should not call addKnownSpeakers when segments is undefined', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({ text: 'no segments' })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      expect(SpeakerLabeling.addKnownSpeakers).not.toHaveBeenCalled();
+    });
+
+    it('should not throw if addKnownSpeakers fails (error isolation)', async () => {
+      SpeakerLabeling.addKnownSpeakers.mockRejectedValue(new Error('Settings broken'));
+
+      const service = createMockTranscriptionService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      const result = await p.processTranscription(createAudioBlob());
+      expect(result.text).toBe('Hello world');
+    });
+
+    // Task 1.2 — ai:speakersDetected event
+    it('should emit ai:speakersDetected with speaker IDs after transcription', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({
+          text: 'Test',
+          segments: [
+            { speaker: 'SPEAKER_00', text: 'a', start: 0, end: 1 },
+            { speaker: 'SPEAKER_01', text: 'b', start: 1, end: 2 }
+          ]
+        })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:speakersDetected',
+        expect.objectContaining({
+          speakerIds: ['SPEAKER_00', 'SPEAKER_01']
+        })
+      );
+    });
+
+    it('should not emit ai:speakersDetected when no speakers found', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({ text: 'no speakers', segments: [] })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      const speakersDetectedCalls = mockEventBus.emit.mock.calls.filter(
+        c => c[0] === 'ai:speakersDetected'
+      );
+      expect(speakersDetectedCalls).toHaveLength(0);
+    });
+
+    it('should emit ai:speakersDetected BEFORE ai:transcriptionReady (labels applied first)', async () => {
+      const callOrder = [];
+      mockEventBus.emit.mockImplementation((event) => {
+        callOrder.push(event);
+      });
+
+      const service = createMockTranscriptionService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      const readyIdx = callOrder.indexOf('ai:transcriptionReady');
+      const detectedIdx = callOrder.indexOf('ai:speakersDetected');
+      expect(detectedIdx).toBeLessThan(readyIdx);
+    });
+
+    it('should include segments in ai:transcriptionReady event payload', async () => {
+      const service = createMockTranscriptionService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      const readyCall = mockEventBus.emit.mock.calls.find(c => c[0] === 'ai:transcriptionReady');
+      expect(readyCall).toBeTruthy();
+      expect(readyCall[1]).toHaveProperty('segments');
+      expect(Array.isArray(readyCall[1].segments)).toBe(true);
+    });
+
+    // Task 1.3 — Auto-apply saved labels
+    it('should call applyLabelsToSegments on transcription result', async () => {
+      const labeledSegments = [
+        { speaker: 'Game Master', text: 'Hello', start: 0, end: 1 }
+      ];
+      SpeakerLabeling.applyLabelsToSegments.mockReturnValue(labeledSegments);
+
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({
+          text: 'Hello',
+          segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
+        })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      const result = await p.processTranscription(createAudioBlob());
+
+      expect(SpeakerLabeling.applyLabelsToSegments).toHaveBeenCalledWith(
+        [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
+      );
+      expect(result.segments).toEqual(labeledSegments);
+    });
+
+    it('should not call applyLabelsToSegments when no segments', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({ text: 'empty', segments: [] })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      expect(SpeakerLabeling.applyLabelsToSegments).not.toHaveBeenCalled();
+    });
+
+    it('should not throw if applyLabelsToSegments fails (error isolation)', async () => {
+      SpeakerLabeling.applyLabelsToSegments.mockImplementation(() => {
+        throw new Error('Labels broken');
+      });
+
+      const service = createMockTranscriptionService();
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      const result = await p.processTranscription(createAudioBlob());
+      // Should return original segments when label application fails
+      expect(result.segments).toHaveLength(1);
+    });
+
+    // Task 2 — Cross-session persistence
+    it('should apply previously saved labels to new transcription segments', async () => {
+      // Simulate saved labels from a previous session
+      const savedLabeledSegments = [
+        { speaker: 'Game Master', text: 'Hello', start: 0, end: 1 },
+        { speaker: 'Player 1', text: 'Hi', start: 1, end: 2 }
+      ];
+      SpeakerLabeling.applyLabelsToSegments.mockReturnValue(savedLabeledSegments);
+
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({
+          text: 'Hello Hi',
+          segments: [
+            { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 },
+            { speaker: 'SPEAKER_01', text: 'Hi', start: 1, end: 2 }
+          ]
+        })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      const result = await p.processTranscription(createAudioBlob());
+
+      // Verify labels were applied (simulating cross-session persistence)
+      expect(result.segments[0].speaker).toBe('Game Master');
+      expect(result.segments[1].speaker).toBe('Player 1');
+    });
+
+    it('should register new speakers while preserving existing known speakers via addKnownSpeakers merge', async () => {
+      const service = createMockTranscriptionService({
+        transcribe: vi.fn().mockResolvedValue({
+          text: 'test',
+          segments: [
+            { speaker: 'SPEAKER_00', text: 'a', start: 0, end: 1 },
+            { speaker: 'SPEAKER_02', text: 'b', start: 1, end: 2 }
+          ]
+        })
+      });
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: service,
+        config: { mode: 'api' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      // addKnownSpeakers handles merge internally (filters duplicates)
+      expect(SpeakerLabeling.addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00', 'SPEAKER_02']);
+    });
+
+    // Auto-mode fallback also wires speakers
+    it('should wire speakers after fallback transcription succeeds', async () => {
+      const localService = createMockLocalWhisperService({
+        transcribe: vi.fn().mockRejectedValue(new Error('Local failed'))
+      });
+
+      const fallbackResult = {
+        text: 'Fallback',
+        segments: [
+          { speaker: 'SPEAKER_00', text: 'Fallback', start: 0, end: 1 }
+        ]
+      };
+      MockTranscriptionServiceClass.mockImplementation(() => ({
+        transcribe: vi.fn().mockResolvedValue(fallbackResult)
+      }));
+
+      const p = new TranscriptionProcessor({
+        transcriptionService: localService,
+        config: { mode: 'auto', openaiApiKey: 'sk-test' },
+        eventBus: mockEventBus
+      });
+
+      await p.processTranscription(createAudioBlob());
+
+      expect(SpeakerLabeling.addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00']);
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:speakersDetected',
+        expect.objectContaining({ speakerIds: ['SPEAKER_00'] })
+      );
     });
   });
 });

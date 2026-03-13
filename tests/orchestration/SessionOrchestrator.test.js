@@ -6,6 +6,31 @@
  * setTranscriptionConfig, dual-mode state management, callbacks, error handling,
  * and helper/getter methods.
  */
+
+// Ensure foundry global exists before SpeakerLabeling.mjs is loaded (transitive import via TranscriptionProcessor)
+vi.hoisted(() => {
+  if (!globalThis.foundry) {
+    class MockAppV2 {
+      static DEFAULT_OPTIONS = {};
+      static PARTS = {};
+      constructor() { this.rendered = false; }
+      render() { this.rendered = true; }
+      close() { this.rendered = false; return Promise.resolve(); }
+    }
+    globalThis.foundry = {
+      applications: {
+        api: {
+          ApplicationV2: MockAppV2,
+          HandlebarsApplicationMixin: (Base) => class extends Base {
+            static PARTS = {};
+          }
+        }
+      },
+      utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
+    };
+  }
+});
+
 import { SessionOrchestrator, SessionState, DEFAULT_SESSION_OPTIONS } from '../../scripts/orchestration/SessionOrchestrator.mjs';
 
 // ---------------------------------------------------------------------------

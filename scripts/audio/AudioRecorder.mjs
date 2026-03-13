@@ -27,16 +27,6 @@ const RecordingState = {
   PAUSED: 'paused'
 };
 
-/**
- * Valid audio capture sources (used for settings, not exported).
- * @enum {string}
- */
-const CaptureSource = {
-  MICROPHONE: 'microphone',
-  FOUNDRY_WEBRTC: 'foundry-webrtc',
-  SYSTEM_AUDIO: 'system-audio'
-};
-
 class AudioRecorder {
   _logger = Logger.createChild('AudioRecorder');
 
@@ -74,8 +64,29 @@ class AudioRecorder {
 
   _lastAudioLevel = 0;
 
+  /** @type {string|null} Cached detected codec MIME type */
+  _detectedCodec = null;
+
+  /** @type {IDBDatabase|null} IndexedDB handle for crash recovery */
+  _persistDB = null;
+
+  /** @type {string|null} Session ID for persistence keys */
+  _persistSessionId = null;
+
+  /** @type {number} Counter for persisted chunk indices */
+  _persistChunkIndex = 0;
+
   /** @type {object} */
   _options = {};
+
+  /** @type {Object|null} EventBus instance for emitting events (optional) */
+  _eventBus = null;
+
+  /** @type {Array} Web Audio source nodes for WebRTC peer streams */
+  _peerSourceNodes = [];
+
+  /** @type {MediaStreamAudioDestinationNode|null} Mixing destination for combined streams */
+  _mixDestination = null;
 
   /**
    * Create an AudioRecorder instance.
@@ -83,10 +94,42 @@ class AudioRecorder {
    * @param {boolean} [options.echoCancellation=true] - Enable echo cancellation.
    * @param {boolean} [options.noiseSuppression=true] - Enable noise suppression.
    * @param {string} [options.deviceId] - Specific audio input device ID.
+   * @param {Object} [options.eventBus] - EventBus instance for emitting events.
    */
   constructor(options = {}) {
+    this._eventBus = options.eventBus ?? null;
     this._options = options;
     this._logger.debug('AudioRecorder initialized');
+  }
+
+  /**
+   * Emit an event on the EventBus, swallowing any errors to prevent
+   * bus failures from breaking recording functionality.
+   * @param {string} event - Event name (e.g. 'audio:recordingStarted')
+   * @param {Object} payload - Event payload
+   * @private
+   */
+  _emitSafe(event, payload) {
+    try {
+      this._eventBus?.emit(event, payload);
+    } catch (error) {
+      this._logger.warn(`EventBus emit "${event}" failed:`, error);
+    }
+  }
+
+  /**
+   * Invoke a user callback safely, swallowing any errors to prevent
+   * user code from crashing the recording flow.
+   * @param {string} name - Callback name (e.g. 'onStateChange')
+   * @param {...*} args - Arguments to pass to the callback
+   * @private
+   */
+  _callbackSafe(name, ...args) {
+    try {
+      this._callbacks[name]?.(...args);
+    } catch (error) {
+      this._logger.warn(`Callback "${name}" threw:`, error);
+    }
   }
 
   /**
@@ -129,16 +172,58 @@ class AudioRecorder {
     if (this._state !== RecordingState.INACTIVE) throw new Error('Already recording');
 
     try {
-      this._stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: this._options.echoCancellation ?? true,
-          noiseSuppression: this._options.noiseSuppression ?? true,
-          autoGainControl: true,
-          ...(this._options.deviceId ? { deviceId: { exact: this._options.deviceId } } : {})
-        }
-      });
+      // Initialize crash recovery persistence (C1+C2 fix)
+      const sessionId = `session-${Date.now()}`;
+      await this._initPersistence(sessionId);
 
-      this._setupAudioAnalysis(this._stream);
+      const captureMode = this._options.captureMode || 'microphone';
+      let micStream = null;
+      let recordingStream;
+
+      // Acquire mic stream unless webrtc-only mode
+      if (captureMode !== 'webrtc') {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: this._options.echoCancellation ?? true,
+            noiseSuppression: this._options.noiseSuppression ?? true,
+            autoGainControl: true,
+            ...(this._options.deviceId ? { deviceId: { exact: this._options.deviceId } } : {})
+          }
+        });
+      }
+
+      // Handle capture modes
+      if (captureMode === 'webrtc') {
+        const peerTracks = this._captureWebRTCStream();
+        if (!peerTracks) throw new Error('No WebRTC peers available for audio capture');
+        // Create a stream from peer tracks only — need AudioContext first
+        micStream = new MediaStream(peerTracks);
+        recordingStream = micStream;
+      } else if (captureMode === 'mixed') {
+        const peerTracks = this._captureWebRTCStream();
+        // Set up audio context before mixing (needed for createMediaStreamSource)
+        this._setupAudioAnalysis(micStream);
+        recordingStream = this._createMixedStream(micStream, peerTracks);
+        // Re-connect analyser to mixed stream so level monitoring reflects combined audio
+        if (recordingStream !== micStream && this._audioContext && this._analyserNode) {
+          try {
+            const mixedSource = this._audioContext.createMediaStreamSource(recordingStream);
+            mixedSource.connect(this._analyserNode);
+          } catch (e) {
+            this._logger.warn('Failed to connect analyser to mixed stream:', e);
+          }
+        }
+      } else {
+        // Default: microphone only
+        recordingStream = micStream;
+      }
+
+      this._stream = recordingStream;
+
+      // Set up audio analysis if not already done (mic-only and webrtc modes)
+      if (captureMode !== 'mixed') {
+        this._setupAudioAnalysis(this._stream);
+      }
       this._startLevelMonitoring();
 
       this._audioChunks = [];
@@ -149,11 +234,122 @@ class AudioRecorder {
 
       this._startNewRecorder();
       this._state = RecordingState.RECORDING;
-      this._callbacks.onStateChange?.(this._state);
+      this._callbackSafe('onStateChange', this._state);
+      this._emitSafe('audio:recordingStarted', { state: this._state, timestamp: Date.now() });
     } catch (error) {
       this._logger.error('Failed to start recording:', error);
+      this._emitSafe('audio:error', { error, context: 'startRecording' });
       throw error;
     }
+  }
+
+  /**
+   * Capture audio streams from Foundry VTT WebRTC peer connections.
+   * Iterates over `game.webrtc.client._peerConnections`, extracts live audio
+   * tracks from RTCRtpReceiver objects, and wraps each in a MediaStream.
+   *
+   * @returns {Array<MediaStreamTrack>|null} Array of live audio tracks from peers, or null if none found
+   */
+  _captureWebRTCStream() {
+    try {
+      const peerConnections = globalThis.game?.webrtc?.client?._peerConnections;
+      if (!peerConnections || peerConnections.size === 0) return null;
+
+      const tracks = [];
+      for (const [peerId, peerData] of peerConnections) {
+        try {
+          const pc = peerData?.pc;
+          if (!pc?.getReceivers) continue;
+          for (const receiver of pc.getReceivers()) {
+            if (receiver.track?.kind === 'audio' && receiver.track.readyState === 'live') {
+              tracks.push(receiver.track);
+            }
+          }
+        } catch (e) {
+          this._logger.warn(`Failed to capture WebRTC stream from peer ${peerId}:`, e);
+        }
+      }
+
+      if (tracks.length === 0) return null;
+
+      this._emitSafe('audio:webrtcCaptured', { peerCount: tracks.length, timestamp: Date.now() });
+      this._logger.debug(`Captured ${tracks.length} WebRTC audio track(s)`);
+      return tracks;
+    } catch (error) {
+      this._logger.warn('WebRTC capture failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Combine microphone and WebRTC peer audio tracks into a single mixed stream
+   * using Web Audio API's MediaStreamDestination node.
+   *
+   * @param {MediaStream} micStream - Local microphone stream
+   * @param {Array<MediaStreamTrack>|null} peerTracks - Remote peer audio tracks
+   * @returns {MediaStream} Mixed stream or original mic stream if no peers
+   */
+  _createMixedStream(micStream, peerTracks) {
+    if (!peerTracks || peerTracks.length === 0) return micStream;
+
+    try {
+      this._mixDestination = this._audioContext.createMediaStreamDestination();
+
+      // Connect mic stream to destination
+      const micSource = this._audioContext.createMediaStreamSource(micStream);
+      micSource.connect(this._mixDestination);
+
+      // Connect each peer track to destination
+      this._peerSourceNodes = [];
+      for (const track of peerTracks) {
+        const peerStream = new MediaStream([track]);
+        const peerSource = this._audioContext.createMediaStreamSource(peerStream);
+        peerSource.connect(this._mixDestination);
+        this._peerSourceNodes.push(peerSource);
+      }
+
+      this._logger.debug(`Mixed ${peerTracks.length} peer track(s) with microphone`);
+      return this._mixDestination.stream;
+    } catch (error) {
+      this._logger.warn('Stream mixing failed, falling back to mic only:', error);
+      this._peerSourceNodes = [];
+      this._mixDestination = null;
+      return micStream;
+    }
+  }
+
+  /**
+   * Detect the optimal audio codec for the current browser.
+   * Tests codecs in order of preference: WebM/Opus (Chrome/Firefox/Edge),
+   * MP4/AAC (Safari primary), MP4 (Safari fallback), WAV (universal).
+   * Respects `preferredCodec` option if the codec is supported.
+   *
+   * @returns {string} Supported MIME type
+   * @throws {Error} If no supported codec is found
+   */
+  _detectOptimalCodec() {
+    const preferred = this._options.preferredCodec;
+    if (preferred && MediaRecorder.isTypeSupported(preferred)) {
+      this._logger.debug(`Using preferred codec: ${preferred}`);
+      return preferred;
+    }
+    if (preferred) {
+      this._logger.warn(`Preferred codec "${preferred}" not supported, auto-detecting`);
+    }
+
+    const codecs = [
+      'audio/webm;codecs=opus',
+      'audio/mp4;codecs=aac',
+      'audio/mp4',
+      'audio/wav'
+    ];
+    for (const codec of codecs) {
+      if (MediaRecorder.isTypeSupported(codec)) {
+        this._logger.debug(`Auto-detected codec: ${codec}`);
+        return codec;
+      }
+    }
+    throw new Error('No supported audio codec found');
   }
 
   /**
@@ -162,19 +358,25 @@ class AudioRecorder {
    * @private
    */
   _startNewRecorder() {
-    const options = AudioUtils.getRecorderOptions();
+    const mimeType = this._detectedCodec || this._detectOptimalCodec();
+    this._detectedCodec = mimeType;
+    const options = { mimeType, audioBitsPerSecond: 128000 };
     const recorder = new MediaRecorder(this._stream, options);
 
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
         this._audioChunks.push(e.data);
         this._liveBuffer.push(e.data);
+        this._persistChunk(e.data, this._persistChunkIndex++);
+        this._callbackSafe('onDataAvailable', e.data);
+        this._emitSafe('audio:chunkReady', { size: e.data.size, timestamp: Date.now() });
       }
     };
 
     recorder.onerror = (event) => {
       this._logger.error('MediaRecorder error:', event.error);
-      this._callbacks.onError?.(event.error);
+      this._callbackSafe('onError', event.error);
+      this._emitSafe('audio:error', { error: event.error, context: 'mediaRecorder' });
     };
 
     recorder.start();
@@ -219,7 +421,7 @@ class AudioRecorder {
           this._startNewRecorder();
         } catch (e) {
           this._logger.error('Failed to start new recorder during rotation:', e);
-          this._callbacks.onError?.(e);
+          this._callbackSafe('onError', e);
           // Restore old recorder so recording can continue
           oldRecorder.ondataavailable = (ev) => {
             if (ev.data.size > 0) {
@@ -259,7 +461,7 @@ class AudioRecorder {
           this._pendingOldRecorder = null;
           this._rotationResolve = null;
           this._logger.error('Old recorder error during rotation:', event.error);
-          this._callbacks.onError?.(event.error || new Error('MediaRecorder error during rotation'));
+          this._callbackSafe('onError', event.error || new Error('MediaRecorder error during rotation'));
           resolve(null);
         };
 
@@ -272,7 +474,7 @@ class AudioRecorder {
             this._pendingOldRecorder = null;
             this._rotationResolve = null;
             this._logger.warn('Failed to stop old recorder:', e.message);
-            this._callbacks.onError?.(e);
+            this._callbackSafe('onError', e);
             resolve(null);
           }
         }, 100);
@@ -310,6 +512,7 @@ class AudioRecorder {
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this._emitSafe('audio:recordingStopped', { state: RecordingState.INACTIVE, error: 'timeout', timestamp: Date.now() });
         this._cleanup();
         reject(new Error('Stop recording timed out'));
       }, 5000);
@@ -317,12 +520,15 @@ class AudioRecorder {
       this._mediaRecorder.onstop = () => {
         clearTimeout(timeout);
         const fullBlob = new Blob(this._audioChunks, { type: mimeType });
+        this.clearPersistedChunks();
         this._cleanup();
+        this._emitSafe('audio:recordingStopped', { state: RecordingState.INACTIVE, size: fullBlob.size, timestamp: Date.now() });
         resolve(fullBlob);
       };
 
       this._mediaRecorder.onerror = (event) => {
         clearTimeout(timeout);
+        this._emitSafe('audio:recordingStopped', { state: RecordingState.INACTIVE, error: event.error?.message || 'unknown', timestamp: Date.now() });
         this._cleanup();
         reject(event.error || new Error('MediaRecorder error during stop'));
       };
@@ -346,7 +552,8 @@ class AudioRecorder {
     this._lastStartTime = null;
     this._mediaRecorder.pause();
     this._state = RecordingState.PAUSED;
-    this._callbacks.onStateChange?.(this._state);
+    this._callbackSafe('onStateChange', this._state);
+    this._emitSafe('audio:recordingPaused', { state: this._state, timestamp: Date.now() });
   }
 
   /**
@@ -357,7 +564,8 @@ class AudioRecorder {
     this._lastStartTime = Date.now();
     this._mediaRecorder.resume();
     this._state = RecordingState.RECORDING;
-    this._callbacks.onStateChange?.(this._state);
+    this._callbackSafe('onStateChange', this._state);
+    this._emitSafe('audio:recordingResumed', { state: this._state, timestamp: Date.now() });
   }
 
   /**
@@ -372,6 +580,7 @@ class AudioRecorder {
     try { this._mediaRecorder?.stop(); } catch (e) {
       this._logger.debug('MediaRecorder.stop() during cancel:', e.message);
     }
+    this.clearPersistedChunks();
     this._cleanup();
   }
 
@@ -407,6 +616,91 @@ class AudioRecorder {
   }
 
   /**
+   * Initialize IndexedDB for crash recovery persistence.
+   * @param {string} sessionId - Unique session identifier
+   * @returns {Promise<void>}
+   */
+  async _initPersistence(sessionId) {
+    this._persistSessionId = sessionId;
+    this._persistChunkIndex = 0;
+
+    try {
+      this._persistDB = await new Promise((resolve, reject) => {
+        const request = indexedDB.open('vox-chronicle-audio-recovery', 1);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('chunks')) {
+            db.createObjectStore('chunks');
+          }
+        };
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onerror = (event) => reject(event.target.error);
+      });
+    } catch (error) {
+      this._logger.warn('IndexedDB init failed, crash recovery unavailable:', error);
+      this._persistDB = null;
+    }
+  }
+
+  /**
+   * Persist a chunk to IndexedDB for crash recovery.
+   * @param {Blob} blob - Audio chunk data
+   * @param {number} index - Chunk index
+   */
+  _persistChunk(blob, index) {
+    if (!this._persistDB) return;
+    try {
+      const tx = this._persistDB.transaction('chunks', 'readwrite');
+      const store = tx.objectStore('chunks');
+      store.put(
+        { data: blob, index, sessionId: this._persistSessionId, timestamp: Date.now() },
+        `chunk-${this._persistSessionId}-${index}`
+      );
+    } catch (error) {
+      this._logger.warn('Failed to persist chunk:', error);
+    }
+  }
+
+  /**
+   * Recover persisted chunks from IndexedDB after a crash.
+   * @returns {Promise<Array<{data: Blob, index: number}>>} Recovered chunks sorted by index
+   */
+  async recoverChunks() {
+    if (!this._persistDB) return [];
+    try {
+      const tx = this._persistDB.transaction('chunks', 'readonly');
+      const store = tx.objectStore('chunks');
+      return new Promise((resolve, reject) => {
+        const request = store.getAll();
+        request.onsuccess = (event) => {
+          const chunks = event.target.result || [];
+          chunks.sort((a, b) => a.index - b.index);
+          resolve(chunks);
+        };
+        request.onerror = (event) => reject(event.target.error);
+      });
+    } catch (error) {
+      this._logger.warn('Failed to recover chunks:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Clear all persisted chunks from IndexedDB.
+   * Called on successful stop/cancel to clean up recovery data.
+   */
+  clearPersistedChunks() {
+    if (!this._persistDB) return;
+    try {
+      const tx = this._persistDB.transaction('chunks', 'readwrite');
+      const store = tx.objectStore('chunks');
+      store.clear();
+    } catch (error) {
+      this._logger.warn('Failed to clear persisted chunks:', error);
+    }
+  }
+
+  /**
    * Release all resources: stop stream tracks, close AudioContext,
    * null out references, and transition to INACTIVE.
    * @private
@@ -422,6 +716,16 @@ class AudioRecorder {
     }
 
     if (this._stream) this._stream.getTracks().forEach(t => t.stop());
+
+    // Disconnect WebRTC peer source nodes
+    for (const node of this._peerSourceNodes) {
+      try { node.disconnect(); } catch (e) {
+        this._logger.debug('Peer source disconnect during cleanup:', e.message);
+      }
+    }
+    this._peerSourceNodes = [];
+    this._mixDestination = null;
+
     if (this._audioContext) {
       try { this._audioContext.close(); } catch (e) {
         this._logger.debug('AudioContext.close() during cleanup:', e.message);
@@ -439,8 +743,9 @@ class AudioRecorder {
     this._lastStartTime = null;
     this._startTime = null;
     this._lastAudioLevel = 0;
+    this._detectedCodec = null;
     this._state = RecordingState.INACTIVE;
-    this._callbacks.onStateChange?.(this._state);
+    this._callbackSafe('onStateChange', this._state);
   }
 
   /**
@@ -474,7 +779,8 @@ class AudioRecorder {
           this._analyserNode.getByteFrequencyData(data);
           const sum = data.reduce((a, b) => a + b, 0);
           this._lastAudioLevel = Math.min(1, sum / (data.length * 128));
-          this._callbacks.onLevelChange?.(this._lastAudioLevel);
+          this._callbackSafe('onLevelChange', this._lastAudioLevel);
+          this._emitSafe('audio:levelChange', { level: this._lastAudioLevel });
         } catch (e) {
           this._logger.warn('Level monitoring error:', e.message);
           this._stopLevelMonitoring();

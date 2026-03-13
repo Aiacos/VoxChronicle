@@ -51,17 +51,37 @@ class AudioChunker {
    */
   _maxChunkSize = MAX_CHUNK_SIZE;
 
+  /** @type {Object|null} EventBus instance for emitting events (optional) */
+  _eventBus = null;
+
   /**
    * Create a new AudioChunker instance
    *
    * @param {object} [options] - Configuration options
    * @param {number} [options.maxChunkSize] - Maximum size per chunk in bytes
+   * @param {Object} [options.eventBus] - EventBus instance for emitting events
    */
   constructor(options = {}) {
     if (options.maxChunkSize) {
       this._maxChunkSize = Math.min(options.maxChunkSize, MAX_CHUNK_SIZE);
     }
+    this._eventBus = options.eventBus ?? null;
     this._logger.debug(`AudioChunker initialized with max chunk size: ${this._maxChunkSize} bytes`);
+  }
+
+  /**
+   * Emit an event on the EventBus, swallowing errors to prevent bus failures
+   * from breaking chunking functionality.
+   * @param {string} event - Event name
+   * @param {Object} payload - Event payload
+   * @private
+   */
+  _emitSafe(event, payload) {
+    try {
+      this._eventBus?.emit(event, payload);
+    } catch (error) {
+      this._logger.warn(`EventBus emit "${event}" failed:`, error);
+    }
   }
 
   /**
@@ -128,6 +148,7 @@ class AudioChunker {
     this._logger.log(
       `Splitting audio blob: ${AudioUtils.getBlobSizeMB(audioBlob)}MB into ~${numChunks} chunks`
     );
+    this._emitSafe('audio:chunkingStarted', { totalSize, estimatedChunks: numChunks, timestamp: Date.now() });
 
     const chunks = [];
     let offset = 0;
@@ -154,6 +175,7 @@ class AudioChunker {
       // Slice the blob
       const chunkBlob = audioBlob.slice(offset, offset + chunkSize, mimeType);
       chunks.push(chunkBlob);
+      this._emitSafe('audio:chunkCreated', { index: chunkIndex, size: chunkBlob.size, timestamp: Date.now() });
 
       this._logger.debug(
         `Created chunk ${chunkIndex + 1}: ${AudioUtils.getBlobSizeMB(chunkBlob)}MB`
@@ -164,6 +186,7 @@ class AudioChunker {
     }
 
     this._logger.log(`Split complete: ${chunks.length} chunks created`);
+    this._emitSafe('audio:chunkingComplete', { chunkCount: chunks.length, timestamp: Date.now() });
     return chunks;
   }
 
@@ -183,6 +206,7 @@ class AudioChunker {
     const totalSize = recordingChunks.reduce((sum, c) => sum + c.size, 0);
     this._logger.debug(`splitFromChunks called: ${recordingChunks.length} chunks, total ${(totalSize / 1024 / 1024).toFixed(2)}MB, mimeType: ${mimeType}`);
     this._logger.debug(`Processing ${recordingChunks.length} recording chunks`);
+    this._emitSafe('audio:chunkingStarted', { totalSize, estimatedChunks: recordingChunks.length, timestamp: Date.now() });
 
     const resultChunks = [];
     let currentGroup = [];
@@ -221,6 +245,7 @@ class AudioChunker {
     }
 
     this._logger.log(`Grouped ${recordingChunks.length} chunks into ${resultChunks.length} blobs`);
+    this._emitSafe('audio:chunkingComplete', { chunkCount: resultChunks.length, timestamp: Date.now() });
     return resultChunks;
   }
 

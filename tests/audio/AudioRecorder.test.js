@@ -1448,4 +1448,663 @@ describe('AudioRecorder', () => {
       expect(mod.CaptureSource).toBeUndefined();
     });
   });
+
+  // ── EventBus Integration (Story 3.1 Task 1) ──────────────────────────
+
+  describe('EventBus integration', () => {
+    let mockEventBus;
+    let ebRecorder;
+
+    beforeEach(() => {
+      mockEventBus = {
+        emit: vi.fn(),
+      };
+      ebRecorder = new AudioRecorder({ eventBus: mockEventBus });
+    });
+
+    describe('constructor', () => {
+      it('accepts eventBus in options', () => {
+        const r = new AudioRecorder({ eventBus: mockEventBus });
+        expect(r).toBeDefined();
+      });
+
+      it('works without eventBus (optional)', () => {
+        const r = new AudioRecorder();
+        expect(r).toBeDefined();
+      });
+    });
+
+    describe('audio:recordingStarted event', () => {
+      it('emits audio:recordingStarted on startRecording', async () => {
+        await ebRecorder.startRecording();
+        expect(mockEventBus.emit).toHaveBeenCalledWith(
+          'audio:recordingStarted',
+          expect.objectContaining({ state: 'recording' })
+        );
+      });
+
+      it('includes timestamp in recordingStarted payload', async () => {
+        await ebRecorder.startRecording();
+        const call = mockEventBus.emit.mock.calls.find(c => c[0] === 'audio:recordingStarted');
+        expect(call[1]).toHaveProperty('timestamp');
+        expect(typeof call[1].timestamp).toBe('number');
+      });
+    });
+
+    describe('audio:recordingStopped event', () => {
+      it('emits audio:recordingStopped on stopRecording', async () => {
+        await ebRecorder.startRecording();
+        mockEventBus.emit.mockClear();
+
+        const stopPromise = ebRecorder.stopRecording();
+        // Trigger onstop on the MediaRecorder
+        const mr = recorderInstances[recorderInstances.length - 1];
+        mr.onstop?.();
+        await stopPromise;
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith(
+          'audio:recordingStopped',
+          expect.objectContaining({ state: 'inactive' })
+        );
+      });
+    });
+
+    describe('audio:error event', () => {
+      it('emits audio:error on MediaRecorder error', async () => {
+        await ebRecorder.startRecording();
+        mockEventBus.emit.mockClear();
+
+        const mr = recorderInstances[recorderInstances.length - 1];
+        const testError = new Error('test error');
+        mr.onerror?.({ error: testError });
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith(
+          'audio:error',
+          expect.objectContaining({ error: testError })
+        );
+      });
+    });
+
+    describe('audio:levelChange event', () => {
+      it('emits audio:levelChange during level monitoring', async () => {
+        // Setup AudioContext with non-zero data so level > 0
+        const freqData = new Uint8Array(128).fill(128);
+        setupAudioContextMock(freqData);
+
+        // Capture the RAF callback
+        let rafCallback;
+        globalThis.requestAnimationFrame = vi.fn((cb) => {
+          rafCallback = cb;
+          return 1;
+        });
+
+        const r = new AudioRecorder({ eventBus: mockEventBus });
+        await r.startRecording();
+        mockEventBus.emit.mockClear();
+
+        // Execute the level monitor RAF callback
+        if (rafCallback) rafCallback();
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith(
+          'audio:levelChange',
+          expect.objectContaining({ level: expect.any(Number) })
+        );
+      });
+    });
+
+    describe('audio:chunkReady event', () => {
+      it('emits audio:chunkReady when data is available', async () => {
+        await ebRecorder.startRecording();
+        mockEventBus.emit.mockClear();
+
+        const mr = recorderInstances[recorderInstances.length - 1];
+        const blob = new Blob(['audio'], { type: 'audio/webm' });
+        mr.ondataavailable?.({ data: blob });
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith(
+          'audio:chunkReady',
+          expect.objectContaining({ size: blob.size })
+        );
+      });
+    });
+
+    describe('error isolation — #emitSafe', () => {
+      it('does not throw when eventBus.emit throws', async () => {
+        mockEventBus.emit.mockImplementation(() => { throw new Error('EventBus crash'); });
+        // Should not throw
+        await expect(ebRecorder.startRecording()).resolves.not.toThrow();
+      });
+
+      it('still calls callbacks even when eventBus.emit throws', async () => {
+        const onStateChange = vi.fn();
+        ebRecorder.setCallbacks({ onStateChange });
+        mockEventBus.emit.mockImplementation(() => { throw new Error('EventBus crash'); });
+
+        await ebRecorder.startRecording();
+        expect(onStateChange).toHaveBeenCalledWith('recording');
+      });
+    });
+
+    describe('pause/resume events', () => {
+      it('emits audio:recordingPaused on pause', async () => {
+        await ebRecorder.startRecording();
+        mockEventBus.emit.mockClear();
+
+        ebRecorder.pause();
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith(
+          'audio:recordingPaused',
+          expect.objectContaining({ state: 'paused' })
+        );
+      });
+
+      it('emits audio:recordingResumed on resume', async () => {
+        await ebRecorder.startRecording();
+        ebRecorder.pause();
+        mockEventBus.emit.mockClear();
+
+        ebRecorder.resume();
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith(
+          'audio:recordingResumed',
+          expect.objectContaining({ state: 'recording' })
+        );
+      });
+    });
+  });
+
+  // ── Safari Codec Fallback (Story 3.1 Task 2) ─────────────────────────
+
+  describe('Safari codec fallback', () => {
+    describe('_detectOptimalCodec', () => {
+      it('returns webm/opus when supported (Chrome/Firefox)', () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
+          ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].includes(type)
+        );
+        const r = new AudioRecorder();
+        expect(r._detectOptimalCodec()).toBe('audio/webm;codecs=opus');
+      });
+
+      it('returns mp4/aac when webm not supported (Safari)', () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
+          ['audio/mp4;codecs=aac', 'audio/mp4'].includes(type)
+        );
+        const r = new AudioRecorder();
+        expect(r._detectOptimalCodec()).toBe('audio/mp4;codecs=aac');
+      });
+
+      it('returns audio/mp4 when mp4/aac not supported', () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
+          type === 'audio/mp4'
+        );
+        const r = new AudioRecorder();
+        expect(r._detectOptimalCodec()).toBe('audio/mp4');
+      });
+
+      it('returns audio/wav as universal fallback', () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
+          type === 'audio/wav'
+        );
+        const r = new AudioRecorder();
+        expect(r._detectOptimalCodec()).toBe('audio/wav');
+      });
+
+      it('throws when no codec is supported', () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn(() => false);
+        const r = new AudioRecorder();
+        expect(() => r._detectOptimalCodec()).toThrow('No supported audio codec found');
+      });
+
+      it('respects preferredCodec option when supported', () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn(() => true);
+        const r = new AudioRecorder({ preferredCodec: 'audio/mp4;codecs=aac' });
+        expect(r._detectOptimalCodec()).toBe('audio/mp4;codecs=aac');
+      });
+
+      it('falls back to auto-detect when preferredCodec not supported', () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
+          type === 'audio/webm;codecs=opus'
+        );
+        const r = new AudioRecorder({ preferredCodec: 'audio/mp4;codecs=aac' });
+        expect(r._detectOptimalCodec()).toBe('audio/webm;codecs=opus');
+      });
+    });
+
+    describe('codec used in startRecording', () => {
+      it('uses detected codec for MediaRecorder', async () => {
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
+          type === 'audio/mp4;codecs=aac'
+        );
+        const r = new AudioRecorder();
+        await r.startRecording();
+
+        // The MediaRecorder constructor should be called with the detected codec
+        expect(globalThis.MediaRecorder).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ mimeType: 'audio/mp4;codecs=aac' })
+        );
+      });
+    });
+  });
+
+  // ── Crash Recovery — IndexedDB Persistence (Story 3.1 Task 3) ────────
+
+  describe('crash recovery — IndexedDB persistence', () => {
+    let mockDB;
+    let mockObjectStore;
+
+    beforeEach(() => {
+      mockObjectStore = {
+        put: vi.fn(),
+        delete: vi.fn(),
+        getAll: vi.fn(),
+        getAllKeys: vi.fn(),
+        clear: vi.fn(),
+      };
+
+      mockDB = {
+        transaction: vi.fn(() => ({
+          objectStore: vi.fn(() => mockObjectStore),
+        })),
+        objectStoreNames: { contains: vi.fn(() => true) },
+        createObjectStore: vi.fn(() => mockObjectStore),
+        close: vi.fn(),
+      };
+
+      // Synchronous mock — trigger onsuccess immediately via microtask
+      globalThis.indexedDB = {
+        open: vi.fn(() => {
+          const req = { result: mockDB, onsuccess: null, onerror: null, onupgradeneeded: null };
+          Promise.resolve().then(() => req.onsuccess?.({ target: req }));
+          return req;
+        }),
+        deleteDatabase: vi.fn(),
+      };
+    });
+
+    /** Helper: init persistence and flush microtasks */
+    async function initPersistence(r, sessionId = 'session-123') {
+      const p = r._initPersistence(sessionId);
+      await vi.advanceTimersByTimeAsync(0);
+      await p;
+    }
+
+    describe('_persistChunk', () => {
+      it('saves chunk to IndexedDB with session-indexed key', async () => {
+        const r = new AudioRecorder();
+        await initPersistence(r);
+
+        const blob = new Blob(['audio-data'], { type: 'audio/webm' });
+        r._persistChunk(blob, 0);
+
+        expect(mockObjectStore.put).toHaveBeenCalledWith(
+          expect.objectContaining({ data: blob, index: 0 }),
+          'chunk-session-123-0'
+        );
+      });
+    });
+
+    describe('recoverChunks', () => {
+      it('returns empty array when no chunks persisted', async () => {
+        mockObjectStore.getAll.mockImplementation(() => {
+          const req = { result: [], onsuccess: null, onerror: null };
+          Promise.resolve().then(() => req.onsuccess?.({ target: req }));
+          return req;
+        });
+
+        const r = new AudioRecorder();
+        await initPersistence(r);
+
+        const p = r.recoverChunks();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(await p).toEqual([]);
+      });
+
+      it('returns persisted chunks sorted by index', async () => {
+        const chunk1 = { data: new Blob(['a']), index: 0, sessionId: 'session-123' };
+        const chunk2 = { data: new Blob(['b']), index: 1, sessionId: 'session-123' };
+        mockObjectStore.getAll.mockImplementation(() => {
+          const req = { result: [chunk2, chunk1], onsuccess: null, onerror: null };
+          Promise.resolve().then(() => req.onsuccess?.({ target: req }));
+          return req;
+        });
+
+        const r = new AudioRecorder();
+        await initPersistence(r);
+
+        const p = r.recoverChunks();
+        await vi.advanceTimersByTimeAsync(0);
+        const result = await p;
+        expect(result).toHaveLength(2);
+        expect(result[0].index).toBe(0);
+        expect(result[1].index).toBe(1);
+      });
+    });
+
+    describe('clearPersistedChunks', () => {
+      it('clears all chunks from IndexedDB', async () => {
+        const r = new AudioRecorder();
+        await initPersistence(r);
+
+        r.clearPersistedChunks();
+        expect(mockObjectStore.clear).toHaveBeenCalled();
+      });
+    });
+
+    describe('stopRecording clears persisted chunks', () => {
+      it('calls clearPersistedChunks on successful stop', async () => {
+        const r = new AudioRecorder();
+        await r.startRecording();
+        await initPersistence(r);
+
+        const clearSpy = vi.spyOn(r, 'clearPersistedChunks');
+
+        const stopPromise = r.stopRecording();
+        const mr = recorderInstances[recorderInstances.length - 1];
+        mr.onstop?.();
+        await stopPromise;
+
+        expect(clearSpy).toHaveBeenCalled();
+      });
+    });
+  });
+
+  // ── WebRTC peer audio capture ─────────────────────────────────────────
+  describe('WebRTC peer audio capture', () => {
+    let mockPeerStream;
+    let mockDestination;
+    let mockMixedStream;
+
+    beforeEach(() => {
+      // Mock MediaStream constructor (not available in jsdom)
+      globalThis.MediaStream = vi.fn(function (tracks) {
+        const stream = createMockStream();
+        if (tracks) stream._tracks = [...tracks];
+        return stream;
+      });
+
+      // Create a mock peer stream (simulates remote audio from another player)
+      const peerTrack = { kind: 'audio', stop: vi.fn(), enabled: true, readyState: 'live' };
+      mockPeerStream = {
+        _tracks: [peerTrack],
+        getTracks: vi.fn(function () { return [...this._tracks]; }),
+        getAudioTracks: vi.fn(function () { return this._tracks.filter(t => t.kind === 'audio'); })
+      };
+
+      // Create a mock MediaStreamDestination for mixing
+      const mixedTrack = { kind: 'audio', stop: vi.fn(), enabled: true, readyState: 'live' };
+      mockMixedStream = {
+        _tracks: [mixedTrack],
+        getTracks: vi.fn(function () { return [...this._tracks]; }),
+        getAudioTracks: vi.fn(function () { return this._tracks.filter(t => t.kind === 'audio'); })
+      };
+      mockDestination = {
+        stream: mockMixedStream
+      };
+
+      // Mock AudioContext with createMediaStreamDestination
+      const analyserNode = {
+        fftSize: 0,
+        frequencyBinCount: 128,
+        getByteFrequencyData: vi.fn(),
+        connect: vi.fn()
+      };
+      const sourceNode = { connect: vi.fn() };
+      const ctx = {
+        createMediaStreamSource: vi.fn(() => sourceNode),
+        createAnalyser: vi.fn(() => analyserNode),
+        createMediaStreamDestination: vi.fn(() => mockDestination),
+        close: vi.fn()
+      };
+      globalThis.AudioContext = vi.fn(() => ctx);
+      globalThis.window = globalThis.window || {};
+      globalThis.window.AudioContext = globalThis.AudioContext;
+    });
+
+    describe('_captureWebRTCStream', () => {
+      it('returns null when game.webrtc is not available', () => {
+        globalThis.game = {};
+        const r = new AudioRecorder();
+        const stream = r._captureWebRTCStream();
+        expect(stream).toBeNull();
+      });
+
+      it('returns null when no peer connections exist', () => {
+        globalThis.game = {
+          webrtc: { client: { _peerConnections: new Map() } }
+        };
+        const r = new AudioRecorder();
+        const stream = r._captureWebRTCStream();
+        expect(stream).toBeNull();
+      });
+
+      it('captures remote audio streams from peer connections', () => {
+        const mockReceiver = {
+          track: { kind: 'audio', readyState: 'live' }
+        };
+        const mockPeerConnection = {
+          getReceivers: vi.fn(() => [mockReceiver])
+        };
+
+        globalThis.game = {
+          webrtc: {
+            client: {
+              _peerConnections: new Map([['peer1', { pc: mockPeerConnection }]])
+            }
+          }
+        };
+
+        const r = new AudioRecorder();
+        const streams = r._captureWebRTCStream();
+        expect(streams).not.toBeNull();
+        expect(Array.isArray(streams)).toBe(true);
+        expect(streams.length).toBeGreaterThan(0);
+      });
+
+      it('skips peer connections with no audio receivers', () => {
+        const mockReceiver = {
+          track: { kind: 'video', readyState: 'live' }
+        };
+        const mockPeerConnection = {
+          getReceivers: vi.fn(() => [mockReceiver])
+        };
+
+        globalThis.game = {
+          webrtc: {
+            client: {
+              _peerConnections: new Map([['peer1', { pc: mockPeerConnection }]])
+            }
+          }
+        };
+
+        const r = new AudioRecorder();
+        const streams = r._captureWebRTCStream();
+        expect(streams).toBeNull();
+      });
+
+      it('skips tracks that are not live', () => {
+        const mockReceiver = {
+          track: { kind: 'audio', readyState: 'ended' }
+        };
+        const mockPeerConnection = {
+          getReceivers: vi.fn(() => [mockReceiver])
+        };
+
+        globalThis.game = {
+          webrtc: {
+            client: {
+              _peerConnections: new Map([['peer1', { pc: mockPeerConnection }]])
+            }
+          }
+        };
+
+        const r = new AudioRecorder();
+        const streams = r._captureWebRTCStream();
+        expect(streams).toBeNull();
+      });
+
+      it('captures from multiple peers', () => {
+        const makePeer = () => ({
+          pc: {
+            getReceivers: vi.fn(() => [{
+              track: { kind: 'audio', readyState: 'live' }
+            }])
+          }
+        });
+
+        globalThis.game = {
+          webrtc: {
+            client: {
+              _peerConnections: new Map([
+                ['peer1', makePeer()],
+                ['peer2', makePeer()]
+              ])
+            }
+          }
+        };
+
+        const r = new AudioRecorder();
+        const streams = r._captureWebRTCStream();
+        expect(streams).not.toBeNull();
+        expect(streams.length).toBe(2);
+      });
+
+      it('emits EventBus event when WebRTC streams are captured', () => {
+        const eventBus = { emit: vi.fn() };
+        const mockReceiver = {
+          track: { kind: 'audio', readyState: 'live' }
+        };
+        const mockPeerConnection = {
+          getReceivers: vi.fn(() => [mockReceiver])
+        };
+
+        globalThis.game = {
+          webrtc: {
+            client: {
+              _peerConnections: new Map([['peer1', { pc: mockPeerConnection }]])
+            }
+          }
+        };
+
+        const r = new AudioRecorder({ eventBus });
+        r._captureWebRTCStream();
+        expect(eventBus.emit).toHaveBeenCalledWith(
+          'audio:webrtcCaptured',
+          expect.objectContaining({ peerCount: 1 })
+        );
+      });
+    });
+
+    describe('_createMixedStream', () => {
+      it('combines mic and WebRTC streams into a single output', () => {
+        const r = new AudioRecorder();
+        // Need to set up _audioContext first
+        r._audioContext = new AudioContext();
+        const peerTracks = [{ kind: 'audio', readyState: 'live' }];
+        const mixed = r._createMixedStream(mockStream, peerTracks);
+        expect(mixed).not.toBeNull();
+        expect(r._audioContext.createMediaStreamSource).toHaveBeenCalled();
+        expect(r._audioContext.createMediaStreamDestination).toHaveBeenCalled();
+      });
+
+      it('returns mic stream only when no peer tracks are available', () => {
+        const r = new AudioRecorder();
+        r._audioContext = new AudioContext();
+        const mixed = r._createMixedStream(mockStream, []);
+        expect(mixed).toBe(mockStream);
+      });
+
+      it('returns mic stream only when peer tracks is null', () => {
+        const r = new AudioRecorder();
+        r._audioContext = new AudioContext();
+        const mixed = r._createMixedStream(mockStream, null);
+        expect(mixed).toBe(mockStream);
+      });
+    });
+
+    describe('startRecording with captureMode', () => {
+      it('records mic only in "microphone" mode (default)', async () => {
+        const r = new AudioRecorder({ captureMode: 'microphone' });
+        await r.startRecording();
+        expect(r.state).toBe(RecordingState.RECORDING);
+        // Mic stream should be used directly (no mixing)
+        expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
+      });
+
+      it('records WebRTC peers only in "webrtc" mode', async () => {
+        const mockReceiver = {
+          track: { kind: 'audio', readyState: 'live' }
+        };
+        const mockPeerConnection = {
+          getReceivers: vi.fn(() => [mockReceiver])
+        };
+        globalThis.game = {
+          webrtc: {
+            client: {
+              _peerConnections: new Map([['peer1', { pc: mockPeerConnection }]])
+            }
+          }
+        };
+
+        const r = new AudioRecorder({ captureMode: 'webrtc' });
+        await r.startRecording();
+        expect(r.state).toBe(RecordingState.RECORDING);
+      });
+
+      it('mixes mic + WebRTC in "mixed" mode', async () => {
+        const mockReceiver = {
+          track: { kind: 'audio', readyState: 'live' }
+        };
+        const mockPeerConnection = {
+          getReceivers: vi.fn(() => [mockReceiver])
+        };
+        globalThis.game = {
+          webrtc: {
+            client: {
+              _peerConnections: new Map([['peer1', { pc: mockPeerConnection }]])
+            }
+          }
+        };
+
+        const r = new AudioRecorder({ captureMode: 'mixed' });
+        await r.startRecording();
+        expect(r.state).toBe(RecordingState.RECORDING);
+      });
+
+      it('falls back to mic-only when WebRTC is unavailable in "mixed" mode', async () => {
+        globalThis.game = {};
+        const r = new AudioRecorder({ captureMode: 'mixed' });
+        await r.startRecording();
+        expect(r.state).toBe(RecordingState.RECORDING);
+        // Should have fallen back to mic-only without error
+      });
+
+      it('throws error when "webrtc" mode has no peers available', async () => {
+        globalThis.game = {};
+        const r = new AudioRecorder({ captureMode: 'webrtc' });
+        await expect(r.startRecording()).rejects.toThrow();
+      });
+    });
+
+    describe('cleanup of WebRTC resources', () => {
+      it('disconnects peer source nodes on cleanup', async () => {
+        const r = new AudioRecorder({ captureMode: 'microphone' });
+        await r.startRecording();
+        // Simulate having peer source nodes
+        const mockPeerSourceNode = { disconnect: vi.fn() };
+        r._peerSourceNodes = [mockPeerSourceNode];
+        r.cancel();
+        expect(mockPeerSourceNode.disconnect).toHaveBeenCalled();
+        expect(r._peerSourceNodes).toEqual([]);
+      });
+
+      it('nulls destination on cleanup', async () => {
+        const r = new AudioRecorder({ captureMode: 'microphone' });
+        await r.startRecording();
+        r._mixDestination = mockDestination;
+        r.cancel();
+        expect(r._mixDestination).toBeNull();
+      });
+    });
+  });
 });

@@ -16,6 +16,7 @@ import { AudioUtils } from '../utils/AudioUtils.mjs';
 import { debounce } from '../utils/DomUtils.mjs';
 import { stripHtml, sanitizeHtml, escapeHtml } from '../utils/HtmlUtils.mjs';
 import { VoxChronicle } from '../core/VoxChronicle.mjs';
+import { SpeakerLabeling } from './SpeakerLabeling.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -45,6 +46,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {boolean} */
   #ragStatusFetched = false;
 
+  /** @type {Array} */
+  #transcriptData = [];
+
+  /** @type {object|null} */
+  #eventBus = null;
+
+  /** @type {Function|null} */
+  #onTranscriptionReady = null;
+
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-main-panel',
     classes: ['vox-chronicle', 'vox-chronicle-panel'],
@@ -62,12 +72,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       'change-journal': MainPanel._onChangeJournal,
       'prev-chapter': MainPanel._onPrevChapter,
       'next-chapter': MainPanel._onNextChapter,
-      'dismiss-suggestion': MainPanel._onDismissSuggestion
+      'dismiss-suggestion': MainPanel._onDismissSuggestion,
+      'open-speaker-labeling': MainPanel._onOpenSpeakerLabeling
     }
   };
 
   static PARTS = {
-    main: { template: `modules/${MODULE_ID}/templates/main-panel.hbs` }
+    main: { template: `modules/${MODULE_ID}/templates/main-panel.hbs` },
+    transcriptReview: { template: `modules/${MODULE_ID}/templates/parts/transcript-review.hbs` }
   };
 
   /** @type {string|null} */
@@ -163,8 +175,122 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       MainPanel.#instance._stopRealtimeUpdates();
       MainPanel.#instance.#listenerController?.abort();
       MainPanel.#instance._debouncedRender?.cancel?.();
+      MainPanel.#instance._cleanupEventBus();
     }
     MainPanel.#instance = null;
+  }
+
+  /**
+   * Set the EventBus for decoupled event subscriptions
+   * @param {object} eventBus - EventBus instance with on/off/emit methods
+   */
+  setEventBus(eventBus) {
+    this._cleanupEventBus();
+    this.#eventBus = eventBus;
+
+    if (eventBus) {
+      this.#onTranscriptionReady = (data) => {
+        if (data?.segments) {
+          this.setTranscriptData(data.segments);
+        }
+        this.render({ parts: ['transcriptReview'] });
+      };
+      eventBus.on('ai:transcriptionReady', this.#onTranscriptionReady);
+    }
+  }
+
+  /**
+   * Remove EventBus subscriptions
+   * @private
+   */
+  _cleanupEventBus() {
+    if (this.#eventBus && this.#onTranscriptionReady) {
+      this.#eventBus.off('ai:transcriptionReady', this.#onTranscriptionReady);
+    }
+    this.#eventBus = null;
+    this.#onTranscriptionReady = null;
+  }
+
+  /**
+   * Format seconds into mm:ss timestamp string
+   * @param {number} seconds - Time in seconds
+   * @returns {string} Formatted timestamp (e.g., "2:05", "61:01")
+   * @private
+   */
+  _formatTimestamp(seconds) {
+    const totalSeconds = Math.floor(seconds || 0);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
+  /**
+   * Build transcript segments with display metadata (speaker label, timestamp, color index)
+   * @param {Array} segments - Raw transcript segments
+   * @returns {Array} Enriched segments for template rendering
+   * @private
+   */
+  _buildTranscriptSegments(segments) {
+    if (!segments || !Array.isArray(segments) || segments.length === 0) return [];
+
+    const speakerColorMap = new Map();
+    let colorCounter = 0;
+
+    return segments.map(seg => {
+      const displayName = SpeakerLabeling.getSpeakerLabel(seg.speaker);
+      const isMapped = displayName !== seg.speaker;
+
+      if (!speakerColorMap.has(seg.speaker)) {
+        speakerColorMap.set(seg.speaker, colorCounter++ % 8);
+      }
+
+      return {
+        ...seg,
+        displayName,
+        isMapped,
+        timestamp: this._formatTimestamp(seg.start),
+        colorIndex: speakerColorMap.get(seg.speaker)
+      };
+    });
+  }
+
+  /**
+   * Store transcript segments for in-memory editing
+   * @param {Array} segments - Transcript segments array
+   */
+  setTranscriptData(segments) {
+    this.#transcriptData = (segments || []).map(s => ({ ...s }));
+  }
+
+  /**
+   * Get the current transcript data (with any edits applied)
+   * @returns {Array} Copy of transcript segments
+   */
+  getTranscriptData() {
+    return this.#transcriptData.map(s => ({ ...s }));
+  }
+
+  /**
+   * Edit a segment's text by index
+   * @param {number} index - Segment index
+   * @param {string} newText - New text content
+   */
+  editSegment(index, newText) {
+    if (index < 0 || index >= this.#transcriptData.length) return;
+    if (!newText || typeof newText !== 'string' || !newText.trim()) return;
+
+    this.#transcriptData[index] = { ...this.#transcriptData[index], text: newText };
+
+    if (this.#eventBus) {
+      try {
+        this.#eventBus.emit('ui:transcriptEdited', {
+          index,
+          segment: { ...this.#transcriptData[index] }
+        });
+      } catch (e) {
+        this._logger.warn('EventBus emit failed:', e);
+      }
+    }
   }
 
   /**
@@ -330,6 +456,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       imageCount: images.length,
       segments: session?.transcript?.segments || [],
       hasTranscript: !!session?.transcript,
+      transcriptSegments: this._buildTranscriptSegments(
+        this.#transcriptData.length > 0 ? this.#transcriptData : session?.transcript?.segments
+      ),
+      hasTranscriptSegments: (this.#transcriptData.length > 0) || (session?.transcript?.segments?.length || 0) > 0,
       entities: session?.entities || null,
       entityCount: this._countEntities(session?.entities),
       hasEntities: !!session?.entities,
@@ -430,6 +560,37 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     }
 
+    // Transcript inline editing — dblclick to edit, blur/Enter to save
+    this.element?.querySelectorAll('.vox-chronicle-transcript-review__text[data-editable]').forEach(span => {
+      span.addEventListener('dblclick', () => {
+        span.contentEditable = 'true';
+        span.classList.add('vox-chronicle-transcript-review__text--editing');
+        span.focus();
+      }, { signal });
+
+      span.addEventListener('blur', () => {
+        span.contentEditable = 'false';
+        span.classList.remove('vox-chronicle-transcript-review__text--editing');
+        const row = span.closest('[data-segment-index]');
+        if (row) {
+          const index = parseInt(row.dataset.segmentIndex, 10);
+          const newText = span.textContent;
+          this.editSegment(index, newText);
+        }
+      }, { signal });
+
+      span.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          span.blur();
+        }
+        if (e.key === 'Escape') {
+          span.contentEditable = 'false';
+          span.classList.remove('vox-chronicle-transcript-review__text--editing');
+        }
+      }, { signal });
+    });
+
     // Auto-scroll transcript to bottom
     if (this._activeTab === 'transcript') {
       const container = this.element.querySelector('.vox-chronicle-panel__transcript');
@@ -524,6 +685,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._stopRealtimeUpdates();
     this.#listenerController?.abort();
     this._debouncedRender?.cancel?.();
+    this._cleanupEventBus();
     // Clean up rules state
     for (const t of this._rulesDismissTimeouts || []) clearTimeout(t);
     this._rulesDismissTimeouts = [];
@@ -1366,6 +1528,23 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   static _onDismissSuggestion(event, target) {
     target.closest('.vox-chronicle-suggestion')?.remove();
+  }
+
+  static _onOpenSpeakerLabeling(event, target) {
+    const panel = this;
+    const labeling = new SpeakerLabeling({
+      onClose: () => {
+        panel.render({ parts: ['transcriptReview'] });
+        if (panel.#eventBus) {
+          try {
+            panel.#eventBus.emit('ui:speakerLabelsUpdated');
+          } catch (e) {
+            panel._logger.warn('EventBus emit failed:', e);
+          }
+        }
+      }
+    });
+    labeling.render(true);
   }
 
   // ─── Streaming DOM helpers (wired by Plan 03) ─────────────────

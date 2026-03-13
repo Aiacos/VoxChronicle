@@ -80,6 +80,28 @@ vi.mock('../../scripts/ui/JournalPicker.mjs', () => ({
   }))
 }));
 
+// Track SpeakerLabeling instances created during tests
+let lastSpeakerLabelingInstance = null;
+let speakerLabelingOnClose = null;
+
+vi.mock('../../scripts/ui/SpeakerLabeling.mjs', () => {
+  const MockSpeakerLabeling = vi.fn(function (opts) {
+    this.render = vi.fn();
+    this.close = vi.fn();
+    lastSpeakerLabelingInstance = this;
+    speakerLabelingOnClose = opts?.onClose || null;
+  });
+  // Static methods used by MainPanel
+  MockSpeakerLabeling.getSpeakerLabel = vi.fn((id) => id);
+  MockSpeakerLabeling.addKnownSpeaker = vi.fn();
+  MockSpeakerLabeling.addKnownSpeakers = vi.fn();
+  MockSpeakerLabeling.mapSpeakerLabels = vi.fn((segments) => segments);
+  MockSpeakerLabeling.applyLabelsToSegments = vi.fn((segments) => segments);
+  MockSpeakerLabeling.renameSpeaker = vi.fn();
+
+  return { SpeakerLabeling: MockSpeakerLabeling };
+});
+
 vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({
   VoxChronicle: {
     getInstance: vi.fn(() => ({
@@ -122,6 +144,7 @@ vi.mock('../../scripts/core/VoxChronicle.mjs', () => ({
 
 import { MainPanel } from '../../scripts/ui/MainPanel.mjs';
 import { VoxChronicle } from '../../scripts/core/VoxChronicle.mjs';
+import { SpeakerLabeling } from '../../scripts/ui/SpeakerLabeling.mjs';
 
 describe('MainPanel', () => {
   let mockOrchestrator;
@@ -1892,6 +1915,416 @@ describe('MainPanel', () => {
           onRulesCard: expect.any(Function)
         })
       );
+    });
+  });
+
+  // ─── Transcript Review PART (Story 3.3 Task 3) ───────────────
+
+  describe('Transcript Review PART', () => {
+
+    describe('PARTS registration', () => {
+      it('should have a transcriptReview part with template path', () => {
+        expect(MainPanel.PARTS.transcriptReview).toBeDefined();
+        expect(MainPanel.PARTS.transcriptReview.template).toBe(
+          'modules/vox-chronicle/templates/parts/transcript-review.hbs'
+        );
+      });
+    });
+
+    describe('_prepareContext — transcript review data', () => {
+      it('should include transcriptSegments with formatted timestamps', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: {
+            segments: [
+              { speaker: 'SPEAKER_00', text: 'Hello world', start: 0, end: 2.5 },
+              { speaker: 'SPEAKER_01', text: 'Good morning', start: 3.0, end: 5.0 }
+            ]
+          }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+
+        expect(ctx.transcriptSegments).toBeDefined();
+        expect(ctx.transcriptSegments).toHaveLength(2);
+        expect(ctx.transcriptSegments[0]).toEqual(expect.objectContaining({
+          speaker: 'SPEAKER_00',
+          text: 'Hello world',
+          timestamp: '0:00'
+        }));
+        expect(ctx.transcriptSegments[1]).toEqual(expect.objectContaining({
+          speaker: 'SPEAKER_01',
+          text: 'Good morning',
+          timestamp: '0:03'
+        }));
+      });
+
+      it('should format timestamps as mm:ss', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: {
+            segments: [
+              { speaker: 'SPEAKER_00', text: 'Late segment', start: 125.7, end: 130.0 }
+            ]
+          }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+
+        expect(ctx.transcriptSegments[0].timestamp).toBe('2:05');
+      });
+
+      it('should use speaker label when available instead of raw ID', async () => {
+        const { SpeakerLabeling } = await import('../../scripts/ui/SpeakerLabeling.mjs');
+        SpeakerLabeling.getSpeakerLabel.mockImplementation((id) => {
+          if (id === 'SPEAKER_00') return 'Game Master';
+          return id;
+        });
+
+        mockOrchestrator.currentSession = {
+          transcript: {
+            segments: [
+              { speaker: 'SPEAKER_00', text: 'Welcome!', start: 0, end: 1 },
+              { speaker: 'SPEAKER_01', text: 'Hi!', start: 1, end: 2 }
+            ]
+          }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+
+        expect(ctx.transcriptSegments[0].displayName).toBe('Game Master');
+        expect(ctx.transcriptSegments[0].isMapped).toBe(true);
+        expect(ctx.transcriptSegments[1].displayName).toBe('SPEAKER_01');
+        expect(ctx.transcriptSegments[1].isMapped).toBe(false);
+
+        // Restore default mock
+        SpeakerLabeling.getSpeakerLabel.mockImplementation((id) => id);
+      });
+
+      it('should return empty transcriptSegments when no transcript', async () => {
+        mockOrchestrator.currentSession = null;
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+
+        expect(ctx.transcriptSegments).toEqual([]);
+        expect(ctx.hasTranscriptSegments).toBe(false);
+      });
+
+      it('should set hasTranscriptSegments to true when segments exist', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: {
+            segments: [
+              { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
+            ]
+          }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+
+        expect(ctx.hasTranscriptSegments).toBe(true);
+      });
+
+      it('should assign unique color index per speaker', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: {
+            segments: [
+              { speaker: 'SPEAKER_00', text: 'a', start: 0, end: 1 },
+              { speaker: 'SPEAKER_01', text: 'b', start: 1, end: 2 },
+              { speaker: 'SPEAKER_00', text: 'c', start: 2, end: 3 }
+            ]
+          }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+
+        // Same speaker should have same color index
+        expect(ctx.transcriptSegments[0].colorIndex).toBe(ctx.transcriptSegments[2].colorIndex);
+        // Different speakers should have different color indices
+        expect(ctx.transcriptSegments[0].colorIndex).not.toBe(ctx.transcriptSegments[1].colorIndex);
+      });
+    });
+
+    describe('EventBus binding', () => {
+      it('should subscribe to ai:transcriptionReady on EventBus when provided', () => {
+        const mockEventBus = {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn()
+        };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.setEventBus(mockEventBus);
+
+        expect(mockEventBus.on).toHaveBeenCalledWith(
+          'ai:transcriptionReady',
+          expect.any(Function)
+        );
+      });
+
+      it('should call setTranscriptData and render on ai:transcriptionReady', () => {
+        const mockEventBus = {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn()
+        };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const renderSpy = vi.spyOn(panel, 'render');
+        const setDataSpy = vi.spyOn(panel, 'setTranscriptData');
+        panel.setEventBus(mockEventBus);
+
+        // Find the handler registered for ai:transcriptionReady
+        const call = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:transcriptionReady');
+        expect(call).toBeDefined();
+
+        const segments = [{ speaker: 'SP', text: 'test', start: 0, end: 1 }];
+        // Invoke the handler with segments payload
+        call[1]({ segments });
+
+        expect(setDataSpy).toHaveBeenCalledWith(segments);
+        expect(renderSpy).toHaveBeenCalledWith({ parts: ['transcriptReview'] });
+      });
+
+      it('should render without setTranscriptData when payload has no segments', () => {
+        const mockEventBus = {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn()
+        };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const renderSpy = vi.spyOn(panel, 'render');
+        const setDataSpy = vi.spyOn(panel, 'setTranscriptData');
+        panel.setEventBus(mockEventBus);
+
+        const call = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:transcriptionReady');
+        call[1]({});
+
+        expect(setDataSpy).not.toHaveBeenCalled();
+        expect(renderSpy).toHaveBeenCalledWith({ parts: ['transcriptReview'] });
+      });
+
+      it('should unsubscribe from EventBus on close', async () => {
+        const mockEventBus = {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn()
+        };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.setEventBus(mockEventBus);
+
+        await panel.close();
+
+        expect(mockEventBus.off).toHaveBeenCalledWith(
+          'ai:transcriptionReady',
+          expect.any(Function)
+        );
+      });
+    });
+
+    describe('inline edit flow (Task 4)', () => {
+      it('should store transcript data via setTranscriptData', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const segments = [
+          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
+        ];
+        panel.setTranscriptData(segments);
+        expect(panel.getTranscriptData()).toEqual(segments);
+      });
+
+      it('should update segment text via editSegment', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const segments = [
+          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 },
+          { speaker: 'SPEAKER_01', text: 'World', start: 1, end: 2 }
+        ];
+        panel.setTranscriptData(segments);
+        panel.editSegment(1, 'Updated World');
+
+        const data = panel.getTranscriptData();
+        expect(data[1].text).toBe('Updated World');
+        expect(data[0].text).toBe('Hello'); // Unchanged
+      });
+
+      it('should not modify original segments (immutability)', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const original = [
+          { speaker: 'SPEAKER_00', text: 'Original', start: 0, end: 1 }
+        ];
+        panel.setTranscriptData(original);
+        panel.editSegment(0, 'Modified');
+
+        // Original array should be unchanged
+        expect(original[0].text).toBe('Original');
+      });
+
+      it('should emit ui:transcriptEdited on EventBus when editing', () => {
+        const mockEventBus = {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn()
+        };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.setEventBus(mockEventBus);
+
+        const segments = [
+          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
+        ];
+        panel.setTranscriptData(segments);
+        panel.editSegment(0, 'Changed');
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith('ui:transcriptEdited', {
+          index: 0,
+          segment: expect.objectContaining({ text: 'Changed', speaker: 'SPEAKER_00' })
+        });
+      });
+
+      it('should not emit event if no EventBus is set', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const segments = [
+          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
+        ];
+        panel.setTranscriptData(segments);
+
+        // Should not throw
+        expect(() => panel.editSegment(0, 'Changed')).not.toThrow();
+      });
+
+      it('should ignore edit for out-of-bounds index', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const segments = [
+          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
+        ];
+        panel.setTranscriptData(segments);
+        panel.editSegment(5, 'No effect');
+
+        expect(panel.getTranscriptData()).toHaveLength(1);
+        expect(panel.getTranscriptData()[0].text).toBe('Hello');
+      });
+
+      it('should ignore edit with empty text', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const segments = [
+          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
+        ];
+        panel.setTranscriptData(segments);
+        panel.editSegment(0, '');
+
+        expect(panel.getTranscriptData()[0].text).toBe('Hello');
+      });
+    });
+
+    describe('timestamp formatting', () => {
+      it('should format 0 seconds as 0:00', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: { segments: [{ speaker: 'S', text: 't', start: 0, end: 1 }] }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+        expect(ctx.transcriptSegments[0].timestamp).toBe('0:00');
+      });
+
+      it('should format 59 seconds as 0:59', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: { segments: [{ speaker: 'S', text: 't', start: 59, end: 60 }] }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+        expect(ctx.transcriptSegments[0].timestamp).toBe('0:59');
+      });
+
+      it('should format 60 seconds as 1:00', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: { segments: [{ speaker: 'S', text: 't', start: 60, end: 61 }] }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+        expect(ctx.transcriptSegments[0].timestamp).toBe('1:00');
+      });
+
+      it('should format 3661 seconds as 61:01', async () => {
+        mockOrchestrator.currentSession = {
+          transcript: { segments: [{ speaker: 'S', text: 't', start: 3661, end: 3662 }] }
+        };
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const ctx = await panel._prepareContext({});
+        expect(ctx.transcriptSegments[0].timestamp).toBe('61:01');
+      });
+    });
+  });
+
+  // ─── Speaker Labeling from MainPanel (Story 3.3 Task 5) ───────
+
+  describe('Speaker Labeling from MainPanel', () => {
+
+    beforeEach(() => {
+      lastSpeakerLabelingInstance = null;
+      speakerLabelingOnClose = null;
+    });
+
+    describe('action registration', () => {
+      it('should have open-speaker-labeling action registered', () => {
+        expect(MainPanel.DEFAULT_OPTIONS.actions['open-speaker-labeling']).toBeDefined();
+        expect(typeof MainPanel.DEFAULT_OPTIONS.actions['open-speaker-labeling']).toBe('function');
+      });
+    });
+
+    describe('open-speaker-labeling action handler', () => {
+      it('should create a SpeakerLabeling instance and call render(true)', async () => {
+        const { SpeakerLabeling } = await import('../../scripts/ui/SpeakerLabeling.mjs');
+        const panel = MainPanel.getInstance(mockOrchestrator);
+
+        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+
+        expect(SpeakerLabeling).toHaveBeenCalled();
+        expect(lastSpeakerLabelingInstance.render).toHaveBeenCalledWith(true);
+      });
+
+      it('should re-render transcriptReview PART after SpeakerLabeling closes', async () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const renderSpy = vi.spyOn(panel, 'render');
+
+        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+
+        // Simulate SpeakerLabeling closing via onClose callback
+        expect(speakerLabelingOnClose).toBeDefined();
+        speakerLabelingOnClose();
+
+        expect(renderSpy).toHaveBeenCalledWith({ parts: ['transcriptReview'] });
+      });
+
+      it('should emit ui:speakerLabelsUpdated on EventBus after SpeakerLabeling closes', async () => {
+        const mockEventBus = {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn()
+        };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.setEventBus(mockEventBus);
+
+        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+
+        speakerLabelingOnClose();
+
+        expect(mockEventBus.emit).toHaveBeenCalledWith('ui:speakerLabelsUpdated');
+      });
+
+      it('should not throw if EventBus emit fails during speaker labels update', async () => {
+        const mockEventBus = {
+          on: vi.fn(),
+          off: vi.fn(),
+          emit: vi.fn().mockImplementation(() => { throw new Error('EventBus error'); })
+        };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.setEventBus(mockEventBus);
+
+        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+
+        // Should not throw
+        expect(() => speakerLabelingOnClose()).not.toThrow();
+      });
     });
   });
 });

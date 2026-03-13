@@ -29,6 +29,12 @@
       "AudioSourceAuto": "[EN] Automatic (try Foundry VTT first, then microphone)",
       "AudioSourceMicrophone": "[EN] Browser Microphone",
       "AudioSourceWebRTC": "[EN] Foundry VTT WebRTC",
+      "AudioSourceMixed": "Mixto (Micrófono + WebRTC)",
+      "HasAudioRecovery": "Recuperación de Audio Disponible",
+      "HasAudioRecoveryHint": "Indica que existen fragmentos de audio recuperables de un fallo anterior",
+      "PreferredCodec": "Códec de Audio Preferido",
+      "PreferredCodecHint": "Códec de audio para la grabación. Se recomienda la detección automática para mejor compatibilidad.",
+      "PreferredCodecAuto": "Detección automática (recomendado)",
       "EchoCancellation": "[EN] Echo Cancellation",
       "EchoCancellationHint": "[EN] Enable echo cancellation for clearer recordings",
       "NoiseSuppression": "[EN] Noise Suppression",
@@ -327,7 +333,14 @@
       "SpeakerUnknown": "[EN] Unknown Speaker",
       "ProcessingChunk": "[EN] Processing chunk {current} of {total}...",
       "EstimatedTime": "[EN] Estimated time remaining: {time}",
-      "Cost": "[EN] Estimated cost: ${cost}"
+      "Cost": "[EN] Estimated cost: ${cost}",
+      "Started": "Transcripción iniciada (modo {mode})",
+      "Ready": "Transcripción lista ({segments} segmentos, {durationMs}ms)",
+      "Error": "Error de transcripción: {error}",
+      "FallingBackToAPI": "Cambiando a transcripción por API...",
+      "FallbackComplete": "Transcripción completada (vía API fallback)",
+      "LanguageDetected": "Idioma detectado: {language}",
+      "ChunkingStarted": "El audio requiere segmentación: {sizeMB}MB"
     },
     "SpeakerLabeling": {
       "Title": "[EN] Speaker Labeling",
@@ -357,6 +370,16 @@
       "HelpQuickAssign": "[EN] Use the dropdown to quickly assign a game user's name to a speaker slot.",
       "HelpAutoDetect": "[EN] Automatically fills empty speaker slots with game user names in order.",
       "Help": "[EN] Help"
+    },
+    "TranscriptReview": {
+      "Title": "Revisión de Transcripción",
+      "EditSegment": "Editar Segmento",
+      "MapSpeakers": "Asignar Hablantes",
+      "NoTranscript": "No hay transcripción disponible. Graba una sesión primero.",
+      "Timestamp": "Marca de tiempo",
+      "SpeakerUnmapped": "Hablante No Asignado",
+      "EditSaved": "Edición de segmento guardada",
+      "SegmentPlaceholder": "Ingresa el texto corregido..."
     },
     "Vocabulary": {
       "Title": "[EN] Vocabulary Manager",

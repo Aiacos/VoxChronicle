@@ -13,6 +13,7 @@ import { Logger } from '../utils/Logger.mjs';
 import { LocalWhisperService } from '../ai/LocalWhisperService.mjs';
 import { TranscriptionService } from '../ai/TranscriptionService.mjs';
 import { TranscriptionMode } from '../ai/TranscriptionFactory.mjs';
+import { SpeakerLabeling } from '../ui/SpeakerLabeling.mjs';
 
 /**
  * TranscriptionProcessor class for managing transcription workflows
@@ -55,6 +56,13 @@ class TranscriptionProcessor {
   _config = null;
 
   /**
+   * Optional EventBus for decoupled event emission
+   * @type {object | null}
+   * @private
+   */
+  #eventBus = null;
+
+  /**
    * Create a new TranscriptionProcessor instance
    *
    * @param {object} options - Configuration options
@@ -62,6 +70,7 @@ class TranscriptionProcessor {
    * @param {object} [options.config] - Transcription configuration
    * @param {string} [options.config.mode='local'] - Transcription mode ('local', 'api', or 'auto')
    * @param {string} [options.config.openaiApiKey] - OpenAI API key for fallback in auto mode
+   * @param {object} [options.eventBus] - Optional EventBus for event emission
    */
   constructor(options = {}) {
     if (!options.transcriptionService) {
@@ -70,8 +79,59 @@ class TranscriptionProcessor {
 
     this._transcriptionService = options.transcriptionService;
     this._config = options.config || {};
+    this.#eventBus = options.eventBus ?? null;
 
     this._logger.debug('TranscriptionProcessor initialized');
+  }
+
+  /**
+   * Safely emit an event on the EventBus, swallowing any errors.
+   *
+   * @param {string} channel - Event channel name (e.g., 'ai:transcriptionStarted')
+   * @param {object} data - Event payload
+   * @private
+   */
+  #emitSafe(channel, data) {
+    try {
+      this.#eventBus?.emit(channel, data);
+    } catch (e) {
+      this._logger.warn('EventBus emit failed:', e);
+    }
+  }
+
+  /**
+   * Wire speaker data after a successful transcription.
+   * Registers discovered speakers, applies saved labels, and emits detection event.
+   *
+   * @param {object} transcriptResult - The transcription result to process
+   * @private
+   */
+  #wireSpeakers(transcriptResult) {
+    const segments = transcriptResult.segments;
+    if (!segments || segments.length === 0) return;
+
+    // Extract unique speaker IDs
+    const speakerIds = [...new Set(segments.map(s => s.speaker).filter(Boolean))];
+    if (speakerIds.length === 0) return;
+
+    // Register known speakers (fire-and-forget, error-isolated)
+    try {
+      SpeakerLabeling.addKnownSpeakers(speakerIds).catch(e => {
+        this._logger.warn('Failed to register known speakers (async):', e);
+      });
+    } catch (e) {
+      this._logger.warn('Failed to call addKnownSpeakers:', e);
+    }
+
+    // Auto-apply saved labels to segments
+    try {
+      transcriptResult.segments = SpeakerLabeling.applyLabelsToSegments(segments);
+    } catch (e) {
+      this._logger.warn('Failed to apply speaker labels:', e);
+    }
+
+    // Emit speaker detection event
+    this.#emitSafe('ai:speakersDetected', { speakerIds });
   }
 
   /**
@@ -104,6 +164,12 @@ class TranscriptionProcessor {
 
     onProgress(0, `Starting transcription (${mode} mode)...`);
 
+    this.#emitSafe('ai:transcriptionStarted', {
+      blobSize: audioBlob.size,
+      mode,
+      language: language || 'auto'
+    });
+
     const transcriptionStart = Date.now();
     try {
       // Attempt transcription with primary service
@@ -120,6 +186,15 @@ class TranscriptionProcessor {
       this._logger.log(
         `Transcription complete: ${segmentCount} segments, ${textLength} chars in ${transcriptionMs}ms`
       );
+
+      this.#wireSpeakers(transcriptResult);
+
+      this.#emitSafe('ai:transcriptionReady', {
+        text: transcriptResult.text,
+        segments: transcriptResult.segments,
+        segmentCount,
+        durationMs: transcriptionMs
+      });
 
       return transcriptResult;
     } catch (transcriptionError) {
@@ -157,12 +232,28 @@ class TranscriptionProcessor {
           });
 
           const fallbackMs = Date.now() - fallbackStart;
+          const segmentCount = transcriptResult.segments?.length || 0;
           this._logger.log(`Fallback to API transcription successful in ${fallbackMs}ms`);
           onProgress(100, 'Transcription complete (via API fallback)');
+
+          this.#wireSpeakers(transcriptResult);
+
+          this.#emitSafe('ai:transcriptionReady', {
+            text: transcriptResult.text,
+            segments: transcriptResult.segments,
+            segmentCount,
+            durationMs: fallbackMs,
+            fallback: true
+          });
 
           return transcriptResult;
         } catch (fallbackError) {
           this._logger.error('API fallback transcription also failed:', fallbackError);
+          this.#emitSafe('ai:transcriptionError', {
+            error: `Both local and API failed. Local: ${transcriptionError.message}. API: ${fallbackError.message}`,
+            mode,
+            fallback: true
+          });
           throw new Error(
             `Both local and API transcription failed. ` +
               `Local error: ${transcriptionError.message}. ` +
@@ -173,6 +264,10 @@ class TranscriptionProcessor {
 
       // Re-throw if not in auto mode or not a local service error
       this._logger.error('Transcription failed:', transcriptionError);
+      this.#emitSafe('ai:transcriptionError', {
+        error: transcriptionError.message,
+        mode
+      });
       throw transcriptionError;
     }
   }

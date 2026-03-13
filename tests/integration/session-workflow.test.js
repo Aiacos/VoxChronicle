@@ -5,6 +5,31 @@
  * the orchestrator — state transitions, call ordering, error propagation,
  * and data flow between services across session lifecycle boundaries.
  */
+
+// Ensure foundry global exists before SpeakerLabeling.mjs is loaded (transitive import via TranscriptionProcessor)
+vi.hoisted(() => {
+  if (!globalThis.foundry) {
+    class MockAppV2 {
+      static DEFAULT_OPTIONS = {};
+      static PARTS = {};
+      constructor() { this.rendered = false; }
+      render() { this.rendered = true; }
+      close() { this.rendered = false; return Promise.resolve(); }
+    }
+    globalThis.foundry = {
+      applications: {
+        api: {
+          ApplicationV2: MockAppV2,
+          HandlebarsApplicationMixin: (Base) => class extends Base {
+            static PARTS = {};
+          }
+        }
+      },
+      utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
+    };
+  }
+});
+
 import { SessionOrchestrator, SessionState } from '../../scripts/orchestration/SessionOrchestrator.mjs';
 
 // ---------------------------------------------------------------------------

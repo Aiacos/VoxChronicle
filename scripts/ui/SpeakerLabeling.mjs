@@ -65,6 +65,13 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   #listenerController = null;
 
+  /**
+   * Callback invoked when the dialog closes
+   * @type {Function|null}
+   * @private
+   */
+  #onClose = null;
+
   /** @override */
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-speaker-labeling',
@@ -92,7 +99,9 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} [options] - Application options
    */
   constructor(options = {}) {
-    super(options);
+    const { onClose, ...appOptions } = options;
+    super(appOptions);
+    this.#onClose = typeof onClose === 'function' ? onClose : null;
     this._loadCurrentLabels();
     this._logger.debug('SpeakerLabeling initialized');
   }
@@ -163,7 +172,17 @@ class SpeakerLabeling extends HandlebarsApplicationMixin(ApplicationV2) {
   async close(options = {}) {
     this._logger.debug('SpeakerLabeling closing');
     this.#listenerController?.abort();
-    return super.close(options);
+    try {
+      return await super.close(options);
+    } finally {
+      if (this.#onClose) {
+        try {
+          this.#onClose();
+        } catch (e) {
+          this._logger.warn('onClose callback failed:', e);
+        }
+      }
+    }
   }
 
   /**

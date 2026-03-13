@@ -29,6 +29,12 @@
       "AudioSourceAuto": "Automatic (try Foundry VTT first, then microphone)",
       "AudioSourceMicrophone": "Browser Microphone",
       "AudioSourceWebRTC": "Foundry VTT WebRTC",
+      "AudioSourceMixed": "Mixed (Microphone + WebRTC)",
+      "HasAudioRecovery": "Audio Recovery Available",
+      "HasAudioRecoveryHint": "Indicates that recoverable audio chunks exist from a previous crash",
+      "PreferredCodec": "Preferred Audio Codec",
+      "PreferredCodecHint": "Audio codec to use for recording. Auto-detect is recommended for best compatibility.",
+      "PreferredCodecAuto": "Auto-detect (recommended)",
       "EchoCancellation": "Echo Cancellation",
       "EchoCancellationHint": "Enable echo cancellation for clearer recordings",
       "NoiseSuppression": "Noise Suppression",
@@ -327,7 +333,14 @@
       "SpeakerUnknown": "Unknown Speaker",
       "ProcessingChunk": "Processing chunk {current} of {total}...",
       "EstimatedTime": "Estimated time remaining: {time}",
-      "Cost": "Estimated cost: ${cost}"
+      "Cost": "Estimated cost: ${cost}",
+      "Started": "Transcription started ({mode} mode)",
+      "Ready": "Transcription ready ({segments} segments, {durationMs}ms)",
+      "Error": "Transcription error: {error}",
+      "FallingBackToAPI": "Falling back to API transcription...",
+      "FallbackComplete": "Transcription complete (via API fallback)",
+      "LanguageDetected": "Language detected: {language}",
+      "ChunkingStarted": "Audio requires chunking: {sizeMB}MB"
     },
     "SpeakerLabeling": {
       "Title": "Speaker Labeling",
@@ -357,6 +370,16 @@
       "HelpQuickAssign": "Use the dropdown to quickly assign a game user's name to a speaker slot.",
       "HelpAutoDetect": "Automatically fills empty speaker slots with game user names in order.",
       "Help": "Help"
+    },
+    "TranscriptReview": {
+      "Title": "Transcript Review",
+      "EditSegment": "Edit Segment",
+      "MapSpeakers": "Map Speakers",
+      "NoTranscript": "No transcript available. Record a session first.",
+      "Timestamp": "Timestamp",
+      "SpeakerUnmapped": "Unmapped Speaker",
+      "EditSaved": "Segment edit saved",
+      "SegmentPlaceholder": "Enter corrected text..."
     },
     "Vocabulary": {
       "Title": "Vocabulary Manager",

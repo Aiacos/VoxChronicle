@@ -203,7 +203,26 @@ class Settings {
       choices: {
         auto: 'VOXCHRONICLE.Settings.AudioSourceAuto',
         microphone: 'VOXCHRONICLE.Settings.AudioSourceMicrophone',
-        webrtc: 'VOXCHRONICLE.Settings.AudioSourceWebRTC'
+        webrtc: 'VOXCHRONICLE.Settings.AudioSourceWebRTC',
+        mixed: 'VOXCHRONICLE.Settings.AudioSourceMixed'
+      },
+      default: 'auto'
+    });
+
+    // Preferred audio codec (client-side)
+    // Auto-detect by default, or force a specific codec
+    game.settings.register(MODULE_ID, 'preferredCodec', {
+      name: 'VOXCHRONICLE.Settings.PreferredCodec',
+      hint: 'VOXCHRONICLE.Settings.PreferredCodecHint',
+      scope: 'client',
+      config: true,
+      type: String,
+      choices: {
+        auto: 'VOXCHRONICLE.Settings.PreferredCodecAuto',
+        'audio/webm;codecs=opus': 'WebM Opus',
+        'audio/mp4;codecs=aac': 'MP4 AAC (Safari)',
+        'audio/mp4': 'MP4',
+        'audio/wav': 'WAV'
       },
       default: 'auto'
     });
@@ -216,6 +235,16 @@ class Settings {
       config: true,
       type: Boolean,
       default: true
+    });
+
+    // Crash recovery flag — set when persisted chunks exist after a crash
+    game.settings.register(MODULE_ID, 'hasAudioRecovery', {
+      name: 'VOXCHRONICLE.Settings.HasAudioRecovery',
+      hint: 'VOXCHRONICLE.Settings.HasAudioRecoveryHint',
+      scope: 'client',
+      config: false,
+      type: Boolean,
+      default: false
     });
 
     // Enable noise suppression
@@ -915,8 +944,12 @@ class Settings {
    * @static
    */
   static getAudioSettings() {
+    const preferredCodec = Settings.get('preferredCodec');
+    const source = Settings.get('audioCaptureSource');
     return {
-      source: Settings.get('audioCaptureSource'),
+      source,
+      captureMode: source === 'auto' ? 'microphone' : source,
+      preferredCodec: preferredCodec === 'auto' ? null : preferredCodec,
       echoCancellation: Settings.get('echoCancellation'),
       noiseSuppression: Settings.get('noiseSuppression')
     };

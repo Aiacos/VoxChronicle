@@ -786,6 +786,39 @@ describe('SpeakerLabeling', () => {
     it('should close without error', async () => {
       await expect(labeling.close()).resolves.not.toThrow();
     });
+
+    it('should invoke onClose callback when provided', async () => {
+      const onClose = vi.fn();
+      const instance = new SpeakerLabeling({ onClose });
+      await instance.close();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not throw if onClose callback throws', async () => {
+      const onClose = vi.fn(() => { throw new Error('callback boom'); });
+      const instance = new SpeakerLabeling({ onClose });
+      await expect(instance.close()).resolves.not.toThrow();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not invoke onClose if non-function was passed', async () => {
+      const instance = new SpeakerLabeling({ onClose: 'not-a-function' });
+      await expect(instance.close()).resolves.not.toThrow();
+    });
+
+    it('should invoke onClose even if super.close() throws (finally block)', async () => {
+      const onClose = vi.fn();
+      const instance = new SpeakerLabeling({ onClose });
+      // Override super.close to throw
+      const originalClose = Object.getPrototypeOf(Object.getPrototypeOf(instance)).close;
+      Object.getPrototypeOf(Object.getPrototypeOf(instance)).close = vi.fn().mockRejectedValue(new Error('close failed'));
+      try {
+        await instance.close().catch(() => {});
+      } finally {
+        Object.getPrototypeOf(Object.getPrototypeOf(instance)).close = originalClose;
+      }
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   // --- Static methods ---

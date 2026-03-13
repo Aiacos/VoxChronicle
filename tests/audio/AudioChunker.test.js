@@ -412,4 +412,77 @@ describe('AudioChunker', () => {
       expect(chunks.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  // ── EventBus integration ──────────────────────────────────────────────
+  describe('EventBus integration', () => {
+    let eventBus;
+
+    beforeEach(() => {
+      eventBus = { emit: vi.fn() };
+    });
+
+    it('accepts eventBus in constructor options', () => {
+      const chunker = new AudioChunker({ eventBus });
+      expect(chunker._eventBus).toBe(eventBus);
+    });
+
+    it('works without eventBus (optional)', () => {
+      const chunker = new AudioChunker();
+      expect(chunker._eventBus).toBeNull();
+    });
+
+    it('emits audio:chunkingStarted when split begins', async () => {
+      const chunker = new AudioChunker({ eventBus });
+      const blob = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE + 1024)], { type: 'audio/webm' });
+      await chunker.split(blob);
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        'audio:chunkingStarted',
+        expect.objectContaining({ totalSize: blob.size })
+      );
+    });
+
+    it('emits audio:chunkCreated for each chunk produced', async () => {
+      const chunker = new AudioChunker({ eventBus });
+      // Use 2x max size to ensure at least 2 chunks (small remainder gets merged)
+      const blob = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE * 2)], { type: 'audio/webm' });
+      await chunker.split(blob);
+      const chunkEvents = eventBus.emit.mock.calls.filter(c => c[0] === 'audio:chunkCreated');
+      expect(chunkEvents.length).toBeGreaterThanOrEqual(2);
+      expect(chunkEvents[0][1]).toEqual(expect.objectContaining({ index: 0 }));
+    });
+
+    it('emits audio:chunkingComplete when split finishes', async () => {
+      const chunker = new AudioChunker({ eventBus });
+      const blob = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE + 1024)], { type: 'audio/webm' });
+      await chunker.split(blob);
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        'audio:chunkingComplete',
+        expect.objectContaining({ chunkCount: expect.any(Number) })
+      );
+    });
+
+    it('emits events during splitFromChunks too', async () => {
+      const chunker = new AudioChunker({ eventBus });
+      const chunk1 = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE - 1024)], { type: 'audio/webm' });
+      const chunk2 = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE - 1024)], { type: 'audio/webm' });
+      await chunker.splitFromChunks([chunk1, chunk2], 'audio/webm');
+      expect(eventBus.emit).toHaveBeenCalledWith('audio:chunkingStarted', expect.any(Object));
+      expect(eventBus.emit).toHaveBeenCalledWith('audio:chunkingComplete', expect.any(Object));
+    });
+
+    it('does not throw when eventBus.emit throws', async () => {
+      eventBus.emit = vi.fn(() => { throw new Error('bus broken'); });
+      const chunker = new AudioChunker({ eventBus });
+      const blob = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE + 1024)], { type: 'audio/webm' });
+      // Should not throw despite eventBus failure
+      await expect(chunker.split(blob)).resolves.toBeDefined();
+    });
+
+    it('does not emit events when no eventBus provided', async () => {
+      const chunker = new AudioChunker();
+      const blob = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE + 1024)], { type: 'audio/webm' });
+      // Should not throw
+      await expect(chunker.split(blob)).resolves.toBeDefined();
+    });
+  });
 });

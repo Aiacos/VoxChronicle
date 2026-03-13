@@ -29,6 +29,12 @@
       "AudioSourceAuto": "",
       "AudioSourceMicrophone": "",
       "AudioSourceWebRTC": "",
+      "AudioSourceMixed": "Mixed (Microphone + WebRTC)",
+      "HasAudioRecovery": "Audio Recovery Available",
+      "HasAudioRecoveryHint": "Indicates that recoverable audio chunks exist from a previous crash",
+      "PreferredCodec": "",
+      "PreferredCodecHint": "",
+      "PreferredCodecAuto": "",
       "EchoCancellation": "",
       "EchoCancellationHint": "",
       "NoiseSuppression": "",
@@ -327,7 +333,14 @@
       "SpeakerUnknown": "",
       "ProcessingChunk": "",
       "EstimatedTime": "",
-      "Cost": ""
+      "Cost": "",
+      "Started": "",
+      "Ready": "",
+      "Error": "",
+      "FallingBackToAPI": "",
+      "FallbackComplete": "",
+      "LanguageDetected": "",
+      "ChunkingStarted": ""
     },
     "SpeakerLabeling": {
       "Title": "",
@@ -357,6 +370,16 @@
       "HelpQuickAssign": "",
       "HelpAutoDetect": "",
       "Help": ""
+    },
+    "TranscriptReview": {
+      "Title": "",
+      "EditSegment": "",
+      "MapSpeakers": "",
+      "NoTranscript": "",
+      "Timestamp": "",
+      "SpeakerUnmapped": "",
+      "EditSaved": "",
+      "SegmentPlaceholder": ""
     },
     "Vocabulary": {
       "Title": "",

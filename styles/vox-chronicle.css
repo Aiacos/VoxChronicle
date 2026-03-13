@@ -334,6 +334,119 @@ form .form-group .vox-chronicle-validate-button {
 }
 
 /* ==========================================================================
+   Transcript Review Component
+   ========================================================================== */
+
+.vox-chronicle-transcript-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.vox-chronicle-transcript-review__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--vox-color-border);
+}
+
+.vox-chronicle-transcript-review__title {
+  margin: 0;
+  font-size: var(--vox-font-size-lg, 1.1em);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vox-chronicle-transcript-review__map-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--vox-font-size-sm, 0.85em);
+  cursor: pointer;
+}
+
+.vox-chronicle-transcript-review__segments {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.vox-chronicle-transcript-review__segment {
+  display: grid;
+  grid-template-columns: 40px auto 1fr;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  align-items: baseline;
+}
+
+.vox-chronicle-transcript-review__segment:hover {
+  background: var(--vox-color-surface-hover, rgba(255, 255, 255, 0.05));
+}
+
+.vox-chronicle-transcript-review__timestamp {
+  font-size: var(--vox-font-size-sm, 0.8em);
+  opacity: 0.6;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.vox-chronicle-transcript-review__speaker {
+  font-weight: bold;
+  font-size: var(--vox-font-size-sm, 0.85em);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+/* Speaker color assignments */
+.vox-chronicle-transcript-review__speaker--color-0 { color: #4fc3f7; }
+.vox-chronicle-transcript-review__speaker--color-1 { color: #81c784; }
+.vox-chronicle-transcript-review__speaker--color-2 { color: #ffb74d; }
+.vox-chronicle-transcript-review__speaker--color-3 { color: #f06292; }
+.vox-chronicle-transcript-review__speaker--color-4 { color: #ba68c8; }
+.vox-chronicle-transcript-review__speaker--color-5 { color: #4dd0e1; }
+.vox-chronicle-transcript-review__speaker--color-6 { color: #aed581; }
+.vox-chronicle-transcript-review__speaker--color-7 { color: #ff8a65; }
+
+.vox-chronicle-transcript-review__text {
+  font-size: var(--vox-font-size-base, 0.9em);
+  line-height: 1.4;
+  cursor: text;
+}
+
+.vox-chronicle-transcript-review__text:focus {
+  outline: 1px solid var(--vox-color-primary, #4fc3f7);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.vox-chronicle-transcript-review__text--editing {
+  background: var(--vox-color-surface-hover, rgba(255, 255, 255, 0.08));
+}
+
+.vox-chronicle-transcript-review__empty {
+  text-align: center;
+  opacity: 0.5;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.vox-chronicle-transcript-review__empty i {
+  font-size: 2em;
+  opacity: 0.4;
+}
+
+/* ==========================================================================
    Entity Preview Component
    ========================================================================== */
 
@@ -1445,6 +1558,8 @@ button.vox-chronicle-btn--danger:hover:not(:disabled) {
   .vox-chronicle-speaker-labeling .vox-chronicle-header-quick-assign { display: none; }
   .vox-chronicle-entity-preview .vox-chronicle-entity-row { grid-template-columns: auto 1fr; }
   .vox-chronicle-entity-preview .vox-chronicle-entity-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .vox-chronicle-transcript-review__segment { grid-template-columns: 36px 1fr; }
+  .vox-chronicle-transcript-review__speaker { grid-column: 1 / -1; max-width: none; }
 }
 
 @media (max-width: 400px) {

@@ -29,6 +29,12 @@
       "AudioSourceAuto": "Automatisch (Foundry VTT zuerst, dann Mikrofon)",
       "AudioSourceMicrophone": "Browser-Mikrofon",
       "AudioSourceWebRTC": "Foundry VTT WebRTC",
+      "AudioSourceMixed": "Gemischt (Mikrofon + WebRTC)",
+      "HasAudioRecovery": "Audio-Wiederherstellung verfügbar",
+      "HasAudioRecoveryHint": "Zeigt an, dass wiederherstellbare Audio-Chunks von einem früheren Absturz vorhanden sind",
+      "PreferredCodec": "Bevorzugter Audio-Codec",
+      "PreferredCodecHint": "Audio-Codec für die Aufnahme. Automatische Erkennung wird für beste Kompatibilität empfohlen.",
+      "PreferredCodecAuto": "Automatisch erkennen (empfohlen)",
       "EchoCancellation": "Echounterdrückung",
       "EchoCancellationHint": "Echounterdrückung für klarere Aufnahmen aktivieren",
       "NoiseSuppression": "Rauschunterdrückung",
@@ -327,7 +333,14 @@
       "SpeakerUnknown": "Unbekannter Sprecher",
       "ProcessingChunk": "Verarbeite Abschnitt {current} von {total}...",
       "EstimatedTime": "Geschätzte verbleibende Zeit: {time}",
-      "Cost": "Geschätzte Kosten: ${cost}"
+      "Cost": "Geschätzte Kosten: ${cost}",
+      "Started": "Transkription gestartet ({mode}-Modus)",
+      "Ready": "Transkription bereit ({segments} Segmente, {durationMs}ms)",
+      "Error": "Transkriptionsfehler: {error}",
+      "FallingBackToAPI": "Wechsel zur API-Transkription...",
+      "FallbackComplete": "Transkription abgeschlossen (via API-Fallback)",
+      "LanguageDetected": "Sprache erkannt: {language}",
+      "ChunkingStarted": "Audio erfordert Aufteilung: {sizeMB}MB"
     },
     "SpeakerLabeling": {
       "Title": "Sprecherzuordnung",
@@ -357,6 +370,16 @@
       "HelpQuickAssign": "Verwenden Sie das Dropdown-Menü, um einem Sprecherplatz schnell den Namen eines Spielbenutzers zuzuweisen.",
       "HelpAutoDetect": "Füllt leere Sprecherplätze automatisch mit Spielbenutzernamen in Reihenfolge.",
       "Help": "Hilfe"
+    },
+    "TranscriptReview": {
+      "Title": "Transkript-Überprüfung",
+      "EditSegment": "Segment bearbeiten",
+      "MapSpeakers": "Sprecher zuordnen",
+      "NoTranscript": "Kein Transkript verfügbar. Nehmen Sie zuerst eine Sitzung auf.",
+      "Timestamp": "Zeitstempel",
+      "SpeakerUnmapped": "Nicht zugeordneter Sprecher",
+      "EditSaved": "Segmentbearbeitung gespeichert",
+      "SegmentPlaceholder": "Korrigierten Text eingeben..."
     },
     "Vocabulary": {
       "Title": "Vokabelverwaltung",
