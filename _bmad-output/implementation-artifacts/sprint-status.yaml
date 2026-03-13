@@ -1,4 +1,4 @@
-# generated: 2026-03-08
+# generated: 2026-03-13
 # project: VoxChronicle
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-03-08
+generated: 2026-03-13
 project: VoxChronicle
 project_key: NOKEY
 tracking_system: file-system
@@ -65,8 +65,8 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Assistenza AI Live Contestuale
-  epic-4: backlog
-  4-1-avvio-sessione-live-e-ciclo-ai: backlog
+  epic-4: in-progress
+  4-1-avvio-sessione-live-e-ciclo-ai: done
   4-2-suggerimenti-contestuali-da-journal-e-rag: backlog
   4-3-rules-qa-con-compendi-foundry: backlog
   4-4-rilevamento-tipo-scena: backlog

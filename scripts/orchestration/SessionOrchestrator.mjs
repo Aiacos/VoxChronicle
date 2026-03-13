@@ -110,6 +110,8 @@ class SessionOrchestrator {
   _aiAnalysisErrorNotified = false;
   _liveCycleTimer = null;
   _liveBatchDuration = 10000;
+  _adaptiveChunkingEnabled = true;
+  _lastSpeechActivityTime = null;
   _liveTranscript = [];
   _silenceStartTime = null;
   _silenceThreshold = 30000;
@@ -136,6 +138,7 @@ class SessionOrchestrator {
   _imageProcessor = null;
   _kankaPublisher = null;
   _options = {};
+  _eventBus = null;
 
   /**
    * Create a new SessionOrchestrator instance
@@ -155,6 +158,7 @@ class SessionOrchestrator {
     this._chapterTracker = services.chapterTracker || null;
     this._sceneDetector = services.sceneDetector || null;
     this._sessionAnalytics = services.sessionAnalytics || null;
+    this._eventBus = services.eventBus || null;
     this._options = { ...DEFAULT_SESSION_OPTIONS, ...options };
     this._initializeProcessors();
     this._logger.debug('SessionOrchestrator initialized');
@@ -858,6 +862,8 @@ class SessionOrchestrator {
     this._logger.log(`Starting live mode (batch interval: ${batchDuration}ms)...`);
     this._liveMode = true;
     this._liveBatchDuration = batchDuration;
+    this._adaptiveChunkingEnabled = game?.settings?.get?.('vox-chronicle', 'adaptiveChunkingEnabled') ?? true;
+    this._lastSpeechActivityTime = null;
     this._liveTranscript = [];
     this._silenceStartTime = null;
     this._lastAISuggestions = null;
@@ -902,6 +908,7 @@ class SessionOrchestrator {
 
       await this._audioRecorder.startRecording(options.recordingOptions || {});
       this._updateState(SessionState.LIVE_LISTENING);
+      this._emitSafe('session:liveStarted', { batchDuration: this._liveBatchDuration, timestamp: Date.now() });
       this._scheduleLiveCycle();
 
       // Register scene change hook for auto-updating chapter during live mode
@@ -1390,6 +1397,7 @@ class SessionOrchestrator {
     this._updateState(SessionState.IDLE);
     const stopMs = Date.now() - stopStart;
     this._logger.log(`Live mode stopped (shutdown: ${stopMs}ms, force-aborted: ${forceAborted})`);
+    this._emitSafe('session:liveStopped', { shutdownMs: stopMs, forceAborted, timestamp: Date.now() });
     this._isStopping = false;
     this._callbacks.onSessionEnd?.();
     return this._currentSession;
@@ -1462,6 +1470,7 @@ class SessionOrchestrator {
     this._aiSuggestionConsecutiveErrors = 0;
     this._aiSuggestionsPaused = false;
     this._silenceStartTime = null;
+    this._lastSpeechActivityTime = null;
     this._lastAISuggestions = null;
     this._lastOffTrackStatus = null;
     this._consecutiveLiveCycleErrors = 0;
@@ -1481,7 +1490,28 @@ class SessionOrchestrator {
    */
   _scheduleLiveCycle() {
     if (!this._liveMode) return;
-    this._liveCycleTimer = setTimeout(() => this._liveCycle(), this._liveBatchDuration);
+    const duration = this._getAdaptiveBatchDuration();
+    this._liveCycleTimer = setTimeout(() => this._liveCycle(), duration);
+  }
+
+  /**
+   * Calculate adaptive batch duration based on speech activity.
+   * Shorter intervals (~5-10s) during active speech for faster suggestions.
+   * Longer intervals (~30-60s) during silence to reduce API calls.
+   * @returns {number} Batch duration in ms (5000-60000)
+   * @private
+   */
+  _getAdaptiveBatchDuration() {
+    if (!this._adaptiveChunkingEnabled) return this._liveBatchDuration;
+    if (!this._lastSpeechActivityTime) return this._liveBatchDuration;
+
+    const silenceMs = Date.now() - this._lastSpeechActivityTime;
+
+    if (silenceMs > 45000) return 60000;   // Long silence: 60s
+    if (silenceMs > 30000) return 45000;   // Medium-long silence: 45s
+    if (silenceMs > 15000) return 30000;   // Medium silence: 30s
+    if (silenceMs < 5000) return 5000;     // Active speech: 5s
+    return this._liveBatchDuration;         // Default: configured batch duration
   }
 
   /**
@@ -1566,6 +1596,7 @@ class SessionOrchestrator {
             }
 
             // Reset silence detector timer since we got speech
+            this._lastSpeechActivityTime = Date.now();
             if (this._aiAssistant) {
               this._aiAssistant.recordActivityForSilenceDetection();
             }
@@ -1860,6 +1891,7 @@ class SessionOrchestrator {
       const analysisMs = Date.now() - analysisStart;
       if (analysis?.suggestions) {
         this._lastAISuggestions = analysis.suggestions;
+        this._emitSafe('ai:suggestionReceived', { suggestions: analysis.suggestions, analysisMs, timestamp: Date.now() });
         this._logger.log(`AI suggestions received: ${analysis.suggestions.length} suggestion(s) in ${analysisMs}ms`);
         for (const s of analysis.suggestions) {
           const preview = (s.content || '').substring(0, 100);
@@ -1973,6 +2005,16 @@ class SessionOrchestrator {
         });
       }
     }
+  }
+
+  /**
+   * Safely emit an event on the EventBus, swallowing errors.
+   * @param {string} channel - Event channel
+   * @param {object} data - Event payload
+   * @private
+   */
+  _emitSafe(channel, data) {
+    try { this._eventBus?.emit(channel, data); } catch (e) { this._logger.warn('EventBus emit failed:', e); }
   }
 
   /**

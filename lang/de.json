@@ -109,6 +109,8 @@
       "MultiLanguageModeHintVC": "Transkription mehrerer Sprachen in derselben Sitzung aktivieren",
       "TranscriptionBatchDuration": "Live-Transkriptionsintervall",
       "TranscriptionBatchDurationHintVC": "Wie oft während des Live-Modus transkribiert wird (5-30 Sekunden)",
+      "AdaptiveChunking": "Adaptive Chunking",
+      "AdaptiveChunkingHint": "Transkriptionsintervall automatisch an Sprachaktivitat anpassen (kurzer bei Gesprach, langer bei Stille)",
       "OffTrackSensitivity": "Abweichungsempfindlichkeit",
       "OffTrackSensitivityHint": "Wie empfindlich die KI auf abschweifende Spieler reagiert",
       "SensitivityLowVC": "Niedrig",

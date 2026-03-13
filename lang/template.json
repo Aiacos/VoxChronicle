@@ -109,6 +109,8 @@
       "MultiLanguageModeHintVC": "",
       "TranscriptionBatchDuration": "",
       "TranscriptionBatchDurationHintVC": "",
+      "AdaptiveChunking": "",
+      "AdaptiveChunkingHint": "",
       "OffTrackSensitivity": "",
       "OffTrackSensitivityHint": "",
       "SensitivityLowVC": "",

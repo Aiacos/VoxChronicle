@@ -109,6 +109,8 @@
       "MultiLanguageModeHintVC": "[EN] Enable transcription of multiple languages in the same session",
       "TranscriptionBatchDuration": "[EN] Live Transcription Interval",
       "TranscriptionBatchDurationHintVC": "[EN] How often to transcribe during live mode (5-30 seconds)",
+      "AdaptiveChunking": "Adaptive Chunking",
+      "AdaptiveChunkingHint": "Adjust transcription interval based on speech activity",
       "OffTrackSensitivity": "[EN] Off-Track Sensitivity",
       "OffTrackSensitivityHint": "[EN] How sensitive the AI is to detecting off-track players",
       "SensitivityLowVC": "[EN] Low",

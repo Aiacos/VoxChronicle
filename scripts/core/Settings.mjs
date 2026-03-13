@@ -434,6 +434,16 @@ class Settings {
       default: 10000
     });
 
+    // Adaptive chunking for live mode (adjusts batch duration based on speech activity)
+    game.settings.register(MODULE_ID, 'adaptiveChunkingEnabled', {
+      name: 'VOXCHRONICLE.Settings.AdaptiveChunking',
+      hint: 'VOXCHRONICLE.Settings.AdaptiveChunkingHint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true
+    });
+
     // Off-track sensitivity level
     game.settings.register(MODULE_ID, 'offTrackSensitivity', {
       name: 'VOXCHRONICLE.Settings.OffTrackSensitivity',

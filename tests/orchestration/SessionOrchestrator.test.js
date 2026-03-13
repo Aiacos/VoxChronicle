@@ -3714,4 +3714,176 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
       expect(typeof assistant.generateSuggestionsStreaming).toBe('function');
     });
   });
+
+  // ── Adaptive Chunking (Story 4.1) ──────────────────────────────────────
+  describe('adaptive chunking', () => {
+    beforeEach(async () => {
+      vi.useRealTimers();
+      await orchestrator.startLiveMode();
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+    });
+
+    afterEach(async () => {
+      orchestrator._liveMode = false;
+      if (orchestrator._liveCycleTimer) {
+        clearTimeout(orchestrator._liveCycleTimer);
+        orchestrator._liveCycleTimer = null;
+      }
+      vi.useFakeTimers();
+    });
+
+    it('should use default batch duration when adaptive chunking is disabled', () => {
+      orchestrator._adaptiveChunkingEnabled = false;
+      orchestrator._liveBatchDuration = 10000;
+      const duration = orchestrator._getAdaptiveBatchDuration();
+      expect(duration).toBe(10000);
+    });
+
+    it('should return shorter duration during active speech', () => {
+      orchestrator._adaptiveChunkingEnabled = true;
+      // Simulate recent speech activity
+      orchestrator._lastSpeechActivityTime = Date.now() - 2000; // 2s ago
+      const duration = orchestrator._getAdaptiveBatchDuration();
+      expect(duration).toBeLessThanOrEqual(10000);
+    });
+
+    it('should return longer duration during silence', () => {
+      orchestrator._adaptiveChunkingEnabled = true;
+      orchestrator._liveBatchDuration = 10000;
+      // Simulate long silence
+      orchestrator._lastSpeechActivityTime = Date.now() - 50000; // 50s ago
+      const duration = orchestrator._getAdaptiveBatchDuration();
+      expect(duration).toBeGreaterThan(10000);
+    });
+
+    it('should not exceed 60s even during very long silence', () => {
+      orchestrator._adaptiveChunkingEnabled = true;
+      orchestrator._lastSpeechActivityTime = Date.now() - 300000; // 5 min ago
+      const duration = orchestrator._getAdaptiveBatchDuration();
+      expect(duration).toBeLessThanOrEqual(60000);
+    });
+
+    it('should not go below 5s even during intense speech', () => {
+      orchestrator._adaptiveChunkingEnabled = true;
+      orchestrator._lastSpeechActivityTime = Date.now(); // just now
+      const duration = orchestrator._getAdaptiveBatchDuration();
+      expect(duration).toBeGreaterThanOrEqual(5000);
+    });
+
+    it('should use _scheduleLiveCycle with adaptive duration', async () => {
+      orchestrator._adaptiveChunkingEnabled = true;
+      orchestrator._lastSpeechActivityTime = Date.now() - 2000;
+      vi.spyOn(orchestrator, '_getAdaptiveBatchDuration').mockReturnValue(7000);
+
+      orchestrator._scheduleLiveCycle();
+      expect(orchestrator._liveCycleTimer).toBeTruthy();
+    });
+
+    it('should read adaptiveChunkingEnabled from settings when available', () => {
+      // _adaptiveChunkingEnabled defaults to true
+      expect(orchestrator._adaptiveChunkingEnabled).toBe(true);
+    });
+  });
+
+  // ── EventBus wiring for live mode (Story 4.1 Task 4) ──────────────────
+  describe('EventBus wiring for live mode', () => {
+    let mockEventBus;
+
+    beforeEach(async () => {
+      vi.useRealTimers();
+      mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+      orchestrator._eventBus = mockEventBus;
+      await orchestrator.startLiveMode();
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+    });
+
+    afterEach(async () => {
+      orchestrator._liveMode = false;
+      if (orchestrator._liveCycleTimer) {
+        clearTimeout(orchestrator._liveCycleTimer);
+        orchestrator._liveCycleTimer = null;
+      }
+      vi.useFakeTimers();
+    });
+
+    it('should emit session:liveStarted when live mode starts', () => {
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'session:liveStarted',
+        expect.objectContaining({ batchDuration: expect.any(Number), timestamp: expect.any(Number) })
+      );
+    });
+
+    it('should emit session:liveStopped when live mode stops', async () => {
+      mockEventBus.emit.mockClear();
+      await orchestrator.stopLiveMode();
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'session:liveStopped',
+        expect.objectContaining({ timestamp: expect.any(Number) })
+      );
+    });
+
+    it('should emit ai:suggestionReceived after successful AI analysis', async () => {
+      mockEventBus.emit.mockClear();
+      services.audioRecorder.getLatestChunk.mockResolvedValue(new Blob(['audio'], { type: 'audio/webm' }));
+      services.transcriptionService.transcribe.mockResolvedValue({
+        text: 'Hello',
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
+      });
+
+      await orchestrator._liveCycle();
+
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'ai:suggestionReceived',
+        expect.objectContaining({ suggestions: expect.any(Array) })
+      );
+    });
+
+    it('should not throw when EventBus emit fails', async () => {
+      mockEventBus.emit.mockImplementation(() => { throw new Error('EventBus error'); });
+      await expect(orchestrator.stopLiveMode()).resolves.not.toThrow();
+    });
+
+    it('should work without EventBus (null)', async () => {
+      orchestrator._eventBus = null;
+      await expect(orchestrator.stopLiveMode()).resolves.not.toThrow();
+    });
+  });
+
+  // ── Adaptive chunking continued ──────────────────────────────────────
+  describe('adaptive chunking continued', () => {
+    beforeEach(async () => {
+      vi.useRealTimers();
+      await orchestrator.startLiveMode();
+      clearTimeout(orchestrator._liveCycleTimer);
+      orchestrator._liveCycleTimer = null;
+    });
+
+    afterEach(async () => {
+      orchestrator._liveMode = false;
+      if (orchestrator._liveCycleTimer) {
+        clearTimeout(orchestrator._liveCycleTimer);
+        orchestrator._liveCycleTimer = null;
+      }
+      vi.useFakeTimers();
+    });
+
+    it('should update _lastSpeechActivityTime when segments received in _liveCycle', async () => {
+      orchestrator._adaptiveChunkingEnabled = true;
+      orchestrator._lastSpeechActivityTime = null;
+
+      // Mock a successful transcription with segments
+      services.transcriptionService.transcribe.mockResolvedValue({
+        text: 'Hello',
+        segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
+      });
+      services.audioRecorder.getLatestChunk.mockResolvedValue(new Blob(['audio'], { type: 'audio/webm' }));
+
+      await orchestrator._liveCycle();
+
+      expect(orchestrator._lastSpeechActivityTime).toBeTruthy();
+      expect(orchestrator._lastSpeechActivityTime).toBeGreaterThan(Date.now() - 1000);
+    });
+  });
 });

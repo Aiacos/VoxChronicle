@@ -109,6 +109,8 @@
       "MultiLanguageModeHintVC": "Abilita la trascrizione di piu lingue nella stessa sessione",
       "TranscriptionBatchDuration": "Intervallo Trascrizione Live",
       "TranscriptionBatchDurationHintVC": "Frequenza di trascrizione durante la modalita live (5-30 secondi)",
+      "AdaptiveChunking": "Chunking Adattivo",
+      "AdaptiveChunkingHint": "Regola automaticamente l'intervallo di trascrizione in base all'attivita' vocale (piu' breve durante la conversazione, piu' lungo durante il silenzio)",
       "OffTrackSensitivity": "Sensibilita Fuori Tema",
       "OffTrackSensitivityHint": "Quanto l'IA e sensibile nel rilevare giocatori fuori tema",
       "SensitivityLowVC": "Bassa",
