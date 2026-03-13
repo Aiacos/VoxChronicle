@@ -199,4 +199,16 @@ describe('OpenAITranscriptionProvider', () => {
       await expect(provider.transcribe(audioBlob)).rejects.toThrow('Transcription failed');
     });
   });
+
+  describe('queueCategory (Story 2.3)', () => {
+    it('should pass queueCategory "transcription" to postFormData()', async () => {
+      mockClient.postFormData.mockResolvedValue({ text: 'hello', segments: [] });
+      await provider.transcribe(audioBlob);
+      expect(mockClient.postFormData).toHaveBeenCalledWith(
+        '/audio/transcriptions',
+        expect.any(FormData),
+        expect.objectContaining({ queueCategory: 'transcription' })
+      );
+    });
+  });
 });

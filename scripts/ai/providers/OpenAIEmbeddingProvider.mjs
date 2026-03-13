@@ -24,7 +24,6 @@ export class OpenAIEmbeddingProvider extends EmbeddingProvider {
     super();
     this.#client = new OpenAIClient(apiKey, {
       timeout: options.timeout ?? 120000,
-      ...options,
     });
   }
 
@@ -52,6 +51,7 @@ export class OpenAIEmbeddingProvider extends EmbeddingProvider {
 
     const response = await this.#client.post('/embeddings', body, {
       signal: options.abortSignal,
+      queueCategory: 'embedding',
     });
 
     const embedding = response?.data?.[0]?.embedding;

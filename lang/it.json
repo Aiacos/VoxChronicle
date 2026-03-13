@@ -1172,6 +1172,23 @@
         "InvalidTransition": "Transizione non valida: evento \"{event}\" non valido nello stato \"{state}\"",
         "GuardFailed": "Transizione bloccata dalla condizione di guardia"
       }
+    },
+    "Stream": {
+      "Started": "Streaming avviato",
+      "Completed": "Streaming completato ({charCount} caratteri, {duration}ms)",
+      "Cancelled": "Streaming annullato dall'utente",
+      "Error": "Errore streaming: {error}",
+      "FirstToken": "Primo token ricevuto in {latency}ms"
+    },
+    "Cache": {
+      "Hit": "Cache trovata: {key}",
+      "Miss": "Cache mancante: {key}",
+      "Invalidated": "Cache invalidata: {prefix}",
+      "Stats": "Statistiche cache — Percentuale successo: {rate}%, Dimensione: {size}"
+    },
+    "Queue": {
+      "CategoryFull": "Coda richieste piena per la categoria {category}",
+      "Parallel": "Elaborazione di {count} code di richieste parallele"
     }
   }
 }

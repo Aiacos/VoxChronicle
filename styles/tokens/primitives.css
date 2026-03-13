@@ -1,0 +1,65 @@
+/**
+ * VoxChronicle Design Tokens — Layer 1: Primitives
+ *
+ * Raw color palette, spacing scale, typography, transitions, and radii.
+ * These values are NOT used directly in component CSS — use semantic or
+ * component tokens instead. The -500 variants match current CSS values
+ * (legacy baseline); -400 variants are future UX spec targets.
+ *
+ * @layer primitives
+ */
+
+:root {
+  /* === Color Palette === */
+
+  /* Greens */
+  --vox-green-400: #22c55e;
+  --vox-green-500: #06d6a0;  /* legacy compat — current baseline */
+
+  /* Reds */
+  --vox-red-400: #ef4444;
+  --vox-red-500: #ef233c;    /* legacy compat — current baseline */
+
+  /* Ambers */
+  --vox-amber-400: #f59e0b;
+  --vox-amber-500: #fca311;  /* legacy compat — current baseline */
+
+  /* Blues / Cyans */
+  --vox-cyan-400: #4cc9f0;
+  --vox-blue-300: #6ab4ff;
+  --vox-blue-400: #4a9eff;
+
+  /* Purples */
+  --vox-purple-400: #8b5cf6;
+  --vox-purple-500: #9b59b6; /* legacy compat — current baseline */
+
+  /* Grays */
+  --vox-gray-400: #9e9e9e;
+  --vox-gray-500: #6b7280;
+
+  /* === Spacing Scale === */
+  --vox-space-xs: 4px;
+  --vox-space-sm: 8px;
+  --vox-space-md: 12px;
+  --vox-space-lg: 16px;
+  --vox-space-xl: 24px;
+
+  /* === Typography Scale === */
+  --vox-font-size-xs: 0.65em;
+  --vox-font-size-sm: 0.75em;
+  --vox-font-size-md: 0.85em;
+  --vox-font-size-base: 0.9em;
+  --vox-font-size-lg: 1em;
+
+  /* === Transition Durations === */
+  --vox-transition-fast: 150ms;
+  --vox-transition-base: 200ms;
+  --vox-transition-normal: 300ms;
+
+  /* === Border Radii === */
+  --vox-radius-xs: 2px;
+  --vox-radius-sm: 3px;
+  --vox-radius-md: 4px;
+  --vox-radius-lg: 10px;
+  --vox-radius-xl: 12px;
+}

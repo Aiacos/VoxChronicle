@@ -171,4 +171,18 @@ describe('OpenAIImageProvider', () => {
       await expect(provider.generateImage('test')).rejects.toThrow('Image generation failed');
     });
   });
+
+  describe('queueCategory (Story 2.3)', () => {
+    it('should pass queueCategory "image" to post()', async () => {
+      mockClient.post.mockResolvedValue({
+        data: [{ b64_json: 'base64data' }],
+      });
+      await provider.generateImage('a hero');
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/images/generations',
+        expect.any(Object),
+        expect.objectContaining({ queueCategory: 'image' })
+      );
+    });
+  });
 });

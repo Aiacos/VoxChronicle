@@ -39,6 +39,10 @@ import { OpenAITranscriptionProvider } from '../ai/providers/OpenAITranscription
 import { OpenAIImageProvider } from '../ai/providers/OpenAIImageProvider.mjs';
 import { OpenAIEmbeddingProvider } from '../ai/providers/OpenAIEmbeddingProvider.mjs';
 import { ProviderRegistry } from '../ai/providers/ProviderRegistry.mjs';
+// Cache L2 decorators and shared EventBus (Story 2.3)
+import { CachingChatDecorator, CachingEmbeddingDecorator } from '../ai/providers/CachingProviderDecorator.mjs';
+import { CacheManager } from '../utils/CacheManager.mjs';
+import { eventBus } from './EventBus.mjs';
 
 // Create logger instance for VoxChronicle
 const logger = Logger.createChild('VoxChronicle');
@@ -113,6 +117,14 @@ class VoxChronicle {
     /** @type {object | null} Silence detector for autonomous suggestions */
     this.silenceDetector = null;
 
+    // Cache instances (Story 2.3)
+    /** @type {CacheManager|null} L2 provider cache */
+    this._l2Cache = null;
+    /** @type {CacheManager|null} L1 suggestions cache */
+    this._l1SuggestionsCache = null;
+    /** @type {CacheManager|null} L1 rules cache */
+    this._l1RulesCache = null;
+
     // State tracking
     /** @type {boolean} Whether the module is fully initialized */
     this.isInitialized = false;
@@ -146,7 +158,23 @@ class VoxChronicle {
       if (VoxChronicle.#instance._updateSettingHookId != null) {
         Hooks.off('updateSetting', VoxChronicle.#instance._updateSettingHookId);
       }
-      VoxChronicle.#instance.isInitialized = false;
+      // Clean up EventBus listeners on narrator services to prevent memory leaks
+      VoxChronicle.#instance.aiAssistant?.destroy?.();
+      VoxChronicle.#instance.rulesReference?.destroy?.();
+      // Clear all caches (L2 + L1) — Story 2.3
+      VoxChronicle.#instance._l2Cache?.clear();
+      VoxChronicle.#instance._l1SuggestionsCache?.clear();
+      VoxChronicle.#instance._l1RulesCache?.clear();
+      // Null key service references to release memory
+      const inst = VoxChronicle.#instance;
+      inst.audioRecorder = null;
+      inst.silenceDetector = null;
+      inst.aiAssistant = null;
+      inst.rulesReference = null;
+      inst.sessionOrchestrator = null;
+      inst.transcriptionService = null;
+      inst.imageGenerationService = null;
+      inst.isInitialized = false;
       VoxChronicle._hooksRegistered = false;
     }
     VoxChronicle.#instance = null;
@@ -170,6 +198,13 @@ class VoxChronicle {
     this.audioRecorder?.cancel();
     this.silenceDetector?.stop?.();
     this.sessionOrchestrator?.reset?.();
+    // Clean up EventBus listeners on narrator services to prevent memory leaks
+    this.aiAssistant?.destroy?.();
+    this.rulesReference?.destroy?.();
+    // Clear caches before re-creating (Story 2.3)
+    this._l2Cache?.clear();
+    this._l1SuggestionsCache?.clear();
+    this._l1RulesCache?.clear();
     ProviderRegistry.resetInstance();
     this.isInitialized = false;
     this._reinitializePending = false;
@@ -231,17 +266,25 @@ class VoxChronicle {
 
       if (openaiApiKey) {
         logger.info('OpenAI API key loaded');
-        // Register OpenAI providers in ProviderRegistry
+        // Create L2 provider cache (Story 2.3)
+        this._l2Cache = new CacheManager({ name: 'l2-provider', maxSize: 200 });
+
+        // Create raw OpenAI providers
         const chatProvider = new OpenAIChatProvider(openaiApiKey);
         const transcriptionProvider = new OpenAITranscriptionProvider(openaiApiKey);
         const imageProvider = new OpenAIImageProvider(openaiApiKey);
         const embeddingProvider = new OpenAIEmbeddingProvider(openaiApiKey);
 
-        registry.register('openai-chat', chatProvider, { default: true });
+        // Wrap cacheable providers with L2 decorators (Story 2.3)
+        const cachedChatProvider = new CachingChatDecorator(chatProvider, this._l2Cache);
+        const cachedEmbeddingProvider = new CachingEmbeddingDecorator(embeddingProvider, this._l2Cache);
+
+        // Register providers — chat and embedding use cached decorators
+        registry.register('openai-chat', cachedChatProvider, { default: true });
         registry.register('openai-transcription', transcriptionProvider, { default: true });
         registry.register('openai-image', imageProvider, { default: true });
-        registry.register('openai-embedding', embeddingProvider, { default: true });
-        logger.info('OpenAI providers registered');
+        registry.register('openai-embedding', cachedEmbeddingProvider, { default: true });
+        logger.info('OpenAI providers registered (with L2 cache)');
       } else {
         logger.warn('OpenAI API key is empty or not configured');
       }
@@ -281,9 +324,13 @@ class VoxChronicle {
       if (openaiApiKey) {
         this.imageGenerationService = new ImageGenerationService(registry.getProvider('generateImage'));
         this.entityExtractor = new EntityExtractor(registry.getProvider('chat'));
+        // Create L1 cache for narrator suggestions (Story 2.3)
+        this._l1SuggestionsCache = new CacheManager({ name: 'l1-suggestions', maxSize: 50 });
         this.aiAssistant = new AIAssistant({
           openaiClient: new OpenAIClient(openaiApiKey),
-          primaryLanguage: aiResponseLanguage
+          primaryLanguage: aiResponseLanguage,
+          cache: this._l1SuggestionsCache,
+          eventBus
         });
       } else {
         this.imageGenerationService = null;
@@ -350,18 +397,11 @@ class VoxChronicle {
         this.sessionAnalytics = new SessionAnalytics();
       }
 
-      // Connect narrator services to orchestrator
-      this.sessionOrchestrator.setNarratorServices({
-        aiAssistant: this.aiAssistant,
-        chapterTracker: this.chapterTracker,
-        sceneDetector: this.sceneDetector,
-        sessionAnalytics: this.sessionAnalytics,
-        journalParser: this.journalParser
-      });
-
       // Initialize rules reference and lookup service
       if (this._getSetting('rulesDetection') !== false) {
-        this.rulesReference = new RulesReference({ language: aiResponseLanguage });
+        // Create L1 cache for rules lookup (Story 2.3)
+        this._l1RulesCache = new CacheManager({ name: 'l1-rules', maxSize: 50 });
+        this.rulesReference = new RulesReference({ language: aiResponseLanguage, cache: this._l1RulesCache, eventBus });
 
         // Create lookup service if we have an OpenAI client for AI synthesis
         if (openaiApiKey) {
@@ -376,15 +416,18 @@ class VoxChronicle {
         if (this.aiAssistant) {
           this.aiAssistant.setRulesReference(this.rulesReference);
         }
-
-        // Wire rules services to orchestrator for fire-and-forget lookups
-        if (this.sessionOrchestrator) {
-          this.sessionOrchestrator.setNarratorServices({
-            rulesReference: this.rulesReference,
-            rulesLookupService: this.rulesLookupService
-          });
-        }
       }
+
+      // Connect narrator services to orchestrator (single call with all services)
+      this.sessionOrchestrator.setNarratorServices({
+        aiAssistant: this.aiAssistant,
+        chapterTracker: this.chapterTracker,
+        sceneDetector: this.sceneDetector,
+        sessionAnalytics: this.sessionAnalytics,
+        journalParser: this.journalParser,
+        rulesReference: this.rulesReference,
+        rulesLookupService: this.rulesLookupService
+      });
 
       // Initialize RAG services
       await this._initializeRAGServices(openaiApiKey);

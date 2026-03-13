@@ -168,10 +168,10 @@
       "ActiveAdventureJournalHint": "",
       "SupplementaryJournals": "",
       "SupplementaryJournalsHint": "",
-      "ContextTokenBudget": "Context Token Budget",
-      "ContextTokenBudgetHint": "Maximum tokens per AI suggestion cycle. Lower values reduce costs, higher values provide more context. Default: 12000",
-      "SummaryAgeBadge": "Context: {count} turns summarized",
-      "SummaryAgeBadgeNone": "Context: no summary yet"
+      "ContextTokenBudget": "",
+      "ContextTokenBudgetHint": "",
+      "SummaryAgeBadge": "",
+      "SummaryAgeBadgeNone": ""
     },
     "Panel": {
       "Title": "",
@@ -1172,6 +1172,23 @@
         "InvalidTransition": "",
         "GuardFailed": ""
       }
+    },
+    "Stream": {
+      "Started": "",
+      "Completed": "",
+      "Cancelled": "",
+      "Error": "",
+      "FirstToken": ""
+    },
+    "Cache": {
+      "Hit": "",
+      "Miss": "",
+      "Invalidated": "",
+      "Stats": ""
+    },
+    "Queue": {
+      "CategoryFull": "",
+      "Parallel": ""
     }
   }
 }

@@ -669,12 +669,12 @@ describe('OpenAIClient', () => {
       smallQueueClient._rateLimiter.executeWithRetry = async (fn) => fn();
       smallQueueClient._rateLimiter._delay = () => Promise.resolve();
 
-      // The first _enqueueRequest starts _processQueue, which shifts the item
+      // The first _enqueueRequest starts _processCategory, which shifts the item
       // out synchronously before yielding. So the actively-processing item
-      // is no longer in _requestQueue. We need to enqueue enough items so
-      // that _requestQueue (pending items only) reaches maxQueueSize.
+      // is no longer in the category queue. We need to enqueue enough items so
+      // that the category queue (pending items only) reaches maxQueueSize.
       // 1st call: pushed then immediately shifted out (processing), queue=0
-      // 2nd call: pushed, _processQueue returns (already running), queue=1
+      // 2nd call: pushed, _processCategory returns (already running), queue=1
       // 3rd call: pushed, queue=2 => equals maxQueueSize
       // 4th call: should throw
 
@@ -725,6 +725,322 @@ describe('OpenAIClient', () => {
       const result = await p2;
       expect(result).toBe('ok');
       expect(results).toEqual(['success']);
+    });
+  });
+
+  // ── Per-Category Queues (Story 2.3) ──────────────────────────────────────
+
+  describe('per-category queues', () => {
+    it('should default to "default" category when no queueCategory specified', async () => {
+      const result = await client._enqueueRequest(async () => 'ok');
+      expect(result).toBe('ok');
+      // Backward compat: works identically to before
+    });
+
+    it('should process requests from different categories in parallel', async () => {
+      const order = [];
+      let resolveChat, resolveImage;
+
+      const chatPromise = client._enqueueRequest(async () => {
+        order.push('chat-start');
+        await new Promise(r => { resolveChat = r; });
+        order.push('chat-end');
+        return 'chat';
+      }, { queueCategory: 'chat' });
+
+      const imagePromise = client._enqueueRequest(async () => {
+        order.push('image-start');
+        await new Promise(r => { resolveImage = r; });
+        order.push('image-end');
+        return 'image';
+      }, { queueCategory: 'image' });
+
+      // Both should have started (parallel across categories)
+      await new Promise(r => setTimeout(r, 10));
+      expect(order).toContain('chat-start');
+      expect(order).toContain('image-start');
+
+      // Resolve both
+      resolveChat();
+      resolveImage();
+      const [chatResult, imageResult] = await Promise.all([chatPromise, imagePromise]);
+      expect(chatResult).toBe('chat');
+      expect(imageResult).toBe('image');
+    });
+
+    it('should process requests within same category sequentially', async () => {
+      const order = [];
+
+      const p1 = client._enqueueRequest(async () => {
+        order.push('first-start');
+        await new Promise(r => setTimeout(r, 20));
+        order.push('first-end');
+        return 'first';
+      }, { queueCategory: 'chat' });
+
+      const p2 = client._enqueueRequest(async () => {
+        order.push('second-start');
+        return 'second';
+      }, { queueCategory: 'chat' });
+
+      await Promise.all([p1, p2]);
+
+      expect(order.indexOf('first-end')).toBeLessThan(order.indexOf('second-start'));
+    });
+
+    it('should support priority within a category', async () => {
+      const results = [];
+
+      // Start a blocker in chat category
+      const blocker = client._enqueueRequest(async () => {
+        await new Promise(r => setTimeout(r, 50));
+        results.push('blocker');
+        return 'blocker';
+      }, { queueCategory: 'chat' }, 0);
+
+      // Add low priority
+      const low = client._enqueueRequest(async () => {
+        results.push('low');
+        return 'low';
+      }, { queueCategory: 'chat' }, 0);
+
+      // Add high priority
+      const high = client._enqueueRequest(async () => {
+        results.push('high');
+        return 'high';
+      }, { queueCategory: 'chat' }, 10);
+
+      await Promise.all([blocker, low, high]);
+
+      expect(results[0]).toBe('blocker');
+      expect(results[1]).toBe('high');
+      expect(results[2]).toBe('low');
+    });
+
+    it('should return queue size for specific category', async () => {
+      expect(client.getQueueSize('chat')).toBe(0);
+      expect(client.getQueueSize('image')).toBe(0);
+
+      // Block the chat category
+      const blocker = client._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 500)),
+        { queueCategory: 'chat' }
+      ).catch(() => {});
+
+      // Add pending requests
+      const pending1 = client._enqueueRequest(
+        () => Promise.resolve(),
+        { queueCategory: 'chat' }
+      ).catch(() => {});
+
+      const pending2 = client._enqueueRequest(
+        () => Promise.resolve(),
+        { queueCategory: 'image' }
+      ).catch(() => {});
+
+      // chat has 1 pending (blocker is processing, not in queue), image has 0 (starts immediately if no blocker)
+      // Actually, first request gets shifted out immediately to process
+      // So chat queue = 1 (pending1), image queue = 0 (pending2 starts immediately)
+      await new Promise(r => setTimeout(r, 5));
+      expect(client.getQueueSize('chat')).toBe(1);
+
+      client.clearQueue();
+    });
+
+    it('should return total queue size when no category specified', async () => {
+      expect(client.getQueueSize()).toBe(0);
+
+      // Block both categories
+      const chatBlocker = client._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 500)),
+        { queueCategory: 'chat' }
+      ).catch(() => {});
+
+      const imageBlocker = client._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 500)),
+        { queueCategory: 'image' }
+      ).catch(() => {});
+
+      // Add pending
+      client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
+      client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'image' }).catch(() => {});
+
+      await new Promise(r => setTimeout(r, 5));
+      expect(client.getQueueSize()).toBe(2); // 1 chat pending + 1 image pending
+
+      client.clearQueue();
+    });
+
+    it('should clear only specific category when clearQueue(category) called', async () => {
+      // Block both categories
+      const chatBlocker = client._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 500)),
+        { queueCategory: 'chat' }
+      ).catch(() => {});
+
+      const imageBlocker = client._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 500)),
+        { queueCategory: 'image' }
+      ).catch(() => {});
+
+      // Add pending to chat
+      const chatPending = client._enqueueRequest(
+        () => Promise.resolve('ok'),
+        { queueCategory: 'chat' }
+      );
+
+      // Add pending to image
+      const imagePending = client._enqueueRequest(
+        () => Promise.resolve('img-ok'),
+        { queueCategory: 'image' }
+      ).catch(() => {});
+
+      await new Promise(r => setTimeout(r, 5));
+
+      // Clear only chat
+      client.clearQueue('chat');
+
+      await expect(chatPending).rejects.toThrow(/cancelled/i);
+
+      // Image pending should still be there
+      expect(client.getQueueSize('image')).toBe(1);
+
+      client.clearQueue(); // cleanup
+    });
+
+    it('should clear all categories when clearQueue() called without args', async () => {
+      const chatBlocker = client._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 500)),
+        { queueCategory: 'chat' }
+      ).catch(() => {});
+
+      const imageBlocker = client._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 500)),
+        { queueCategory: 'image' }
+      ).catch(() => {});
+
+      const p1 = client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' });
+      const p2 = client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'image' });
+
+      await new Promise(r => setTimeout(r, 5));
+      client.clearQueue();
+
+      await expect(p1).rejects.toThrow(/cancelled/i);
+      await expect(p2).rejects.toThrow(/cancelled/i);
+      expect(client.getQueueSize()).toBe(0);
+    });
+
+    it('should throw when specific category queue is full', () => {
+      const smallQueueClient = new OpenAIClient('sk-key', {
+        retryEnabled: false,
+        maxQueueSize: 2
+      });
+      smallQueueClient._rateLimiter.executeWithRetry = async (fn) => fn();
+      smallQueueClient._rateLimiter._delay = () => Promise.resolve();
+
+      // 1st: starts processing (shifted out)
+      const blocker = smallQueueClient._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 1000)),
+        { queueCategory: 'chat' }
+      ).catch(() => {});
+
+      // 2nd and 3rd: fill the queue
+      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
+      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
+
+      // 4th should throw
+      expect(() => {
+        smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' });
+      }).toThrow(/queue full/i);
+
+      smallQueueClient.clearQueue();
+    });
+
+    it('should handle errors in one category without affecting others', async () => {
+      const chatResult = client._enqueueRequest(async () => {
+        throw new Error('chat-fail');
+      }, { queueCategory: 'chat' });
+
+      const imageResult = client._enqueueRequest(async () => {
+        return 'image-ok';
+      }, { queueCategory: 'image' });
+
+      await expect(chatResult).rejects.toThrow('chat-fail');
+      expect(await imageResult).toBe('image-ok');
+    });
+
+    it('should pass queueCategory through request() options', async () => {
+      const enqueueSpy = vi.spyOn(client, '_enqueueRequest');
+
+      await client.request('/chat/completions', {
+        method: 'POST',
+        body: '{}',
+        useRetry: false,
+        queueCategory: 'chat'
+      });
+
+      expect(enqueueSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ queueCategory: 'chat' }),
+        0
+      );
+    });
+
+    it('should pass queueCategory through post() options', async () => {
+      const enqueueSpy = vi.spyOn(client, '_enqueueRequest');
+
+      await client.post('/chat/completions', { model: 'gpt-4' }, { queueCategory: 'chat' });
+
+      expect(enqueueSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ queueCategory: 'chat' }),
+        0
+      );
+    });
+
+    it('should pass queueCategory through postFormData() options', async () => {
+      const enqueueSpy = vi.spyOn(client, '_enqueueRequest');
+      const formData = new FormData();
+
+      await client.postFormData('/audio/transcriptions', formData, { queueCategory: 'transcription' });
+
+      expect(enqueueSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ queueCategory: 'transcription' }),
+        0
+      );
+    });
+
+    it('should isolate max queue size check per category', () => {
+      const smallQueueClient = new OpenAIClient('sk-key', {
+        retryEnabled: false,
+        maxQueueSize: 2
+      });
+      smallQueueClient._rateLimiter.executeWithRetry = async (fn) => fn();
+      smallQueueClient._rateLimiter._delay = () => Promise.resolve();
+
+      // Fill chat category
+      const chatBlocker = smallQueueClient._enqueueRequest(
+        () => new Promise(r => setTimeout(r, 1000)),
+        { queueCategory: 'chat' }
+      ).catch(() => {});
+      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
+      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
+
+      // Image category should still accept requests (separate queue)
+      expect(() => {
+        smallQueueClient._enqueueRequest(
+          () => Promise.resolve(),
+          { queueCategory: 'image' }
+        ).catch(() => {});
+      }).not.toThrow();
+
+      smallQueueClient.clearQueue();
+    });
+
+    it('should get queue categories with getQueueCategories()', () => {
+      // Initially empty
+      expect(client.getQueueCategories()).toEqual([]);
     });
   });
 

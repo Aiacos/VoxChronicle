@@ -1,0 +1,76 @@
+/**
+ * VoxChronicle Design Tokens — Layer 2: Semantic
+ *
+ * Maps primitive tokens to functional roles (status, feedback, surfaces).
+ * Uses -500 variants to preserve current visual baseline. Switch to -400
+ * variants when adopting the new UX palette (Epic 6).
+ *
+ * Foundry VTT CSS variable fallbacks are used where applicable.
+ *
+ * @layer semantic
+ */
+
+:root {
+  /* === LED Status Colors === */
+  --vox-led-active: var(--vox-green-500);
+  --vox-led-warning: var(--vox-amber-500);
+  --vox-led-error: var(--vox-red-500);
+  --vox-led-idle: var(--vox-gray-400);
+  --vox-led-streaming: var(--vox-purple-500);
+
+  /* === Semantic Feedback Colors === */
+  --vox-color-success: var(--vox-green-500);
+  --vox-color-warning: var(--vox-amber-500);
+  --vox-color-error: var(--vox-red-500);
+  --vox-color-info: var(--vox-cyan-400);
+  --vox-color-accent: var(--vox-blue-400, var(--color-border-highlight));
+  --vox-color-accent-hover: var(--vox-blue-300);
+
+  /* === AI Colors === */
+  --vox-color-ai-bg: rgba(155, 89, 182, 0.08);
+  --vox-color-ai-border: rgba(155, 89, 182, 0.25);
+
+  /* === Surface Colors === */
+  --vox-color-surface: rgba(255, 255, 255, 0.04);
+  --vox-color-surface-hover: rgba(255, 255, 255, 0.08);
+  --vox-color-surface-dark: rgba(0, 0, 0, 0.2);
+  --vox-color-border: rgba(255, 255, 255, 0.1);
+  --vox-color-border-light: rgba(255, 255, 255, 0.08);
+  --vox-color-border-subtle: rgba(255, 255, 255, 0.05);
+  --vox-color-border-strong: rgba(255, 255, 255, 0.15);
+
+  /* === Semantic Background/Border Variants (repeated rgba patterns) === */
+  --vox-color-success-bg: rgba(6, 214, 160, 0.08);
+  --vox-color-success-border: rgba(6, 214, 160, 0.4);
+  --vox-color-success-bg-hover: rgba(6, 214, 160, 0.1);
+  --vox-color-success-bg-badge: rgba(6, 214, 160, 0.15);
+  --vox-color-success-border-badge: rgba(6, 214, 160, 0.3);
+  --vox-color-error-bg: rgba(239, 35, 60, 0.08);
+  --vox-color-error-bg-hover: rgba(239, 35, 60, 0.12);
+  --vox-color-error-border: rgba(239, 35, 60, 0.4);
+  --vox-color-error-bg-badge: rgba(239, 35, 60, 0.1);
+  --vox-color-error-border-badge: rgba(239, 35, 60, 0.3);
+  --vox-color-warning-bg: rgba(252, 163, 17, 0.08);
+  --vox-color-warning-border: rgba(252, 163, 17, 0.4);
+  --vox-color-warning-bg-badge: rgba(252, 163, 17, 0.15);
+  --vox-color-warning-border-badge: rgba(252, 163, 17, 0.3);
+  --vox-color-info-bg: rgba(76, 201, 240, 0.08);
+  --vox-color-info-bg-badge: rgba(76, 201, 240, 0.15);
+  --vox-color-info-border-badge: rgba(76, 201, 240, 0.3);
+  --vox-color-info-bg-rag: rgba(76, 201, 240, 0.1);
+  --vox-color-ai-bg-hover: rgba(155, 89, 182, 0.1);
+  --vox-color-ai-bg-badge: rgba(155, 89, 182, 0.15);
+  --vox-color-ai-border-badge: rgba(155, 89, 182, 0.3);
+  --vox-color-idle-bg: rgba(108, 117, 125, 0.1);
+  --vox-color-idle-border: rgba(108, 117, 125, 0.3);
+  --vox-color-idle-bg-badge: rgba(158, 158, 158, 0.15);
+  --vox-color-idle-border-badge: rgba(158, 158, 158, 0.3);
+
+  /* === Streaming Colors === */
+  --vox-streaming-text-color: var(--vox-color-text, inherit);
+
+  /* === Typography Shorthand === */
+  --vox-font-streaming: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  --vox-font-title: 600 14px var(--font-primary, system-ui);
+  --vox-font-tab: 500 12px var(--font-primary, system-ui);
+}

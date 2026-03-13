@@ -2017,4 +2017,127 @@ describe('AIAssistant', () => {
       );
     });
   });
+
+  // =========================================================================
+  // L1 Cache Integration
+  // =========================================================================
+  describe('L1 Cache', () => {
+    let CacheManager;
+
+    beforeEach(async () => {
+      CacheManager = (await import('../../scripts/utils/CacheManager.mjs')).CacheManager;
+    });
+
+    it('should accept cache option in constructor', () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const a = new AIAssistant({ openaiClient: mockClient, cache });
+      expect(a).toBeDefined();
+    });
+
+    it('should accept eventBus option in constructor', () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const eventBus = { on: vi.fn() };
+      const a = new AIAssistant({ openaiClient: mockClient, cache, eventBus });
+      expect(eventBus.on).toHaveBeenCalledWith('scene:changed', expect.any(Function));
+    });
+
+    it('should return cached result on analyzeContext cache hit', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const a = new AIAssistant({ openaiClient: mockClient, cache });
+
+      const result1 = await a.analyzeContext('The party enters the tavern.');
+      mockClient.post.mockClear();
+
+      const result2 = await a.analyzeContext('The party enters the tavern.');
+      expect(mockClient.post).not.toHaveBeenCalled();
+      expect(result2.suggestions).toEqual(result1.suggestions);
+    });
+
+    it('should call API on cache miss', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const a = new AIAssistant({ openaiClient: mockClient, cache });
+
+      await a.analyzeContext('Unique transcription text.');
+      expect(mockClient.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('should bypass cache with skipCache option', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const a = new AIAssistant({ openaiClient: mockClient, cache });
+
+      await a.analyzeContext('Skip cache test text.');
+      mockClient.post.mockClear();
+
+      await a.analyzeContext('Skip cache test text.', { skipCache: true });
+      expect(mockClient.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('should invalidate suggestion cache on scene:changed event', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      let sceneChangedCallback;
+      const eventBus = {
+        on: vi.fn((event, cb) => { if (event === 'scene:changed') sceneChangedCallback = cb; })
+      };
+      const a = new AIAssistant({ openaiClient: mockClient, cache, eventBus });
+
+      await a.analyzeContext('Cache invalidation test.');
+      expect(cache.size()).toBeGreaterThan(0);
+
+      sceneChangedCallback();
+      expect(cache.size()).toBe(0);
+    });
+
+    it('should work without cache (backward compatible)', async () => {
+      const a = new AIAssistant({ openaiClient: mockClient });
+      const result = await a.analyzeContext('No cache test.');
+      expect(result.suggestions).toBeDefined();
+    });
+
+    it('should differentiate cache keys by transcription', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const a = new AIAssistant({ openaiClient: mockClient, cache });
+
+      await a.analyzeContext('First transcription.');
+      await a.analyzeContext('Second transcription.');
+
+      expect(mockClient.post).toHaveBeenCalledTimes(2);
+      expect(cache.size()).toBe(2);
+    });
+
+    it('should use configurable cacheTTL', async () => {
+      vi.useFakeTimers();
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const a = new AIAssistant({ openaiClient: mockClient, cache, cacheTTL: 1000 });
+
+      await a.analyzeContext('TTL test text.');
+      mockClient.post.mockClear();
+
+      vi.advanceTimersByTime(500);
+      await a.analyzeContext('TTL test text.');
+      expect(mockClient.post).not.toHaveBeenCalled(); // cached
+
+      vi.advanceTimersByTime(600);
+      await a.analyzeContext('TTL test text.');
+      expect(mockClient.post).toHaveBeenCalledTimes(1); // expired
+
+      vi.useRealTimers();
+    });
+
+    it('should track cache stats', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const a = new AIAssistant({ openaiClient: mockClient, cache });
+
+      await a.analyzeContext('Stats test.'); // miss
+      await a.analyzeContext('Stats test.'); // hit
+
+      expect(cache.stats.hits).toBe(1);
+      expect(cache.stats.misses).toBe(1);
+    });
+
+    it('should not register eventBus listener without cache', () => {
+      const eventBus = { on: vi.fn() };
+      new AIAssistant({ openaiClient: mockClient, eventBus }); // no cache
+      expect(eventBus.on).not.toHaveBeenCalled();
+    });
+  });
 });

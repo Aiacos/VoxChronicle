@@ -1104,6 +1104,13 @@
     "Error": {
       "Message": "Error: {error}"
     },
+    "Compendium": {
+      "UnnamedEntry": "Unnamed Entry",
+      "RulesAndReferences": "RULES AND REFERENCES (COMPENDIUMS)",
+      "TopicInfo": "Information about: {topic}",
+      "Type": "Type",
+      "Results": "Results:"
+    },
     "JournalPicker": {
       "Title": "Select Adventure Journal",
       "SelectAll": "Select All",
@@ -1117,13 +1124,6 @@
       "Save": "Save Selection",
       "Cancel": "Cancel",
       "Primary": "Primary"
-    },
-    "Compendium": {
-      "UnnamedEntry": "Unnamed Entry",
-      "RulesAndReferences": "RULES AND REFERENCES (COMPENDIUMS)",
-      "TopicInfo": "Information about: {topic}",
-      "Type": "Type",
-      "Results": "Results:"
     },
     "EventBus": {
       "Error": {
@@ -1172,6 +1172,23 @@
         "InvalidTransition": "Invalid transition: event \"{event}\" is not valid in state \"{state}\"",
         "GuardFailed": "Transition blocked by guard condition"
       }
+    },
+    "Stream": {
+      "Started": "Streaming started",
+      "Completed": "Streaming completed ({charCount} characters, {duration}ms)",
+      "Cancelled": "Streaming cancelled by user",
+      "Error": "Streaming error: {error}",
+      "FirstToken": "First token received in {latency}ms"
+    },
+    "Cache": {
+      "Hit": "Cache hit: {key}",
+      "Miss": "Cache miss: {key}",
+      "Invalidated": "Cache invalidated: {prefix}",
+      "Stats": "Cache stats — Hit rate: {rate}%, Size: {size}"
+    },
+    "Queue": {
+      "CategoryFull": "Request queue full for category {category}",
+      "Parallel": "Processing {count} parallel request queues"
     }
   }
 }

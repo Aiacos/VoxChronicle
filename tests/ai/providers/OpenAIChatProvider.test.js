@@ -326,9 +326,40 @@ describe('OpenAIChatProvider', () => {
           tokens.push(chunk);
         }
       }).rejects.toThrow('Stream failed');
-      // 'ok' token + done:true from finally
-      expect(tokens).toHaveLength(2);
-      expect(tokens[1]).toEqual({ token: '', done: true });
+      // Only the 'ok' token before the error is collected; done:true is not emitted on error
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({ token: 'ok', done: false });
+    });
+  });
+
+  describe('queueCategory (Story 2.3)', () => {
+    it('should pass queueCategory "chat" to post() in chat()', async () => {
+      mockClient.post.mockResolvedValue({
+        choices: [{ message: { content: 'ok' } }],
+        usage: {},
+      });
+      await provider.chat([{ role: 'user', content: 'hi' }]);
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/chat/completions',
+        expect.any(Object),
+        expect.objectContaining({ queueCategory: 'chat' })
+      );
+    });
+
+    it('should pass queueCategory "chat" to postStream() in chatStream()', async () => {
+      mockClient.postStream.mockReturnValue((async function* () {
+        yield { content: 'hi', usage: null };
+      })());
+      const tokens = [];
+      for await (const chunk of provider.chatStream([{ role: 'user', content: 'hi' }])) {
+        tokens.push(chunk);
+      }
+      // postStream bypasses the request queue — queueCategory is NOT passed
+      expect(mockClient.postStream).toHaveBeenCalledWith(
+        '/chat/completions',
+        expect.any(Object),
+        expect.not.objectContaining({ queueCategory: 'chat' })
+      );
     });
   });
 });

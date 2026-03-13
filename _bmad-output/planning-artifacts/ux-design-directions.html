@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoxChronicle - UX Design Directions</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; }
+
+  /* Navigation */
+  .nav { position: fixed; top: 0; left: 0; right: 0; background: #16213e; padding: 12px 24px; display: flex; gap: 12px; align-items: center; z-index: 100; border-bottom: 1px solid #333; flex-wrap: wrap; }
+  .nav h1 { font-size: 16px; color: #4a9eff; margin-right: 16px; }
+  .nav button { padding: 6px 14px; border: 1px solid #444; background: #1a1a2e; color: #ccc; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  .nav button:hover { background: #2a2a4e; }
+  .nav button.active { background: #4a9eff; color: #fff; border-color: #4a9eff; }
+
+  /* Sections */
+  .section { display: none; padding: 80px 24px 24px; min-height: 100vh; }
+  .section.active { display: block; }
+  .section h2 { font-size: 20px; color: #4a9eff; margin-bottom: 8px; }
+  .section .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+
+  /* Foundry-like background */
+  .foundry-bg { background: #1e1e2e; border-radius: 8px; padding: 20px; border: 1px solid #333; position: relative; }
+  .foundry-bg::before { content: 'Foundry VTT Canvas (simulato)'; position: absolute; top: 8px; right: 12px; font-size: 10px; color: #555; }
+
+  /* Panel common */
+  .panel { background: #2a2a3e; border: 1px solid #444; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); overflow: hidden; font-size: 13px; }
+
+  /* === DIRECTION A: Sidebar Compatta === */
+  .dir-a .layout { display: flex; gap: 16px; height: 520px; }
+  .dir-a .canvas { flex: 1; }
+  .dir-a .panel { width: 320px; display: flex; flex-direction: column; }
+  .dir-a .panel-header { padding: 10px 12px; background: #1e1e30; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #444; }
+  .dir-a .panel-header .title { font-size: 13px; font-weight: 600; }
+  .dir-a .leds { display: flex; gap: 8px; align-items: center; }
+  .dir-a .led { width: 8px; height: 8px; border-radius: 50%; }
+  .dir-a .led.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .dir-a .led.green-pulse { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
+  .dir-a .led.purple { background: #8b5cf6; box-shadow: 0 0 6px #8b5cf6; }
+  .dir-a .led.gray { background: #6b7280; }
+  .dir-a .progress-bar { height: 2px; background: #333; }
+  .dir-a .progress-bar .fill { height: 100%; width: 65%; background: linear-gradient(90deg, #4a9eff, #8b5cf6); }
+  .dir-a .tabs { display: flex; border-bottom: 1px solid #444; }
+  .dir-a .tab { flex: 1; padding: 8px 4px; text-align: center; font-size: 11px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; }
+  .dir-a .tab.active { color: #4a9eff; border-bottom-color: #4a9eff; }
+  .dir-a .content { flex: 1; overflow-y: auto; padding: 12px; }
+  .dir-a .suggestion-card { background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 6px; padding: 10px; margin-bottom: 12px; }
+  .dir-a .suggestion-card .label { font-size: 10px; color: #8b5cf6; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+  .dir-a .scene-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: rgba(59, 130, 246, 0.2); color: #3b82f6; margin-bottom: 8px; }
+  .dir-a .npcs { font-size: 11px; color: #999; margin-bottom: 8px; }
+  .dir-a .npcs span { color: #4a9eff; }
+  .dir-a .input-bar { padding: 8px 12px; border-top: 1px solid #444; background: #1e1e30; }
+  .dir-a .input-bar input { width: 100%; padding: 8px 10px; border: 1px solid #555; background: #2a2a3e; color: #e0e0e0; border-radius: 6px; font-size: 12px; }
+  .dir-a .timer { font-size: 11px; color: #22c55e; font-variant-numeric: tabular-nums; }
+
+  /* === DIRECTION B: Pannello Largo con Colonne === */
+  .dir-b .layout { display: flex; gap: 16px; height: 520px; }
+  .dir-b .canvas { flex: 1; }
+  .dir-b .panel { width: 440px; display: flex; flex-direction: column; }
+  .dir-b .panel-header { padding: 10px 14px; background: #1e1e30; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #444; }
+  .dir-b .panel-header .title { font-size: 13px; font-weight: 600; }
+  .dir-b .leds { display: flex; gap: 8px; align-items: center; }
+  .dir-b .led { width: 8px; height: 8px; border-radius: 50%; }
+  .dir-b .led.green-pulse { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
+  .dir-b .led.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .dir-b .led.purple { background: #8b5cf6; box-shadow: 0 0 6px #8b5cf6; }
+  .dir-b .progress-bar { height: 2px; background: #333; }
+  .dir-b .progress-bar .fill { height: 100%; width: 65%; background: linear-gradient(90deg, #4a9eff, #8b5cf6); }
+  .dir-b .two-col { display: flex; flex: 1; overflow: hidden; }
+  .dir-b .col-left { flex: 1; border-right: 1px solid #444; padding: 12px; overflow-y: auto; }
+  .dir-b .col-right { width: 180px; padding: 12px; overflow-y: auto; background: #252538; }
+  .dir-b .suggestion-card { background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+  .dir-b .suggestion-card .label { font-size: 10px; color: #8b5cf6; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+  .dir-b .sidebar-section { margin-bottom: 16px; }
+  .dir-b .sidebar-section h4 { font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 6px; font-weight: 600; }
+  .dir-b .sidebar-item { font-size: 11px; padding: 3px 0; color: #bbb; }
+  .dir-b .sidebar-item.active { color: #4a9eff; }
+  .dir-b .scene-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+  .dir-b .input-bar { padding: 8px 12px; border-top: 1px solid #444; background: #1e1e30; }
+  .dir-b .input-bar input { width: 100%; padding: 8px 10px; border: 1px solid #555; background: #2a2a3e; color: #e0e0e0; border-radius: 6px; font-size: 12px; }
+  .dir-b .timer { font-size: 11px; color: #22c55e; font-variant-numeric: tabular-nums; }
+
+  /* === DIRECTION C: Pannello Minimale Collassabile === */
+  .dir-c .layout { display: flex; gap: 16px; height: 520px; }
+  .dir-c .canvas { flex: 1; }
+  .dir-c .panel-collapsed { width: 48px; background: #2a2a3e; border: 1px solid #444; border-radius: 8px; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 12px; }
+  .dir-c .panel-collapsed .led { width: 8px; height: 8px; border-radius: 50%; }
+  .dir-c .panel-collapsed .led.green-pulse { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
+  .dir-c .panel-collapsed .led.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .dir-c .panel-collapsed .icon { width: 28px; height: 28px; border-radius: 6px; background: #3a3a5e; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; color: #888; }
+  .dir-c .panel-collapsed .icon:hover { background: #4a4a6e; color: #4a9eff; }
+  .dir-c .panel-collapsed .icon.has-update { position: relative; }
+  .dir-c .panel-collapsed .icon.has-update::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6; position: absolute; top: 2px; right: 2px; }
+  .dir-c .panel-expanded { width: 320px; display: flex; flex-direction: column; }
+  .dir-c .panel { display: flex; flex-direction: column; }
+  .dir-c .panel-header { padding: 10px 12px; background: #1e1e30; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #444; }
+  .dir-c .panel-header .title { font-size: 13px; font-weight: 600; }
+  .dir-c .leds { display: flex; gap: 8px; }
+  .dir-c .led { width: 8px; height: 8px; border-radius: 50%; }
+  .dir-c .led.green-pulse { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
+  .dir-c .led.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .dir-c .content { flex: 1; padding: 12px; overflow-y: auto; }
+  .dir-c .suggestion-card { background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+  .dir-c .suggestion-card .label { font-size: 10px; color: #8b5cf6; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+
+  /* === DIRECTION D: Chronicle Mode (post-sessione) === */
+  .dir-d .layout { display: flex; gap: 16px; height: 520px; }
+  .dir-d .canvas { flex: 1; }
+  .dir-d .panel { width: 380px; display: flex; flex-direction: column; }
+  .dir-d .panel-header { padding: 10px 14px; background: #1e1e30; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #444; }
+  .dir-d .panel-header .title { font-size: 13px; font-weight: 600; }
+  .dir-d .leds { display: flex; gap: 8px; }
+  .dir-d .led { width: 8px; height: 8px; border-radius: 50%; }
+  .dir-d .led.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .dir-d .led.gray { background: #6b7280; }
+  .dir-d .tabs { display: flex; border-bottom: 1px solid #444; }
+  .dir-d .tab { flex: 1; padding: 8px 4px; text-align: center; font-size: 11px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; }
+  .dir-d .tab.active { color: #4a9eff; border-bottom-color: #4a9eff; }
+  .dir-d .content { flex: 1; overflow-y: auto; padding: 12px; }
+  .dir-d .chronicle-preview { background: #1e1e30; border-radius: 6px; padding: 14px; margin-bottom: 12px; }
+  .dir-d .chronicle-preview h3 { font-size: 14px; color: #e0e0e0; margin-bottom: 6px; }
+  .dir-d .chronicle-preview p { font-size: 12px; color: #999; line-height: 1.5; }
+  .dir-d .entity-list { margin-bottom: 12px; }
+  .dir-d .entity-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px; font-size: 12px; }
+  .dir-d .entity-item:hover { background: #3a3a5e; }
+  .dir-d .entity-item .type { font-size: 9px; text-transform: uppercase; font-weight: 600; padding: 1px 5px; border-radius: 3px; }
+  .dir-d .entity-item .type.npc { background: rgba(74, 158, 255, 0.2); color: #4a9eff; }
+  .dir-d .entity-item .type.loc { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+  .dir-d .entity-item .type.item { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+  .dir-d .publish-btn { width: 100%; padding: 12px; background: #4a9eff; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+  .dir-d .publish-btn:hover { background: #3a8eef; }
+  .dir-d .progress-summary { display: flex; gap: 8px; margin-bottom: 12px; }
+  .dir-d .progress-chip { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+  .dir-d .progress-chip.done { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+
+  /* === DIRECTION E: First Launch / Setup === */
+  .dir-e .layout { display: flex; gap: 16px; height: 520px; }
+  .dir-e .canvas { flex: 1; }
+  .dir-e .panel { width: 360px; display: flex; flex-direction: column; }
+  .dir-e .panel-header { padding: 10px 14px; background: #1e1e30; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #444; }
+  .dir-e .panel-header .title { font-size: 13px; font-weight: 600; }
+  .dir-e .content { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .dir-e .mode-card { width: 100%; padding: 20px; background: #1e1e30; border: 1px solid #444; border-radius: 8px; margin-bottom: 12px; cursor: pointer; text-align: left; transition: border-color 0.2s; }
+  .dir-e .mode-card:hover { border-color: #4a9eff; }
+  .dir-e .mode-card h3 { font-size: 14px; margin-bottom: 4px; }
+  .dir-e .mode-card p { font-size: 11px; color: #888; line-height: 1.4; }
+  .dir-e .mode-card .icon-big { font-size: 24px; margin-bottom: 8px; }
+  .dir-e .status-bar { padding: 10px 14px; border-top: 1px solid #444; background: #1e1e30; font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+  .dir-e .status-check { color: #22c55e; }
+  .dir-e .status-missing { color: #f59e0b; }
+
+  /* === DIRECTION F: VU Meter / Audio Feedback === */
+  .dir-f .vu-container { display: flex; gap: 2px; align-items: flex-end; height: 16px; }
+  .dir-f .vu-bar { width: 3px; border-radius: 1px; animation: vu 0.8s ease-in-out infinite; }
+  .dir-f .vu-bar:nth-child(1) { height: 6px; background: #22c55e; animation-delay: 0s; }
+  .dir-f .vu-bar:nth-child(2) { height: 12px; background: #22c55e; animation-delay: 0.15s; }
+  .dir-f .vu-bar:nth-child(3) { height: 8px; background: #22c55e; animation-delay: 0.3s; }
+  .dir-f .vu-bar:nth-child(4) { height: 14px; background: #f59e0b; animation-delay: 0.1s; }
+  .dir-f .vu-bar:nth-child(5) { height: 10px; background: #22c55e; animation-delay: 0.25s; }
+
+  /* Streaming text effect */
+  .streaming-text { position: relative; }
+  .streaming-text::after { content: '|'; color: #8b5cf6; animation: blink 1s step-end infinite; }
+
+  /* Animations */
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  @keyframes vu { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.4); } }
+
+  /* Comparison grid */
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .comparison .item { background: #2a2a3e; border: 1px solid #444; border-radius: 8px; padding: 16px; }
+  .comparison .item h3 { font-size: 13px; color: #4a9eff; margin-bottom: 4px; }
+  .comparison .item p { font-size: 11px; color: #999; line-height: 1.5; }
+  .comparison .item .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase; margin-right: 4px; margin-top: 8px; }
+  .comparison .item .tag.pro { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+  .comparison .item .tag.con { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <h1>VoxChronicle UX Directions</h1>
+  <button class="active" onclick="show('overview')">Overview</button>
+  <button onclick="show('dir-a')">A: Sidebar</button>
+  <button onclick="show('dir-b')">B: Due Colonne</button>
+  <button onclick="show('dir-c')">C: Collassabile</button>
+  <button onclick="show('dir-d')">D: Chronicle</button>
+  <button onclick="show('dir-e')">E: First Launch</button>
+  <button onclick="show('dir-f')">F: Confronto</button>
+</div>
+
+<!-- OVERVIEW -->
+<div class="section active" id="overview">
+  <h2>Design Directions - VoxChronicle</h2>
+  <p class="subtitle">6 varianti esplorative per il pannello VoxChronicle. Clicca sui tab per esplorare ogni direzione.</p>
+  <div class="comparison">
+    <div class="item">
+      <h3>A: Sidebar Compatta (320px)</h3>
+      <p>Pannello stretto a lato del canvas. Tab singolo con contenuto scrollabile. Massimo spazio per il canvas di gioco.</p>
+      <span class="tag pro">Spazio canvas</span><span class="tag pro">Compatta</span><span class="tag con">Meno info visibili</span>
+    </div>
+    <div class="item">
+      <h3>B: Due Colonne (440px)</h3>
+      <p>Pannello piu' largo con sidebar laterale per NPC/scene. Piu' informazioni visibili contemporaneamente.</p>
+      <span class="tag pro">Info densa</span><span class="tag pro">Contesto laterale</span><span class="tag con">Occupa piu' spazio</span>
+    </div>
+    <div class="item">
+      <h3>C: Collassabile (48px / 320px)</h3>
+      <p>Pannello che si riduce a una barra di icone con LED. Click per espandere. Massima flessibilita'.</p>
+      <span class="tag pro">Flessibile</span><span class="tag pro">LED sempre visibili</span><span class="tag con">Click extra per info</span>
+    </div>
+    <div class="item">
+      <h3>D: Chronicle Mode</h3>
+      <p>Vista post-sessione con anteprima cronaca, lista entita' e pulsante "Pubblica su Kanka" prominente.</p>
+      <span class="tag pro">One-click publish</span><span class="tag pro">Anteprima chiara</span>
+    </div>
+    <div class="item">
+      <h3>E: First Launch</h3>
+      <p>Schermata iniziale con due card grandi: "Live Session" e "Chronicle Mode". Zero confusione al primo utilizzo.</p>
+      <span class="tag pro">Onboarding chiaro</span><span class="tag pro">Auto-esplicativo</span>
+    </div>
+    <div class="item">
+      <h3>F: Confronto Elementi</h3>
+      <p>Confronto diretto tra elementi di design: LED, VU meter, badge scena, streaming text, indicatori di stato.</p>
+      <span class="tag pro">Componenti riusabili</span>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION A: Sidebar Compatta -->
+<div class="section dir-a" id="dir-a">
+  <h2>Direction A: Sidebar Compatta (320px)</h2>
+  <p class="subtitle">Pannello stretto - massimo spazio canvas. Tab contestuali Live mode.</p>
+  <div class="foundry-bg">
+    <div class="layout">
+      <div class="canvas"></div>
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <span class="title">Sessione Live</span>
+            <span class="timer" style="margin-left:8px;">01:42:18</span>
+          </div>
+          <div class="leds">
+            <span class="led green-pulse" title="Registrazione"></span>
+            <span class="led green" title="AI"></span>
+            <span class="led purple" title="Streaming"></span>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="fill"></div></div>
+        <div class="tabs">
+          <div class="tab active">Assistente</div>
+          <div class="tab">Regole</div>
+          <div class="tab">Trascrizione</div>
+        </div>
+        <div class="content">
+          <div class="scene-badge">Scena: Sociale</div>
+          <div class="npcs">NPC attivi: <span>Sindaco Aldric</span>, <span>Fabbra Mira</span></div>
+          <div class="suggestion-card">
+            <div class="label">Suggerimento Contestuale</div>
+            <div class="streaming-text" style="font-size:12px;line-height:1.5;">Thornfield: il sindaco Aldric aveva promesso 200 monete d'oro per l'eliminazione dei goblin nella foresta nord. La fabbra Mira aspetta ancora il martello runico dalla cripta</div>
+          </div>
+          <div class="suggestion-card" style="opacity:0.6;">
+            <div class="label">Precedente</div>
+            <div style="font-size:12px;line-height:1.5;">I giocatori hanno menzionato di voler tornare al villaggio. Il bardo sembra interessato a parlare con il taverniere.</div>
+          </div>
+        </div>
+        <div class="input-bar">
+          <input type="text" placeholder="Chiedi qualcosa..." />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION B: Due Colonne -->
+<div class="section dir-b" id="dir-b">
+  <h2>Direction B: Due Colonne (440px)</h2>
+  <p class="subtitle">Pannello largo con sidebar contestuale per NPC, scene e journal attivi.</p>
+  <div class="foundry-bg">
+    <div class="layout">
+      <div class="canvas"></div>
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <span class="title">Sessione Live</span>
+            <span class="timer" style="margin-left:8px;">01:42:18</span>
+          </div>
+          <div class="leds">
+            <span class="led green-pulse" title="Registrazione"></span>
+            <span class="led green" title="AI"></span>
+            <span class="led purple" title="Streaming"></span>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="fill"></div></div>
+        <div class="two-col">
+          <div class="col-left">
+            <div class="scene-badge">Scena: Combattimento</div>
+            <div class="suggestion-card">
+              <div class="label">Suggerimento Contestuale</div>
+              <div class="streaming-text" style="font-size:12px;line-height:1.5;">Il goblin sciamano sta preparando un incantesimo. Secondo il compendio, Counterspell richiede una reaction e DC 13 per incantesimi di livello 3+</div>
+            </div>
+            <div class="suggestion-card" style="opacity:0.6;">
+              <div class="label">Precedente</div>
+              <div style="font-size:12px;line-height:1.5;">Il ranger ha chiesto di usare Hunter's Mark. Ricorda: bonus 1d6 ai danni, richiede concentrazione.</div>
+            </div>
+          </div>
+          <div class="col-right">
+            <div class="sidebar-section">
+              <h4>NPC in Scena</h4>
+              <div class="sidebar-item active">Goblin Sciamano</div>
+              <div class="sidebar-item">Goblin Guerriero x3</div>
+              <div class="sidebar-item">Prigioniero Elfo</div>
+            </div>
+            <div class="sidebar-section">
+              <h4>Luogo</h4>
+              <div class="sidebar-item active">Caverna dei Goblin</div>
+            </div>
+            <div class="sidebar-section">
+              <h4>Journal Attivi</h4>
+              <div class="sidebar-item">Avventura Cap.3</div>
+              <div class="sidebar-item">Scheda Goblin</div>
+            </div>
+          </div>
+        </div>
+        <div class="input-bar">
+          <input type="text" placeholder="Chiedi qualcosa..." />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION C: Collassabile -->
+<div class="section dir-c" id="dir-c">
+  <h2>Direction C: Pannello Collassabile</h2>
+  <p class="subtitle">A sinistra: stato collassato (48px, solo LED e icone). A destra: stato espanso (320px).</p>
+  <div class="foundry-bg">
+    <div class="layout">
+      <div class="canvas" style="flex:1;display:flex;gap:16px;">
+        <!-- Collapsed state -->
+        <div style="flex:1;"></div>
+        <div class="panel-collapsed">
+          <div class="led green-pulse" title="REC"></div>
+          <div class="led green" title="AI"></div>
+          <div class="icon has-update" title="Assistente">A</div>
+          <div class="icon" title="Regole">R</div>
+          <div class="icon" title="Trascrizione">T</div>
+          <div class="icon" title="Analytics">G</div>
+          <div class="icon" title="Settings">S</div>
+        </div>
+      </div>
+      <div class="panel panel-expanded">
+        <div class="panel-header">
+          <div>
+            <span class="title">Assistente</span>
+          </div>
+          <div class="leds">
+            <span class="led green-pulse"></span>
+            <span class="led green"></span>
+          </div>
+        </div>
+        <div class="content">
+          <div class="suggestion-card">
+            <div class="label">Suggerimento Contestuale</div>
+            <div class="streaming-text" style="font-size:12px;line-height:1.5;">Thornfield: il sindaco Aldric aveva promesso 200 monete d'oro per l'eliminazione dei goblin</div>
+          </div>
+          <div class="suggestion-card" style="opacity:0.6;">
+            <div class="label">Precedente</div>
+            <div style="font-size:12px;line-height:1.5;">I giocatori hanno menzionato di voler tornare al villaggio.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION D: Chronicle Mode -->
+<div class="section dir-d" id="dir-d">
+  <h2>Direction D: Chronicle Mode (Post-Sessione)</h2>
+  <p class="subtitle">Vista automatica dopo "Stop Session". Cronaca pronta, entita' estratte, one-click publish.</p>
+  <div class="foundry-bg">
+    <div class="layout">
+      <div class="canvas"></div>
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <span class="title" style="font-size:13px;font-weight:600;">Sessione Completata</span>
+          </div>
+          <div class="leds">
+            <span class="led green" title="Pronto"></span>
+            <span class="led gray" title="REC off"></span>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab active">Cronaca</div>
+          <div class="tab">Entita'</div>
+          <div class="tab">Immagini</div>
+        </div>
+        <div class="content">
+          <div class="progress-summary">
+            <span class="progress-chip done">Trascrizione OK</span>
+            <span class="progress-chip done">3 Entita'</span>
+            <span class="progress-chip done">2 Immagini</span>
+          </div>
+          <div class="chronicle-preview">
+            <h3>Sessione 14: Il Ritorno a Thornfield</h3>
+            <p>Gli avventurieri sono tornati al villaggio di Thornfield dopo tre settimane nella foresta dei goblin. Il sindaco Aldric li ha accolti nella piazza del mercato, visibilmente sollevato nel vedere il martello runico recuperato dalla cripta...</p>
+          </div>
+          <div class="entity-list">
+            <div class="entity-item">
+              <span class="type npc">NPC</span>
+              <span>Sindaco Aldric</span>
+            </div>
+            <div class="entity-item">
+              <span class="type npc">NPC</span>
+              <span>Fabbra Mira</span>
+            </div>
+            <div class="entity-item">
+              <span class="type loc">Luogo</span>
+              <span>Thornfield</span>
+            </div>
+            <div class="entity-item">
+              <span class="type item">Oggetto</span>
+              <span>Martello Runico</span>
+            </div>
+          </div>
+          <button class="publish-btn">Pubblica su Kanka</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION E: First Launch -->
+<div class="section dir-e" id="dir-e">
+  <h2>Direction E: First Launch</h2>
+  <p class="subtitle">Schermata iniziale. Due modalita' chiare. Il DM capisce in 5 secondi cosa fare.</p>
+  <div class="foundry-bg">
+    <div class="layout">
+      <div class="canvas"></div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="title" style="font-size:13px;font-weight:600;">VoxChronicle</span>
+        </div>
+        <div class="content">
+          <div class="mode-card">
+            <div class="icon-big">&#9899;</div>
+            <h3>Sessione Live</h3>
+            <p>Assistenza AI in tempo reale durante il gioco. Suggerimenti contestuali, regole Q&A, trascrizione automatica.</p>
+          </div>
+          <div class="mode-card">
+            <div class="icon-big">&#128214;</div>
+            <h3>Chronicle Mode</h3>
+            <p>Registra la sessione e pubblica su Kanka. Trascrizione, estrazione entita', immagini AI, cronaca automatica.</p>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span><span class="status-check">&#10003;</span> OpenAI configurato</span>
+          <span><span class="status-check">&#10003;</span> Kanka configurato</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIRECTION F: Component Comparison -->
+<div class="section dir-f" id="dir-f">
+  <h2>Direction F: Confronto Componenti</h2>
+  <p class="subtitle">Elementi di design riutilizzabili: LED, VU meter, badge, streaming, indicatori.</p>
+  <div class="comparison">
+    <div class="item">
+      <h3>Sistema LED</h3>
+      <div style="display:flex;gap:16px;margin-top:12px;align-items:center;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;animation:pulse 2s infinite;"></span><span style="font-size:11px;">REC</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span><span style="font-size:11px;">AI OK</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;box-shadow:0 0 6px #8b5cf6;display:inline-block;"></span><span style="font-size:11px;">Streaming</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;box-shadow:0 0 6px #f59e0b;display:inline-block;"></span><span style="font-size:11px;">Warning</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span><span style="font-size:11px;">Error</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#6b7280;display:inline-block;"></span><span style="font-size:11px;">Idle</span></div>
+      </div>
+    </div>
+    <div class="item dir-f">
+      <h3>VU Meter Audio</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+        <div class="vu-container">
+          <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+        </div>
+        <span style="font-size:11px;color:#888;">Microfono attivo — livello audio in tempo reale</span>
+      </div>
+    </div>
+    <div class="item">
+      <h3>Badge Scena</h3>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        <span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;text-transform:uppercase;background:rgba(239,68,68,0.2);color:#ef4444;">Combattimento</span>
+        <span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;text-transform:uppercase;background:rgba(59,130,246,0.2);color:#3b82f6;">Sociale</span>
+        <span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;text-transform:uppercase;background:rgba(34,197,94,0.2);color:#22c55e;">Esplorazione</span>
+        <span style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;text-transform:uppercase;background:rgba(245,158,11,0.2);color:#f59e0b;">Riposo</span>
+      </div>
+    </div>
+    <div class="item">
+      <h3>Streaming Text AI</h3>
+      <div style="margin-top:12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.25);border-radius:6px;padding:10px;">
+        <div style="font-size:10px;color:#8b5cf6;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Suggerimento</div>
+        <div class="streaming-text" style="font-size:12px;line-height:1.5;">Il sindaco Aldric aveva promesso una ricompensa di 200mo</div>
+      </div>
+    </div>
+    <div class="item">
+      <h3>Progress Bar Ciclo</h3>
+      <div style="margin-top:12px;">
+        <div style="height:2px;background:#333;border-radius:1px;overflow:hidden;">
+          <div style="height:100%;width:65%;background:linear-gradient(90deg,#4a9eff,#8b5cf6);border-radius:1px;"></div>
+        </div>
+        <div style="font-size:10px;color:#888;margin-top:4px;">Ciclo live: 19s / 30s</div>
+      </div>
+    </div>
+    <div class="item">
+      <h3>Entity Type Tags</h3>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;background:rgba(74,158,255,0.2);color:#4a9eff;">NPC</span>
+        <span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;background:rgba(34,197,94,0.2);color:#22c55e;">Luogo</span>
+        <span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;background:rgba(245,158,11,0.2);color:#f59e0b;">Oggetto</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

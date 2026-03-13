@@ -24,7 +24,6 @@ export class OpenAIChatProvider extends ChatProvider {
     super();
     this.#client = new OpenAIClient(apiKey, {
       timeout: options.timeout ?? 120000,
-      ...options,
     });
   }
 
@@ -52,6 +51,7 @@ export class OpenAIChatProvider extends ChatProvider {
 
     const response = await this.#client.post('/chat/completions', body, {
       signal: options.abortSignal,
+      queueCategory: 'chat',
     });
 
     const choice = response?.choices?.[0];
@@ -80,17 +80,15 @@ export class OpenAIChatProvider extends ChatProvider {
     if (options.temperature !== undefined) body.temperature = options.temperature;
     if (options.maxTokens !== undefined) body.max_tokens = options.maxTokens;
 
-    try {
-      for await (const chunk of this.#client.postStream('/chat/completions', body, {
-        signal: options.abortSignal,
-      })) {
-        const content = chunk.content;
-        if (content !== null && content !== undefined) {
-          yield { token: content, done: false };
-        }
+    // NOTE: postStream bypasses the request queue — queueCategory is not applicable for streaming
+    for await (const chunk of this.#client.postStream('/chat/completions', body, {
+      signal: options.abortSignal,
+    })) {
+      const content = chunk.content;
+      if (content !== null && content !== undefined) {
+        yield { token: content, done: false };
       }
-    } finally {
-      yield { token: '', done: true };
     }
+    yield { token: '', done: true };
   }
 }

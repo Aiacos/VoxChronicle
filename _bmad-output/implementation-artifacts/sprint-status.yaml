@@ -1,0 +1,99 @@
+# generated: 2026-03-08
+# project: VoxChronicle
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-08
+project: VoxChronicle
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Foundation Affidabile e Stabilizzazione
+  epic-1: done
+  1-1-fix-bug-critici-e-importanti: done
+  1-2-event-bus-con-canali-tipizzati: done
+  1-3-state-machine-sessione-formale: done
+  1-4-resilienceregistry-centralizzato: done
+  1-5-design-token-system-css: done
+  epic-1-retrospective: done
+
+  # Epic 2: AI Core Performante
+  epic-2: done
+  2-1-ai-provider-interface-e-providerregistry: done
+  2-2-implementazione-openai-provider: done
+  2-3-parallelizzazione-code-ai-e-cache-a-due-livelli: done
+  2-4-streamcontroller-ui: done
+  epic-2-retrospective: done
+
+  # Epic 3: Registrazione Audio & Trascrizione Intelligente
+  epic-3: backlog
+  3-1-registrazione-audio-completa-con-safari-fallback: backlog
+  3-2-trascrizione-con-diarizzazione-e-multi-lingua: backlog
+  3-3-mappatura-speaker-e-revisione-trascrizione: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Assistenza AI Live Contestuale
+  epic-4: backlog
+  4-1-avvio-sessione-live-e-ciclo-ai: backlog
+  4-2-suggerimenti-contestuali-da-journal-e-rag: backlog
+  4-3-rules-qa-con-compendi-foundry: backlog
+  4-4-rilevamento-tipo-scena: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: Cronaca Automatica & Pubblicazione Kanka
+  epic-5: backlog
+  5-1-estrazione-entita-e-revisione: backlog
+  5-2-generazione-immagini-e-cronaca-narrativa: backlog
+  5-3-pubblicazione-su-kanka: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: Pannello Unificato & Esperienza Adattiva
+  epic-6: backlog
+  6-1-pannello-collassabile-con-led-system: backlog
+  6-2-first-launch-screen-e-tab-contestuali: backlog
+  6-3-input-bar-e-notifiche-real-time: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Multi-Provider AI & Selezione Per-Task
+  epic-7: backlog
+  7-1-provider-anthropic-e-google: backlog
+  7-2-selezione-modello-per-task-e-status-provider: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: Analytics Sessione & Accessibilita' Completa
+  epic-8: backlog
+  8-1-dashboard-analytics-sessione: backlog
+  8-2-navigazione-tastiera-e-accessibilita-wcag-aaa: backlog
+  epic-8-retrospective: optional

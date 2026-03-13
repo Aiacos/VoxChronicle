@@ -1172,6 +1172,23 @@
         "InvalidTransition": "Ungültiger Übergang: Ereignis \"{event}\" ist im Zustand \"{state}\" nicht gültig",
         "GuardFailed": "Übergang durch Schutzbedingung blockiert"
       }
+    },
+    "Stream": {
+      "Started": "Streaming gestartet",
+      "Completed": "Streaming abgeschlossen ({charCount} Zeichen, {duration}ms)",
+      "Cancelled": "Streaming vom Benutzer abgebrochen",
+      "Error": "Streaming-Fehler: {error}",
+      "FirstToken": "Erstes Token empfangen in {latency}ms"
+    },
+    "Cache": {
+      "Hit": "Cache-Treffer: {key}",
+      "Miss": "Cache-Fehltreffer: {key}",
+      "Invalidated": "Cache ungültig gemacht: {prefix}",
+      "Stats": "Cache-Statistiken — Trefferquote: {rate}%, Größe: {size}"
+    },
+    "Queue": {
+      "CategoryFull": "Anfragewarteschlange voll für Kategorie {category}",
+      "Parallel": "Verarbeitung von {count} parallelen Anfragewarteschlangen"
     }
   }
 }

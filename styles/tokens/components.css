@@ -1,0 +1,32 @@
+/**
+ * VoxChronicle Design Tokens — Layer 3: Components
+ *
+ * Per-component tokens derived from semantic layer. These are the tokens
+ * most commonly referenced in vox-chronicle.css rule values.
+ *
+ * @layer components
+ */
+
+:root {
+  /* === Recorder Status Colors === */
+  --vox-recorder-ready: var(--vox-color-success);
+  --vox-recorder-recording: var(--vox-color-error);
+  --vox-recorder-paused: var(--vox-color-warning);
+  --vox-recorder-processing: var(--vox-color-info);
+
+  /* === Suggestion Card Types === */
+  --vox-suggestion-narration: var(--vox-color-info);
+  --vox-suggestion-dialogue: var(--vox-color-success);
+  --vox-suggestion-action: var(--vox-color-warning);
+  --vox-suggestion-reference: var(--vox-purple-500);
+
+  /* === Badge / Status / Mode === */
+  --vox-badge-api: var(--vox-color-info);
+  --vox-badge-local: var(--vox-color-success);
+  --vox-badge-auto: var(--vox-color-warning);
+
+  /* === Panel Layout === */
+  --vox-tab-height: 32px;
+  --vox-status-dot-size: 8px;
+  --vox-suggestion-card-padding: 8px 12px;
+}

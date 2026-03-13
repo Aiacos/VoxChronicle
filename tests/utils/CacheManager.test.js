@@ -327,6 +327,128 @@ describe('CacheManager', () => {
     });
   });
 
+  // ── setWithTTL (Story 2.3) ──────────────────────────────────────────────
+
+  describe('setWithTTL()', () => {
+    it('should store value with TTL in milliseconds', () => {
+      cache.setWithTTL('ttl-key', 'val', 60000);
+      expect(cache.get('ttl-key')).toBe('val');
+    });
+
+    it('should expire after TTL', () => {
+      vi.useFakeTimers();
+      cache.setWithTTL('ttl-key', 'val', 100);
+      expect(cache.get('ttl-key')).toBe('val');
+      vi.advanceTimersByTime(150);
+      expect(cache.get('ttl-key')).toBeNull();
+      vi.useRealTimers();
+    });
+
+    it('should accept metadata', () => {
+      cache.setWithTTL('ttl-meta', 'val', 60000, { tag: 'test' });
+      const entry = cache.getEntry('ttl-meta');
+      expect(entry.metadata).toEqual({ tag: 'test' });
+    });
+
+    it('should set correct expiresAt timestamp', () => {
+      vi.useFakeTimers();
+      const now = Date.now();
+      cache.setWithTTL('ttl-ts', 'val', 5000);
+      const entry = cache.getEntry('ttl-ts');
+      expect(entry.expiresAt.getTime()).toBe(now + 5000);
+      vi.useRealTimers();
+    });
+  });
+
+  // ── invalidatePrefix (Story 2.3) ──────────────────────────────────────
+
+  describe('invalidatePrefix()', () => {
+    it('should remove all entries with matching prefix', () => {
+      cache.set('narrator:suggestion:combat', 'a', futureDate());
+      cache.set('narrator:suggestion:social', 'b', futureDate());
+      cache.set('narrator:rules:query1', 'c', futureDate());
+      const removed = cache.invalidatePrefix('narrator:suggestion:');
+      expect(removed).toBe(2);
+      expect(cache.has('narrator:suggestion:combat')).toBe(false);
+      expect(cache.has('narrator:suggestion:social')).toBe(false);
+      expect(cache.has('narrator:rules:query1')).toBe(true);
+    });
+
+    it('should return 0 when no keys match', () => {
+      cache.set('other:key', 'val', futureDate());
+      expect(cache.invalidatePrefix('narrator:')).toBe(0);
+    });
+
+    it('should handle empty cache', () => {
+      expect(cache.invalidatePrefix('any:')).toBe(0);
+    });
+
+    it('should handle empty prefix (removes all)', () => {
+      cache.set('a', 1, futureDate());
+      cache.set('b', 2, futureDate());
+      expect(cache.invalidatePrefix('')).toBe(2);
+      expect(cache.size()).toBe(0);
+    });
+
+    it('should complete in <10ms for 100 entries', () => {
+      const bigCache = new CacheManager({ maxSize: 200 });
+      for (let i = 0; i < 100; i++) {
+        bigCache.set(`prefix:${i}`, i, futureDate());
+      }
+      const start = performance.now();
+      bigCache.invalidatePrefix('prefix:');
+      const elapsed = performance.now() - start;
+      expect(elapsed).toBeLessThan(10);
+    });
+  });
+
+  // ── stats (Story 2.3) ─────────────────────────────────────────────────
+
+  describe('stats', () => {
+    it('should start with zero hits and misses', () => {
+      const s = cache.stats;
+      expect(s.hits).toBe(0);
+      expect(s.misses).toBe(0);
+      expect(s.hitRate).toBe(0);
+      expect(s.size).toBe(0);
+    });
+
+    it('should count hits on successful get()', () => {
+      cache.set('k', 'v', futureDate());
+      cache.get('k');
+      cache.get('k');
+      expect(cache.stats.hits).toBe(2);
+      expect(cache.stats.misses).toBe(0);
+    });
+
+    it('should count misses on failed get()', () => {
+      cache.get('missing');
+      expect(cache.stats.misses).toBe(1);
+      expect(cache.stats.hits).toBe(0);
+    });
+
+    it('should count miss on expired entry', () => {
+      cache.set('exp', 'v', pastDate());
+      cache.get('exp');
+      expect(cache.stats.misses).toBe(1);
+    });
+
+    it('should calculate hitRate correctly', () => {
+      cache.set('k', 'v', futureDate());
+      cache.get('k');       // hit
+      cache.get('k');       // hit
+      cache.get('missing'); // miss
+      const s = cache.stats;
+      expect(s.hitRate).toBeCloseTo(66.67, 0);
+    });
+
+    it('should include current size', () => {
+      cache.set('a', 1, futureDate());
+      cache.set('b', 2, futureDate());
+      expect(cache.stats.size).toBe(2);
+    });
+  });
+
   // ── static generateCacheKey ────────────────────────────────────────────
 
   describe('generateCacheKey()', () => {

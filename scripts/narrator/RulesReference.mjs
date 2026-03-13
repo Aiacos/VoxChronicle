@@ -13,6 +13,7 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
+import { CacheManager } from '../utils/CacheManager.mjs';
 import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
@@ -118,6 +119,53 @@ export class RulesReference {
      * @private
      */
     this._isLoaded = false;
+
+    /**
+     * L1 cache for search results (optional)
+     * @type {CacheManager|null}
+     * @private
+     */
+    this._cache = options.cache || null;
+
+    /**
+     * Default TTL for L1 cache entries (ms)
+     * @type {number}
+     * @private
+     */
+    this._cacheTTL = options.cacheTTL ?? 300000; // 5 min default
+
+    /**
+     * EventBus for cache invalidation (optional)
+     * @type {Object|null}
+     * @private
+     */
+    this._eventBus = options.eventBus || null;
+
+    /**
+     * Unsubscribe functions for EventBus listeners (for cleanup)
+     * @type {Function[]}
+     * @private
+     */
+    this._unsubscribers = [];
+
+    // Register cache invalidation on session state changes
+    if (this._cache && this._eventBus) {
+      this._unsubscribers.push(
+        this._eventBus.on('session:stateChanged', () => {
+          this._cache.invalidatePrefix('narrator:rules:');
+        })
+      );
+    }
+  }
+
+  /**
+   * Cleans up EventBus listeners. Call before discarding this instance.
+   */
+  destroy() {
+    for (const unsub of this._unsubscribers) {
+      unsub?.();
+    }
+    this._unsubscribers = [];
   }
 
   /**
@@ -220,6 +268,17 @@ export class RulesReference {
       return [];
     }
 
+    // L1 cache lookup
+    let cacheKey = null;
+    if (this._cache && !options.skipCache) {
+      cacheKey = `narrator:rules:${CacheManager.generateCacheKey(query.toLowerCase().trim())}`;
+      const cached = this._cache.get(cacheKey);
+      if (cached) {
+        this._logger.debug(`searchRules() L1 cache hit`);
+        return cached;
+      }
+    }
+
     const normalizedQuery = query.toLowerCase().trim();
     const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
     const limit = options.limit || this._resultLimit;
@@ -263,6 +322,12 @@ export class RulesReference {
 
     results.sort((a, b) => b.relevance - a.relevance);
     const limited = results.slice(0, limit);
+
+    // Store in L1 cache
+    if (cacheKey) {
+      this._cache.setWithTTL(cacheKey, limited, this._cacheTTL);
+    }
+
     this._logger.debug(`searchRules() exit — ${limited.length}/${results.length} results`);
     return limited;
   }

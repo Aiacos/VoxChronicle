@@ -24,7 +24,6 @@ export class OpenAIImageProvider extends ImageProvider {
     super();
     this.#client = new OpenAIClient(apiKey, {
       timeout: options.timeout ?? 300000,
-      ...options,
     });
   }
 
@@ -57,6 +56,7 @@ export class OpenAIImageProvider extends ImageProvider {
 
     const response = await this.#client.post('/images/generations', body, {
       signal: options.abortSignal,
+      queueCategory: 'image',
     });
 
     const imageData = response?.data?.[0];

@@ -180,4 +180,18 @@ describe('OpenAIEmbeddingProvider', () => {
       expect(result.dimensions).toBe(1536);
     });
   });
+
+  describe('queueCategory (Story 2.3)', () => {
+    it('should pass queueCategory "embedding" to post()', async () => {
+      mockClient.post.mockResolvedValue({
+        data: [{ embedding: [0.1, 0.2, 0.3] }],
+      });
+      await provider.embed('hello');
+      expect(mockClient.post).toHaveBeenCalledWith(
+        '/embeddings',
+        expect.any(Object),
+        expect.objectContaining({ queueCategory: 'embedding' })
+      );
+    });
+  });
 });

@@ -41,7 +41,15 @@ const {
   mockOpenAIImageProvider,
   mockOpenAIEmbeddingProvider,
   mockProviderRegistryInstance,
-  mockProviderRegistry
+  mockProviderRegistry,
+  mockCacheManager,
+  mockCacheManagerInstance,
+  mockCachingChatDecorator,
+  mockCachingChatDecoratorInstance,
+  mockCachingEmbeddingDecorator,
+  mockCachingEmbeddingDecoratorInstance,
+  mockEventBus,
+  mockEventBusOn
 } = vi.hoisted(() => {
   const mockAudioRecorder = vi.fn().mockImplementation(() => ({}));
   const mockTranscriptionFactoryCreate = vi.fn().mockResolvedValue({ type: 'cloud' });
@@ -117,6 +125,30 @@ const {
     resetInstance: vi.fn()
   };
 
+  // Cache and decorator mocks (Story 2.3 — Task 6)
+  const mockCacheManagerInstance = {
+    get: vi.fn(),
+    set: vi.fn(),
+    setWithTTL: vi.fn(),
+    clear: vi.fn(),
+    invalidatePrefix: vi.fn(),
+    stats: { hits: 0, misses: 0, hitRate: 0, size: 0 }
+  };
+  const mockCacheManager = vi.fn().mockImplementation(() => mockCacheManagerInstance);
+  mockCacheManager.generateCacheKey = vi.fn().mockReturnValue('mock-key');
+
+  const mockCachingChatDecoratorInstance = { type: 'cached-chat' };
+  const mockCachingChatDecorator = vi.fn().mockImplementation(() => mockCachingChatDecoratorInstance);
+  const mockCachingEmbeddingDecoratorInstance = { type: 'cached-embedding' };
+  const mockCachingEmbeddingDecorator = vi.fn().mockImplementation(() => mockCachingEmbeddingDecoratorInstance);
+
+  const mockEventBusOn = vi.fn().mockReturnValue(() => {});
+  const mockEventBus = {
+    on: mockEventBusOn,
+    off: vi.fn(),
+    emit: vi.fn()
+  };
+
   return {
     mockAudioRecorder, mockTranscriptionFactoryCreate, mockImageGenerationService,
     mockKankaService, mockEntityExtractor, mockNarrativeExporter,
@@ -128,7 +160,11 @@ const {
     mockSettingsModule,
     mockOpenAIChatProvider, mockOpenAITranscriptionProvider,
     mockOpenAIImageProvider, mockOpenAIEmbeddingProvider,
-    mockProviderRegistryInstance, mockProviderRegistry
+    mockProviderRegistryInstance, mockProviderRegistry,
+    mockCacheManager, mockCacheManagerInstance,
+    mockCachingChatDecorator, mockCachingChatDecoratorInstance,
+    mockCachingEmbeddingDecorator, mockCachingEmbeddingDecoratorInstance,
+    mockEventBus, mockEventBusOn
   };
 });
 
@@ -211,6 +247,17 @@ vi.mock('../../scripts/ai/providers/OpenAIEmbeddingProvider.mjs', () => ({
 }));
 vi.mock('../../scripts/ai/providers/ProviderRegistry.mjs', () => ({
   ProviderRegistry: mockProviderRegistry
+}));
+// Cache, decorator, and EventBus mocks (Story 2.3 — Task 6)
+vi.mock('../../scripts/utils/CacheManager.mjs', () => ({
+  CacheManager: mockCacheManager
+}));
+vi.mock('../../scripts/ai/providers/CachingProviderDecorator.mjs', () => ({
+  CachingChatDecorator: mockCachingChatDecorator,
+  CachingEmbeddingDecorator: mockCachingEmbeddingDecorator
+}));
+vi.mock('../../scripts/core/EventBus.mjs', () => ({
+  eventBus: mockEventBus
 }));
 
 // ── Import the class under test (after all vi.mock calls) ───────────────
@@ -318,6 +365,19 @@ describe('VoxChronicle', () => {
     mockProviderRegistryInstance.getProvider = vi.fn().mockImplementation((capability) => ({ capability, type: 'mock-provider' }));
     mockProviderRegistry.getInstance = vi.fn().mockReturnValue(mockProviderRegistryInstance);
     mockProviderRegistry.resetInstance = vi.fn();
+
+    // Reset cache, decorator, and EventBus mocks (Story 2.3 — Task 6)
+    mockCacheManager.mockImplementation(() => mockCacheManagerInstance);
+    mockCacheManagerInstance.get = vi.fn();
+    mockCacheManagerInstance.set = vi.fn();
+    mockCacheManagerInstance.setWithTTL = vi.fn();
+    mockCacheManagerInstance.clear = vi.fn();
+    mockCacheManagerInstance.invalidatePrefix = vi.fn();
+    mockCachingChatDecorator.mockImplementation(() => mockCachingChatDecoratorInstance);
+    mockCachingEmbeddingDecorator.mockImplementation(() => mockCachingEmbeddingDecoratorInstance);
+    mockEventBus.on = vi.fn().mockReturnValue(() => {});
+    mockEventBus.off = vi.fn();
+    mockEventBus.emit = vi.fn();
 
     // Configure default settings that return null for everything (simulates unconfigured)
     configureSettings({});
@@ -561,14 +621,20 @@ describe('VoxChronicle', () => {
       expect(mockSceneDetector).toHaveBeenCalled();
       expect(mockSessionAnalytics).toHaveBeenCalled();
 
-      // AI Assistant created with OpenAI key
-      expect(mockAIAssistant).toHaveBeenCalledWith({
-        openaiClient: expect.any(Object),
-        primaryLanguage: 'it'
-      });
+      // AI Assistant created with OpenAI key, L1 cache, and eventBus
+      expect(mockAIAssistant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          openaiClient: expect.any(Object),
+          primaryLanguage: 'it',
+          cache: expect.any(Object),
+          eventBus: expect.any(Object)
+        })
+      );
 
-      // Rules reference created
-      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'it' });
+      // Rules reference created with L1 cache and eventBus
+      expect(mockRulesReference).toHaveBeenCalledWith(
+        expect.objectContaining({ language: 'it', cache: expect.any(Object), eventBus: expect.any(Object) })
+      );
 
       // Narrator services connected to orchestrator
       expect(mockSessionOrchestratorInstance.setNarratorServices).toHaveBeenCalledWith({
@@ -576,7 +642,9 @@ describe('VoxChronicle', () => {
         chapterTracker: expect.any(Object),
         sceneDetector: expect.any(Object),
         sessionAnalytics: expect.any(Object),
-        journalParser: expect.any(Object)
+        journalParser: expect.any(Object),
+        rulesReference: expect.any(Object),
+        rulesLookupService: expect.any(Object)
       });
 
       // Module marked as initialized
@@ -761,7 +829,9 @@ describe('VoxChronicle', () => {
 
       await instance.initialize();
 
-      expect(mockRulesReference).toHaveBeenCalledWith({ language: 'it' });
+      expect(mockRulesReference).toHaveBeenCalledWith(
+        expect.objectContaining({ language: 'it', cache: expect.any(Object), eventBus: expect.any(Object) })
+      );
     });
 
     it('should create rules reference when rulesDetection is undefined (not explicitly false)', async () => {
@@ -2069,6 +2139,169 @@ describe('VoxChronicle', () => {
       const result2 = instance._getCachedSettingsStatus();
       expect(result2).not.toBe(result1); // New object, not same reference
       expect(result2).toEqual(result1);  // But with same content
+    });
+  });
+
+  // ── Story 2.3 Task 6: L2 cache wiring and narrator L1 cache ──────────
+  describe('Cache L2 integration (Story 2.3)', () => {
+    it('should create L2 CacheManager during initialization', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // CacheManager should be constructed for L2 cache
+      expect(mockCacheManager).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'l2-provider', maxSize: 200 })
+      );
+    });
+
+    it('should wrap OpenAIChatProvider with CachingChatDecorator', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // CachingChatDecorator should be constructed with the chat provider and L2 cache
+      expect(mockCachingChatDecorator).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'chat' }),
+        mockCacheManagerInstance
+      );
+    });
+
+    it('should wrap OpenAIEmbeddingProvider with CachingEmbeddingDecorator', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // CachingEmbeddingDecorator should be constructed with the embedding provider and L2 cache
+      expect(mockCachingEmbeddingDecorator).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'embedding' }),
+        mockCacheManagerInstance
+      );
+    });
+
+    it('should register cached chat decorator in ProviderRegistry instead of raw provider', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // The registry should receive the wrapped decorator, not the raw provider
+      const chatRegistrations = mockProviderRegistryInstance.register.mock.calls.filter(
+        ([name]) => name === 'openai-chat'
+      );
+      expect(chatRegistrations).toHaveLength(1);
+      expect(chatRegistrations[0][1]).toBe(mockCachingChatDecoratorInstance);
+    });
+
+    it('should register cached embedding decorator in ProviderRegistry instead of raw provider', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      const embeddingRegistrations = mockProviderRegistryInstance.register.mock.calls.filter(
+        ([name]) => name === 'openai-embedding'
+      );
+      expect(embeddingRegistrations).toHaveLength(1);
+      expect(embeddingRegistrations[0][1]).toBe(mockCachingEmbeddingDecoratorInstance);
+    });
+
+    it('should register transcription and image providers without caching', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Transcription and image providers should NOT be wrapped
+      const transcriptionRegistrations = mockProviderRegistryInstance.register.mock.calls.filter(
+        ([name]) => name === 'openai-transcription'
+      );
+      const imageRegistrations = mockProviderRegistryInstance.register.mock.calls.filter(
+        ([name]) => name === 'openai-image'
+      );
+      expect(transcriptionRegistrations).toHaveLength(1);
+      expect(transcriptionRegistrations[0][1]).toEqual({ type: 'transcription' });
+      expect(imageRegistrations).toHaveLength(1);
+      expect(imageRegistrations[0][1]).toEqual({ type: 'image' });
+    });
+
+    it('should not create L2 cache when no OpenAI API key is configured', async () => {
+      configureSettings(fullSettings({ openaiApiKey: '' }));
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // CachingChatDecorator should NOT be called
+      expect(mockCachingChatDecorator).not.toHaveBeenCalled();
+      expect(mockCachingEmbeddingDecorator).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Cache L1 wiring for narrator services (Story 2.3)', () => {
+    it('should pass L1 cache and eventBus to AIAssistant', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // AIAssistant constructor should receive cache and eventBus in options
+      expect(mockAIAssistant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cache: expect.any(Object),
+          eventBus: mockEventBus
+        })
+      );
+    });
+
+    it('should pass L1 cache and eventBus to RulesReference', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // RulesReference constructor should receive cache and eventBus in options
+      expect(mockRulesReference).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cache: expect.any(Object),
+          eventBus: mockEventBus
+        })
+      );
+    });
+
+    it('should create separate L1 CacheManager instances for narrator services', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // CacheManager should be called multiple times: L2 + L1 for AI + L1 for Rules
+      const cacheManagerCalls = mockCacheManager.mock.calls;
+      const l1Names = cacheManagerCalls
+        .filter(([opts]) => opts.name && opts.name.startsWith('l1-'))
+        .map(([opts]) => opts.name);
+      expect(l1Names).toContain('l1-suggestions');
+      expect(l1Names).toContain('l1-rules');
+    });
+  });
+
+  describe('Cache cleanup on resetInstance (Story 2.3)', () => {
+    it('should clear L2 cache on resetInstance', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      VoxChronicle.resetInstance();
+
+      // L2 cache should be cleared
+      expect(mockCacheManagerInstance.clear).toHaveBeenCalled();
+    });
+
+    it('should clear L1 caches on resetInstance', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      // Clear mock tracking before reset to count only reset-triggered clears
+      mockCacheManagerInstance.clear.mockClear();
+
+      VoxChronicle.resetInstance();
+
+      // All caches (L2 + L1s) should be cleared
+      // At minimum the L2 cache clear should be called
+      expect(mockCacheManagerInstance.clear).toHaveBeenCalled();
     });
   });
 });

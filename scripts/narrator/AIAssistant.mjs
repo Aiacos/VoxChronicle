@@ -12,6 +12,7 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
+import { CacheManager } from '../utils/CacheManager.mjs';
 import { SilenceMonitor } from './SilenceMonitor.mjs';
 import { PromptBuilder } from './PromptBuilder.mjs';
 import { RollingSummarizer } from './RollingSummarizer.mjs';
@@ -293,6 +294,55 @@ class AIAssistant {
     if (options.onAutonomousSuggestion) {
       this._silenceMonitor.setOnAutonomousSuggestionCallback(options.onAutonomousSuggestion);
     }
+
+    /**
+     * L1 cache for suggestions (optional)
+     * @type {CacheManager|null}
+     * @private
+     */
+    this._cache = options.cache || null;
+
+    /**
+     * Default TTL for L1 cache entries (ms)
+     * @type {number}
+     * @private
+     */
+    this._cacheTTL = options.cacheTTL ?? 60000; // 1 min default
+
+    /**
+     * EventBus for cache invalidation (optional)
+     * @type {Object|null}
+     * @private
+     */
+    this._eventBus = options.eventBus || null;
+
+    /**
+     * Unsubscribe functions for EventBus listeners (for cleanup)
+     * @type {Function[]}
+     * @private
+     */
+    this._unsubscribers = [];
+
+    // Register cache invalidation on scene changes
+    // NOTE: scene:changed is not yet emitted — will be wired in Epic 4 (SceneDetector → EventBus)
+    if (this._cache && this._eventBus) {
+      this._unsubscribers.push(
+        this._eventBus.on('scene:changed', () => {
+          this._cache.invalidatePrefix('narrator:suggestion:');
+        })
+      );
+    }
+  }
+
+  /**
+   * Cleans up EventBus listeners. Call before discarding this instance.
+   */
+  destroy() {
+    this._silenceMonitor?.stopMonitoring?.();
+    for (const unsub of this._unsubscribers) {
+      unsub?.();
+    }
+    this._unsubscribers = [];
   }
 
   // ---------------------------------------------------------------------------
@@ -719,6 +769,19 @@ class AIAssistant {
     this._logger.debug(`analyzeContext() entry — transcription length: ${transcription.length}, suggestions=${includeSuggestions}, offTrack=${checkOffTrack}, rules=${detectRules}`);
     const _analyzeStart = performance.now();
 
+    // L1 cache lookup (key based on scene type + chapter context)
+    let cacheKey = null;
+    if (this._cache && !options.skipCache) {
+      const sceneType = this._sessionState.currentScene || 'unknown';
+      const chapterKey = this._chapterContext?.chapterName ? CacheManager.generateCacheKey(this._chapterContext.chapterName) : 'none';
+      cacheKey = `narrator:suggestion:${sceneType}:${chapterKey}:${CacheManager.generateCacheKey(transcription)}`;
+      const cached = this._cache.get(cacheKey);
+      if (cached) {
+        this._logger.debug(`analyzeContext() L1 cache hit — ${(performance.now() - _analyzeStart).toFixed(1)}ms`);
+        return cached;
+      }
+    }
+
     // Detect rules questions if enabled
     let rulesDetection = null;
     if (detectRules) {
@@ -753,7 +816,7 @@ class AIAssistant {
 
       this._logger.debug(`analyzeContext() exit — ${analysis.suggestions.length} suggestions, ${analysis.rulesQuestions.length} rules questions, ${(performance.now() - _analyzeStart).toFixed(1)}ms`);
 
-      return {
+      const result = {
         ...analysis,
         usage: response.usage || null,
         model: response.model || this._model,
@@ -763,6 +826,13 @@ class AIAssistant {
           timestamp: Date.now()
         }
       };
+
+      // Store in L1 cache
+      if (this._cache && cacheKey) {
+        this._cache.setWithTTL(cacheKey, result, this._cacheTTL);
+      }
+
+      return result;
     } catch (error) {
       this._logger.error(`analyzeContext() failed after ${(performance.now() - _analyzeStart).toFixed(1)}ms:`, error.message);
       throw error;
@@ -913,7 +983,7 @@ class AIAssistant {
       this._syncPromptBuilderState();
       const messages = this._promptBuilder.buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
       const response = await this._makeChatRequest(messages);
-      const content = response.choices?.[0]?.message?.content || '';
+      const content = response.choices?.[0]?.message?.content ?? response.content ?? '';
       const result = content.trim();
 
       this._logger.debug(`generateNarrativeBridge() exit — result length: ${result.length}, ${(performance.now() - _bridgeStart).toFixed(1)}ms`);

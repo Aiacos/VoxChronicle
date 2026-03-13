@@ -1172,6 +1172,23 @@
         "InvalidTransition": "無効な遷移: イベント \"{event}\" は状態 \"{state}\" では有効ではありません",
         "GuardFailed": "ガード条件により遷移がブロックされました"
       }
+    },
+    "Stream": {
+      "Started": "ストリーミング開始",
+      "Completed": "ストリーミング完了（{charCount}文字、{duration}ms）",
+      "Cancelled": "ユーザーによりストリーミングがキャンセルされました",
+      "Error": "ストリーミングエラー: {error}",
+      "FirstToken": "最初のトークンを{latency}msで受信"
+    },
+    "Cache": {
+      "Hit": "キャッシュヒット: {key}",
+      "Miss": "キャッシュミス: {key}",
+      "Invalidated": "キャッシュ無効化: {prefix}",
+      "Stats": "キャッシュ統計 — ヒット率: {rate}%、サイズ: {size}"
+    },
+    "Queue": {
+      "CategoryFull": "カテゴリ {category} のリクエストキューが満杯です",
+      "Parallel": "{count} 件の並列リクエストキューを処理中"
     }
   }
 }

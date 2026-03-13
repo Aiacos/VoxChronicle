@@ -14,7 +14,12 @@
     }
   ],
   "esmodules": ["scripts/main.mjs"],
-  "styles": ["styles/vox-chronicle.css"],
+  "styles": [
+    "styles/tokens/primitives.css",
+    "styles/tokens/semantic.css",
+    "styles/tokens/components.css",
+    "styles/vox-chronicle.css"
+  ],
   "languages": [
     {
       "lang": "en",

@@ -1166,4 +1166,183 @@ describe('RulesReference', () => {
       expect(rules._hasQuestionWord('the sun shines bright')).toBe(false);
     });
   });
+
+  // =========================================================================
+  // L1 Cache Integration
+  // =========================================================================
+  describe('L1 Cache', () => {
+    let CacheManager;
+
+    beforeEach(async () => {
+      CacheManager = (await import('../../scripts/utils/CacheManager.mjs')).CacheManager;
+    });
+
+    it('should accept cache option in constructor', () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const r = new RulesReference({ cache });
+      expect(r).toBeDefined();
+    });
+
+    it('should accept eventBus option in constructor', () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const eventBus = { on: vi.fn() };
+      const r = new RulesReference({ cache, eventBus });
+      expect(eventBus.on).toHaveBeenCalledWith('session:stateChanged', expect.any(Function));
+    });
+
+    it('should return cached result on searchRules cache hit', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const r = new RulesReference({ cache });
+
+      // Manually load a rule into the internal cache
+      r._rulesCache.set('test-1', {
+        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+      });
+      r._isLoaded = true;
+      r._searchIndex.set('grappling', new Set(['test-1']));
+
+      // First call — cache miss, stores result
+      const result1 = await r.searchRules('grappling');
+      expect(result1.length).toBe(1);
+
+      // Modify internal data — if cache works, second call returns old result
+      r._rulesCache.delete('test-1');
+      r._searchIndex.clear();
+
+      const result2 = await r.searchRules('grappling');
+      expect(result2.length).toBe(1); // From cache
+      expect(result2[0].rule.title).toBe('Grappling');
+    });
+
+    it('should bypass cache with skipCache option', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const r = new RulesReference({ cache });
+
+      r._rulesCache.set('test-1', {
+        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+      });
+      r._isLoaded = true;
+      r._searchIndex.set('grappling', new Set(['test-1']));
+
+      await r.searchRules('grappling');
+
+      // Clear internal data
+      r._rulesCache.delete('test-1');
+      r._searchIndex.clear();
+
+      // With skipCache, should get empty results
+      const result = await r.searchRules('grappling', { skipCache: true });
+      expect(result.length).toBe(0);
+    });
+
+    it('should invalidate cache on session:stateChanged event', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      let stateChangedCallback;
+      const eventBus = {
+        on: vi.fn((event, cb) => { if (event === 'session:stateChanged') stateChangedCallback = cb; })
+      };
+      const r = new RulesReference({ cache, eventBus });
+
+      r._rulesCache.set('test-1', {
+        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+      });
+      r._isLoaded = true;
+      r._searchIndex.set('grappling', new Set(['test-1']));
+
+      await r.searchRules('grappling');
+      expect(cache.size()).toBeGreaterThan(0);
+
+      // Trigger invalidation
+      stateChangedCallback();
+      expect(cache.size()).toBe(0);
+    });
+
+    it('should work without cache (backward compatible)', async () => {
+      const r = new RulesReference(); // No cache
+      r._rulesCache.set('test-1', {
+        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+      });
+      r._isLoaded = true;
+      r._searchIndex.set('grappling', new Set(['test-1']));
+
+      const result = await r.searchRules('grappling');
+      expect(result.length).toBe(1);
+    });
+
+    it('should use configurable TTL', async () => {
+      vi.useFakeTimers();
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const r = new RulesReference({ cache, cacheTTL: 1000 });
+
+      r._rulesCache.set('test-1', {
+        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+      });
+      r._isLoaded = true;
+      r._searchIndex.set('grappling', new Set(['test-1']));
+
+      await r.searchRules('grappling');
+
+      // Clear internal data
+      r._rulesCache.delete('test-1');
+      r._searchIndex.clear();
+
+      // Before TTL — from cache
+      vi.advanceTimersByTime(500);
+      const cached = await r.searchRules('grappling');
+      expect(cached.length).toBe(1);
+
+      // After TTL — cache expired
+      vi.advanceTimersByTime(600);
+      const expired = await r.searchRules('grappling');
+      expect(expired.length).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('should track cache stats', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const r = new RulesReference({ cache });
+
+      r._rulesCache.set('test-1', {
+        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+      });
+      r._isLoaded = true;
+      r._searchIndex.set('grappling', new Set(['test-1']));
+
+      await r.searchRules('grappling'); // miss
+      await r.searchRules('grappling'); // hit
+
+      expect(cache.stats.hits).toBe(1);
+      expect(cache.stats.misses).toBe(1);
+    });
+
+    it('should not cache empty queries', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const r = new RulesReference({ cache });
+      r._isLoaded = true;
+
+      await r.searchRules('');
+      expect(cache.size()).toBe(0);
+    });
+
+    it('should differentiate cache keys by query', async () => {
+      const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
+      const r = new RulesReference({ cache });
+
+      r._rulesCache.set('test-1', {
+        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+      });
+      r._rulesCache.set('test-2', {
+        id: 'test-2', title: 'Advantage', content: 'Rules for advantage', category: 'combat', tags: ['combat']
+      });
+      r._isLoaded = true;
+      r._searchIndex.set('grappling', new Set(['test-1']));
+      r._searchIndex.set('advantage', new Set(['test-2']));
+
+      await r.searchRules('grappling');
+      await r.searchRules('advantage');
+
+      expect(cache.size()).toBe(2);
+    });
+  });
 });

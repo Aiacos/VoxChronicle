@@ -74,6 +74,12 @@ export class CacheManager {
          * @private
          */
         this._maxSize = options.maxSize || 100;
+
+        /** @type {number} Cache hit counter */
+        this._hits = 0;
+
+        /** @type {number} Cache miss counter */
+        this._misses = 0;
     }
 
     /**
@@ -108,16 +114,21 @@ export class CacheManager {
     get(key, checkExpiration = true) {
         const entry = this._cache.get(key);
 
-        if (!entry) { return null; }
+        if (!entry) {
+            this._misses++;
+            return null;
+        }
 
         // Check if entry has expired
         if (checkExpiration && new Date() > entry.expiresAt) {
             this._cache.delete(key);
+            this._misses++;
             return null;
         }
 
         // Update last accessed time for LRU tracking
         entry.lastAccessedAt = Date.now();
+        this._hits++;
 
         return entry.value;
     }
@@ -198,6 +209,8 @@ export class CacheManager {
      */
     clear() {
         this._cache.clear();
+        this._hits = 0;
+        this._misses = 0;
         this._logger.info('Cache cleared');
     }
 
@@ -225,6 +238,53 @@ export class CacheManager {
      */
     delete(key) {
         return this._cache.delete(key);
+    }
+
+    /**
+     * Stores a value with TTL in milliseconds
+     * @param {string} key - The cache key
+     * @param {*} value - The value to cache
+     * @param {number} ttlMs - Time to live in milliseconds
+     * @param {Object} [metadata={}] - Optional metadata
+     */
+    setWithTTL(key, value, ttlMs, metadata = {}) {
+        const expiresAt = new Date(Date.now() + ttlMs);
+        this.set(key, value, expiresAt, metadata);
+    }
+
+    /**
+     * Invalidates all entries whose keys start with the given prefix
+     * @param {string} prefix - The key prefix to match
+     * @returns {number} Number of entries removed
+     */
+    invalidatePrefix(prefix) {
+        const toDelete = [];
+        for (const key of this._cache.keys()) {
+            if (key.startsWith(prefix)) {
+                toDelete.push(key);
+            }
+        }
+        for (const key of toDelete) {
+            this._cache.delete(key);
+        }
+        if (toDelete.length > 0) {
+            this._logger.debug(`Invalidated ${toDelete.length} entries with prefix '${prefix}'`);
+        }
+        return toDelete.length;
+    }
+
+    /**
+     * Gets cache statistics
+     * @returns {{ hits: number, misses: number, hitRate: number, size: number }}
+     */
+    get stats() {
+        const total = this._hits + this._misses;
+        return {
+            hits: this._hits,
+            misses: this._misses,
+            hitRate: total > 0 ? (this._hits / total) * 100 : 0,
+            size: this._cache.size,
+        };
     }
 
     /**

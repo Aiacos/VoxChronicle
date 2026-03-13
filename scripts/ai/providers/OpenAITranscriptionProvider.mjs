@@ -25,7 +25,6 @@ export class OpenAITranscriptionProvider extends TranscriptionProvider {
     super();
     this.#client = new OpenAIClient(apiKey, {
       timeout: options.timeout ?? 600000,
-      ...options,
     });
   }
 
@@ -68,8 +67,15 @@ export class OpenAITranscriptionProvider extends TranscriptionProvider {
 
     const response = await this.#client.postFormData('/audio/transcriptions', formData, {
       signal: options.abortSignal,
+      queueCategory: 'transcription',
     });
 
+    if (response.text === undefined || response.text === null) {
+      throw new Error(
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.OpenAI.InvalidResponse', { details: 'missing text field' })
+          ?? 'OpenAI transcription response missing text field'
+      );
+    }
     return {
       text: response.text,
       segments: response.segments ?? [],

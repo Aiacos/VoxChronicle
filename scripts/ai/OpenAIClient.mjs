@@ -150,9 +150,9 @@ class OpenAIClient extends BaseAPIClient {
       maxDelay: options.retryMaxDelay ?? 60000
     };
 
-    // Request queue (from NM OpenAIServiceBase)
-    this._requestQueue = [];
-    this._isProcessingQueue = false;
+    // Per-category request queues (Story 2.3: parallel across categories, sequential within)
+    /** @type {Map<string, { queue: Array, processing: boolean }>} */
+    this._categoryQueues = new Map();
     this._maxQueueSize = options.maxQueueSize ?? 100;
 
     // Operation history (from NM OpenAIServiceBase)
@@ -357,20 +357,38 @@ class OpenAIClient extends BaseAPIClient {
   // ---------------------------------------------------------------------------
 
   /**
+   * Gets or creates a category queue entry
+   *
+   * @param {string} category - Queue category name
+   * @returns {{ queue: Array, processing: boolean }} Category queue entry
+   * @private
+   */
+  _getCategoryQueue(category) {
+    if (!this._categoryQueues.has(category)) {
+      this._categoryQueues.set(category, { queue: [], processing: false });
+    }
+    return this._categoryQueues.get(category);
+  }
+
+  /**
    * Enqueues a request for sequential processing with optional priority
    *
-   * Requests are processed one at a time to avoid overwhelming the API.
-   * Higher priority requests are processed before lower priority ones.
+   * Requests within the same category are processed sequentially.
+   * Requests in different categories proceed in parallel.
    *
    * @param {Function} operation - Async function to execute
    * @param {object} [context={}] - Context information for the request
+   * @param {string} [context.queueCategory='default'] - Queue category for parallel processing
    * @param {number} [priority=0] - Priority level (higher = more important, 0 = normal)
    * @returns {Promise<*>} Promise that resolves with the operation result
    * @throws {Error} If queue is full
    * @private
    */
   _enqueueRequest(operation, context = {}, priority = 0) {
-    if (this._requestQueue.length >= this._maxQueueSize) {
+    const category = context.queueCategory ?? 'default';
+    const cat = this._getCategoryQueue(category);
+
+    if (cat.queue.length >= this._maxQueueSize) {
       throw new Error(`Request queue full (${this._maxQueueSize} requests). Try again later.`);
     }
 
@@ -385,40 +403,46 @@ class OpenAIClient extends BaseAPIClient {
 
       // Insert based on priority (higher priority first)
       if (priority > 0) {
-        const insertIndex = this._requestQueue.findIndex((req) => req.priority < priority);
+        const insertIndex = cat.queue.findIndex((req) => req.priority < priority);
         if (insertIndex === -1) {
-          this._requestQueue.push(request);
+          cat.queue.push(request);
         } else {
-          this._requestQueue.splice(insertIndex, 0, request);
+          cat.queue.splice(insertIndex, 0, request);
         }
       } else {
-        this._requestQueue.push(request);
+        cat.queue.push(request);
       }
 
-      // Start processing the queue if not already processing
-      this._processQueue();
+      // Start processing this category if not already processing (fire-and-forget with safety catch)
+      if (!cat.processing) {
+        this._processCategory(category).catch(err =>
+          this._logger.error('_processCategory crashed unexpectedly:', err)
+        );
+      }
     });
   }
 
   /**
-   * Processes the request queue sequentially (one at a time)
+   * Processes a category queue sequentially (one at a time)
    *
    * Each request is executed with retry logic. If a request fails after
    * all retries, the error is propagated to the caller while the queue
    * continues processing remaining requests.
    *
+   * @param {string} category - Queue category to process
    * @private
    */
-  async _processQueue() {
-    if (this._isProcessingQueue) {
+  async _processCategory(category) {
+    const cat = this._categoryQueues.get(category);
+    if (!cat || cat.processing) {
       return;
     }
 
-    this._isProcessingQueue = true;
+    cat.processing = true;
 
     try {
-      while (this._requestQueue.length > 0) {
-        const request = this._requestQueue.shift();
+      while (cat.queue.length > 0) {
+        const request = cat.queue.shift();
 
         try {
           const result = await request.operation();
@@ -428,37 +452,74 @@ class OpenAIClient extends BaseAPIClient {
         }
       }
     } finally {
-      this._isProcessingQueue = false;
+      cat.processing = false;
     }
   }
 
   /**
    * Gets the current size of the request queue
    *
+   * @param {string} [category] - Specific category to check, or all categories if omitted
    * @returns {number} Number of requests currently queued
    */
-  getQueueSize() {
-    return this._requestQueue.length;
+  getQueueSize(category) {
+    if (category !== undefined) {
+      const cat = this._categoryQueues.get(category);
+      return cat ? cat.queue.length : 0;
+    }
+    let total = 0;
+    for (const cat of this._categoryQueues.values()) {
+      total += cat.queue.length;
+    }
+    return total;
   }
 
   /**
-   * Clears all pending requests from the queue.
-   * All queued promises will be rejected with a cancellation error.
+   * Gets the list of active queue category names
+   *
+   * @returns {string[]} Array of category names
    */
-  clearQueue() {
-    this._logger.debug('clearQueue called');
-    const queueSize = this._requestQueue.length;
+  getQueueCategories() {
+    return [...this._categoryQueues.keys()];
+  }
+
+  /**
+   * Clears pending requests from the queue.
+   * All queued promises will be rejected with a cancellation error.
+   *
+   * @param {string} [category] - Specific category to clear, or all categories if omitted
+   */
+  clearQueue(category) {
+    this._logger.debug('clearQueue called', { category: category ?? 'all' });
 
     const cancellationError = new Error('Request cancelled: queue cleared');
     cancellationError.isCancelled = true;
 
-    while (this._requestQueue.length > 0) {
-      const request = this._requestQueue.shift();
-      request.reject(cancellationError);
+    if (category !== undefined) {
+      const cat = this._categoryQueues.get(category);
+      if (!cat) return;
+      const queueSize = cat.queue.length;
+      while (cat.queue.length > 0) {
+        const request = cat.queue.shift();
+        request.reject(cancellationError);
+      }
+      if (queueSize > 0) {
+        this._logger.warn(`Cleared ${queueSize} pending request(s) from '${category}' queue`);
+      }
+      return;
     }
 
-    if (queueSize > 0) {
-      this._logger.warn(`Cleared ${queueSize} pending request(s) from queue`);
+    // Clear all categories
+    let totalCleared = 0;
+    for (const cat of this._categoryQueues.values()) {
+      while (cat.queue.length > 0) {
+        const request = cat.queue.shift();
+        request.reject(cancellationError);
+        totalCleared++;
+      }
+    }
+    if (totalCleared > 0) {
+      this._logger.warn(`Cleared ${totalCleared} pending request(s) from all queues`);
     }
   }
 
@@ -698,7 +759,7 @@ class OpenAIClient extends BaseAPIClient {
     }
 
     // Extract queue/retry options (not passed to _makeRequest)
-    const { useQueue = true, useRetry = true, priority = 0, ...requestOptions } = options;
+    const { useQueue = true, useRetry = true, priority = 0, queueCategory, ...requestOptions } = options;
 
     // The raw fetch operation
     const operation = () => this._makeRequest(endpoint, requestOptions);
@@ -711,7 +772,7 @@ class OpenAIClient extends BaseAPIClient {
 
     // Wrap with queue if enabled
     if (useQueue) {
-      return this._enqueueRequest(retryWrapped, { operationName: endpoint }, priority);
+      return this._enqueueRequest(retryWrapped, { operationName: endpoint, queueCategory }, priority);
     }
 
     return retryWrapped();
