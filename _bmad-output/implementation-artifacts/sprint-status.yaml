@@ -58,11 +58,11 @@ development_status:
   epic-2-retrospective: done
 
   # Epic 3: Registrazione Audio & Trascrizione Intelligente
-  epic-3: in-progress
+  epic-3: done
   3-1-registrazione-audio-completa-con-safari-fallback: done
   3-2-trascrizione-con-diarizzazione-e-multi-lingua: done
   3-3-mappatura-speaker-e-revisione-trascrizione: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   # Epic 4: Assistenza AI Live Contestuale
   epic-4: backlog
