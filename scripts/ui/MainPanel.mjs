@@ -1595,10 +1595,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         'vox-chronicle-suggestion vox-chronicle-suggestion--rules vox-chronicle-suggestion--unavailable';
       card.innerHTML = `
         <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--reference">reference</span>
-        <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss'}"><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss')}"><i class="fa-solid fa-xmark"></i></button>
         <div class="vox-chronicle-suggestion__content">
           <strong class="vox-chronicle-suggestion__title">${escapeHtml(data.topic || game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Rules lookup unavailable')}</strong>
-          <p>${game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Rules lookup unavailable'}</p>
+          <p>${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Rules lookup unavailable')}</p>
         </div>
       `;
       container.appendChild(card);
@@ -1620,13 +1620,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     card.className = `vox-chronicle-suggestion vox-chronicle-suggestion--rules${hasSynthesis ? ' vox-chronicle-suggestion--refining' : ''}`;
     card.innerHTML = `
       <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--reference">reference</span>
-      ${data.source === 'auto' ? `<span class="vox-chronicle-suggestion__auto-badge">${  game.i18n?.localize('VOXCHRONICLE.Rules.AutoDetected') || 'auto'  }</span>` : ''}
-      <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss'}"><i class="fa-solid fa-xmark"></i></button>
+      ${data.source === 'auto' ? `<span class="vox-chronicle-suggestion__auto-badge">${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Rules.AutoDetected') || 'auto')}</span>` : ''}
+      <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss')}"><i class="fa-solid fa-xmark"></i></button>
       <div class="vox-chronicle-suggestion__content">
         <strong class="vox-chronicle-suggestion__title">${escapeHtml(data.topic || '')}</strong>
         <p class="vox-chronicle-suggestion__excerpt">${escapeHtml(excerpt)}</p>
       </div>
-      ${hasSynthesis ? `<span class="vox-chronicle-suggestion__refining"><i class="fa-solid fa-circle-notch fa-spin"></i> ${game.i18n?.localize('VOXCHRONICLE.Rules.Refining') || 'Refining...'}</span>` : ''}
+      ${hasSynthesis ? `<span class="vox-chronicle-suggestion__refining"><i class="fa-solid fa-circle-notch fa-spin"></i> ${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Rules.Refining') || 'Refining...')}</span>` : ''}
       ${citation ? `<span class="vox-chronicle-suggestion__citation">${escapeHtml(citation)}</span>` : ''}
     `;
 
@@ -1759,7 +1759,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     card.innerHTML = `
       <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--${escapeHtml(type)}">${escapeHtml(type)}</span>
       <div class="vox-chronicle-suggestion__content">
-        <span class="vox-chronicle-suggestion__spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> ${game.i18n?.localize('VOXCHRONICLE.Live.AIThinking') || 'AI thinking...'}</span>
+        <span class="vox-chronicle-suggestion__spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> ${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Live.AIThinking') || 'AI thinking...')}</span>
       </div>
       ${source ? `<span class="vox-chronicle-suggestion__source">${source}</span>` : ''}
     `;

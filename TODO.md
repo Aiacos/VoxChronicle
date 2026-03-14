@@ -47,8 +47,8 @@ Security scan, code review, predictive analysis, silent failure hunt.
 
 ### MEDIUM — From Security Scan
 
-- [ ] `speaker-labeling.hbs:111` — Triple-brace `{{{ }}}` renders unescaped i18n strings; XSS if translation files compromised
-- [ ] `MainPanel.mjs:1591` — `game.i18n.localize()` values in `innerHTML` not escaped; same i18n vector
+- [x] `speaker-labeling.hbs:111` — Triple-brace `{{{ }}}` replaced with `{{ }}` (auto-escaped); i18n strings are plain text
+- [x] `MainPanel.mjs:1591` — All `game.i18n.localize()` values in `innerHTML` now wrapped in `escapeHtml()`
 
 ### LOW — Cost/Safety
 
@@ -137,17 +137,12 @@ Security scan, code review, predictive analysis, and test suite validation.
 
 ### HIGH — CSS Namespace (214 un-prefixed classes across 6 templates)
 
-- [ ] `speaker-labeling.hbs` — 21 classi CSS senza prefisso `vox-chronicle-` (form-description, speaker-row, btn-clear, etc.)
-- [ ] `entity-preview.hbs` — 57 classi CSS senza prefisso `vox-chronicle-` (preview-description, entity-row, section-header, etc.)
-- [ ] `relationship-graph.hbs` — 24 classi CSS senza prefisso `vox-chronicle-` (graph-error, graph-toolbar, legend-item, etc.)
-- [ ] `vocabulary-manager.hbs` — 33 classi CSS senza prefisso `vox-chronicle-` (vocabulary-description, terms-list, term-item, etc.)
-- [ ] `analytics-tab.hbs` — 48 classi CSS senza prefisso `vox-chronicle-` (analytics-section, stat-item, speaker-list, etc.)
-- [ ] `journal-picker.hbs` — 31 classi CSS senza prefisso `vox-chronicle-` (picker-header, folder-tree, journal-item, etc.)
+- [ ] CSS namespace: 214 un-prefixed classes across 6 templates (see v4.0.3 section for current list)
 
 ### MEDIUM — Security & Error Handling
 
-- [ ] `KankaClient.mjs:370` — Error messages from Kanka API not sanitized before use in exceptions (MITM risk)
-- [ ] `VoxChronicle.mjs:175` — reinitialize() failure only logged, user not notified via ui.notifications
+- [x] `KankaClient.mjs:370` — Already uses escapeHtml() (verified in v4.0.3 audit)
+- [x] `VoxChronicle.mjs:175` — reinitialize() now shows ui.notifications.error (fixed in v4.0.3)
 
 ### LOW — Performance
 
