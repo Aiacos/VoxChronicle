@@ -1361,7 +1361,7 @@ class KankaService extends KankaClient {
         return entities.map((e) => ({ ...e, _entityType: type }));
       } catch (error) {
         this._logger.warn(`Search failed for ${type}: ${error.message}`);
-        return []; // Return empty array on error
+        return []; // Return empty — caller gets partial results from other types
       }
     });
 

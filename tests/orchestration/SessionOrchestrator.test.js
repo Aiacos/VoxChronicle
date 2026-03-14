@@ -2741,11 +2741,11 @@ describe('SessionOrchestrator', () => {
 
     // ── _liveCycle: rolling window ──────────────────────────────────────
     describe('_liveCycle rolling window', () => {
-      it('should trim _liveTranscript to last 100 segments', async () => {
+      it('should trim _liveTranscript to last 500 segments', async () => {
         await orchestrator.startLiveMode({ batchDuration: 999999 });
 
-        // Fill with 99 segments
-        for (let i = 0; i < 99; i++) {
+        // Fill with 499 segments
+        for (let i = 0; i < 499; i++) {
           orchestrator._liveTranscript.push({
             text: `seg${i}`,
             speaker: 'S',
@@ -2754,7 +2754,7 @@ describe('SessionOrchestrator', () => {
           });
         }
 
-        // Next cycle adds 5 segments (total 104)
+        // Next cycle adds 5 segments (total 504)
         services.audioRecorder.getLatestChunk.mockResolvedValue(
           new Blob(['audio'], { type: 'audio/webm' })
         );
@@ -2771,7 +2771,7 @@ describe('SessionOrchestrator', () => {
 
         await orchestrator._liveCycle();
 
-        expect(orchestrator._liveTranscript.length).toBeLessThanOrEqual(100);
+        expect(orchestrator._liveTranscript.length).toBeLessThanOrEqual(500);
         expect(orchestrator._discardedSegmentCount).toBeGreaterThan(0);
       });
 

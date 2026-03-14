@@ -90,10 +90,23 @@ Rules:
       const usage = response.usage || null;
 
       this._logger.debug(`Summary generated (${summary.length} chars)`);
+      this._consecutiveFailures = 0;
+      this._summarizationFailureNotified = false;
 
       return { summary, usage };
     } catch (error) {
-      this._logger.warn('Summarization failed, keeping old summary:', error.message);
+      this._consecutiveFailures = (this._consecutiveFailures || 0) + 1;
+      this._logger.warn(
+        `Summarization failed (${this._consecutiveFailures} consecutive), keeping old summary:`,
+        error.message
+      );
+      if (this._consecutiveFailures >= 3 && !this._summarizationFailureNotified) {
+        this._summarizationFailureNotified = true;
+        ui?.notifications?.warn(
+          game.i18n?.localize('VOXCHRONICLE.Warnings.SummarizationDegraded') ||
+            'VoxChronicle: Context summarization failing. AI suggestions may become less accurate.'
+        );
+      }
       return { summary: existingSummary, usage: null };
     } finally {
       this._isSummarizing = false;

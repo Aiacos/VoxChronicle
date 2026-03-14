@@ -259,7 +259,9 @@ class AudioRecorder {
    */
   _captureWebRTCStream() {
     try {
-      const peerConnections = globalThis.game?.webrtc?.client?._peerConnections;
+      // _peerConnections is a private Foundry API — may change in future v13.x patches
+      const client = globalThis.game?.webrtc?.client;
+      const peerConnections = client?._peerConnections ?? client?.peerConnections;
       if (!peerConnections || peerConnections.size === 0) return null;
 
       const tracks = [];
@@ -319,6 +321,10 @@ class AudioRecorder {
       return this._mixDestination.stream;
     } catch (error) {
       this._logger.warn('Stream mixing failed, falling back to mic only:', error);
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Warnings.WebRTCMixingFailed') ||
+          'VoxChronicle: Could not capture peer audio. Recording microphone only.'
+      );
       this._peerSourceNodes = [];
       this._mixDestination = null;
       return micStream;
@@ -368,6 +374,11 @@ class AudioRecorder {
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
         this._audioChunks.push(e.data);
+        // Prevent unbounded growth on long sessions (>500 chunks ≈ ~80 min at 10s timeslice)
+        // Older chunks are persisted to IndexedDB via _persistChunk, so they're recoverable
+        if (this._audioChunks.length > 500) {
+          this._audioChunks = this._audioChunks.slice(-500);
+        }
         this._liveBuffer.push(e.data);
         this._persistChunk(e.data, this._persistChunkIndex++);
         this._callbackSafe('onDataAvailable', e.data);
@@ -524,9 +535,17 @@ class AudioRecorder {
           error: 'timeout',
           timestamp: Date.now()
         });
+        this.clearPersistedChunks();
         this._cleanup();
         reject(new Error('Stop recording timed out'));
       }, 5000);
+
+      if (!this._mediaRecorder) {
+        clearTimeout(timeout);
+        this._cleanup();
+        reject(new Error('MediaRecorder was nulled before stop could complete (race with cancel)'));
+        return;
+      }
 
       this._mediaRecorder.onstop = () => {
         clearTimeout(timeout);

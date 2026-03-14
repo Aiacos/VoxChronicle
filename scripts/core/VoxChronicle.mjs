@@ -213,7 +213,16 @@ class VoxChronicle {
     ProviderRegistry.resetInstance();
     this.isInitialized = false;
     this._reinitializePending = false;
-    return this.initialize();
+    try {
+      return await this.initialize();
+    } catch (error) {
+      logger.error('Reinitialize failed:', error.message);
+      ui?.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Errors.ReinitializeFailed') ||
+          'VoxChronicle: Reinitialization failed. Check your API keys and connection.'
+      );
+      throw error;
+    }
   }
 
   /**
@@ -497,7 +506,12 @@ class VoxChronicle {
     try {
       return game.settings.get(MODULE_ID, key);
     } catch (error) {
-      logger.warn(`Failed to read setting '${key}': ${error.message}`);
+      const criticalSettings = ['openaiApiKey', 'kankaApiToken', 'kankaCampaignId'];
+      if (criticalSettings.includes(key)) {
+        logger.error(`Failed to read critical setting '${key}': ${error.message}`);
+      } else {
+        logger.warn(`Failed to read setting '${key}': ${error.message}`);
+      }
       return null;
     }
   }

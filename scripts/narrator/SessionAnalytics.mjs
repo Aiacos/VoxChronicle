@@ -286,6 +286,10 @@ export class SessionAnalytics {
     }
 
     this._segments.push(segment);
+    // Prevent unbounded growth: keep last 10000 segments (~4+ hours at typical rate)
+    if (this._segments.length > 10000) {
+      this._segments = this._segments.slice(-10000);
+    }
     this._metricsDirty = true;
     this._logger.debug(
       `addSegment() — speaker="${segment.speaker}", duration=${(segment.end - segment.start).toFixed(1)}s, total segments: ${this._segments.length}`

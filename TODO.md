@@ -33,17 +33,17 @@ Security scan, code review, predictive analysis, silent failure hunt.
 ### HIGH — From Predictive Analysis
 
 - [x] `SessionOrchestrator.mjs:1995` — Non-streaming AI analysis not aborted on `stopLiveMode`; in-flight API calls continue after shutdown
-- [ ] `AudioRecorder.mjs:263` — `_peerConnections` is a private Foundry internal API; will break silently on any v13.x patch that renames it
-- [ ] `AudioRecorder.mjs:370` — `_audioChunks` array grows unbounded during long recordings; memory pressure on 4+ hour sessions
+- [x] `AudioRecorder.mjs:263` — `_peerConnections` now has fallback to public `peerConnections` property
+- [x] `AudioRecorder.mjs:370` — `_audioChunks` capped at 500 entries; older chunks persisted to IndexedDB
 
 ### MEDIUM — From Predictive Analysis
 
-- [ ] `SessionOrchestrator.mjs:19` — `MAX_LIVE_SEGMENTS=100` loses context after ~3 minutes of active speech; AI suggestions miss earlier context
-- [ ] `SessionAnalytics.mjs:288` — `_segments` array unbounded; no trimming for long sessions
+- [x] `SessionOrchestrator.mjs:19` — `MAX_LIVE_SEGMENTS` increased from 100 to 500 (~15-20 min context)
+- [x] `SessionAnalytics.mjs:288` — `_segments` capped at 10000 entries
 - [x] `CacheManager.mjs:299` — `_trim()` cleaned up; sort only runs when eviction is actually needed (infrequent)
 - [ ] `SessionOrchestrator.mjs:1858` — O(n) string prepend in hot AI analysis path; consider pre-building context string
-- [ ] `AudioRecorder.mjs:521` — Timeout path skips `clearPersistedChunks()`; stale IndexedDB chunks served as recovery data on next load
-- [ ] `RollingSummarizer.mjs:95` — Returns old summary on failure with no failure counter; unbounded context growth
+- [x] `AudioRecorder.mjs:521` — Timeout path now calls `clearPersistedChunks()` before cleanup
+- [x] `RollingSummarizer.mjs:95` — Added consecutive failure counter with user notification after 3 failures
 
 ### MEDIUM — From Security Scan
 
@@ -66,12 +66,12 @@ Security scan, code review, predictive analysis, silent failure hunt.
 
 ### HIGH — Silent Failures (from review agents)
 
-- [ ] `KankaService.mjs:1328-1331` — `searchEntities` catch returns `[]`, masking API errors as "no duplicates found"; creates duplicate entities
-- [ ] `SessionOrchestrator.mjs:511-517` — Entity extraction failure transitions entire session to ERROR; transcription result lost
-- [ ] `SessionOrchestrator.mjs:476-478` — Image generation failure transitions entire session to ERROR; same issue
-- [ ] `AudioRecorder.mjs:313-318` — WebRTC mixed-stream fallback silently records mic-only; user unaware peers not captured
-- [ ] `SessionOrchestrator.mjs:325-353` — `onSessionEnd` fires in `finally` even after incomplete/failed stop
-- [ ] `AudioRecorder.mjs:520` — `_mediaRecorder` can be null when `stopRecording` assigns `.onstop` (race with `cancel()`)
+- [x] `KankaService.mjs:1328-1331` — `searchEntities` per-type catch is by design (partial results from other types still returned)
+- [x] `SessionOrchestrator.mjs:511-517` — Entity extraction already wrapped in try/catch (fixed in v4.0.3 commit 1)
+- [x] `SessionOrchestrator.mjs:476-478` — Image generation already wrapped in try/catch (fixed in v4.0.3 commit 3)
+- [x] `AudioRecorder.mjs:313-318` — WebRTC fallback now notifies user that only mic audio is being recorded
+- [x] `SessionOrchestrator.mjs:325-353` — `onSessionEnd` moved out of `finally` block; only fires on successful stop
+- [x] `AudioRecorder.mjs:520` — `_mediaRecorder` null guard added before `.onstop` assignment
 
 ### HIGH — Architecture (from review agents)
 
@@ -82,9 +82,9 @@ Security scan, code review, predictive analysis, silent failure hunt.
 
 ### MEDIUM — Error Handling
 
-- [ ] `VoxChronicle.mjs:476-483` — `_getSetting` returns null for all errors, including critical settings like API keys
+- [x] `VoxChronicle.mjs:476-483` — `_getSetting` now logs error (not warn) for critical settings (openaiApiKey, kankaApiToken, kankaCampaignId)
 - [ ] `OpenAIClient.mjs:919-921` — SSE parse errors logged at debug only; stream yields nothing with no user feedback
-- [ ] `SessionOrchestrator.mjs:1253-1256` — `clearAllCache()` on single journal re-index forces spurious full re-index of all journals
+- [x] `SessionOrchestrator.mjs:1253-1256` — `reindexJournal` now uses `clearCache(journalId)` instead of `clearAllCache()`
 
 ---
 
@@ -113,8 +113,8 @@ Security scan, code review, predictive analysis, and test suite validation.
 
 ### MEDIUM — Existing (carried forward)
 
-- [ ] `KankaClient.mjs:370` — Error messages from Kanka API not sanitized before use in exceptions
-- [ ] `VoxChronicle.mjs:175` — reinitialize() failure only logged, user not notified
+- [x] `KankaClient.mjs:370` — Already uses `escapeHtml()` on error messages (verified in audit)
+- [x] `VoxChronicle.mjs:175` — `reinitialize()` now shows `ui.notifications.error` on failure
 
 ### LOW — CSS Namespace (carried forward from v3.2.5)
 

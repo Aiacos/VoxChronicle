@@ -15,8 +15,8 @@ import { KankaPublisher } from './KankaPublisher.mjs';
 import { NPCProfileExtractor } from '../narrator/NPCProfileExtractor.mjs';
 import { CostTracker } from './CostTracker.mjs';
 
-/** Maximum segments in _liveTranscript rolling window */
-const MAX_LIVE_SEGMENTS = 100;
+/** Maximum segments in _liveTranscript rolling window (500 ≈ 15-20 min of speech context) */
+const MAX_LIVE_SEGMENTS = 500;
 
 /** Maximum cycle durations to track for self-monitoring */
 const MAX_CYCLE_DURATIONS = 20;
@@ -351,13 +351,12 @@ class SessionOrchestrator {
         this._updateState(SessionState.IDLE, { session: this._currentSession });
       }
 
+      this._callbacks.onSessionEnd?.();
       return this._currentSession;
     } catch (error) {
       this._logger.error('Failed to stop session:', error);
       this._handleError(error, 'stopSession');
       throw error;
-    } finally {
-      this._callbacks.onSessionEnd?.();
     }
   }
 
@@ -1314,8 +1313,8 @@ class SessionOrchestrator {
       // Clear cached hash so it will be re-indexed
       delete this._contentHashes[journalId];
 
-      // Clear parser cache and re-parse
-      this._journalParser.clearAllCache?.();
+      // Clear parser cache for this journal only (not all journals)
+      this._journalParser.clearCache?.(journalId);
       await this._journalParser.parseJournal(journalId);
 
       // Re-index (only the stale journal will actually be indexed)
