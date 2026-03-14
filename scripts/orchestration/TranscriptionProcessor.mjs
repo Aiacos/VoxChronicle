@@ -13,7 +13,7 @@ import { Logger } from '../utils/Logger.mjs';
 import { LocalWhisperService } from '../ai/LocalWhisperService.mjs';
 import { TranscriptionService } from '../ai/TranscriptionService.mjs';
 import { TranscriptionMode } from '../ai/TranscriptionFactory.mjs';
-import { SpeakerLabeling } from '../ui/SpeakerLabeling.mjs';
+import { addKnownSpeakers, applyLabelsToSegments } from '../utils/SpeakerUtils.mjs';
 
 /**
  * TranscriptionProcessor class for managing transcription workflows
@@ -116,7 +116,7 @@ class TranscriptionProcessor {
 
     // Register known speakers (fire-and-forget, error-isolated)
     try {
-      SpeakerLabeling.addKnownSpeakers(speakerIds).catch((e) => {
+      addKnownSpeakers(speakerIds).catch((e) => {
         this._logger.warn('Failed to register known speakers (async):', e);
       });
     } catch (e) {
@@ -125,7 +125,7 @@ class TranscriptionProcessor {
 
     // Auto-apply saved labels to segments
     try {
-      transcriptResult.segments = SpeakerLabeling.applyLabelsToSegments(segments);
+      transcriptResult.segments = applyLabelsToSegments(segments);
     } catch (e) {
       this._logger.warn('Failed to apply speaker labels:', e);
     }

@@ -1858,17 +1858,27 @@ class SessionOrchestrator {
     }
 
     try {
-      // Build context from tail of transcript — avoids serializing entire array
+      // Build context from tail of transcript using forward iteration over a slice
       const windowSize = 15000;
-      let contextText = '';
+      const lines = [];
+      let totalLen = 0;
+      // Find start index: walk backwards to find where window begins
+      let startIdx = this._liveTranscript.length;
       for (let i = this._liveTranscript.length - 1; i >= 0; i--) {
         const s = this._liveTranscript[i];
-        const line = `${s.speaker || 'Unknown'}: ${s.text || ''}`;
-        if (contextText.length + line.length + 1 > windowSize) {
-          contextText = `... ${(`${line}\n${contextText}`).slice(-windowSize)}`;
-          break;
-        }
-        contextText = contextText ? `${line}\n${contextText}` : line;
+        const lineLen = (s.speaker?.length || 7) + 2 + (s.text?.length || 0) + 1;
+        if (totalLen + lineLen > windowSize) break;
+        totalLen += lineLen;
+        startIdx = i;
+      }
+      // Build forward from startIdx (O(n) append, not prepend)
+      for (let i = startIdx; i < this._liveTranscript.length; i++) {
+        const s = this._liveTranscript[i];
+        lines.push(`${s.speaker || 'Unknown'}: ${s.text || ''}`);
+      }
+      let contextText = lines.join('\n');
+      if (startIdx > 0 && this._liveTranscript.length > 0) {
+        contextText = `... ${contextText}`;
       }
 
       const currentChapter = this._chapterTracker?.getCurrentChapter?.() || null;

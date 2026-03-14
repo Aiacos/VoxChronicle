@@ -951,7 +951,10 @@ class OpenAIClient extends BaseAPIClient {
 
             yield { content, usage };
           } catch (parseError) {
-            this._logger.debug('postStream: failed to parse SSE chunk:', parseError.message);
+            this._sseParseErrors = (this._sseParseErrors || 0) + 1;
+            if (this._sseParseErrors <= 3) {
+              this._logger.warn('postStream: failed to parse SSE chunk:', parseError.message);
+            }
           }
         }
       }

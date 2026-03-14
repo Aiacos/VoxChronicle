@@ -52,15 +52,13 @@ vi.mock('../../scripts/ai/TranscriptionFactory.mjs', () => ({
   }
 }));
 
-// Mock SpeakerLabeling static methods
-vi.mock('../../scripts/ui/SpeakerLabeling.mjs', () => ({
-  SpeakerLabeling: {
-    addKnownSpeakers: vi.fn().mockResolvedValue(undefined),
-    applyLabelsToSegments: vi.fn((segments) => segments)
-  }
+// Mock SpeakerUtils (extracted from SpeakerLabeling to fix layer violation)
+vi.mock('../../scripts/utils/SpeakerUtils.mjs', () => ({
+  addKnownSpeakers: vi.fn().mockResolvedValue(undefined),
+  applyLabelsToSegments: vi.fn((segments) => segments)
 }));
 
-import { SpeakerLabeling } from '../../scripts/ui/SpeakerLabeling.mjs';
+import { addKnownSpeakers, applyLabelsToSegments } from '../../scripts/utils/SpeakerUtils.mjs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1167,12 +1165,12 @@ describe('TranscriptionProcessor', () => {
       vi.clearAllMocks();
       mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
       // Reset SpeakerLabeling mocks
-      SpeakerLabeling.addKnownSpeakers.mockResolvedValue(undefined);
-      SpeakerLabeling.applyLabelsToSegments.mockImplementation((segments) => segments);
+      addKnownSpeakers.mockResolvedValue(undefined);
+      applyLabelsToSegments.mockImplementation((segments) => segments);
     });
 
     // Task 1.1 — addKnownSpeakers called after transcription
-    it('should call SpeakerLabeling.addKnownSpeakers with unique speaker IDs after transcription', async () => {
+    it('should call addKnownSpeakers with unique speaker IDs after transcription', async () => {
       const service = createMockTranscriptionService({
         transcribe: vi.fn().mockResolvedValue({
           text: 'Hello world',
@@ -1192,7 +1190,7 @@ describe('TranscriptionProcessor', () => {
 
       await p.processTranscription(createAudioBlob());
 
-      expect(SpeakerLabeling.addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00', 'SPEAKER_01']);
+      expect(addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00', 'SPEAKER_01']);
     });
 
     it('should not call addKnownSpeakers when segments is empty', async () => {
@@ -1208,7 +1206,7 @@ describe('TranscriptionProcessor', () => {
 
       await p.processTranscription(createAudioBlob());
 
-      expect(SpeakerLabeling.addKnownSpeakers).not.toHaveBeenCalled();
+      expect(addKnownSpeakers).not.toHaveBeenCalled();
     });
 
     it('should not call addKnownSpeakers when segments is undefined', async () => {
@@ -1224,11 +1222,11 @@ describe('TranscriptionProcessor', () => {
 
       await p.processTranscription(createAudioBlob());
 
-      expect(SpeakerLabeling.addKnownSpeakers).not.toHaveBeenCalled();
+      expect(addKnownSpeakers).not.toHaveBeenCalled();
     });
 
     it('should not throw if addKnownSpeakers fails (error isolation)', async () => {
-      SpeakerLabeling.addKnownSpeakers.mockRejectedValue(new Error('Settings broken'));
+      addKnownSpeakers.mockRejectedValue(new Error('Settings broken'));
 
       const service = createMockTranscriptionService();
       const p = new TranscriptionProcessor({
@@ -1327,7 +1325,7 @@ describe('TranscriptionProcessor', () => {
     // Task 1.3 — Auto-apply saved labels
     it('should call applyLabelsToSegments on transcription result', async () => {
       const labeledSegments = [{ speaker: 'Game Master', text: 'Hello', start: 0, end: 1 }];
-      SpeakerLabeling.applyLabelsToSegments.mockReturnValue(labeledSegments);
+      applyLabelsToSegments.mockReturnValue(labeledSegments);
 
       const service = createMockTranscriptionService({
         transcribe: vi.fn().mockResolvedValue({
@@ -1344,7 +1342,7 @@ describe('TranscriptionProcessor', () => {
 
       const result = await p.processTranscription(createAudioBlob());
 
-      expect(SpeakerLabeling.applyLabelsToSegments).toHaveBeenCalledWith([
+      expect(applyLabelsToSegments).toHaveBeenCalledWith([
         { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
       ]);
       expect(result.segments).toEqual(labeledSegments);
@@ -1363,11 +1361,11 @@ describe('TranscriptionProcessor', () => {
 
       await p.processTranscription(createAudioBlob());
 
-      expect(SpeakerLabeling.applyLabelsToSegments).not.toHaveBeenCalled();
+      expect(applyLabelsToSegments).not.toHaveBeenCalled();
     });
 
     it('should not throw if applyLabelsToSegments fails (error isolation)', async () => {
-      SpeakerLabeling.applyLabelsToSegments.mockImplementation(() => {
+      applyLabelsToSegments.mockImplementation(() => {
         throw new Error('Labels broken');
       });
 
@@ -1390,7 +1388,7 @@ describe('TranscriptionProcessor', () => {
         { speaker: 'Game Master', text: 'Hello', start: 0, end: 1 },
         { speaker: 'Player 1', text: 'Hi', start: 1, end: 2 }
       ];
-      SpeakerLabeling.applyLabelsToSegments.mockReturnValue(savedLabeledSegments);
+      applyLabelsToSegments.mockReturnValue(savedLabeledSegments);
 
       const service = createMockTranscriptionService({
         transcribe: vi.fn().mockResolvedValue({
@@ -1435,7 +1433,7 @@ describe('TranscriptionProcessor', () => {
       await p.processTranscription(createAudioBlob());
 
       // addKnownSpeakers handles merge internally (filters duplicates)
-      expect(SpeakerLabeling.addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00', 'SPEAKER_02']);
+      expect(addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00', 'SPEAKER_02']);
     });
 
     // Auto-mode fallback also wires speakers
@@ -1460,7 +1458,7 @@ describe('TranscriptionProcessor', () => {
 
       await p.processTranscription(createAudioBlob());
 
-      expect(SpeakerLabeling.addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00']);
+      expect(addKnownSpeakers).toHaveBeenCalledWith(['SPEAKER_00']);
       expect(mockEventBus.emit).toHaveBeenCalledWith(
         'ai:speakersDetected',
         expect.objectContaining({ speakerIds: ['SPEAKER_00'] })

@@ -41,7 +41,7 @@ Security scan, code review, predictive analysis, silent failure hunt.
 - [x] `SessionOrchestrator.mjs:19` — `MAX_LIVE_SEGMENTS` increased from 100 to 500 (~15-20 min context)
 - [x] `SessionAnalytics.mjs:288` — `_segments` capped at 10000 entries
 - [x] `CacheManager.mjs:299` — `_trim()` cleaned up; sort only runs when eviction is actually needed (infrequent)
-- [ ] `SessionOrchestrator.mjs:1858` — O(n) string prepend in hot AI analysis path; consider pre-building context string
+- [x] `SessionOrchestrator.mjs:1858` — Context building rewritten: forward iteration with array join instead of O(n) string prepend
 - [x] `AudioRecorder.mjs:521` — Timeout path now calls `clearPersistedChunks()` before cleanup
 - [x] `RollingSummarizer.mjs:95` — Added consecutive failure counter with user notification after 3 failures
 
@@ -75,15 +75,15 @@ Security scan, code review, predictive analysis, silent failure hunt.
 
 ### HIGH — Architecture (from review agents)
 
-- [ ] `TranscriptionProcessor.mjs:16` — Layer violation: orchestration imports UI (`SpeakerLabeling`); extract static methods to a utility service
-- [ ] `ResilienceRegistry.mjs` — Defined but never instantiated or used (dead infrastructure)
-- [ ] `SessionStateMachine.mjs` — Defined but never instantiated or used (dead infrastructure)
-- [ ] `StreamController.mjs` — Exported but never imported (dead code)
+- [x] `TranscriptionProcessor.mjs:16` — Layer violation fixed: extracted addKnownSpeakers/applyLabelsToSegments to `utils/SpeakerUtils.mjs`
+- [ ] `ResilienceRegistry.mjs` — Dead infrastructure, kept for future wiring (has tests)
+- [ ] `SessionStateMachine.mjs` — Dead infrastructure, kept for future wiring (has tests)
+- [ ] `StreamController.mjs` — Dead code, kept for future streaming refactor
 
 ### MEDIUM — Error Handling
 
 - [x] `VoxChronicle.mjs:476-483` — `_getSetting` now logs error (not warn) for critical settings (openaiApiKey, kankaApiToken, kankaCampaignId)
-- [ ] `OpenAIClient.mjs:919-921` — SSE parse errors logged at debug only; stream yields nothing with no user feedback
+- [x] `OpenAIClient.mjs:919-921` — SSE parse errors now logged at warn level (first 3 occurrences)
 - [x] `SessionOrchestrator.mjs:1253-1256` — `reindexJournal` now uses `clearCache(journalId)` instead of `clearAllCache()`
 
 ---
@@ -127,7 +127,7 @@ Security scan, code review, predictive analysis, and test suite validation.
 
 ### LOW — Performance (carried forward)
 
-- [ ] `RelationshipGraph.mjs:295` — O(n*m) per-type filter; replace with single-pass count
+- [x] `RelationshipGraph.mjs:295` — Already uses single-pass Map counting (verified in audit)
 
 ---
 
@@ -146,7 +146,7 @@ Security scan, code review, predictive analysis, and test suite validation.
 
 ### LOW — Performance
 
-- [ ] `RelationshipGraph.mjs:295` — O(n*m) per-type filter; replace with single-pass count
+- [x] `RelationshipGraph.mjs:295` — Already uses single-pass Map counting (verified in audit)
 
 ---
 
