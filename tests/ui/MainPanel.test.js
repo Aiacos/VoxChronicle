@@ -2205,6 +2205,85 @@ describe('MainPanel', () => {
       });
     });
 
+    describe('collapse toggle (Story 6.1)', () => {
+      it('should toggle collapsed state via _onToggleCollapse', () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        expect(panel.collapsed).toBe(false);
+
+        MainPanel._onToggleCollapse.call(panel);
+        expect(panel.collapsed).toBe(true);
+
+        MainPanel._onToggleCollapse.call(panel);
+        expect(panel.collapsed).toBe(false);
+      });
+
+      it('should persist collapsed state to settings', () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+
+        MainPanel._onToggleCollapse.call(panel);
+
+        expect(game.settings.set).toHaveBeenCalledWith('vox-chronicle', 'panelCollapsed', true);
+      });
+
+      it('should include collapsed in _prepareContext', async () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context).toHaveProperty('collapsed', false);
+      });
+    });
+
+    describe('first launch and visible tabs (Story 6.2)', () => {
+      it('should set isFirstLaunch=true when no session active', async () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context.isFirstLaunch).toBe(true);
+      });
+
+      it('should set isFirstLaunch=false when live mode active', async () => {
+        mockOrchestrator.isLiveMode = true;
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context.isFirstLaunch).toBe(false);
+      });
+
+      it('should return live tabs when in live mode', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const tabs = panel._getVisibleTabs(true);
+        expect(tabs).toContain('live');
+        expect(tabs).toContain('transcript');
+        expect(tabs).not.toContain('chronicle');
+      });
+
+      it('should return all tabs when no session', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const tabs = panel._getVisibleTabs(false);
+        expect(tabs).toContain('live');
+        expect(tabs).toContain('chronicle');
+      });
+
+      it('should include visibleTabs in _prepareContext', async () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context.visibleTabs).toBeInstanceOf(Array);
+        expect(context.visibleTabs.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('input bar visibility (Story 6.3)', () => {
+      it('should include isLiveMode in context for input bar conditional', async () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context).toHaveProperty('isLiveMode');
+      });
+    });
+
     describe('inline edit flow (Task 4)', () => {
       it('should store transcript data via setTranscriptData', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);

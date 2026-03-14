@@ -1,4 +1,4 @@
-<div class="vox-chronicle-panel" id="vox-chronicle-main-panel">
+<div class="vox-chronicle-panel {{#if collapsed}}vox-chronicle-panel--collapsed{{/if}}" id="vox-chronicle-main-panel">
   {{!-- Config Warning --}}
   {{#unless isConfigured}}
   <div class="vox-chronicle-panel__warning">
@@ -23,6 +23,10 @@
       <i class="fa-solid fa-theater-masks"></i> {{sceneTypeLabel}}
     </span>
     {{/if}}
+    <button class="vox-chronicle-panel__collapse-toggle" data-action="toggle-collapse"
+            title="{{#if collapsed}}Expand{{else}}Collapse{{/if}}" aria-label="{{#if collapsed}}Expand panel{{else}}Collapse panel{{/if}}">
+      <i class="fa-solid {{#if collapsed}}fa-chevron-right{{else}}fa-chevron-left{{/if}}"></i>
+    </button>
   </div>
 
   {{!-- Journal Confirmation Banner --}}
@@ -135,8 +139,30 @@
   </div>
   {{/if}}
 
+  {{!-- First Launch Screen --}}
+  {{#if isFirstLaunch}}
+  <div class="vox-chronicle-first-launch">
+    <div class="vox-chronicle-first-launch__cards">
+      <button class="vox-chronicle-first-launch__card" data-action="toggle-recording">
+        <i class="fa-solid fa-microphone"></i>
+        <strong>{{localize "VOXCHRONICLE.Panel.TabLive"}}</strong>
+        <span>{{localize "VOXCHRONICLE.Live.StartSession"}}</span>
+      </button>
+      <button class="vox-chronicle-first-launch__card" data-action="toggle-recording">
+        <i class="fa-solid fa-scroll"></i>
+        <strong>{{localize "VOXCHRONICLE.Panel.TabChronicle"}}</strong>
+        <span>{{localize "VOXCHRONICLE.Panel.ChronicleHint"}}</span>
+      </button>
+    </div>
+    <div class="vox-chronicle-first-launch__status">
+      <span>API: {{#if isConfigured}}<i class="fa-solid fa-check" style="color: #22c55e"></i>{{else}}<i class="fa-solid fa-times" style="color: #ef4444"></i>{{/if}}</span>
+      <span>Kanka: {{#if kankaConfigured}}<i class="fa-solid fa-check" style="color: #22c55e"></i>{{else}}<i class="fa-solid fa-times" style="color: #ef4444"></i>{{/if}}</span>
+    </div>
+  </div>
+  {{/if}}
+
   {{!-- 6 Tab Navigation --}}
-  <nav class="vox-chronicle-panel__tabs">
+  <nav class="vox-chronicle-panel__tabs" {{#if isFirstLaunch}}hidden{{/if}}>
     <button class="vox-chronicle-tab {{#if (eq activeTab 'live')}}vox-chronicle-tab--active{{/if}}" data-tab="live">{{localize "VOXCHRONICLE.Panel.TabLive"}}</button>
     <button class="vox-chronicle-tab {{#if (eq activeTab 'chronicle')}}vox-chronicle-tab--active{{/if}}" data-tab="chronicle">{{localize "VOXCHRONICLE.Panel.TabChronicle"}}</button>
     <button class="vox-chronicle-tab {{#if (eq activeTab 'images')}}vox-chronicle-tab--active{{/if}}" data-tab="images">{{localize "VOXCHRONICLE.Panel.TabImages"}}</button>
@@ -304,11 +330,13 @@
     </div>
   </div>
 
-  {{!-- Rules Input (always visible) --}}
+  {{!-- Input Bar (visible in live mode only) --}}
+  {{#if isLiveMode}}
   <div class="vox-chronicle-rules-input">
     <input type="text" class="vox-chronicle-rules-input__field"
       placeholder="{{localize 'VOXCHRONICLE.Rules.AskPlaceholder'}}" />
   </div>
+  {{/if}}
 
   {{!-- Cost Footer (visible during live mode) --}}
   {{#if isLiveMode}}

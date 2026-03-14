@@ -730,6 +730,14 @@ class Settings {
       default: {}
     });
 
+    // Panel collapsed state (client-scoped)
+    game.settings.register(MODULE_ID, 'panelCollapsed', {
+      scope: 'client',
+      config: false,
+      type: Boolean,
+      default: false
+    });
+
     // ==========================================
     // Journal Context Settings
     // ==========================================

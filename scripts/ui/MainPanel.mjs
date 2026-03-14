@@ -79,7 +79,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       'prev-chapter': MainPanel._onPrevChapter,
       'next-chapter': MainPanel._onNextChapter,
       'dismiss-suggestion': MainPanel._onDismissSuggestion,
-      'open-speaker-labeling': MainPanel._onOpenSpeakerLabeling
+      'open-speaker-labeling': MainPanel._onOpenSpeakerLabeling,
+      'toggle-collapse': MainPanel._onToggleCollapse
     }
   };
 
@@ -94,6 +95,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {number} */
   #progressPercent = 0;
 
+  /** @type {boolean} */
+  #collapsed = false;
+
   /**
    * Create a new MainPanel instance
    * @param {object} orchestrator - The SessionOrchestrator instance
@@ -105,6 +109,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._activeTab = 'live';
     this._logger = Logger.createChild('MainPanel');
     this._debouncedRender = debounce(() => this.render(), 150);
+    try { this.#collapsed = game?.settings?.get(MODULE_ID, 'panelCollapsed') ?? false; } catch { /* */ }
 
     // Streaming state (persists across re-renders)
     this._activeStreamingCard = null;
@@ -480,6 +485,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       audioLevel: this._getAudioLevel(),
       transcriptionMode: game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
+      collapsed: this.#collapsed,
+      isFirstLaunch: !isLiveMode && !this._isRecordingActive() && !this._orchestrator?.currentSession,
+      visibleTabs: this._getVisibleTabs(isLiveMode),
       currentSceneType: this._orchestrator?.getCurrentSceneType?.() || 'unknown',
       sceneTypeLabel: this._getSceneTypeLabel(this._orchestrator?.getCurrentSceneType?.()),
       statusState,
@@ -733,6 +741,22 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   requestRender() {
     this._debouncedRender();
+  }
+
+  /**
+   * Get visible tabs based on current session mode
+   * @param {boolean} isLiveMode - Whether live mode is active
+   * @returns {string[]} Array of visible tab IDs
+   * @private
+   */
+  _getVisibleTabs(isLiveMode) {
+    if (isLiveMode) {
+      return ['live', 'transcript', 'analytics'];
+    }
+    if (this._orchestrator?.currentSession) {
+      return ['chronicle', 'entities', 'images', 'transcript'];
+    }
+    return ['live', 'chronicle', 'transcript', 'entities', 'images', 'analytics'];
   }
 
   /**
@@ -1596,6 +1620,24 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     });
     labeling.render(true);
+  }
+
+  /**
+   * Toggle panel collapsed/expanded state and persist to settings.
+   * @static
+   */
+  static _onToggleCollapse(event, target) {
+    this.#collapsed = !this.#collapsed;
+    try { game?.settings?.set(MODULE_ID, 'panelCollapsed', this.#collapsed); } catch { /* */ }
+    this.element?.classList.toggle('vox-chronicle-panel--collapsed', this.#collapsed);
+  }
+
+  /**
+   * Get collapsed state for external access.
+   * @returns {boolean}
+   */
+  get collapsed() {
+    return this.#collapsed;
   }
 
   // ─── Streaming DOM helpers (wired by Plan 03) ─────────────────
