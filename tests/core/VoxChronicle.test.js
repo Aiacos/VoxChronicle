@@ -598,16 +598,19 @@ describe('VoxChronicle', () => {
       expect(mockKankaService).toHaveBeenCalledWith('kanka-token-abc', 'camp-456');
       expect(mockNarrativeExporter).toHaveBeenCalled();
 
-      // Orchestrator created and configured
-      expect(mockSessionOrchestrator).toHaveBeenCalledWith({
-        audioRecorder: expect.any(Object),
-        transcriptionService: expect.any(Object),
-        entityExtractor: expect.any(Object),
-        imageGenerationService: expect.any(Object),
-        kankaService: expect.any(Object),
-        narrativeExporter: expect.any(Object),
-        aiAssistant: expect.any(Object)
-      });
+      // Orchestrator created and configured (includes eventBus)
+      expect(mockSessionOrchestrator).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audioRecorder: expect.any(Object),
+          transcriptionService: expect.any(Object),
+          entityExtractor: expect.any(Object),
+          imageGenerationService: expect.any(Object),
+          kankaService: expect.any(Object),
+          narrativeExporter: expect.any(Object),
+          aiAssistant: expect.any(Object),
+          eventBus: expect.anything()
+        })
+      );
       expect(mockSessionOrchestratorInstance.setTranscriptionConfig).toHaveBeenCalledWith({
         mode: 'cloud',
         openaiApiKey: 'sk-test-key-123',

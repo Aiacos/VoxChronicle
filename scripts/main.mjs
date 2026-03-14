@@ -29,8 +29,11 @@ const logger = Logger.createChild('main');
  */
 async function getMainPanel() {
   const { MainPanel } = await import('./ui/MainPanel.mjs');
+  const { eventBus } = await import('./core/EventBus.mjs');
   const voxChronicle = VoxChronicle.getInstance();
-  return MainPanel.getInstance(voxChronicle.sessionOrchestrator);
+  const panel = MainPanel.getInstance(voxChronicle.sessionOrchestrator);
+  panel.setEventBus(eventBus);
+  return panel;
 }
 
 /**

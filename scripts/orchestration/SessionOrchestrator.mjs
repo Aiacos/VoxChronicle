@@ -723,6 +723,7 @@ class SessionOrchestrator {
       this._narrativeExporter = services.narrativeExporter;
     }
     if (services.aiAssistant !== undefined) this._aiAssistant = services.aiAssistant;
+    if (services.eventBus !== undefined) this._eventBus = services.eventBus;
     if (services.chapterTracker !== undefined) this._chapterTracker = services.chapterTracker;
     if (services.sceneDetector !== undefined) this._sceneDetector = services.sceneDetector;
     if (services.sessionAnalytics !== undefined) this._sessionAnalytics = services.sessionAnalytics;

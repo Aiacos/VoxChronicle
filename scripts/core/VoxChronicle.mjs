@@ -375,7 +375,8 @@ class VoxChronicle {
         imageGenerationService: this.imageGenerationService,
         kankaService: this.kankaService,
         narrativeExporter: this.narrativeExporter,
-        aiAssistant: this.aiAssistant
+        aiAssistant: this.aiAssistant,
+        eventBus
       };
 
       if (!this.sessionOrchestrator) {
