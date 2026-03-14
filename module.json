@@ -2,7 +2,7 @@
   "id": "vox-chronicle",
   "title": "VoxChronicle",
   "description": "AI-powered session transcription, real-time DM assistant, and Kanka chronicle publisher for Foundry VTT",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
