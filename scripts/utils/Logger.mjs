@@ -252,7 +252,7 @@ class Logger {
   static dir(label, obj) {
     if (Logger._shouldLog(LogLevel.DEBUG)) {
       console.log(`${Logger._getPrefix()} ${label}:`);
-      console.dir(obj);
+      console.dir(SensitiveDataFilter.sanitizeObject(obj));
     }
   }
 
@@ -263,7 +263,8 @@ class Logger {
    */
   static trace(...args) {
     if (Logger._shouldLog(LogLevel.DEBUG)) {
-      console.trace(`${Logger._getPrefix()} [TRACE]`, ...args);
+      const sanitized = SensitiveDataFilter.sanitizeArgs(...args);
+      console.trace(`${Logger._getPrefix()} [TRACE]`, ...sanitized);
     }
   }
 
@@ -274,7 +275,8 @@ class Logger {
    * @param {...*} args - The message and arguments to log on failure
    */
   static assert(condition, ...args) {
-    console.assert(condition, `${Logger._getPrefix()} [ASSERT]`, ...args);
+    const sanitized = SensitiveDataFilter.sanitizeArgs(...args);
+    console.assert(condition, `${Logger._getPrefix()} [ASSERT]`, ...sanitized);
   }
 
   /**

@@ -59,7 +59,7 @@ export class AnthropicChatProvider extends ChatProvider {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this._timeout);
     if (options.abortSignal) {
-      options.abortSignal.addEventListener('abort', () => controller.abort());
+      options.abortSignal.addEventListener('abort', () => controller.abort(), { once: true });
     }
 
     try {

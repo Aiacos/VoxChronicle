@@ -219,23 +219,27 @@ let reindexTimer = null;
  * @param {object} [journalEntry] - The JournalEntry document (first arg from Foundry hooks)
  */
 function invalidateJournalCache(journalEntry) {
-  const vc = VoxChronicle.getInstance();
-  if (vc.journalParser) {
-    vc.journalParser.clearAllCache?.();
-  }
-
-  // Debounced re-index during live mode only
-  if (vc.sessionOrchestrator?.isLiveMode && journalEntry?.id) {
-    const primaryId = game.settings.get(MODULE_ID, 'activeAdventureJournalId');
-    const supplementaryIds = game.settings.get(MODULE_ID, 'supplementaryJournalIds') || [];
-    const isSelected = journalEntry.id === primaryId || supplementaryIds.includes(journalEntry.id);
-
-    if (isSelected) {
-      clearTimeout(reindexTimer);
-      reindexTimer = setTimeout(() => {
-        vc.sessionOrchestrator.reindexJournal?.(journalEntry.id);
-      }, 5000);
+  try {
+    const vc = VoxChronicle.getInstance();
+    if (vc.journalParser) {
+      vc.journalParser.clearAllCache?.();
     }
+
+    // Debounced re-index during live mode only
+    if (vc.sessionOrchestrator?.isLiveMode && journalEntry?.id) {
+      const primaryId = game.settings.get(MODULE_ID, 'activeAdventureJournalId');
+      const supplementaryIds = game.settings.get(MODULE_ID, 'supplementaryJournalIds') || [];
+      const isSelected = journalEntry.id === primaryId || supplementaryIds.includes(journalEntry.id);
+
+      if (isSelected) {
+        clearTimeout(reindexTimer);
+        reindexTimer = setTimeout(() => {
+          vc.sessionOrchestrator.reindexJournal?.(journalEntry.id);
+        }, 5000);
+      }
+    }
+  } catch {
+    // Non-fatal: journal cache invalidation during teardown or before init
   }
 }
 

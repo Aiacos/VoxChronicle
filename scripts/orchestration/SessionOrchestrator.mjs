@@ -518,13 +518,19 @@ class SessionOrchestrator {
 
     // Use consolidated extraction (Entities + Moments in one call)
     // This reduces API calls and cost by 50% compared to separate calls
-    const extractionResult = await this._entityProcessor.extractAll(
-      this._currentSession.transcript.text,
-      {
-        ...options,
-        onProgress: (progress, message) => this._reportProgress('extraction', progress, message)
-      }
-    );
+    let extractionResult;
+    try {
+      extractionResult = await this._entityProcessor.extractAll(
+        this._currentSession.transcript.text,
+        {
+          ...options,
+          onProgress: (progress, message) => this._reportProgress('extraction', progress, message)
+        }
+      );
+    } catch (extractionError) {
+      this._logger.error('Entity extraction threw:', extractionError.message);
+      extractionResult = null;
+    }
 
     if (!extractionResult) {
       this._currentSession.errors.push({
@@ -748,7 +754,11 @@ class SessionOrchestrator {
     if (services.sceneDetector !== undefined) this._sceneDetector = services.sceneDetector;
     if (services.sessionAnalytics !== undefined) this._sessionAnalytics = services.sessionAnalytics;
 
-    this._initializeProcessors();
+    if (!this.isSessionActive) {
+      this._initializeProcessors();
+    } else {
+      this._logger.warn('setServices() called while session active; deferring processor rebuild');
+    }
     const updatedKeys = Object.keys(services).filter((k) => services[k] !== undefined);
     this._logger.debug(`Services updated: ${updatedKeys.join(', ')}`);
   }
@@ -1619,7 +1629,9 @@ class SessionOrchestrator {
     const cycleStart = Date.now();
 
     // Store promise reference before any async work (pitfall 2)
-    this._currentCyclePromise = (async () => {
+    // Use local variable to prevent race: IIFE's finally must not null the field
+    // before stopLiveMode's Promise.race can observe it
+    const cyclePromise = (async () => {
       try {
         this._updateState(SessionState.LIVE_TRANSCRIBING);
 
@@ -1810,14 +1822,13 @@ class SessionOrchestrator {
           this._updateState(SessionState.LIVE_LISTENING);
           this._scheduleLiveCycle();
         }
-
-        // Clear promise reference
-        this._currentCyclePromise = null;
       }
     })();
+    this._currentCyclePromise = cyclePromise;
 
-    // Await the cycle (callers can also race against _currentCyclePromise)
-    await this._currentCyclePromise;
+    // Await the cycle then clear the reference
+    await cyclePromise;
+    this._currentCyclePromise = null;
   }
 
   /**
@@ -1843,12 +1854,12 @@ class SessionOrchestrator {
       let contextText = '';
       for (let i = this._liveTranscript.length - 1; i >= 0; i--) {
         const s = this._liveTranscript[i];
-        const line = `${s.speaker || 'Unknown'}: ${s.text}`;
+        const line = `${s.speaker || 'Unknown'}: ${s.text || ''}`;
         if (contextText.length + line.length + 1 > windowSize) {
-          contextText = `... ${  (`${line  }\n${  contextText}`).slice(-windowSize)}`;
+          contextText = `... ${(`${line}\n${contextText}`).slice(-windowSize)}`;
           break;
         }
-        contextText = contextText ? `${line  }\n${  contextText}` : line;
+        contextText = contextText ? `${line}\n${contextText}` : line;
       }
 
       const currentChapter = this._chapterTracker?.getCurrentChapter?.() || null;
@@ -1989,7 +2000,8 @@ class SessionOrchestrator {
           includeSuggestions: true,
           checkOffTrack: true,
           detectRules: false,
-          sceneType: this._currentSceneType || 'unknown'
+          sceneType: this._currentSceneType || 'unknown',
+          abortSignal: this._shutdownController?.signal
         });
 
         // Track AI suggestion token costs
@@ -2272,7 +2284,8 @@ class SessionOrchestrator {
     try {
       return globalThis.game?.settings?.get(MODULE_ID, 'sessionCostCap') || 5;
     } catch (e) {
-      return 5; // Default $5 cap
+      this._logger.warn('Failed to read sessionCostCap setting, using default $5 cap:', e.message);
+      return 5;
     }
   }
 

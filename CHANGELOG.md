@@ -5,6 +5,27 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.3] - 2026-03-15
+
+### Fixed
+- **SessionOrchestrator** — Critical: `_currentCyclePromise` race condition during live mode shutdown; IIFE's finally block nulled the field before `stopLiveMode`'s `Promise.race` could observe it, causing premature termination of in-flight API calls
+- **SessionOrchestrator** — Entity extraction `extractAll()` now wrapped in try/catch; API errors no longer crash the entire session workflow
+- **SessionOrchestrator** — `setServices()` now guards processor rebuild when a session is active, preventing mid-use processor swaps
+- **SessionOrchestrator** — Non-streaming `analyzeContext()` now receives shutdown abort signal so in-flight calls are cancelled on `stopLiveMode`
+- **SessionOrchestrator** — `_getCostCap()` now logs warning when settings read fails instead of silently defaulting
+- **SessionOrchestrator** — Null guard on `s.text` in context building prevents "undefined" text in AI prompts
+- **AIAssistant** — RAG failure notification changed from `=== 3` to `>= 3` with `_ragFailureNotified` flag; no longer silently drops notifications after the 3rd failure
+- **AnthropicChatProvider** — AbortSignal listener memory leak fixed with `{ once: true }`
+- **GoogleChatProvider** — Same AbortSignal listener memory leak fixed
+- **Logger** — `trace()`, `assert()`, and `dir()` now pass through `SensitiveDataFilter`, closing a path where API keys could appear unredacted in debug output
+- **main.mjs** — Journal cache invalidation hook handler wrapped in try/catch to prevent crashes during module teardown
+
+### Security
+- Source code security audit: 0 critical/high remaining after fixes
+- AbortSignal listener leaks fixed in Anthropic and Google providers
+- Logger sanitization coverage now complete across all output methods
+- `.auto-claude/.env` confirmed not tracked in git (`.auto-claude/` in .gitignore)
+
 ## [4.0.2] - 2026-03-14
 
 ### Fixed

@@ -100,6 +100,7 @@ class AIAssistant {
    * @private
    */
   _consecutiveRAGFailures = 0;
+  _ragFailureNotified = false;
 
   /**
    * Consecutive API errors counter for circuit breaker
@@ -1923,6 +1924,7 @@ class AIAssistant {
 
       this._cachedRAGContext = result;
       this._consecutiveRAGFailures = 0;
+      this._ragFailureNotified = false;
       this._logger.debug(
         `_getRAGContext() — ${sources.length} sources, ${context.length} chars, ${(performance.now() - _ragStart).toFixed(1)}ms`
       );
@@ -1934,7 +1936,8 @@ class AIAssistant {
         error.message
       );
       this._consecutiveRAGFailures++;
-      if (this._consecutiveRAGFailures === 3) {
+      if (this._consecutiveRAGFailures >= 3 && !this._ragFailureNotified) {
+        this._ragFailureNotified = true;
         ui?.notifications?.warn(
           game.i18n?.localize('VOXCHRONICLE.Errors.RAGContextUnavailable') ||
             'VoxChronicle: RAG context unavailable. Suggestions may be less accurate.'

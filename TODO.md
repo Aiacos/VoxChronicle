@@ -1,6 +1,58 @@
 # TODO - VoxChronicle
 
-Aggiornato il 2026-03-14 (v4.0.2 deep review).
+Aggiornato il 2026-03-15 (v4.0.3 session audit).
+
+## V4.0.3 SESSION AUDIT — 2026-03-15
+
+Security scan, code review, predictive analysis, silent failure hunt.
+
+### CRITICAL — Fixed This Session
+
+- [x] `SessionOrchestrator.mjs:1622` — `_currentCyclePromise` race: IIFE nulled the field in `finally` before `stopLiveMode`'s `Promise.race` could observe it, causing premature shutdown of in-flight API calls
+- [x] `AIAssistant.mjs:1937` — RAG failure notification used `=== 3` instead of `>= 3`; only the 3rd failure ever notified the user, 4th+ were silent again
+- [x] `AnthropicChatProvider.mjs:62` — AbortSignal listener leak: `addEventListener('abort')` without `{ once: true }` caused listener accumulation
+- [x] `GoogleChatProvider.mjs:60` — Same AbortSignal listener leak as AnthropicChatProvider
+- [x] `Logger.mjs:264-278` — `trace()`, `assert()`, `dir()` bypassed `SensitiveDataFilter`, potentially logging API keys unredacted
+
+### HIGH — From Code Review
+
+- [x] `SessionOrchestrator.mjs:521` — `extractAll()` not wrapped in try/catch; API error crashed entire session instead of continuing with transcription-only results
+- [x] `SessionOrchestrator.mjs:732` — `setServices()` reinitializes processors while a session is active; swaps `_transcriptionProcessor` mid-use
+- [ ] `MainPanel.mjs:1542` — UI mutates orchestrator's `_lastAISuggestions` directly; push can fail silently if array nulled during teardown
+- [ ] `OpenAIClient.mjs:916` — Stream timeout cleared on header receipt; hung SSE stream has no deadline, blocks `_runAIAnalysis` forever
+- [ ] `MainPanel.mjs:593` — `synthesisPromise` nulled on re-render; rules card synthesis silently lost during tab switch
+- [x] `main.mjs:229` — `game.settings.get()` in journal hook handler without try/catch; throws during module teardown
+
+### HIGH — From Silent Failure Hunt
+
+- [ ] `NPCProfileExtractor.mjs:170` — `extractProfiles()` returns empty Map on failure; caller cannot distinguish "no NPCs" from "extraction crashed"
+- [ ] `EntityProcessor.mjs:253` — `getExistingKankaEntities()` swallows fetch errors and returns `[]`; causes duplicate entity creation
+- [ ] `ImageProcessor.mjs:148` — `generateImages()` returns `[]` on catastrophic failure; caller cannot distinguish "no images needed" from "API crashed"
+- [ ] `SessionOrchestrator.mjs:1377` — `_enrichSessionWithJournalContext()` swallows errors; publishing proceeds without entity validation, hallucinated entities reach Kanka
+
+### HIGH — From Predictive Analysis
+
+- [x] `SessionOrchestrator.mjs:1995` — Non-streaming AI analysis not aborted on `stopLiveMode`; in-flight API calls continue after shutdown
+- [ ] `AudioRecorder.mjs:263` — `_peerConnections` is a private Foundry internal API; will break silently on any v13.x patch that renames it
+- [ ] `AudioRecorder.mjs:370` — `_audioChunks` array grows unbounded during long recordings; memory pressure on 4+ hour sessions
+
+### MEDIUM — From Predictive Analysis
+
+- [ ] `SessionOrchestrator.mjs:19` — `MAX_LIVE_SEGMENTS=100` loses context after ~3 minutes of active speech; AI suggestions miss earlier context
+- [ ] `SessionAnalytics.mjs:288` — `_segments` array unbounded; no trimming for long sessions
+- [ ] `CacheManager.mjs:299` — `_trim()` sorts full Map on every write; O(n log n) per cache insert
+- [ ] `SessionOrchestrator.mjs:1858` — O(n) string prepend in hot AI analysis path; consider pre-building context string
+- [ ] `AudioRecorder.mjs:521` — Timeout path skips `clearPersistedChunks()`; stale IndexedDB chunks served as recovery data on next load
+- [ ] `RollingSummarizer.mjs:95` — Returns old summary on failure with no failure counter; unbounded context growth
+
+### MEDIUM — From Security Scan
+
+- [ ] `speaker-labeling.hbs:111` — Triple-brace `{{{ }}}` renders unescaped i18n strings; XSS if translation files compromised
+- [ ] `MainPanel.mjs:1591` — `game.i18n.localize()` values in `innerHTML` not escaped; same i18n vector
+
+### LOW — Cost/Safety
+
+- [x] `SessionOrchestrator.mjs:2271` — `_getCostCap()` silently defaulted to $5 on settings read failure; now logs warning
 
 ## V4.0.2 DEEP REVIEW — 2026-03-14
 
