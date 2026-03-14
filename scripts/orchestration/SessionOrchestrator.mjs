@@ -116,7 +116,7 @@ class SessionOrchestrator {
   _liveTranscript = [];
   _silenceStartTime = null;
   _silenceThreshold = 30000;
-  _lastAISuggestions = null;
+  _lastAISuggestions = [];
   _lastOffTrackStatus = null;
   _transcriptionConfig = null;
   _transcriptionProcessor = null;
@@ -988,8 +988,8 @@ class SessionOrchestrator {
       // Initialize rolling summarizer and wire cost/budget (Plan 05-03)
       if (this._aiAssistant) {
         // Create RollingSummarizer using AIAssistant's own OpenAI client
-        if (this._aiAssistant._openaiClient) {
-          this._aiAssistant.initializeRollingSummarizer(this._aiAssistant._openaiClient);
+        if (this._aiAssistant._chatProvider) {
+          this._aiAssistant.initializeRollingSummarizer(this._aiAssistant._chatProvider);
         }
 
         // Read and apply token budget setting
@@ -1132,7 +1132,7 @@ class SessionOrchestrator {
 
     // NPC extraction (non-blocking)
     if (fullText && this._aiAssistant?._openaiClient) {
-      this._npcExtractor = new NPCProfileExtractor(this._aiAssistant._openaiClient);
+      this._npcExtractor = new NPCProfileExtractor(this._aiAssistant._chatProvider);
       parallelTasks.push(
         this._npcExtractor
           .extractProfiles(fullText)

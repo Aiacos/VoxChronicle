@@ -1674,7 +1674,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
           card.classList.remove('vox-chronicle-suggestion--refining');
           const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
           if (refiningEl) {
-            refiningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Synthesis unavailable'}`;
+            refiningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Synthesis unavailable')}`;
             refiningEl.classList.add('vox-chronicle-suggestion__synthesis-failed');
           }
         });

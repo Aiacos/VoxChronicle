@@ -1,6 +1,40 @@
 # TODO - VoxChronicle
 
-Aggiornato il 2026-03-14 (v4.0.1 session audit).
+Aggiornato il 2026-03-14 (v4.0.2 deep review).
+
+## V4.0.2 DEEP REVIEW — 2026-03-14
+
+6-agent parallel review: code quality, silent failures, architecture, security, credentials, injection.
+
+### CRITICAL — Fixed
+
+- [x] `SessionOrchestrator.mjs:991,992,1134,1135` — `_openaiClient` does not exist on AIAssistant (should be `_chatProvider`). RollingSummarizer and NPCProfileExtractor never initialized in live mode.
+- [x] `SessionOrchestrator.mjs:119` — `_lastAISuggestions` initialized to `null` instead of `[]`, streaming suggestions lost when pushed before first AI cycle
+- [x] `MainPanel.mjs:1677` — i18n string not escaped in innerHTML (XSS via malicious language pack)
+
+### HIGH — Silent Failures (from review agents)
+
+- [ ] `KankaService.mjs:1328-1331` — `searchEntities` catch returns `[]`, masking API errors as "no duplicates found"; creates duplicate entities
+- [ ] `SessionOrchestrator.mjs:511-517` — Entity extraction failure transitions entire session to ERROR; transcription result lost
+- [ ] `SessionOrchestrator.mjs:476-478` — Image generation failure transitions entire session to ERROR; same issue
+- [ ] `AudioRecorder.mjs:313-318` — WebRTC mixed-stream fallback silently records mic-only; user unaware peers not captured
+- [ ] `SessionOrchestrator.mjs:325-353` — `onSessionEnd` fires in `finally` even after incomplete/failed stop
+- [ ] `AudioRecorder.mjs:520` — `_mediaRecorder` can be null when `stopRecording` assigns `.onstop` (race with `cancel()`)
+
+### HIGH — Architecture (from review agents)
+
+- [ ] `TranscriptionProcessor.mjs:16` — Layer violation: orchestration imports UI (`SpeakerLabeling`); extract static methods to a utility service
+- [ ] `ResilienceRegistry.mjs` — Defined but never instantiated or used (dead infrastructure)
+- [ ] `SessionStateMachine.mjs` — Defined but never instantiated or used (dead infrastructure)
+- [ ] `StreamController.mjs` — Exported but never imported (dead code)
+
+### MEDIUM — Error Handling
+
+- [ ] `VoxChronicle.mjs:476-483` — `_getSetting` returns null for all errors, including critical settings like API keys
+- [ ] `OpenAIClient.mjs:919-921` — SSE parse errors logged at debug only; stream yields nothing with no user feedback
+- [ ] `SessionOrchestrator.mjs:1253-1256` — `clearAllCache()` on single journal re-index forces spurious full re-index of all journals
+
+---
 
 ## V4.0.1 SESSION AUDIT — 2026-03-14
 
