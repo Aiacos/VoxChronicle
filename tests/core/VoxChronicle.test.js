@@ -747,28 +747,29 @@ describe('VoxChronicle', () => {
       expect(mockKankaService).not.toHaveBeenCalled();
     });
 
-    it('should set OpenAI client on narrative exporter when transcription service exists', async () => {
+    it('should pass chatProvider to narrative exporter via constructor options', async () => {
       configureSettings(fullSettings());
       const instance = VoxChronicle.getInstance();
 
       await instance.initialize();
 
-      // NarrativeExporter.setOpenAIClient should have been called
-      const exporterInstance = mockNarrativeExporter.mock.results[0].value;
-      expect(exporterInstance.setOpenAIClient).toHaveBeenCalledWith('sk-test-key-123');
+      // NarrativeExporter should be constructed with chatProvider option
+      expect(mockNarrativeExporter).toHaveBeenCalledWith(
+        expect.objectContaining({ chatProvider: expect.anything() })
+      );
     });
 
-    it('should still set OpenAI client on narrative exporter even when transcription service fails', async () => {
+    it('should create narrative exporter with chatProvider even when transcription service fails', async () => {
       mockTranscriptionFactoryCreate.mockRejectedValueOnce(new Error('No backend'));
       configureSettings(fullSettings());
       const instance = VoxChronicle.getInstance();
 
       await instance.initialize();
 
-      // Narrative exporter is created and setOpenAIClient is called based on openaiApiKey
-      // (not based on transcription service success)
-      const exporterInstance = mockNarrativeExporter.mock.results[0].value;
-      expect(exporterInstance.setOpenAIClient).toHaveBeenCalledWith('sk-test-key-123');
+      // NarrativeExporter is created with chatProvider regardless of transcription service
+      expect(mockNarrativeExporter).toHaveBeenCalledWith(
+        expect.objectContaining({ chatProvider: expect.anything() })
+      );
     });
 
     it('should handle TranscriptionFactory.create failure gracefully', async () => {

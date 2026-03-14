@@ -341,10 +341,9 @@ class VoxChronicle {
       // Initialize Kanka services (if configured)
       if (kankaApiToken && kankaCampaignId) {
         this.kankaService = new KankaService(kankaApiToken, kankaCampaignId);
-        this.narrativeExporter = new NarrativeExporter();
-        if (openaiApiKey) {
-          this.narrativeExporter.setOpenAIClient(openaiApiKey);
-        }
+        this.narrativeExporter = new NarrativeExporter({
+          chatProvider: registry.getProvider('chat')
+        });
       } else {
         this.kankaService = null;
         this.narrativeExporter = null;

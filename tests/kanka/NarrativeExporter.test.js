@@ -674,7 +674,7 @@ describe('NarrativeExporter', () => {
   describe('generateAISummary()', () => {
     it('should throw when AI is not enabled', async () => {
       await expect(exporter.generateAISummary(makeSegments())).rejects.toThrow(
-        'AI summary generation requires OpenAI integration'
+        'AI summary generation requires AI integration'
       );
     });
 
@@ -1535,6 +1535,80 @@ describe('NarrativeExporter', () => {
       const summary = exporter.generateSummary(segments);
       // 5 seconds rounds to 0 minutes, which should not be included
       expect(summary).toBeDefined();
+    });
+  });
+
+  // =========================================================================
+  // Prep Sprint Epic 5: ChatProvider migration for generateAISummary
+  // =========================================================================
+  describe('ChatProvider migration (Prep Sprint Epic 5)', () => {
+    const segments = [
+      { speaker: 'DM', text: 'You enter the dark cavern.', start: 0, end: 3 },
+      { speaker: 'Player1', text: 'I draw my sword.', start: 3, end: 5 }
+    ];
+
+    it('should use chatProvider.chat() when chatProvider is provided', async () => {
+      const mockChatProvider = {
+        chat: vi.fn().mockResolvedValue({
+          content: 'The party ventured into a dark cavern...',
+          usage: { prompt_tokens: 100, completion_tokens: 50 }
+        })
+      };
+      const cpExporter = new NarrativeExporter({ chatProvider: mockChatProvider });
+
+      const result = await cpExporter.generateAISummary(segments);
+
+      expect(mockChatProvider.chat).toHaveBeenCalled();
+      expect(result.summary).toContain('dark cavern');
+      expect(result.success).toBe(true);
+    });
+
+    it('should fall back to openAIClient when chatProvider is not provided', async () => {
+      mockOpenAIClient.post.mockResolvedValue({
+        choices: [{ message: { content: 'Fallback summary.' } }],
+        usage: { prompt_tokens: 50, completion_tokens: 20 }
+      });
+      const legacyExporter = new NarrativeExporter({ openAIClient: mockOpenAIClient });
+
+      const result = await legacyExporter.generateAISummary(segments);
+
+      expect(mockOpenAIClient.post).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+    });
+
+    it('should pass correct options to chatProvider.chat()', async () => {
+      const mockChatProvider = {
+        chat: vi.fn().mockResolvedValue({
+          content: 'Summary text.',
+          usage: {}
+        })
+      };
+      const cpExporter = new NarrativeExporter({ chatProvider: mockChatProvider });
+
+      await cpExporter.generateAISummary(segments, { maxLength: 500 });
+
+      expect(mockChatProvider.chat).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ role: 'system' }),
+          expect.objectContaining({ role: 'user' })
+        ]),
+        expect.objectContaining({
+          model: 'gpt-4o',
+          temperature: 0.7
+        })
+      );
+    });
+
+    it('should reject when chatProvider.chat() throws', async () => {
+      const mockChatProvider = {
+        chat: vi.fn().mockRejectedValue(new Error('ChatProvider down'))
+      };
+      const cpExporter = new NarrativeExporter({ chatProvider: mockChatProvider });
+
+      const result = await cpExporter.generateAISummary(segments);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 });

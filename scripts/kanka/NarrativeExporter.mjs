@@ -86,11 +86,18 @@ class NarrativeExporter {
   _campaignName = '';
 
   /**
-   * OpenAI client for AI-enhanced summaries
+   * OpenAI client for AI-enhanced summaries (fallback)
    * @type {OpenAIClient|null}
    * @private
    */
   _openAIClient = null;
+
+  /**
+   * ChatProvider for AI-enhanced summaries (preferred)
+   * @type {Object|null}
+   * @private
+   */
+  _chatProvider = null;
 
   /**
    * Whether AI summaries are enabled
@@ -107,15 +114,19 @@ class NarrativeExporter {
    * @param {string} [options.defaultStyle='rich'] - Default formatting style
    * @param {string} [options.defaultFormat='full'] - Default chronicle format
    * @param {string} [options.openAIApiKey] - OpenAI API key for AI-enhanced summaries
-   * @param {OpenAIClient} [options.openAIClient] - Existing OpenAI client instance
+   * @param {OpenAIClient} [options.openAIClient] - Existing OpenAI client instance (fallback)
+   * @param {Object} [options.chatProvider] - ChatProvider instance (preferred over openAIClient)
    */
   constructor(options = {}) {
     this._campaignName = options.campaignName || '';
     this._defaultStyle = options.defaultStyle || FormattingStyle.RICH;
     this._defaultFormat = options.defaultFormat || ChronicleFormat.FULL;
 
-    // Initialize OpenAI client for AI summaries if credentials provided
-    if (options.openAIClient) {
+    // Initialize AI provider for summaries — ChatProvider preferred, OpenAIClient fallback
+    if (options.chatProvider) {
+      this._chatProvider = options.chatProvider;
+      this._aiSummaryEnabled = true;
+    } else if (options.openAIClient) {
       this._openAIClient = options.openAIClient;
       this._aiSummaryEnabled = true;
     } else if (options.openAIApiKey) {
@@ -299,9 +310,9 @@ class NarrativeExporter {
    * @throws {Error} If OpenAI integration is not configured
    */
   async generateAISummary(segments, options = {}) {
-    if (!this._aiSummaryEnabled || !this._openAIClient) {
+    if (!this._aiSummaryEnabled || (!this._chatProvider && !this._openAIClient)) {
       throw new Error(
-        'AI summary generation requires OpenAI integration. Configure with openAIApiKey or openAIClient option.'
+        'AI summary generation requires AI integration. Configure with chatProvider, openAIApiKey, or openAIClient option.'
       );
     }
 
@@ -333,17 +344,29 @@ class NarrativeExporter {
     );
 
     try {
-      const response = await this._openAIClient.post('/chat/completions', {
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Summarize this RPG session transcript:\n\n${transcriptText}` }
-        ],
-        temperature: 0.7,
-        max_tokens: Math.ceil(maxLength / 3) // Approximate tokens from chars
-      });
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Summarize this RPG session transcript:\n\n${transcriptText}` }
+      ];
+      const maxTokens = Math.ceil(maxLength / 3); // Approximate tokens from chars
 
-      const aiSummary = response.choices?.[0]?.message?.content || '';
+      let aiSummary;
+      if (this._chatProvider) {
+        const response = await this._chatProvider.chat(messages, {
+          model: 'gpt-4o',
+          temperature: 0.7,
+          maxTokens
+        });
+        aiSummary = response?.content || '';
+      } else {
+        const response = await this._openAIClient.post('/chat/completions', {
+          model: 'gpt-4o',
+          messages,
+          temperature: 0.7,
+          max_tokens: maxTokens
+        });
+        aiSummary = response.choices?.[0]?.message?.content || '';
+      }
       const aiElapsed = Date.now() - aiStartTime;
 
       this._logger.log(`AI summary generated in ${aiElapsed}ms (${aiSummary.length} chars)`);
@@ -438,7 +461,7 @@ class NarrativeExporter {
    * @returns {boolean} True if AI summaries can be generated
    */
   isAISummaryEnabled() {
-    return this._aiSummaryEnabled && this._openAIClient !== null;
+    return this._aiSummaryEnabled && (this._chatProvider !== null || this._openAIClient !== null);
   }
 
   /**
