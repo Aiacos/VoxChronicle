@@ -5,6 +5,50 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-03-14
+
+### Added — Epic 4: Assistenza AI Live Contestuale
+- **Adaptive chunking** — Live cycle interval adapts 5s-60s based on speech activity
+- **EventBus events** — `session:liveStarted/Stopped`, `ai:suggestionReceived`, `ai:ragIndexingStarted/Complete`, `scene:changed`
+- **RAG journal context** — Journals indexed for RAG, context injected into AI suggestions
+- **Rules Q&A** — RulesLookupService with ChatProvider, two-phase lookup with compendium citations
+- **Scene detection** — SceneDetector wired in live cycle, `scene:changed` event, scene-aware AI prompts
+- **Scene badge** — Color-coded scene type badge (combat=red, social=blue, exploration=green, rest=amber)
+
+### Added — Epic 5: Cronaca Automatica & Pubblicazione Kanka
+- **Entity preview callback** — `onEntityPreview` callback for DM review before publishing
+- **Publish confirmation** — `onPublishConfirmation` callback (NFR11) before Kanka publishing
+- **Resume on failure** — `resumeFromResults` option for retry without reprocessing (NFR35)
+
+### Added — Epic 6: Pannello Unificato & Esperienza Adattiva
+- **Collapsible panel** — 48px collapsed mode with LED dot indicators, persisted state
+- **LED system** — Recording pulse animation, streaming violet, collapsed badge dots
+- **First launch screen** — Two-card landing (Live/Chronicle) with API status indicators
+- **Contextual tabs** — `_getVisibleTabs()` adapts tabs to session mode
+- **Live-mode input bar** — Rules input conditionally visible in live mode only
+
+### Added — Epic 7: Multi-Provider AI & Selezione Per-Task
+- **Anthropic Claude provider** — `AnthropicChatProvider` with Messages API, streaming support
+- **Google Gemini provider** — `GoogleChatProvider` with Generative AI API, streaming support
+- **Per-task provider selection** — Settings for suggestions, rules, extraction provider choice
+- **`getProviderForTask()`** — Resolves per-task provider from settings with default fallback
+
+### Added — Epic 8: Analytics Sessione & Accessibilita'
+- **Session analytics** — 107 tests verify speaker participation, timeline, chapter tracking
+- **WCAG AAA accessibility** — Focus ring (2px accent), `aria-live` regions, `prefers-reduced-motion`
+
+### Changed
+- **NarrativeExporter** — Migrated from OpenAIClient to ChatProvider with fallback
+- **RulesLookupService** — Migrated from OpenAIClient to ChatProvider with fallback
+- **PromptBuilder** — Added `setSceneType()` for scene-aware system prompts
+- **AIAssistant** — Accepts `sceneType` in `analyzeContext()`, syncs to PromptBuilder
+- **SessionOrchestrator** — Added `getCurrentSceneType()`, `_updateSceneType()`, `_emitSafe()` for all events
+
+### Stats
+- **5223 tests** across **71 files**, 0 failures
+- **8 epics**, **26 stories** completed
+- **3 AI providers**: OpenAI, Anthropic Claude, Google Gemini
+
 ## [3.0.3] - 2026-02-20
 
 ### Fixed — Comprehensive Audit (43 issues found, 43 fixed)

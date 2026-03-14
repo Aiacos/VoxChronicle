@@ -1,6 +1,6 @@
 # TODO - VoxChronicle
 
-Audit del codebase eseguito il 2026-02-07. Aggiornato il 2026-02-27 (v3.2.5 audit).
+Aggiornato il 2026-03-14 (v4.0.0 release — 8 epic completati).
 
 ## V3.2.5 AUDIT — 2026-02-27
 
