@@ -43,12 +43,8 @@ const SAMPLE_ENTITIES_RESPONSE = {
     { name: 'Gandalf', description: 'A wise wizard', isNPC: true, role: 'mentor' },
     { name: 'Frodo', description: 'A brave hobbit', isNPC: false, role: 'hero' }
   ],
-  locations: [
-    { name: 'Rivendell', description: 'Elven city', type: 'city' }
-  ],
-  items: [
-    { name: 'The One Ring', description: 'A powerful artifact', type: 'artifact' }
-  ],
+  locations: [{ name: 'Rivendell', description: 'Elven city', type: 'city' }],
+  items: [{ name: 'The One Ring', description: 'A powerful artifact', type: 'artifact' }],
   summary: 'Found entities from LOTR'
 };
 
@@ -344,10 +340,7 @@ describe('EntityExtractor', () => {
   // ── extractRelationships ──────────────────────────────────────────
 
   describe('extractRelationships', () => {
-    const entities = [
-      { name: 'Gandalf' },
-      { name: 'Frodo' }
-    ];
+    const entities = [{ name: 'Gandalf' }, { name: 'Frodo' }];
 
     beforeEach(() => {
       mockProvider.chat.mockResolvedValue({
@@ -364,21 +357,21 @@ describe('EntityExtractor', () => {
     });
 
     it('should throw on null transcript', async () => {
-      await expect(
-        extractor.extractRelationships(null, entities)
-      ).rejects.toThrow('Invalid transcript');
+      await expect(extractor.extractRelationships(null, entities)).rejects.toThrow(
+        'Invalid transcript'
+      );
     });
 
     it('should throw on null entities', async () => {
-      await expect(
-        extractor.extractRelationships('test', null)
-      ).rejects.toThrow('Invalid entities');
+      await expect(extractor.extractRelationships('test', null)).rejects.toThrow(
+        'Invalid entities'
+      );
     });
 
     it('should throw on non-array entities', async () => {
-      await expect(
-        extractor.extractRelationships('test', 'not array')
-      ).rejects.toThrow('Invalid entities');
+      await expect(extractor.extractRelationships('test', 'not array')).rejects.toThrow(
+        'Invalid entities'
+      );
     });
 
     it('should return empty for empty entities array', async () => {
@@ -390,8 +383,20 @@ describe('EntityExtractor', () => {
       mockProvider.chat.mockResolvedValueOnce({
         content: JSON.stringify({
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 3, description: 'low' },
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'ally', confidence: 8, description: 'high' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'friend',
+              confidence: 3,
+              description: 'low'
+            },
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'ally',
+              confidence: 8,
+              description: 'high'
+            }
           ]
         }),
         usage: {}
@@ -405,7 +410,13 @@ describe('EntityExtractor', () => {
       mockProvider.chat.mockResolvedValueOnce({
         content: JSON.stringify({
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Gandalf', relationType: 'neutral', confidence: 9, description: 'self' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Gandalf',
+              relationType: 'neutral',
+              confidence: 9,
+              description: 'self'
+            }
           ]
         }),
         usage: {}
@@ -418,7 +429,13 @@ describe('EntityExtractor', () => {
       mockProvider.chat.mockResolvedValueOnce({
         content: JSON.stringify({
           relationships: [
-            { sourceEntity: 'Sauron', targetEntity: 'Frodo', relationType: 'enemy', confidence: 9, description: 'evil' }
+            {
+              sourceEntity: 'Sauron',
+              targetEntity: 'Frodo',
+              relationType: 'enemy',
+              confidence: 9,
+              description: 'evil'
+            }
           ]
         }),
         usage: {}
@@ -436,7 +453,13 @@ describe('EntityExtractor', () => {
       mockProvider.chat.mockResolvedValueOnce({
         content: JSON.stringify({
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'bestie', confidence: 9, description: 'close' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'bestie',
+              confidence: 9,
+              description: 'close'
+            }
           ]
         }),
         usage: {}
@@ -447,16 +470,22 @@ describe('EntityExtractor', () => {
 
     it('should handle invalid JSON response', async () => {
       mockProvider.chat.mockResolvedValueOnce({ content: 'not json', usage: {} });
-      await expect(
-        extractor.extractRelationships('test', entities)
-      ).rejects.toThrow('invalid JSON');
+      await expect(extractor.extractRelationships('test', entities)).rejects.toThrow(
+        'invalid JSON'
+      );
     });
 
     it('should handle case-insensitive entity matching', async () => {
       mockProvider.chat.mockResolvedValueOnce({
         content: JSON.stringify({
           relationships: [
-            { sourceEntity: 'gandalf', targetEntity: 'frodo', relationType: 'friend', confidence: 9, description: 'friends' }
+            {
+              sourceEntity: 'gandalf',
+              targetEntity: 'frodo',
+              relationType: 'friend',
+              confidence: 9,
+              description: 'friends'
+            }
           ]
         }),
         usage: {}
@@ -710,12 +739,15 @@ describe('EntityExtractor', () => {
 
   describe('_normalizeMoment', () => {
     it('should normalize a valid moment', () => {
-      const moment = extractor._normalizeMoment({
-        title: 'Battle',
-        imagePrompt: 'A fierce battle',
-        context: 'During combat',
-        dramaScore: 8
-      }, 0);
+      const moment = extractor._normalizeMoment(
+        {
+          title: 'Battle',
+          imagePrompt: 'A fierce battle',
+          context: 'During combat',
+          dramaScore: 8
+        },
+        0
+      );
       expect(moment.id).toBe('moment-1');
       expect(moment.title).toBe('Battle');
       expect(moment.dramaScore).toBe(8);
@@ -738,11 +770,14 @@ describe('EntityExtractor', () => {
     });
 
     it('should trim strings', () => {
-      const moment = extractor._normalizeMoment({
-        title: '  Battle  ',
-        imagePrompt: '  prompt  ',
-        context: '  context  '
-      }, 0);
+      const moment = extractor._normalizeMoment(
+        {
+          title: '  Battle  ',
+          imagePrompt: '  prompt  ',
+          context: '  context  '
+        },
+        0
+      );
       expect(moment.title).toBe('Battle');
       expect(moment.imagePrompt).toBe('prompt');
       expect(moment.context).toBe('context');
@@ -767,7 +802,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 3, description: 'test' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'friend',
+              confidence: 3,
+              description: 'test'
+            }
           ]
         },
         validNames,
@@ -780,7 +821,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Sauron', targetEntity: 'Frodo', relationType: 'enemy', confidence: 9, description: 'test' }
+            {
+              sourceEntity: 'Sauron',
+              targetEntity: 'Frodo',
+              relationType: 'enemy',
+              confidence: 9,
+              description: 'test'
+            }
           ]
         },
         validNames
@@ -792,7 +839,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Gandalf', relationType: 'neutral', confidence: 9, description: 'self' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Gandalf',
+              relationType: 'neutral',
+              confidence: 9,
+              description: 'self'
+            }
           ]
         },
         validNames
@@ -804,7 +857,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'bestfriend', confidence: 9, description: 'test' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'bestfriend',
+              confidence: 9,
+              description: 'test'
+            }
           ]
         },
         validNames
@@ -833,7 +892,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 15, description: 'test' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'friend',
+              confidence: 15,
+              description: 'test'
+            }
           ]
         },
         validNames
@@ -845,7 +910,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 'high', description: 'test' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'friend',
+              confidence: 'high',
+              description: 'test'
+            }
           ]
         },
         validNames
@@ -857,7 +928,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: 0, description: 'zero confidence' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'friend',
+              confidence: 0,
+              description: 'zero confidence'
+            }
           ]
         },
         validNames,
@@ -873,7 +950,13 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', confidence: NaN, description: 'nan confidence' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'friend',
+              confidence: NaN,
+              description: 'nan confidence'
+            }
           ]
         },
         validNames
@@ -885,7 +968,12 @@ describe('EntityExtractor', () => {
       const result = extractor._normalizeRelationshipResult(
         {
           relationships: [
-            { sourceEntity: 'Gandalf', targetEntity: 'Frodo', relationType: 'friend', description: 'no confidence field' }
+            {
+              sourceEntity: 'Gandalf',
+              targetEntity: 'Frodo',
+              relationType: 'friend',
+              description: 'no confidence field'
+            }
           ]
         },
         validNames
@@ -968,14 +1056,14 @@ describe('EntityExtractor', () => {
       const models = EntityExtractor.getAvailableModels();
       expect(Array.isArray(models)).toBe(true);
       expect(models).toHaveLength(3);
-      const recommended = models.find(m => m.recommended);
+      const recommended = models.find((m) => m.recommended);
       expect(recommended).toBeDefined();
       expect(recommended.id).toBe('gpt-4o');
     });
 
     it('should include descriptions for all models', () => {
       const models = EntityExtractor.getAvailableModels();
-      models.forEach(m => {
+      models.forEach((m) => {
         expect(m.name).toBeDefined();
         expect(m.description).toBeDefined();
       });

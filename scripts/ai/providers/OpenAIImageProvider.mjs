@@ -5,7 +5,7 @@
  * Returns base64 data (NOT URLs).
  *
  * @class OpenAIImageProvider
- * @extends ImageProvider
+ * @augments ImageProvider
  * @module vox-chronicle
  */
 
@@ -17,13 +17,13 @@ export class OpenAIImageProvider extends ImageProvider {
 
   /**
    * @param {string} apiKey - OpenAI API key
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.timeout=300000] - Request timeout in ms (5 min default)
    */
   constructor(apiKey, options = {}) {
     super();
     this.#client = new OpenAIClient(apiKey, {
-      timeout: options.timeout ?? 300000,
+      timeout: options.timeout ?? 300000
     });
   }
 
@@ -35,7 +35,7 @@ export class OpenAIImageProvider extends ImageProvider {
   /**
    * Generate an image from a text prompt.
    * @param {string} prompt
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {string} [options.model='gpt-image-1']
    * @param {string} [options.size='1024x1024']
    * @param {string} [options.quality='medium']
@@ -51,12 +51,12 @@ export class OpenAIImageProvider extends ImageProvider {
       prompt,
       n: 1,
       size: options.size ?? '1024x1024',
-      quality: options.quality ?? 'medium',
+      quality: options.quality ?? 'medium'
     };
 
     const response = await this.#client.post('/images/generations', body, {
       signal: options.abortSignal,
-      queueCategory: 'image',
+      queueCategory: 'image'
     });
 
     const imageData = response?.data?.[0];
@@ -65,7 +65,7 @@ export class OpenAIImageProvider extends ImageProvider {
     }
     return {
       data: imageData.b64_json,
-      format: 'png',
+      format: 'png'
     };
   }
 }

@@ -10,7 +10,15 @@
 import { Logger } from '../utils/Logger.mjs';
 
 /** Valid channel names for event routing */
-const VALID_CHANNELS = Object.freeze(['ai', 'audio', 'scene', 'session', 'ui', 'error', 'analytics']);
+const VALID_CHANNELS = Object.freeze([
+  'ai',
+  'audio',
+  'scene',
+  'session',
+  'ui',
+  'error',
+  'analytics'
+]);
 
 /**
  * Internal event bus with typed channels and middleware pipeline.
@@ -43,8 +51,8 @@ export class EventBus {
     const colonIdx = eventName.indexOf(':');
     if (colonIdx === -1) {
       throw new Error(
-        game?.i18n?.localize('VOXCHRONICLE.EventBus.Error.InvalidFormat')
-          ?? `Invalid event format: "${eventName}". Expected "channel:action".`
+        game?.i18n?.localize('VOXCHRONICLE.EventBus.Error.InvalidFormat') ??
+          `Invalid event format: "${eventName}". Expected "channel:action".`
       );
     }
     const channel = eventName.slice(0, colonIdx);
@@ -52,8 +60,8 @@ export class EventBus {
 
     if (!VALID_CHANNELS.includes(channel)) {
       throw new Error(
-        game?.i18n?.localize('VOXCHRONICLE.EventBus.Error.ChannelNotFound')
-          ?? `Unknown channel: "${channel}". Valid channels: ${VALID_CHANNELS.join(', ')}`
+        game?.i18n?.localize('VOXCHRONICLE.EventBus.Error.ChannelNotFound') ??
+          `Unknown channel: "${channel}". Valid channels: ${VALID_CHANNELS.join(', ')}`
       );
     }
 
@@ -72,8 +80,8 @@ export class EventBus {
       Array.isArray(payload)
     ) {
       throw new TypeError(
-        game?.i18n?.localize('VOXCHRONICLE.EventBus.Error.InvalidPayload')
-          ?? `Invalid payload: expected a plain object, got ${payload === null ? 'null' : typeof payload}`
+        game?.i18n?.localize('VOXCHRONICLE.EventBus.Error.InvalidPayload') ??
+          `Invalid payload: expected a plain object, got ${payload === null ? 'null' : typeof payload}`
       );
     }
   }
@@ -125,7 +133,7 @@ export class EventBus {
    * Emit an event to all subscribers on the matching channel:action.
    * Middleware executes first; subscribers execute synchronously.
    * @param {string} eventName - Format: `channel:action`
-   * @param {Object} payload - Must be a plain object
+   * @param {object} payload - Must be a plain object
    */
   emit(eventName, payload) {
     const { channel, action } = this.#parseEvent(eventName);
@@ -182,7 +190,7 @@ export class EventBus {
   removeAllListeners(channel) {
     if (channel) {
       for (const key of this.#subscribers.keys()) {
-        if (key.startsWith(channel + ':')) {
+        if (key.startsWith(`${channel  }:`)) {
           this.#subscribers.delete(key);
         }
       }

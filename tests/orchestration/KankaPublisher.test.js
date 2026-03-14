@@ -82,16 +82,10 @@ function createSessionData(overrides = {}) {
         { name: 'Gandalf', description: 'A powerful wizard', isNPC: true },
         { name: 'Frodo', description: 'A brave hobbit', isNPC: false }
       ],
-      locations: [
-        { name: 'Shire', description: 'Green rolling hills', type: 'Region' }
-      ],
-      items: [
-        { name: 'Ring of Power', description: 'One ring to rule them all', type: 'Artifact' }
-      ]
+      locations: [{ name: 'Shire', description: 'Green rolling hills', type: 'Region' }],
+      items: [{ name: 'Ring of Power', description: 'One ring to rule them all', type: 'Artifact' }]
     },
-    moments: [
-      { id: 'm1', title: 'The Journey Begins', imagePrompt: 'An epic journey' }
-    ],
+    moments: [{ id: 'm1', title: 'The Journey Begins', imagePrompt: 'An epic journey' }],
     images: [],
     ...overrides
   };
@@ -429,7 +423,7 @@ describe('KankaPublisher', () => {
         });
         expect(result.characters).toHaveLength(0);
         // Should report an error for each character that couldn't be created
-        const charErrors = result.errors.filter(e => e.type === 'character');
+        const charErrors = result.errors.filter((e) => e.type === 'character');
         expect(charErrors).toHaveLength(2);
         expect(charErrors[0].error).toMatch(/parent chronicle journal/i);
       });
@@ -486,7 +480,8 @@ describe('KankaPublisher', () => {
 
       it('should add character creation errors to results.errors', async () => {
         const service = createMockKankaService({
-          createJournal: vi.fn()
+          createJournal: vi
+            .fn()
             .mockResolvedValueOnce({ id: 1, name: 'Chronicle' }) // chronicle
             .mockRejectedValueOnce(new Error('Character creation failed')) // first character
             .mockResolvedValueOnce({ id: 3, name: 'Frodo' }) // second character
@@ -621,9 +616,7 @@ describe('KankaPublisher', () => {
     describe('journal description extraction', () => {
       it('should use NPC profile description for characters', async () => {
         const sessionData = createSessionData({
-          npcProfiles: [
-            { name: 'Gandalf', description: 'Gandalf the Grey, a Maiar spirit' }
-          ]
+          npcProfiles: [{ name: 'Gandalf', description: 'Gandalf the Grey, a Maiar spirit' }]
         });
 
         await publisher.publishSession(sessionData);
@@ -718,21 +711,30 @@ describe('KankaPublisher', () => {
         const onProgress = vi.fn();
         const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
         await p.publishSession(createSessionData());
-        expect(onProgress).toHaveBeenCalledWith(10, 'VOXCHRONICLE.KankaPublisher.ProgressChronicle');
+        expect(onProgress).toHaveBeenCalledWith(
+          10,
+          'VOXCHRONICLE.KankaPublisher.ProgressChronicle'
+        );
       });
 
       it('should report character creation progress', async () => {
         const onProgress = vi.fn();
         const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
         await p.publishSession(createSessionData());
-        expect(onProgress).toHaveBeenCalledWith(30, 'VOXCHRONICLE.KankaPublisher.ProgressCharacters');
+        expect(onProgress).toHaveBeenCalledWith(
+          30,
+          'VOXCHRONICLE.KankaPublisher.ProgressCharacters'
+        );
       });
 
       it('should report location creation progress', async () => {
         const onProgress = vi.fn();
         const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
         await p.publishSession(createSessionData());
-        expect(onProgress).toHaveBeenCalledWith(50, 'VOXCHRONICLE.KankaPublisher.ProgressLocations');
+        expect(onProgress).toHaveBeenCalledWith(
+          50,
+          'VOXCHRONICLE.KankaPublisher.ProgressLocations'
+        );
       });
 
       it('should report item creation progress', async () => {
@@ -746,7 +748,10 @@ describe('KankaPublisher', () => {
         const onProgress = vi.fn();
         const p = new KankaPublisher(mockKankaService, mockExporter, { onProgress });
         await p.publishSession(createSessionData());
-        expect(onProgress).toHaveBeenCalledWith(100, 'VOXCHRONICLE.KankaPublisher.ProgressComplete');
+        expect(onProgress).toHaveBeenCalledWith(
+          100,
+          'VOXCHRONICLE.KankaPublisher.ProgressComplete'
+        );
       });
 
       it('should use per-call onProgress over constructor onProgress', async () => {
@@ -758,7 +763,10 @@ describe('KankaPublisher', () => {
 
         await p.publishSession(createSessionData(), { onProgress: callProgress });
 
-        expect(callProgress).toHaveBeenCalledWith(100, 'VOXCHRONICLE.KankaPublisher.ProgressComplete');
+        expect(callProgress).toHaveBeenCalledWith(
+          100,
+          'VOXCHRONICLE.KankaPublisher.ProgressComplete'
+        );
       });
 
       it('should restore original onProgress after call completes', async () => {
@@ -851,7 +859,8 @@ describe('KankaPublisher', () => {
 
       it('should continue creating other entities when one character fails', async () => {
         const service = createMockKankaService({
-          createJournal: vi.fn()
+          createJournal: vi
+            .fn()
             .mockResolvedValueOnce({ id: 1, name: 'Chronicle' })
             .mockRejectedValueOnce(new Error('First char failed'))
             .mockResolvedValueOnce({ id: 3, name: 'Frodo' })
@@ -1049,7 +1058,9 @@ describe('KankaPublisher', () => {
 
     beforeEach(() => {
       uploadService = createMockKankaService({
-        uploadJournalImage: vi.fn().mockResolvedValue({ id: 100, image_full: 'https://kanka.io/img/100.png' })
+        uploadJournalImage: vi
+          .fn()
+          .mockResolvedValue({ id: 100, image_full: 'https://kanka.io/img/100.png' })
       });
     });
 
@@ -1096,7 +1107,7 @@ describe('KankaPublisher', () => {
       });
       const result = await p.publishSession(sessionData);
       expect(result.images.length).toBe(1);
-      expect(result.errors.some(e => e.type === 'image')).toBe(true);
+      expect(result.errors.some((e) => e.type === 'image')).toBe(true);
     });
 
     it('should not upload images when uploadImages is false', async () => {
@@ -1124,7 +1135,9 @@ describe('KankaPublisher', () => {
       });
       const result = await p.publishSession(sessionData);
       expect(uploadService.uploadJournalImage).toHaveBeenCalledWith(
-        1, 'https://example.com/image.png', { filename: 'session-image-1.png' }
+        1,
+        'https://example.com/image.png',
+        { filename: 'session-image-1.png' }
       );
     });
   });

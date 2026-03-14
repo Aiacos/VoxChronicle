@@ -3,9 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../scripts/utils/Logger.mjs', () => ({
   Logger: {
     createChild: vi.fn(() => ({
-      debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn(),
-    })),
-  },
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn()
+    }))
+  }
 }));
 
 let lastMockClient = null;
@@ -22,26 +26,39 @@ vi.mock('../../../scripts/ai/OpenAIClient.mjs', () => {
   return {
     OpenAIClient: MockOpenAIClient,
     OpenAIError: class OpenAIError extends Error {
-      constructor(message, type) { super(message); this.type = type; }
+      constructor(message, type) {
+        super(message);
+        this.type = type;
+      }
     },
-    OpenAIErrorType: { API_ERROR: 'api_error' },
+    OpenAIErrorType: { API_ERROR: 'api_error' }
   };
 });
 
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 // FormData mock for jsdom
 globalThis.FormData = class FormData {
-  constructor() { this._data = new Map(); }
-  append(key, value, filename) { this._data.set(key, { value, filename }); }
-  get(key) { return this._data.get(key)?.value; }
-  has(key) { return this._data.has(key); }
-  entries() { return this._data.entries(); }
+  constructor() {
+    this._data = new Map();
+  }
+  append(key, value, filename) {
+    this._data.set(key, { value, filename });
+  }
+  get(key) {
+    return this._data.get(key)?.value;
+  }
+  has(key) {
+    return this._data.has(key);
+  }
+  entries() {
+    return this._data.entries();
+  }
 };
 
 import { OpenAITranscriptionProvider } from '../../../scripts/ai/providers/OpenAITranscriptionProvider.mjs';
@@ -85,7 +102,7 @@ describe('OpenAITranscriptionProvider', () => {
       text: 'Hello world',
       segments: [{ start: 0, end: 2.5, text: 'Hello world' }],
       language: 'en',
-      duration: 2.5,
+      duration: 2.5
     };
 
     it('should call client.postFormData with /audio/transcriptions', async () => {
@@ -103,7 +120,7 @@ describe('OpenAITranscriptionProvider', () => {
       const result = await provider.transcribe(audioBlob);
       expect(result).toEqual({
         text: 'Hello world',
-        segments: [{ start: 0, end: 2.5, text: 'Hello world' }],
+        segments: [{ start: 0, end: 2.5, text: 'Hello world' }]
       });
     });
 
@@ -117,7 +134,7 @@ describe('OpenAITranscriptionProvider', () => {
     it('should use gpt-4o-transcribe-diarize model when diarize option is true', async () => {
       const diarizedResponse = {
         ...openAIResponse,
-        segments: [{ speaker: 'SPEAKER_00', start: 0, end: 2.5, text: 'Hello world' }],
+        segments: [{ speaker: 'SPEAKER_00', start: 0, end: 2.5, text: 'Hello world' }]
       };
       mockClient.postFormData.mockResolvedValue(diarizedResponse);
       await provider.transcribe(audioBlob, { diarize: true });
@@ -183,15 +200,13 @@ describe('OpenAITranscriptionProvider', () => {
     });
 
     it('should reject empty audioBlob', async () => {
-      await expect(
-        provider.transcribe({ size: 0, type: 'audio/webm' })
-      ).rejects.toThrow('empty');
+      await expect(provider.transcribe({ size: 0, type: 'audio/webm' })).rejects.toThrow('empty');
     });
 
     it('should validate options', async () => {
-      await expect(
-        provider.transcribe(audioBlob, { abortSignal: 'invalid' })
-      ).rejects.toThrow('abortSignal must be an instance of AbortSignal');
+      await expect(provider.transcribe(audioBlob, { abortSignal: 'invalid' })).rejects.toThrow(
+        'abortSignal must be an instance of AbortSignal'
+      );
     });
 
     it('should propagate client errors', async () => {

@@ -101,7 +101,6 @@ const _hooksOnCalls = [...Hooks.on.mock.calls];
 // ── resolveHtmlElement ─────────────────────────────────────────────────
 
 describe('resolveHtmlElement()', () => {
-
   it('should return an HTMLElement as-is', () => {
     const div = document.createElement('div');
     const result = resolveHtmlElement(div);
@@ -170,7 +169,6 @@ describe('resolveHtmlElement()', () => {
 // ── VALIDATION_RESET_DELAY_MS ──────────────────────────────────────────
 
 describe('VALIDATION_RESET_DELAY_MS', () => {
-
   it('should be 2000 milliseconds', () => {
     expect(VALIDATION_RESET_DELAY_MS).toBe(2000);
   });
@@ -183,7 +181,6 @@ describe('VALIDATION_RESET_DELAY_MS', () => {
 // ── injectValidationButton ─────────────────────────────────────────────
 
 describe('injectValidationButton()', () => {
-
   let container;
 
   beforeEach(() => {
@@ -265,7 +262,6 @@ describe('injectValidationButton()', () => {
   // ── Click behavior ─────────────────────────────────────────────────
 
   describe('click behavior', () => {
-
     it('should call validateFn when clicked', async () => {
       const validateFn = vi.fn().mockResolvedValue(true);
       injectValidationButton(container, 'vox-chronicle.openaiApiKey', 'openai', validateFn);
@@ -279,9 +275,12 @@ describe('injectValidationButton()', () => {
 
     it('should disable the button while validating', async () => {
       let resolveValidation;
-      const validateFn = vi.fn(() => new Promise((resolve) => {
-        resolveValidation = resolve;
-      }));
+      const validateFn = vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveValidation = resolve;
+          })
+      );
       injectValidationButton(container, 'vox-chronicle.openaiApiKey', 'openai', validateFn);
 
       const button = container.querySelector('.vox-chronicle-validate-button');
@@ -300,9 +299,12 @@ describe('injectValidationButton()', () => {
 
     it('should show spinner icon while validating', async () => {
       let resolveValidation;
-      const validateFn = vi.fn(() => new Promise((resolve) => {
-        resolveValidation = resolve;
-      }));
+      const validateFn = vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveValidation = resolve;
+          })
+      );
       injectValidationButton(container, 'vox-chronicle.openaiApiKey', 'openai', validateFn);
 
       const button = container.querySelector('.vox-chronicle-validate-button');
@@ -422,7 +424,6 @@ describe('injectValidationButton()', () => {
   // ── Multiple buttons ─────────────────────────────────────────────────
 
   describe('multiple validation buttons', () => {
-
     it('should support injecting buttons for different inputs', () => {
       // Add a second input
       const wrapper2 = document.createElement('div');
@@ -482,7 +483,6 @@ function findHookCallback(hookName) {
 }
 
 describe('canvasReady hook', () => {
-
   it('should call chapterTracker.updateFromScene when chapterTracker is available', () => {
     const mockScene = { id: 'scene-1', name: 'Test Scene' };
     const updateFromScene = vi.fn();
@@ -529,12 +529,10 @@ describe('canvasReady hook', () => {
 });
 
 describe('journal entry hooks', () => {
-
   const journalHooks = ['updateJournalEntry', 'createJournalEntry', 'deleteJournalEntry'];
 
   for (const hookName of journalHooks) {
     describe(`${hookName} hook`, () => {
-
       it('should call journalParser.clearAllCache when journalParser is available', () => {
         const clearAllCache = vi.fn();
 
@@ -567,7 +565,6 @@ describe('journal entry hooks', () => {
 // ── Debounced re-index hooks (02-03) ────────────────────────────────────
 
 describe('debounced re-index on journal edit', () => {
-
   beforeEach(() => {
     vi.useFakeTimers();
   });

@@ -201,8 +201,10 @@ class WhisperBackend {
    * @returns {Promise<boolean>} True if backend is healthy and accessible
    */
   async healthCheck(options = {}) {
-    this._logger.debug('healthCheck called', { timeout: options.timeout, useCache: options.useCache });
-    const t0 = Date.now();
+    this._logger.debug('healthCheck called', {
+      timeout: options.timeout,
+      useCache: options.useCache
+    });
     const timeout = options.timeout || HEALTH_CHECK_TIMEOUT_MS;
     const useCache = options.useCache ?? true;
     const cacheMaxAge = options.cacheMaxAge || 30000;
@@ -290,7 +292,11 @@ class WhisperBackend {
    * @returns {Promise<object>} Transcription result
    */
   async transcribe(audioBlob, options = {}) {
-    this._logger.debug('transcribe called', { blobSize: audioBlob?.size, language: options.language, task: options.task });
+    this._logger.debug('transcribe called', {
+      blobSize: audioBlob?.size,
+      language: options.language,
+      task: options.task
+    });
     const t0 = Date.now();
 
     if (!audioBlob || !(audioBlob instanceof Blob)) {
@@ -345,7 +351,10 @@ class WhisperBackend {
       this._logger.log(`Local transcription completed successfully in ${Date.now() - t0}ms`);
       return response;
     } catch (error) {
-      this._logger.error(`Local transcription failed after ${Date.now() - t0}ms: ${error.message}`, { blobSize: audioBlob?.size });
+      this._logger.error(
+        `Local transcription failed after ${Date.now() - t0}ms: ${error.message}`,
+        { blobSize: audioBlob?.size }
+      );
       throw error;
     }
   }
@@ -377,7 +386,9 @@ class WhisperBackend {
 
       // Handle response
       if (!response.ok) {
-        this._logger.debug(`_requestWithRetry ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`);
+        this._logger.debug(
+          `_requestWithRetry ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`
+        );
         const errorData = await this._parseErrorResponse(response);
         throw new WhisperError(
           errorData.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -387,7 +398,9 @@ class WhisperBackend {
         );
       }
 
-      this._logger.debug(`_requestWithRetry ${endpoint} completed in ${Date.now() - t0}ms, status: ${response.status}`);
+      this._logger.debug(
+        `_requestWithRetry ${endpoint} completed in ${Date.now() - t0}ms, status: ${response.status}`
+      );
 
       // Parse response based on content type
       const contentType = response.headers.get('content-type');

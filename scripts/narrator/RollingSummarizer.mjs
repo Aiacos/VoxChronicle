@@ -28,8 +28,8 @@ class RollingSummarizer {
   _summarizedTurnCount = 0;
 
   /**
-   * @param {Object} openaiClient - OpenAI client with createChatCompletion method
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} openaiClient - OpenAI client with createChatCompletion method
+   * @param {object} [options={}] - Configuration options
    * @param {string} [options.model='gpt-4o-mini'] - Model to use for summarization
    * @param {number} [options.maxSummaryTokens=500] - Target max tokens for summary output
    */
@@ -47,7 +47,7 @@ class RollingSummarizer {
    *
    * @param {string} existingSummary - Previous rolling summary (empty string on cold start)
    * @param {string} formattedTurns - Pre-formatted evicted turns text
-   * @returns {Promise<{summary: string, usage: Object|null}>} Summary result with optional usage data
+   * @returns {Promise<{summary: string, usage: object | null}>} Summary result with optional usage data
    */
   async summarize(existingSummary, formattedTurns) {
     // Concurrency guard: skip if already in-flight
@@ -111,17 +111,19 @@ Rules:
    * @static
    */
   static formatTurnsForSummary(entries) {
-    return entries.map(entry => {
-      if (entry.role === 'assistant') {
-        try {
-          const parsed = JSON.parse(entry.content);
-          return `AI Summary: ${parsed.summary || 'No summary available'}`;
-        } catch {
-          return `AI: ${entry.content.substring(0, 200)}`;
+    return entries
+      .map((entry) => {
+        if (entry.role === 'assistant') {
+          try {
+            const parsed = JSON.parse(entry.content);
+            return `AI Summary: ${parsed.summary || 'No summary available'}`;
+          } catch {
+            return `AI: ${entry.content.substring(0, 200)}`;
+          }
         }
-      }
-      return `Player/DM: ${entry.content}`;
-    }).join('\n');
+        return `Player/DM: ${entry.content}`;
+      })
+      .join('\n');
   }
 }
 

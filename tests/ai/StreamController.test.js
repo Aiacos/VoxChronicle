@@ -8,22 +8,22 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
       info: vi.fn(),
       log: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
-    })),
-  },
+      error: vi.fn()
+    }))
+  }
 }));
 
 // Mock constants
 vi.mock('../../scripts/constants.mjs', () => ({
-  MODULE_ID: 'vox-chronicle',
+  MODULE_ID: 'vox-chronicle'
 }));
 
 // Mock SensitiveDataFilter (required by Logger)
 vi.mock('../../scripts/utils/SensitiveDataFilter.mjs', () => ({
   SensitiveDataFilter: {
     sanitizeArgs: (...args) => args,
-    sanitizeString: (s) => s,
-  },
+    sanitizeString: (s) => s
+  }
 }));
 
 import { StreamController } from '../../scripts/ai/StreamController.mjs';
@@ -72,8 +72,16 @@ describe('StreamController', () => {
     // Create target element
     target = document.createElement('div');
     // Make it scrollable for auto-scroll tests
-    Object.defineProperty(target, 'scrollHeight', { value: 500, writable: true, configurable: true });
-    Object.defineProperty(target, 'clientHeight', { value: 200, writable: true, configurable: true });
+    Object.defineProperty(target, 'scrollHeight', {
+      value: 500,
+      writable: true,
+      configurable: true
+    });
+    Object.defineProperty(target, 'clientHeight', {
+      value: 200,
+      writable: true,
+      configurable: true
+    });
     target.scrollTop = 300; // at bottom (scrollHeight - clientHeight)
   });
 
@@ -385,10 +393,13 @@ describe('StreamController', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      expect(bus.emit).toHaveBeenCalledWith('ai:streamStart', expect.objectContaining({
-        targetElement: target,
-        timestamp: expect.any(Number),
-      }));
+      expect(bus.emit).toHaveBeenCalledWith(
+        'ai:streamStart',
+        expect.objectContaining({
+          targetElement: target,
+          timestamp: expect.any(Number)
+        })
+      );
     });
 
     it('emits ai:token on flush', async () => {
@@ -413,11 +424,14 @@ describe('StreamController', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      expect(bus.emit).toHaveBeenCalledWith('ai:streamEnd', expect.objectContaining({
-        fullText: 'Done',
-        charCount: 4,
-        duration: expect.any(Number),
-      }));
+      expect(bus.emit).toHaveBeenCalledWith(
+        'ai:streamEnd',
+        expect.objectContaining({
+          fullText: 'Done',
+          charCount: 4,
+          duration: expect.any(Number)
+        })
+      );
     });
 
     it('emits ai:streamEnd with cancelled flag on cancel', async () => {
@@ -436,9 +450,12 @@ describe('StreamController', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      expect(bus.emit).toHaveBeenCalledWith('ai:streamEnd', expect.objectContaining({
-        cancelled: true,
-      }));
+      expect(bus.emit).toHaveBeenCalledWith(
+        'ai:streamEnd',
+        expect.objectContaining({
+          cancelled: true
+        })
+      );
     });
 
     it('emits ai:streamError on error', async () => {
@@ -449,10 +466,13 @@ describe('StreamController', () => {
       await vi.runAllTimersAsync();
       await promise;
 
-      expect(bus.emit).toHaveBeenCalledWith('ai:streamError', expect.objectContaining({
-        error: expect.any(Error),
-        partialText: expect.any(String),
-      }));
+      expect(bus.emit).toHaveBeenCalledWith(
+        'ai:streamError',
+        expect.objectContaining({
+          error: expect.any(Error),
+          partialText: expect.any(String)
+        })
+      );
     });
   });
 
@@ -482,8 +502,10 @@ describe('StreamController', () => {
       let scrollTopSet = 0;
       Object.defineProperty(target, 'scrollTop', {
         get: () => scrollTopSet,
-        set: (v) => { scrollTopSet = v; },
-        configurable: true,
+        set: (v) => {
+          scrollTopSet = v;
+        },
+        configurable: true
       });
       Object.defineProperty(target, 'scrollHeight', { value: 500, configurable: true });
       Object.defineProperty(target, 'clientHeight', { value: 200, configurable: true });
@@ -504,8 +526,10 @@ describe('StreamController', () => {
       let scrollTopSet = 0;
       Object.defineProperty(target, 'scrollTop', {
         get: () => scrollTopSet,
-        set: (v) => { scrollTopSet = v; },
-        configurable: true,
+        set: (v) => {
+          scrollTopSet = v;
+        },
+        configurable: true
       });
       Object.defineProperty(target, 'scrollHeight', { value: 500, configurable: true });
       Object.defineProperty(target, 'clientHeight', { value: 200, configurable: true });
@@ -547,9 +571,11 @@ describe('StreamController', () => {
       await promise;
 
       expect(onComplete).toHaveBeenCalledTimes(1);
-      expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
-        fullText: 'Done',
-      }));
+      expect(onComplete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fullText: 'Done'
+        })
+      );
     });
 
     it('calls onError when stream errors', async () => {
@@ -738,7 +764,11 @@ describe('StreamController', () => {
     });
 
     it('EventBus emit error does not kill the stream', async () => {
-      const bus = { emit: vi.fn().mockImplementationOnce(() => { throw new Error('bus boom'); }) };
+      const bus = {
+        emit: vi.fn().mockImplementationOnce(() => {
+          throw new Error('bus boom');
+        })
+      };
       const sc = new StreamController(target, { eventBus: bus });
 
       const promise = sc.stream(mockStream(['Hello']));

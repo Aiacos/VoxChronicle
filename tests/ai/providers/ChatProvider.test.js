@@ -5,8 +5,8 @@ import { ChatProvider } from '../../../scripts/ai/providers/ChatProvider.mjs';
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 // Concrete subclass for testing
@@ -91,12 +91,14 @@ describe('ChatProvider', () => {
     it('should accept valid options', () => {
       const provider = new TestChatProvider();
       const controller = new AbortController();
-      expect(() => provider._validateOptions({
-        model: 'gpt-4o',
-        temperature: 0.7,
-        maxTokens: 100,
-        abortSignal: controller.signal,
-      })).not.toThrow();
+      expect(() =>
+        provider._validateOptions({
+          model: 'gpt-4o',
+          temperature: 0.7,
+          maxTokens: 100,
+          abortSignal: controller.signal
+        })
+      ).not.toThrow();
     });
 
     it('should throw if abortSignal is not an AbortSignal', () => {

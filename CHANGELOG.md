@@ -5,6 +5,31 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.2] - 2026-03-14
+
+### Fixed
+- **module.json** — Download URL now points to correct version (was v4.0.0, now v4.0.2)
+- **package.json** — Repository, bugs, and homepage URLs corrected from placeholder to actual GitHub URLs
+- **package.json** — Foundry minimum compatibility aligned with module.json (13, was incorrectly 11)
+- **TranscriptionService.mjs** — Changed `let` to `const` for immutable `mappedResult` variable
+- **WhisperBackend.mjs** — Removed unused `t0` variable in health check
+
+### Changed
+- **ESLint config** — Added missing browser globals (AbortSignal, TextDecoder, HTMLElement, crypto, requestAnimationFrame, etc.) eliminating 44 false-positive errors
+- **Prettier** — Auto-formatted all 67 source files and 68 test files for consistent style
+- **Dependencies** — Fixed 3 high-severity dev dependency vulnerabilities (flatted, minimatch, rollup) via npm audit fix
+
+### Security
+- Full security scan: 0 critical/high vulnerabilities in production code
+- All innerHTML usages verified to use escapeHtml() properly
+- All Handlebars templates use auto-escaping (no triple-stache)
+- SensitiveDataFilter properly covers API key logging
+
+## [4.0.1] - 2026-03-14
+
+### Fixed
+- **EventBus wiring** — Wire EventBus to SessionOrchestrator and MainPanel (critical wiring fix)
+
 ## [4.0.0] - 2026-03-14
 
 ### Added — Epic 4: Assistenza AI Live Contestuale

@@ -58,7 +58,8 @@ describe('SensitiveDataFilter', () => {
     });
 
     it('should handle multiple sensitive patterns in one string', () => {
-      const input = 'key sk-abcdefghij1234567890 and Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
+      const input =
+        'key sk-abcdefghij1234567890 and Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
       const result = SensitiveDataFilter.sanitizeString(input);
       expect(result).not.toContain('sk-abcdefghij1234567890');
       expect(result).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
@@ -168,10 +169,7 @@ describe('SensitiveDataFilter', () => {
     });
 
     it('should not recurse array items when deep=false', () => {
-      const arr = [
-        { authorization: 'secret-long-enough-value-here' },
-        'plain text'
-      ];
+      const arr = [{ authorization: 'secret-long-enough-value-here' }, 'plain text'];
       const result = SensitiveDataFilter.sanitizeObject(arr, false);
       expect(Array.isArray(result)).toBe(true);
       // When deep=false, items are returned as-is without sanitization
@@ -423,7 +421,9 @@ describe('SensitiveDataFilter', () => {
 
     it('should detect Bearer tokens', () => {
       expect(
-        SensitiveDataFilter.containsSensitiveData('Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.data')
+        SensitiveDataFilter.containsSensitiveData(
+          'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.data'
+        )
       ).toBe(true);
     });
 

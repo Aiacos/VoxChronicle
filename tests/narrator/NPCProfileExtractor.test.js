@@ -14,30 +14,32 @@ beforeEach(() => {
  */
 function createMockClient(responseOverride = null) {
   const defaultResponse = {
-    choices: [{
-      message: {
-        content: JSON.stringify({
-          npcs: [
-            {
-              name: 'Garrick',
-              personality: 'Jovial facade hiding deep anxiety',
-              motivation: 'Protect his family from the guild',
-              role: 'merchant',
-              chapterLocation: 'Chapter 3: The Thieves Guild',
-              aliases: ['Garrick the Merchant', 'Old Garrick']
-            },
-            {
-              name: 'Selene',
-              personality: 'Cold and calculating',
-              motivation: 'Gain control of the council',
-              role: 'antagonist',
-              chapterLocation: 'Chapter 5: The Shadow Court',
-              aliases: ['The Shadow Queen']
-            }
-          ]
-        })
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            npcs: [
+              {
+                name: 'Garrick',
+                personality: 'Jovial facade hiding deep anxiety',
+                motivation: 'Protect his family from the guild',
+                role: 'merchant',
+                chapterLocation: 'Chapter 3: The Thieves Guild',
+                aliases: ['Garrick the Merchant', 'Old Garrick']
+              },
+              {
+                name: 'Selene',
+                personality: 'Cold and calculating',
+                motivation: 'Gain control of the council',
+                role: 'antagonist',
+                chapterLocation: 'Chapter 5: The Shadow Court',
+                aliases: ['The Shadow Queen']
+              }
+            ]
+          })
+        }
       }
-    }]
+    ]
   };
 
   return {
@@ -118,11 +120,13 @@ describe('NPCProfileExtractor', () => {
 
     it('should return empty Map when LLM returns no NPCs', async () => {
       const emptyClient = createMockClient({
-        choices: [{
-          message: {
-            content: JSON.stringify({ npcs: [] })
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ npcs: [] })
+            }
           }
-        }]
+        ]
       });
       const ext = new NPCProfileExtractor(emptyClient);
       const profiles = await ext.extractProfiles('Some adventure text with no NPCs');
@@ -133,11 +137,13 @@ describe('NPCProfileExtractor', () => {
 
     it('should return empty Map on malformed JSON response', async () => {
       const badClient = createMockClient({
-        choices: [{
-          message: {
-            content: 'This is not valid JSON at all!'
+        choices: [
+          {
+            message: {
+              content: 'This is not valid JSON at all!'
+            }
           }
-        }]
+        ]
       });
       const ext = new NPCProfileExtractor(badClient);
       const profiles = await ext.extractProfiles('Some adventure text');
@@ -204,31 +210,49 @@ describe('NPCProfileExtractor', () => {
     });
 
     it('should return matching NPCProfile objects for mentioned names', () => {
-      const mentioned = extractor.detectMentionedNPCs('Garrick walked into the room and Selene followed.');
+      const mentioned = extractor.detectMentionedNPCs(
+        'Garrick walked into the room and Selene followed.'
+      );
       expect(mentioned.length).toBe(2);
-      const names = mentioned.map(p => p.name);
+      const names = mentioned.map((p) => p.name);
       expect(names).toContain('Garrick');
       expect(names).toContain('Selene');
     });
 
     it('should skip names shorter than 3 characters', async () => {
       const shortNameClient = createMockClient({
-        choices: [{
-          message: {
-            content: JSON.stringify({
-              npcs: [
-                { name: 'Al', personality: 'Short name', motivation: 'Test', role: 'npc', chapterLocation: 'Ch1', aliases: [] },
-                { name: 'Bob', personality: 'Long enough', motivation: 'Test', role: 'npc', chapterLocation: 'Ch1', aliases: [] }
-              ]
-            })
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                npcs: [
+                  {
+                    name: 'Al',
+                    personality: 'Short name',
+                    motivation: 'Test',
+                    role: 'npc',
+                    chapterLocation: 'Ch1',
+                    aliases: []
+                  },
+                  {
+                    name: 'Bob',
+                    personality: 'Long enough',
+                    motivation: 'Test',
+                    role: 'npc',
+                    chapterLocation: 'Ch1',
+                    aliases: []
+                  }
+                ]
+              })
+            }
           }
-        }]
+        ]
       });
       const ext = new NPCProfileExtractor(shortNameClient);
       await ext.extractProfiles('Some text');
 
       const mentioned = ext.detectMentionedNPCs('Al and Bob are here');
-      const names = mentioned.map(p => p.name);
+      const names = mentioned.map((p) => p.name);
       expect(names).toContain('Bob');
       expect(names).not.toContain('Al');
     });
@@ -236,14 +260,14 @@ describe('NPCProfileExtractor', () => {
     it('should use word boundary matching (no substring false positives)', () => {
       const mentioned = extractor.detectMentionedNPCs('The garrickson estate was empty');
       // "garrickson" should NOT match "garrick" because of word boundary
-      const names = mentioned.map(p => p.name);
+      const names = mentioned.map((p) => p.name);
       expect(names).not.toContain('Garrick');
     });
 
     it('should deduplicate results by profile name', () => {
       // "Garrick" and "Old Garrick" both point to same profile
       const mentioned = extractor.detectMentionedNPCs('Garrick spoke to Old Garrick in the mirror');
-      const garrickMatches = mentioned.filter(p => p.name === 'Garrick');
+      const garrickMatches = mentioned.filter((p) => p.name === 'Garrick');
       expect(garrickMatches.length).toBe(1);
     });
 
@@ -260,16 +284,18 @@ describe('NPCProfileExtractor', () => {
         });
       }
       const manyClient = createMockClient({
-        choices: [{
-          message: {
-            content: JSON.stringify({ npcs: manyNPCs })
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ npcs: manyNPCs })
+            }
           }
-        }]
+        ]
       });
       const ext = new NPCProfileExtractor(manyClient);
       await ext.extractProfiles('Some text');
 
-      const contextText = manyNPCs.map(n => n.name).join(' met ');
+      const contextText = manyNPCs.map((n) => n.name).join(' met ');
       const mentioned = ext.detectMentionedNPCs(contextText);
       expect(mentioned.length).toBeLessThanOrEqual(5);
     });

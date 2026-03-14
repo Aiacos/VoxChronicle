@@ -1165,9 +1165,7 @@ describe('KankaService', () => {
     });
 
     it('should use cached data in multi-type search when available', async () => {
-      service._entityCache.set('characters', [
-        { id: 1, name: 'Dragon Knight' }
-      ]);
+      service._entityCache.set('characters', [{ id: 1, name: 'Dragon Knight' }]);
       service._cacheTimestamps.set('characters', Date.now());
 
       service.get = vi.fn().mockResolvedValue({ data: [] });
@@ -1326,9 +1324,9 @@ describe('KankaService', () => {
     it('should throw for unsupported entity type', async () => {
       service.get = vi.fn().mockResolvedValue({ data: [] });
 
-      await expect(
-        service.createIfNotExists('unknown_type', { name: 'Test' })
-      ).rejects.toThrow('Unsupported entity type');
+      await expect(service.createIfNotExists('unknown_type', { name: 'Test' })).rejects.toThrow(
+        'Unsupported entity type'
+      );
     });
   });
 
@@ -1342,11 +1340,7 @@ describe('KankaService', () => {
       // For createIfNotExists - no existing found
       service.get = vi.fn().mockResolvedValue({ data: [] });
 
-      const entities = [
-        { name: 'Entity1' },
-        { name: 'Entity2' },
-        { name: 'Entity3' }
-      ];
+      const entities = [{ name: 'Entity1' }, { name: 'Entity2' }, { name: 'Entity3' }];
 
       const results = await service.batchCreate('characters', entities);
       expect(results).toHaveLength(3);
@@ -1391,10 +1385,7 @@ describe('KankaService', () => {
     });
 
     it('should handle individual entity failures gracefully', async () => {
-      service.get = vi
-        .fn()
-        .mockResolvedValueOnce({ data: [] })
-        .mockResolvedValueOnce({ data: [] });
+      service.get = vi.fn().mockResolvedValueOnce({ data: [] }).mockResolvedValueOnce({ data: [] });
 
       mockEntityManager.create
         .mockRejectedValueOnce(new Error('API fail'))
@@ -1500,7 +1491,8 @@ describe('KankaService', () => {
     });
 
     it('should create relations sequentially via POST', async () => {
-      service.post = vi.fn()
+      service.post = vi
+        .fn()
         .mockResolvedValueOnce({ data: { id: 1, relation: 'ally' } })
         .mockResolvedValueOnce({ data: { id: 2, relation: 'enemy' } });
 
@@ -1544,7 +1536,8 @@ describe('KankaService', () => {
     });
 
     it('should continue on error by default', async () => {
-      service.post = vi.fn()
+      service.post = vi
+        .fn()
         .mockRejectedValueOnce(new Error('First fails'))
         .mockResolvedValueOnce({ data: { id: 2, relation: 'friend' } });
 
@@ -1563,7 +1556,8 @@ describe('KankaService', () => {
     });
 
     it('should stop on error when continueOnError is false', async () => {
-      service.post = vi.fn()
+      service.post = vi
+        .fn()
         .mockRejectedValueOnce(new Error('Stop here'))
         .mockResolvedValueOnce({ data: { id: 2 } });
 
@@ -1585,9 +1579,7 @@ describe('KankaService', () => {
     it('should default relation to "unknown" when not provided', async () => {
       service.post = vi.fn().mockResolvedValue({ data: { id: 1 } });
 
-      await service.batchCreateRelations(100, [
-        { target_id: 200, attitude: 0 }
-      ]);
+      await service.batchCreateRelations(100, [{ target_id: 200, attitude: 0 }]);
 
       expect(service.post).toHaveBeenCalledWith(
         expect.any(String),
@@ -1598,9 +1590,7 @@ describe('KankaService', () => {
     it('should default attitude to 0 when not provided', async () => {
       service.post = vi.fn().mockResolvedValue({ data: { id: 1 } });
 
-      await service.batchCreateRelations(100, [
-        { target_id: 200, relation: 'ally' }
-      ]);
+      await service.batchCreateRelations(100, [{ target_id: 200, relation: 'ally' }]);
 
       expect(service.post).toHaveBeenCalledWith(
         expect.any(String),
@@ -1612,9 +1602,9 @@ describe('KankaService', () => {
       service.post = vi.fn().mockRejectedValue(new Error('fail'));
 
       const onProgress = vi.fn();
-      await service.batchCreateRelations(100, [
-        { target_id: 200, relation: 'ally', attitude: 0 }
-      ], { onProgress });
+      await service.batchCreateRelations(100, [{ target_id: 200, relation: 'ally', attitude: 0 }], {
+        onProgress
+      });
 
       expect(onProgress).toHaveBeenCalledWith(1, 1);
     });

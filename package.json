@@ -31,12 +31,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/vox-chronicle.git"
+    "url": "https://github.com/Aiacos/VoxChronicle.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/vox-chronicle/issues"
+    "url": "https://github.com/Aiacos/VoxChronicle/issues"
   },
-  "homepage": "https://github.com/your-username/vox-chronicle#readme",
+  "homepage": "https://github.com/Aiacos/VoxChronicle#readme",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@vitest/coverage-v8": "^2.0.0",
@@ -51,7 +51,7 @@
     "node": ">=18.0.0"
   },
   "foundry": {
-    "minimum": "11",
+    "minimum": "13",
     "verified": "13",
     "maximum": "13"
   }

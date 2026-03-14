@@ -51,7 +51,7 @@ function createMockJournal(id, name, pages = []) {
  * Sets up game.journal with the provided journals
  */
 function setupGameJournal(journals = []) {
-  const journalMap = new Map(journals.map(j => [j.id, j]));
+  const journalMap = new Map(journals.map((j) => [j.id, j]));
 
   game.journal = {
     get: vi.fn((id) => journalMap.get(id)),
@@ -197,7 +197,11 @@ describe('JournalParser', () => {
   describe('searchByKeywords()', () => {
     beforeEach(async () => {
       const journal = createMockJournal('j1', 'Adventure', [
-        { id: 'p1', name: 'Tavern', content: '<p>The heroes enter the tavern and find a merchant.</p>' },
+        {
+          id: 'p1',
+          name: 'Tavern',
+          content: '<p>The heroes enter the tavern and find a merchant.</p>'
+        },
         { id: 'p2', name: 'Forest', content: '<p>A dark forest with ancient trees.</p>' }
       ]);
       setupGameJournal([journal]);
@@ -234,7 +238,11 @@ describe('JournalParser', () => {
 
     it('extracts chapter structure from HTML headings', async () => {
       const journal = createMockJournal('j1', 'Adventure', [
-        { id: 'p1', name: 'Chapter 1', content: '<h1>Introduction</h1><p>Story begins.</p><h2>Scene 1</h2><p>Details.</p>' }
+        {
+          id: 'p1',
+          name: 'Chapter 1',
+          content: '<h1>Introduction</h1><p>Story begins.</p><h2>Scene 1</h2><p>Details.</p>'
+        }
       ]);
       setupGameJournal([journal]);
       await parser.parseJournal('j1');
@@ -270,8 +278,16 @@ describe('JournalParser', () => {
   describe('getChapterBySceneName()', () => {
     beforeEach(async () => {
       const journal = createMockJournal('j1', 'Adventure', [
-        { id: 'p1', name: 'The Dark Tavern', content: '<h1>The Dark Tavern</h1><p>A gloomy tavern.</p>' },
-        { id: 'p2', name: 'Forest of Shadows', content: '<h2>Forest of Shadows</h2><p>A dark forest.</p>' }
+        {
+          id: 'p1',
+          name: 'The Dark Tavern',
+          content: '<h1>The Dark Tavern</h1><p>A gloomy tavern.</p>'
+        },
+        {
+          id: 'p2',
+          name: 'Forest of Shadows',
+          content: '<h2>Forest of Shadows</h2><p>A dark forest.</p>'
+        }
       ]);
       setupGameJournal([journal]);
       await parser.parseJournal('j1');
@@ -310,14 +326,19 @@ describe('JournalParser', () => {
       // NPC name must appear mid-sentence (not first word) for proper noun detection,
       // since _extractProperNouns skips the first word of each sentence.
       const journal = createMockJournal('j1', 'Adventure', [
-        { id: 'p1', name: 'NPCs', content: '<p>The party met a gruff blacksmith named Thorin at the forge. The villagers say Thorin has a personality of being stubborn and brave.</p>' }
+        {
+          id: 'p1',
+          name: 'NPCs',
+          content:
+            '<p>The party met a gruff blacksmith named Thorin at the forge. The villagers say Thorin has a personality of being stubborn and brave.</p>'
+        }
       ]);
       setupGameJournal([journal]);
       await parser.parseJournal('j1');
 
       const profiles = parser.extractNPCProfiles('j1');
       expect(profiles.length).toBeGreaterThanOrEqual(1);
-      const thorin = profiles.find(p => p.name === 'Thorin');
+      const thorin = profiles.find((p) => p.name === 'Thorin');
       expect(thorin).toBeDefined();
       expect(thorin.description).toBeTruthy();
       expect(thorin.description.length).toBeGreaterThan(0);
@@ -412,7 +433,11 @@ describe('JournalParser', () => {
   describe('getChunksForEmbedding()', () => {
     it('returns chunks from journal', async () => {
       const journal = createMockJournal('j1', 'Adventure', [
-        { id: 'p1', name: 'Long Page', content: '<p>' + 'This is a long sentence. '.repeat(50) + '</p>' }
+        {
+          id: 'p1',
+          name: 'Long Page',
+          content: '<p>' + 'This is a long sentence. '.repeat(50) + '</p>'
+        }
       ]);
       setupGameJournal([journal]);
 
@@ -451,7 +476,8 @@ describe('JournalParser', () => {
     });
 
     it('creates overlapping chunks', () => {
-      const text = 'First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence.';
+      const text =
+        'First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence.';
       const chunks = parser._chunkText(text, 30, 10);
       expect(chunks.length).toBeGreaterThan(1);
     });
@@ -464,7 +490,7 @@ describe('JournalParser', () => {
     it('handles simple scene name', () => {
       const terms = parser._extractSearchTermsFromSceneName('The Dark Forest');
       expect(terms.length).toBeGreaterThan(0);
-      expect(terms.some(t => t.includes('dark') || t.includes('forest'))).toBe(true);
+      expect(terms.some((t) => t.includes('dark') || t.includes('forest'))).toBe(true);
     });
 
     it('handles scene name with chapter prefix', () => {
@@ -493,12 +519,20 @@ describe('JournalParser', () => {
     });
 
     it('returns 1.0 for exact match', () => {
-      const score = parser._calculateChapterMatchScore('The Dark Forest', ['the dark forest'], 'The Dark Forest');
+      const score = parser._calculateChapterMatchScore(
+        'The Dark Forest',
+        ['the dark forest'],
+        'The Dark Forest'
+      );
       expect(score).toBe(1.0);
     });
 
     it('returns high score for partial match', () => {
-      const score = parser._calculateChapterMatchScore('The Dark Forest', ['dark', 'forest'], 'Dark Forest');
+      const score = parser._calculateChapterMatchScore(
+        'The Dark Forest',
+        ['dark', 'forest'],
+        'Dark Forest'
+      );
       expect(score).toBeGreaterThan(0);
     });
   });
@@ -564,8 +598,22 @@ describe('JournalParser', () => {
 
     it('nests h2 under h1', () => {
       const headings = [
-        { level: 1, title: 'Chapter 1', position: 0, content: 'Intro', pageId: 'p1', pageName: 'Page' },
-        { level: 2, title: 'Scene A', position: 100, content: 'Details', pageId: 'p1', pageName: 'Page' }
+        {
+          level: 1,
+          title: 'Chapter 1',
+          position: 0,
+          content: 'Intro',
+          pageId: 'p1',
+          pageName: 'Page'
+        },
+        {
+          level: 2,
+          title: 'Scene A',
+          position: 100,
+          content: 'Details',
+          pageId: 'p1',
+          pageName: 'Page'
+        }
       ];
       const result = parser._buildHeadingHierarchy(headings, 0);
       expect(result).toHaveLength(1);
@@ -643,7 +691,9 @@ describe('JournalParser', () => {
       const div = document.createElement('div');
       div.innerHTML = '<p>Before</p><hr>';
       const markers = parser._extractSectionMarkers(div, 'p1', 'Page 1');
-      const hrMarkers = markers.filter(m => m.title === '---' || m.title === 'VOXCHRONICLE.Journal.SectionBreak');
+      const hrMarkers = markers.filter(
+        (m) => m.title === '---' || m.title === 'VOXCHRONICLE.Journal.SectionBreak'
+      );
       expect(hrMarkers).toHaveLength(0);
     });
 
@@ -685,7 +735,10 @@ describe('JournalParser', () => {
   // =========================================================================
   describe('_findChapterNodeById()', () => {
     it('finds node at root level', () => {
-      const chapters = [{ id: 'a', children: [] }, { id: 'b', children: [] }];
+      const chapters = [
+        { id: 'a', children: [] },
+        { id: 'b', children: [] }
+      ];
       expect(parser._findChapterNodeById(chapters, 'b').id).toBe('b');
     });
 

@@ -155,7 +155,11 @@ class EntityExtractor {
    * @returns {Promise<ExtractionResult>} Extracted entities categorized by type
    */
   async extractEntities(transcriptText, options = {}) {
-    this._logger.debug('extractEntities called', { textLength: transcriptText?.length, existingEntities: options.existingEntities?.length, includePlayerCharacters: options.includePlayerCharacters });
+    this._logger.debug('extractEntities called', {
+      textLength: transcriptText?.length,
+      existingEntities: options.existingEntities?.length,
+      includePlayerCharacters: options.includePlayerCharacters
+    });
     const t0 = Date.now();
 
     if (!transcriptText || typeof transcriptText !== 'string') {
@@ -216,10 +220,14 @@ class EntityExtractor {
       return normalized;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        this._logger.error(`extractEntities failed after ${Date.now() - t0}ms: Failed to parse extraction response as JSON`);
+        this._logger.error(
+          `extractEntities failed after ${Date.now() - t0}ms: Failed to parse extraction response as JSON`
+        );
         throw new OpenAIError('Entity extraction returned invalid JSON', OpenAIErrorType.API_ERROR);
       }
-      this._logger.error(`extractEntities failed after ${Date.now() - t0}ms: ${error.message}`, { textLength: transcriptText?.length });
+      this._logger.error(`extractEntities failed after ${Date.now() - t0}ms: ${error.message}`, {
+        textLength: transcriptText?.length
+      });
       throw error;
     }
   }
@@ -235,7 +243,10 @@ class EntityExtractor {
    * @returns {Promise<Array<SalientMoment>>} Array of moment descriptions for image generation
    */
   async identifySalientMoments(transcriptText, options = {}) {
-    this._logger.debug('identifySalientMoments called', { textLength: transcriptText?.length, maxMoments: options.maxMoments });
+    this._logger.debug('identifySalientMoments called', {
+      textLength: transcriptText?.length,
+      maxMoments: options.maxMoments
+    });
     const t0 = Date.now();
 
     if (!transcriptText || typeof transcriptText !== 'string') {
@@ -283,17 +294,24 @@ class EntityExtractor {
 
       this._logger.log(`Identified ${validatedMoments.length} salient moments`);
 
-      this._logger.debug(`identifySalientMoments completed in ${Date.now() - t0}ms`, { momentCount: validatedMoments.length });
+      this._logger.debug(`identifySalientMoments completed in ${Date.now() - t0}ms`, {
+        momentCount: validatedMoments.length
+      });
       return validatedMoments;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        this._logger.error(`identifySalientMoments failed after ${Date.now() - t0}ms: Failed to parse moments response as JSON`);
+        this._logger.error(
+          `identifySalientMoments failed after ${Date.now() - t0}ms: Failed to parse moments response as JSON`
+        );
         throw new OpenAIError(
           'Moment identification returned invalid JSON',
           OpenAIErrorType.API_ERROR
         );
       }
-      this._logger.error(`identifySalientMoments failed after ${Date.now() - t0}ms: ${error.message}`, { textLength: transcriptText?.length });
+      this._logger.error(
+        `identifySalientMoments failed after ${Date.now() - t0}ms: ${error.message}`,
+        { textLength: transcriptText?.length }
+      );
       throw error;
     }
   }
@@ -310,7 +328,11 @@ class EntityExtractor {
    * @returns {Promise<Array<ExtractedRelationship>>} Array of detected relationships
    */
   async extractRelationships(transcriptText, entities, options = {}) {
-    this._logger.debug('extractRelationships called', { textLength: transcriptText?.length, entityCount: entities?.length, minConfidence: options.minConfidence });
+    this._logger.debug('extractRelationships called', {
+      textLength: transcriptText?.length,
+      entityCount: entities?.length,
+      minConfidence: options.minConfidence
+    });
     const t0 = Date.now();
 
     if (!transcriptText || typeof transcriptText !== 'string') {
@@ -368,17 +390,24 @@ class EntityExtractor {
 
       this._logger.log(`Extracted ${normalized.length} relationships`);
 
-      this._logger.debug(`extractRelationships completed in ${Date.now() - t0}ms`, { relationshipCount: normalized.length });
+      this._logger.debug(`extractRelationships completed in ${Date.now() - t0}ms`, {
+        relationshipCount: normalized.length
+      });
       return normalized;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        this._logger.error(`extractRelationships failed after ${Date.now() - t0}ms: Failed to parse relationship response as JSON`);
+        this._logger.error(
+          `extractRelationships failed after ${Date.now() - t0}ms: Failed to parse relationship response as JSON`
+        );
         throw new OpenAIError(
           'Relationship extraction returned invalid JSON',
           OpenAIErrorType.API_ERROR
         );
       }
-      this._logger.error(`extractRelationships failed after ${Date.now() - t0}ms: ${error.message}`, { textLength: transcriptText?.length, entityCount: entities?.length });
+      this._logger.error(
+        `extractRelationships failed after ${Date.now() - t0}ms: ${error.message}`,
+        { textLength: transcriptText?.length, entityCount: entities?.length }
+      );
       throw error;
     }
   }
@@ -431,12 +460,14 @@ class EntityExtractor {
     return {
       ...entities,
       moments,
-      ...(entitiesFailed || momentsFailed ? {
-        warnings: [
-          ...(entitiesFailed ? ['Entity extraction failed; results may be incomplete'] : []),
-          ...(momentsFailed ? ['Moment extraction failed; results may be incomplete'] : [])
-        ]
-      } : {})
+      ...(entitiesFailed || momentsFailed
+        ? {
+            warnings: [
+              ...(entitiesFailed ? ['Entity extraction failed; results may be incomplete'] : []),
+              ...(momentsFailed ? ['Moment extraction failed; results may be incomplete'] : [])
+            ]
+          }
+        : {})
     };
   }
 
@@ -755,7 +786,10 @@ Return JSON in this exact format:
 
         // Validate confidence
         const rawConfidence = parseInt(r.confidence, 10);
-        const confidence = Math.min(10, Math.max(1, Number.isNaN(rawConfidence) ? 5 : rawConfidence));
+        const confidence = Math.min(
+          10,
+          Math.max(1, Number.isNaN(rawConfidence) ? 5 : rawConfidence)
+        );
 
         // Validate relationship type
         let relationType = String(r.relationType || '')

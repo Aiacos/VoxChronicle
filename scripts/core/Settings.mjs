@@ -79,7 +79,12 @@ class Settings {
       config: true,
       type: String,
       default: 'default',
-      choices: { default: 'Default', 'openai-chat': 'OpenAI', 'anthropic-chat': 'Anthropic Claude', 'google-chat': 'Google Gemini' }
+      choices: {
+        default: 'Default',
+        'openai-chat': 'OpenAI',
+        'anthropic-chat': 'Anthropic Claude',
+        'google-chat': 'Google Gemini'
+      }
     });
 
     game.settings.register(MODULE_ID, 'aiProviderRules', {
@@ -89,7 +94,12 @@ class Settings {
       config: true,
       type: String,
       default: 'default',
-      choices: { default: 'Default', 'openai-chat': 'OpenAI', 'anthropic-chat': 'Anthropic Claude', 'google-chat': 'Google Gemini' }
+      choices: {
+        default: 'Default',
+        'openai-chat': 'OpenAI',
+        'anthropic-chat': 'Anthropic Claude',
+        'google-chat': 'Google Gemini'
+      }
     });
 
     game.settings.register(MODULE_ID, 'aiProviderExtraction', {
@@ -99,7 +109,12 @@ class Settings {
       config: true,
       type: String,
       default: 'default',
-      choices: { default: 'Default', 'openai-chat': 'OpenAI', 'anthropic-chat': 'Anthropic Claude', 'google-chat': 'Google Gemini' }
+      choices: {
+        default: 'Default',
+        'openai-chat': 'OpenAI',
+        'anthropic-chat': 'Anthropic Claude',
+        'google-chat': 'Google Gemini'
+      }
     });
 
     // Kanka API Token (world-wide, shared across all users)
@@ -570,7 +585,7 @@ class Settings {
       type: String,
       choices: {
         'openai-file-search': 'VOXCHRONICLE.Settings.RAGProviderOpenAIFileSearch',
-        'ragflow': 'VOXCHRONICLE.Settings.RAGProviderRAGFlow'
+        ragflow: 'VOXCHRONICLE.Settings.RAGProviderRAGFlow'
       },
       default: 'openai-file-search'
     });
@@ -832,28 +847,33 @@ class Settings {
       const serviceName = service === 'openai' ? 'OpenAI' : 'Kanka';
       ui.notifications?.info(
         game.i18n?.format('VOXCHRONICLE.Notifications.ApiKeyUpdated', { service: serviceName }) ||
-        `VoxChronicle: ${serviceName} API key updated. Re-initializing services...`
+          `VoxChronicle: ${serviceName} API key updated. Re-initializing services...`
       );
 
       // CRITICAL: Explicitly trigger reinitialization.
       // updateSetting hook doesn't fire for client-scope settings (OpenAI key).
-      import('./VoxChronicle.mjs').then(({ VoxChronicle }) => {
-        VoxChronicle.getInstance().reinitialize().then(() => {
-          logger.info(`${serviceName} services re-initialized successfully.`);
-        }).catch(err => {
-          logger.error(`Failed to re-initialize ${serviceName} services:`, err);
+      import('./VoxChronicle.mjs')
+        .then(({ VoxChronicle }) => {
+          VoxChronicle.getInstance()
+            .reinitialize()
+            .then(() => {
+              logger.info(`${serviceName} services re-initialized successfully.`);
+            })
+            .catch((err) => {
+              logger.error(`Failed to re-initialize ${serviceName} services:`, err);
+              ui.notifications?.error(
+                game.i18n?.localize('VOXCHRONICLE.Warnings.ReinitializationFailed') ||
+                  'VoxChronicle: Failed to re-initialize services after API key update. Please reload the page.'
+              );
+            });
+        })
+        .catch((err) => {
+          logger.error(`Failed to import VoxChronicle for ${serviceName} reinitialization:`, err);
           ui.notifications?.error(
-            game.i18n?.localize('VOXCHRONICLE.Warnings.ReinitializationFailed')
-              || 'VoxChronicle: Failed to re-initialize services after API key update. Please reload the page.'
+            game.i18n?.localize('VOXCHRONICLE.Warnings.ReinitializationFailed') ||
+              'VoxChronicle: Failed to re-initialize services after API key update. Please reload the page.'
           );
         });
-      }).catch(err => {
-        logger.error(`Failed to import VoxChronicle for ${serviceName} reinitialization:`, err);
-        ui.notifications?.error(
-          game.i18n?.localize('VOXCHRONICLE.Warnings.ReinitializationFailed')
-            || 'VoxChronicle: Failed to re-initialize services after API key update. Please reload the page.'
-        );
-      });
     }
   }
 
@@ -871,19 +891,32 @@ class Settings {
     try {
       const url = new URL(value);
       if (!['http:', 'https:'].includes(url.protocol)) {
-        ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrlScheme', { protocol: escapeHtml(url.protocol) }) || `Invalid URL scheme "${escapeHtml(url.protocol)}"`);
-        const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
-        game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '').catch(e =>
-          logger.warn(`Failed to reset ${settingKey}:`, e.message)
+        ui?.notifications?.error(
+          game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrlScheme', {
+            protocol: escapeHtml(url.protocol)
+          }) || `Invalid URL scheme "${escapeHtml(url.protocol)}"`
         );
+        const defaults = {
+          whisperBackendUrl: 'http://localhost:8080',
+          ragflowBaseUrl: 'http://localhost:9380'
+        };
+        game.settings
+          .set(MODULE_ID, settingKey, defaults[settingKey] || '')
+          .catch((e) => logger.warn(`Failed to reset ${settingKey}:`, e.message));
       }
     } catch (error) {
       logger.warn('URL validation failed:', error.message);
-      ui?.notifications?.warn(game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrl', { url: escapeHtml(value) }) || `"${escapeHtml(value)}" is not a valid URL.`);
-      const defaults = { whisperBackendUrl: 'http://localhost:8080', ragflowBaseUrl: 'http://localhost:9380' };
-      game.settings.set(MODULE_ID, settingKey, defaults[settingKey] || '').catch(e =>
-        logger.warn(`Failed to reset ${settingKey}:`, e.message)
+      ui?.notifications?.warn(
+        game.i18n?.format('VOXCHRONICLE.Settings.InvalidUrl', { url: escapeHtml(value) }) ||
+          `"${escapeHtml(value)}" is not a valid URL.`
       );
+      const defaults = {
+        whisperBackendUrl: 'http://localhost:8080',
+        ragflowBaseUrl: 'http://localhost:9380'
+      };
+      game.settings
+        .set(MODULE_ID, settingKey, defaults[settingKey] || '')
+        .catch((e) => logger.warn(`Failed to reset ${settingKey}:`, e.message));
     }
   }
 
@@ -1062,7 +1095,7 @@ class Settings {
    */
   static async validateOpenAIKey(overrideKey = null) {
     const apiKey = overrideKey || Settings.get('openaiApiKey');
-    
+
     // Check if API key is configured
     if (!apiKey || apiKey.trim().length === 0) {
       ui.notifications?.error(game.i18n.localize('VOXCHRONICLE.Validation.OpenAIKeyNotConfigured'));
@@ -1100,7 +1133,9 @@ class Settings {
       return isValid;
     } catch (error) {
       ui.notifications?.error(
-        game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', { error: escapeHtml(error.message) })
+        game.i18n.format('VOXCHRONICLE.Validation.OpenAIValidationError', {
+          error: escapeHtml(error.message)
+        })
       );
       logger.error('OpenAI API key validation error:', error);
       return false;
@@ -1159,7 +1194,9 @@ class Settings {
       return isValid;
     } catch (error) {
       ui.notifications?.error(
-        game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', { error: escapeHtml(error.message) })
+        game.i18n.format('VOXCHRONICLE.Validation.KankaValidationError', {
+          error: escapeHtml(error.message)
+        })
       );
       logger.error('Kanka API token validation error:', error);
       return false;
@@ -1246,7 +1283,11 @@ class Settings {
       ragflowDatasetId: Settings.get('ragflowDatasetId'),
       ragflowChatId: Settings.get('ragflowChatId')
     };
-    logger.debug('getRAGSettings', { enabled: settings.enabled, provider: settings.provider, hasVectorStoreId: !!settings.vectorStoreId });
+    logger.debug('getRAGSettings', {
+      enabled: settings.enabled,
+      provider: settings.provider,
+      hasVectorStoreId: !!settings.vectorStoreId
+    });
     return settings;
   }
 

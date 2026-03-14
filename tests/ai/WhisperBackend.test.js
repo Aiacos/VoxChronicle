@@ -37,7 +37,7 @@ vi.mock('../../scripts/utils/RateLimiter.mjs', () => {
   class MockRateLimiter {
     constructor(options) {
       rateLimiterConstructorArgs.push(options);
-      this.throttle = vi.fn((fn) => fn ? fn() : undefined);
+      this.throttle = vi.fn((fn) => (fn ? fn() : undefined));
       this.executeWithRetry = vi.fn((fn) => fn());
       this.pause = vi.fn();
       this.reset = vi.fn();
@@ -282,8 +282,8 @@ describe('WhisperBackend', () => {
     it('should return false for network error', async () => {
       // Both /health and / must fail for health check to return false
       fetchSpy
-        .mockRejectedValueOnce(new Error('network'))  // /health fails
-        .mockRejectedValueOnce(new Error('network'));  // / fallback also fails
+        .mockRejectedValueOnce(new Error('network')) // /health fails
+        .mockRejectedValueOnce(new Error('network')); // / fallback also fails
       const result = await backend.healthCheck({ useCache: false });
       expect(result).toBe(false);
     });
@@ -378,26 +378,20 @@ describe('WhisperBackend', () => {
     });
 
     it('should handle text/plain response', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse('Hello world', 200, 'text/plain')
-      );
+      fetchSpy.mockResolvedValueOnce(mockResponse('Hello world', 200, 'text/plain'));
       const blob = createAudioBlob();
       const result = await backend.transcribe(blob);
       expect(result).toBe('Hello world');
     });
 
     it('should throw on server error', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({ message: 'Internal error' }, 500)
-      );
+      fetchSpy.mockResolvedValueOnce(mockResponse({ message: 'Internal error' }, 500));
       const blob = createAudioBlob();
       await expect(backend.transcribe(blob)).rejects.toThrow();
     });
 
     it('should throw on invalid request', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({ message: 'Bad request' }, 400)
-      );
+      fetchSpy.mockResolvedValueOnce(mockResponse({ message: 'Bad request' }, 400));
       const blob = createAudioBlob();
       await expect(backend.transcribe(blob)).rejects.toThrow();
     });
@@ -408,10 +402,7 @@ describe('WhisperBackend', () => {
   describe('_requestWithRetry', () => {
     it('should make request to correct URL', async () => {
       await backend._requestWithRetry('/test', { method: 'GET' });
-      expect(fetchSpy).toHaveBeenCalledWith(
-        'http://localhost:8080/test',
-        expect.any(Object)
-      );
+      expect(fetchSpy).toHaveBeenCalledWith('http://localhost:8080/test', expect.any(Object));
     });
 
     it('should parse JSON response', async () => {
@@ -421,28 +412,24 @@ describe('WhisperBackend', () => {
     });
 
     it('should parse text response', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse('plain text', 200, 'text/plain')
-      );
+      fetchSpy.mockResolvedValueOnce(mockResponse('plain text', 200, 'text/plain'));
       const result = await backend._requestWithRetry('/test', { method: 'GET' });
       expect(result).toBe('plain text');
     });
 
     it('should throw WhisperError on HTTP error', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        mockResponse({ message: 'Not found' }, 404)
+      fetchSpy.mockResolvedValueOnce(mockResponse({ message: 'Not found' }, 404));
+      await expect(backend._requestWithRetry('/test', { method: 'GET' })).rejects.toThrow(
+        WhisperError
       );
-      await expect(
-        backend._requestWithRetry('/test', { method: 'GET' })
-      ).rejects.toThrow(WhisperError);
     });
 
     it('should throw timeout error on AbortError', async () => {
       const abortError = new DOMException('Aborted', 'AbortError');
       fetchSpy.mockRejectedValueOnce(abortError);
-      await expect(
-        backend._requestWithRetry('/test', { method: 'GET' })
-      ).rejects.toThrow('timeout');
+      await expect(backend._requestWithRetry('/test', { method: 'GET' })).rejects.toThrow(
+        'timeout'
+      );
     });
 
     it('should retry on timeout with maxRetries > 0', async () => {
@@ -465,9 +452,9 @@ describe('WhisperBackend', () => {
 
     it('should wrap unknown errors', async () => {
       fetchSpy.mockRejectedValueOnce(new Error('unknown'));
-      await expect(
-        backend._requestWithRetry('/test', { method: 'GET' })
-      ).rejects.toThrow(WhisperError);
+      await expect(backend._requestWithRetry('/test', { method: 'GET' })).rejects.toThrow(
+        WhisperError
+      );
     });
 
     it('should retry on retryable WhisperError', async () => {

@@ -5,7 +5,7 @@
  * and optional supplementary journals for AI context during live mode.
  *
  * @class JournalPicker
- * @extends HandlebarsApplicationMixin(ApplicationV2)
+ * @augments HandlebarsApplicationMixin(ApplicationV2)
  * @module vox-chronicle
  */
 
@@ -34,7 +34,7 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
       'deselect-all': JournalPicker._onDeselectAll,
       'toggle-folder': JournalPicker._onToggleFolder,
       'save-selection': JournalPicker._onSaveSelection,
-      'cancel': JournalPicker._onCancel
+      cancel: JournalPicker._onCancel
     }
   };
 
@@ -68,7 +68,7 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Build folder map
     const folderMap = new Map();
-    const journalFolders = game?.folders?.filter(f => f.type === 'JournalEntry') || [];
+    const journalFolders = game?.folders?.filter((f) => f.type === 'JournalEntry') || [];
     for (const folder of journalFolders) {
       folderMap.set(folder.id, {
         id: folder.id,
@@ -156,23 +156,24 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
     const { signal } = this.#listenerController;
 
     // When a journal checkbox is toggled, show/hide radio and auto-set primary if needed
-    this.element?.querySelectorAll('.vox-chronicle-journal-checkbox').forEach(checkbox => {
+    this.element?.querySelectorAll('.vox-chronicle-journal-checkbox').forEach((checkbox) => {
       checkbox.addEventListener('change', () => this._onCheckboxChange(), { signal });
     });
 
     // When a folder checkbox is toggled, cascade to all child journals
-    this.element?.querySelectorAll('.vox-chronicle-folder-checkbox').forEach(checkbox => {
+    this.element?.querySelectorAll('.vox-chronicle-folder-checkbox').forEach((checkbox) => {
       checkbox.addEventListener('change', (e) => this._onFolderCheckboxChange(e), { signal });
     });
 
     // Radio changes
-    this.element?.querySelectorAll('.vox-chronicle-primary-radio').forEach(radio => {
+    this.element?.querySelectorAll('.vox-chronicle-primary-radio').forEach((radio) => {
       radio.addEventListener('change', () => this._onRadioChange(), { signal });
     });
   }
 
   /**
    * Handle folder checkbox change - cascade to all child journal checkboxes
+   * @param event
    * @private
    */
   _onFolderCheckboxChange(event) {
@@ -182,11 +183,11 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const checked = folderCheckbox.checked;
     // Select/deselect all journal checkboxes within this folder (including nested subfolders)
-    folderItem.querySelectorAll('.vox-chronicle-journal-checkbox').forEach(cb => {
+    folderItem.querySelectorAll('.vox-chronicle-journal-checkbox').forEach((cb) => {
       cb.checked = checked;
     });
     // Also cascade to any nested folder checkboxes
-    folderItem.querySelectorAll('.vox-chronicle-folder-checkbox').forEach(cb => {
+    folderItem.querySelectorAll('.vox-chronicle-folder-checkbox').forEach((cb) => {
       if (cb !== folderCheckbox) cb.checked = checked;
     });
 
@@ -203,10 +204,14 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
     const radios = this.element.querySelectorAll('.vox-chronicle-primary-radio');
 
     // Show/hide radios based on checkbox state
-    radios.forEach(radio => {
+    radios.forEach((radio) => {
       const journalId = radio.dataset.id;
-      const checkbox = this.element.querySelector(`.vox-chronicle-journal-checkbox[data-id="${journalId}"]`);
-      const label = radio.closest('.vox-chronicle-journal-label')?.querySelector('.vox-chronicle-primary-label');
+      const checkbox = this.element.querySelector(
+        `.vox-chronicle-journal-checkbox[data-id="${journalId}"]`
+      );
+      const label = radio
+        .closest('.vox-chronicle-journal-label')
+        ?.querySelector('.vox-chronicle-primary-label');
       if (checkbox?.checked) {
         radio.disabled = false;
         if (label) label.style.display = '';
@@ -242,7 +247,9 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
     await game.settings.set(MODULE_ID, 'activeAdventureJournalId', primaryId || '');
     await game.settings.set(MODULE_ID, 'supplementaryJournalIds', supplementaryIds);
 
-    this._logger.info(`Saved journal selection: primary=${primaryId}, supplementary=[${supplementaryIds.join(', ')}]`);
+    this._logger.info(
+      `Saved journal selection: primary=${primaryId}, supplementary=[${supplementaryIds.join(', ')}]`
+    );
 
     if (this.#onSave) {
       this.#onSave();
@@ -271,17 +278,17 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
   // ─── Static action handlers ─────────────────────────────────────────
 
   static _onSelectAll(event, target) {
-    this.element?.querySelectorAll('.vox-chronicle-journal-checkbox').forEach(cb => {
+    this.element?.querySelectorAll('.vox-chronicle-journal-checkbox').forEach((cb) => {
       cb.checked = true;
     });
     this._onCheckboxChange();
   }
 
   static _onDeselectAll(event, target) {
-    this.element?.querySelectorAll('.vox-chronicle-journal-checkbox').forEach(cb => {
+    this.element?.querySelectorAll('.vox-chronicle-journal-checkbox').forEach((cb) => {
       cb.checked = false;
     });
-    this.element?.querySelectorAll('.vox-chronicle-primary-radio').forEach(radio => {
+    this.element?.querySelectorAll('.vox-chronicle-primary-radio').forEach((radio) => {
       radio.checked = false;
     });
     this._onCheckboxChange();
@@ -304,12 +311,13 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async _onSaveSelection(event, target) {
-    const checkedBoxes = this.element?.querySelectorAll('.vox-chronicle-journal-checkbox:checked') || [];
+    const checkedBoxes =
+      this.element?.querySelectorAll('.vox-chronicle-journal-checkbox:checked') || [];
     const primaryRadio = this.element?.querySelector('.vox-chronicle-primary-radio:checked');
     const primaryId = primaryRadio?.dataset?.id || '';
 
     const supplementaryIds = [];
-    checkedBoxes.forEach(cb => {
+    checkedBoxes.forEach((cb) => {
       const id = cb.dataset.id;
       if (id && id !== primaryId) {
         supplementaryIds.push(id);

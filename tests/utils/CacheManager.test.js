@@ -288,7 +288,7 @@ describe('CacheManager', () => {
       // Manually set lastAccessedAt to ensure deterministic ordering
       // key1 has the oldest lastAccessedAt (should be evicted first)
       cache.getEntry('key0').lastAccessedAt = 100;
-      cache.getEntry('key1').lastAccessedAt = 1;   // least recently used
+      cache.getEntry('key1').lastAccessedAt = 1; // least recently used
       cache.getEntry('key2').lastAccessedAt = 50;
       cache.getEntry('key3').lastAccessedAt = 75;
       cache.getEntry('key4').lastAccessedAt = 90;
@@ -312,7 +312,9 @@ describe('CacheManager', () => {
 
       // Small delay to ensure timestamp differs
       const start = Date.now();
-      while (Date.now() === start) { /* spin */ }
+      while (Date.now() === start) {
+        /* spin */
+      }
 
       cache.get('lru-test');
       const entryAfter = cache.getEntry('lru-test');
@@ -435,8 +437,8 @@ describe('CacheManager', () => {
 
     it('should calculate hitRate correctly', () => {
       cache.set('k', 'v', futureDate());
-      cache.get('k');       // hit
-      cache.get('k');       // hit
+      cache.get('k'); // hit
+      cache.get('k'); // hit
       cache.get('missing'); // miss
       const s = cache.stats;
       expect(s.hitRate).toBeCloseTo(66.67, 0);

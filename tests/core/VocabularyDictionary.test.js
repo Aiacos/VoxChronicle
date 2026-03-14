@@ -177,21 +177,19 @@ describe('VocabularyDictionary', () => {
     });
 
     it('throws for an invalid category', async () => {
-      await expect(dictionary.addTerm('bad_category', 'term')).rejects.toThrow(
-        /Invalid category/
-      );
+      await expect(dictionary.addTerm('bad_category', 'term')).rejects.toThrow(/Invalid category/);
     });
 
     it('throws for a null term', async () => {
-      await expect(
-        dictionary.addTerm(VocabularyCategory.CUSTOM, null)
-      ).rejects.toThrow('Term must be a non-empty string');
+      await expect(dictionary.addTerm(VocabularyCategory.CUSTOM, null)).rejects.toThrow(
+        'Term must be a non-empty string'
+      );
     });
 
     it('throws for an undefined term', async () => {
-      await expect(
-        dictionary.addTerm(VocabularyCategory.CUSTOM, undefined)
-      ).rejects.toThrow('Term must be a non-empty string');
+      await expect(dictionary.addTerm(VocabularyCategory.CUSTOM, undefined)).rejects.toThrow(
+        'Term must be a non-empty string'
+      );
     });
 
     it('throws for a non-string term', async () => {
@@ -256,15 +254,15 @@ describe('VocabularyDictionary', () => {
     });
 
     it('throws for a null term', async () => {
-      await expect(
-        dictionary.removeTerm(VocabularyCategory.ITEMS, null)
-      ).rejects.toThrow('Term must be a non-empty string');
+      await expect(dictionary.removeTerm(VocabularyCategory.ITEMS, null)).rejects.toThrow(
+        'Term must be a non-empty string'
+      );
     });
 
     it('throws for a non-string term', async () => {
-      await expect(
-        dictionary.removeTerm(VocabularyCategory.ITEMS, 123)
-      ).rejects.toThrow('Term must be a non-empty string');
+      await expect(dictionary.removeTerm(VocabularyCategory.ITEMS, 123)).rejects.toThrow(
+        'Term must be a non-empty string'
+      );
     });
   });
 

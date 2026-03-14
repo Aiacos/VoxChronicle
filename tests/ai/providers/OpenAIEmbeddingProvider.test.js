@@ -8,9 +8,9 @@ vi.mock('../../../scripts/utils/Logger.mjs', () => ({
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
-      log: vi.fn(),
-    })),
-  },
+      log: vi.fn()
+    }))
+  }
 }));
 
 // Capture mock client instances
@@ -26,7 +26,7 @@ vi.mock('../../../scripts/ai/OpenAIClient.mjs', () => {
     }
   }
   return {
-    OpenAIClient: MockOpenAIClient,
+    OpenAIClient: MockOpenAIClient
   };
 });
 
@@ -34,8 +34,8 @@ vi.mock('../../../scripts/ai/OpenAIClient.mjs', () => {
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 import { OpenAIEmbeddingProvider } from '../../../scripts/ai/providers/OpenAIEmbeddingProvider.mjs';
@@ -82,7 +82,7 @@ describe('OpenAIEmbeddingProvider', () => {
   describe('embed()', () => {
     const openAIResponse = {
       data: [{ embedding: [0.1, 0.2, 0.3, 0.4, 0.5] }],
-      usage: { prompt_tokens: 5, total_tokens: 5 },
+      usage: { prompt_tokens: 5, total_tokens: 5 }
     };
 
     it('should call client.post with /embeddings endpoint', async () => {
@@ -100,7 +100,7 @@ describe('OpenAIEmbeddingProvider', () => {
       const result = await provider.embed('hello world');
       expect(result).toEqual({
         embedding: [0.1, 0.2, 0.3, 0.4, 0.5],
-        dimensions: 5,
+        dimensions: 5
       });
     });
 
@@ -158,9 +158,9 @@ describe('OpenAIEmbeddingProvider', () => {
     });
 
     it('should validate options - reject invalid abortSignal', async () => {
-      await expect(
-        provider.embed('hello', { abortSignal: 'invalid' })
-      ).rejects.toThrow('abortSignal must be an instance of AbortSignal');
+      await expect(provider.embed('hello', { abortSignal: 'invalid' })).rejects.toThrow(
+        'abortSignal must be an instance of AbortSignal'
+      );
     });
 
     it('should propagate errors from OpenAI client', async () => {
@@ -173,7 +173,7 @@ describe('OpenAIEmbeddingProvider', () => {
       const largeEmbedding = Array.from({ length: 1536 }, (_, i) => i * 0.001);
       mockClient.post.mockResolvedValue({
         data: [{ embedding: largeEmbedding }],
-        usage: { prompt_tokens: 10, total_tokens: 10 },
+        usage: { prompt_tokens: 10, total_tokens: 10 }
       });
       const result = await provider.embed('hello');
       expect(result.embedding).toHaveLength(1536);
@@ -184,7 +184,7 @@ describe('OpenAIEmbeddingProvider', () => {
   describe('queueCategory (Story 2.3)', () => {
     it('should pass queueCategory "embedding" to post()', async () => {
       mockClient.post.mockResolvedValue({
-        data: [{ embedding: [0.1, 0.2, 0.3] }],
+        data: [{ embedding: [0.1, 0.2, 0.3] }]
       });
       await provider.embed('hello');
       expect(mockClient.post).toHaveBeenCalledWith(

@@ -14,11 +14,13 @@ beforeEach(() => {
  */
 function createMockClient(responseOverride = null) {
   const defaultResponse = {
-    choices: [{
-      message: {
-        content: 'The party explored the tavern and met the bartender Thane.'
+    choices: [
+      {
+        message: {
+          content: 'The party explored the tavern and met the bartender Thane.'
+        }
       }
-    }],
+    ],
     usage: { prompt_tokens: 200, completion_tokens: 50 }
   };
 
@@ -67,7 +69,10 @@ describe('RollingSummarizer', () => {
   // =========================================================================
   describe('summarize() cold start', () => {
     it('should return narrative summary from API when no existing summary', async () => {
-      const result = await summarizer.summarize('', 'Player/DM: We enter the tavern.\nAI Summary: The party arrives at the tavern.');
+      const result = await summarizer.summarize(
+        '',
+        'Player/DM: We enter the tavern.\nAI Summary: The party arrives at the tavern.'
+      );
 
       expect(result.summary).toBe('The party explored the tavern and met the bartender Thane.');
       expect(mockClient.createChatCompletion).toHaveBeenCalledTimes(1);
@@ -77,7 +82,7 @@ describe('RollingSummarizer', () => {
       await summarizer.summarize('', 'Player/DM: Hello world');
 
       const callArgs = mockClient.createChatCompletion.mock.calls[0][0];
-      const userMessage = callArgs.messages.find(m => m.role === 'user');
+      const userMessage = callArgs.messages.find((m) => m.role === 'user');
       expect(userMessage.content).toContain('conversation turns from a tabletop RPG session');
       expect(userMessage.content).not.toContain('existing session summary');
     });
@@ -101,7 +106,7 @@ describe('RollingSummarizer', () => {
       await summarizer.summarize('Prior summary here.', 'Player/DM: New turn');
 
       const callArgs = mockClient.createChatCompletion.mock.calls[0][0];
-      const userMessage = callArgs.messages.find(m => m.role === 'user');
+      const userMessage = callArgs.messages.find((m) => m.role === 'user');
       expect(userMessage.content).toContain('existing session summary');
       expect(userMessage.content).toContain('Prior summary here.');
     });
@@ -128,7 +133,10 @@ describe('RollingSummarizer', () => {
       // Make first call hang
       let resolveFirst;
       mockClient.createChatCompletion.mockImplementationOnce(
-        () => new Promise(resolve => { resolveFirst = resolve; })
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
       );
 
       const firstCall = summarizer.summarize('', 'Player/DM: Turn 1');
@@ -216,7 +224,10 @@ describe('RollingSummarizer', () => {
 
     it('should fallback to substring for non-JSON assistant entries', () => {
       const entries = [
-        { role: 'assistant', content: 'This is a plain text response that is not JSON formatted at all' }
+        {
+          role: 'assistant',
+          content: 'This is a plain text response that is not JSON formatted at all'
+        }
       ];
 
       const result = RollingSummarizer.formatTurnsForSummary(entries);
@@ -225,9 +236,7 @@ describe('RollingSummarizer', () => {
     });
 
     it('should prefix user entries with Player/DM:', () => {
-      const entries = [
-        { role: 'user', content: 'I cast fireball' }
-      ];
+      const entries = [{ role: 'user', content: 'I cast fireball' }];
 
       const result = RollingSummarizer.formatTurnsForSummary(entries);
 

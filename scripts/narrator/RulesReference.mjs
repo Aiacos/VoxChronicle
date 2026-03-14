@@ -24,7 +24,7 @@ const DEFAULT_RESULT_LIMIT = 5;
 
 /**
  * Represents a rule or game mechanic entry
- * @typedef {Object} RuleEntry
+ * @typedef {object} RuleEntry
  * @property {string} id - Unique identifier for the rule
  * @property {string} title - The rule title
  * @property {string} content - The rule content/description
@@ -36,7 +36,7 @@ const DEFAULT_RESULT_LIMIT = 5;
 
 /**
  * Represents citation information for a rule
- * @typedef {Object} Citation
+ * @typedef {object} Citation
  * @property {string} compendiumName - Name of the compendium pack
  * @property {string} compendiumLabel - Display label of the compendium
  * @property {string} [sourcebook] - Source book abbreviation (e.g., 'PHB', 'DMG', 'MM')
@@ -46,7 +46,7 @@ const DEFAULT_RESULT_LIMIT = 5;
 
 /**
  * Represents a search result with relevance score
- * @typedef {Object} SearchResult
+ * @typedef {object} SearchResult
  * @property {RuleEntry} rule - The matching rule entry
  * @property {number} relevance - Relevance score 0-1
  * @property {string[]} matchedTerms - Terms that matched the query
@@ -59,7 +59,7 @@ const DEFAULT_RESULT_LIMIT = 5;
 export class RulesReference {
   /**
    * Creates a new RulesReference instance
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} [options={}] - Configuration options
    * @param {string} [options.language='it'] - Language for rule descriptions
    * @param {number} [options.resultLimit=5] - Maximum search results to return
    */
@@ -136,7 +136,7 @@ export class RulesReference {
 
     /**
      * EventBus for cache invalidation (optional)
-     * @type {Object|null}
+     * @type {object | null}
      * @private
      */
     this._eventBus = options.eventBus || null;
@@ -245,8 +245,8 @@ export class RulesReference {
     if (this._rulesCache.size === 0 && game.packs?.size > 0) {
       this._logger.error('All compendium packs failed to load. Rules reference is empty.');
       globalThis.ui?.notifications?.warn(
-        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.RulesLoadAllFailed')
-          || 'VoxChronicle: Rules reference could not load any compendium data. Rules Q&A will not work.'
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.RulesLoadAllFailed') ||
+          'VoxChronicle: Rules reference could not load any compendium data. Rules Q&A will not work.'
       );
     }
 
@@ -256,7 +256,7 @@ export class RulesReference {
   /**
    * Searches for rules matching the query
    * @param {string} query - The search query
-   * @param {Object} [options={}] - Search options
+   * @param {object} [options={}] - Search options
    * @param {string[]} [options.categories] - Filter by categories
    * @param {number} [options.limit] - Override result limit
    * @returns {Promise<SearchResult[]>} Array of search results
@@ -280,7 +280,7 @@ export class RulesReference {
     }
 
     const normalizedQuery = query.toLowerCase().trim();
-    const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
+    const queryWords = normalizedQuery.split(/\s+/).filter((w) => w.length >= 2);
     const limit = options.limit || this._resultLimit;
     const categories = options.categories;
 
@@ -313,8 +313,8 @@ export class RulesReference {
         relevance = Math.max(relevance, 0.8);
       }
 
-      const matchedTerms = queryWords.filter(w =>
-        rule.title.toLowerCase().includes(w) || rule.content.toLowerCase().includes(w)
+      const matchedTerms = queryWords.filter(
+        (w) => rule.title.toLowerCase().includes(w) || rule.content.toLowerCase().includes(w)
       );
 
       results.push({ rule, relevance: Math.min(relevance, 1.0), matchedTerms });
@@ -352,9 +352,7 @@ export class RulesReference {
    * @returns {RuleEntry[]} Array of recent rule entries
    */
   getRecentRules() {
-    return this._recentRules
-      .map(id => this._rulesCache.get(id))
-      .filter(Boolean);
+    return this._recentRules.map((id) => this._rulesCache.get(id)).filter(Boolean);
   }
 
   /**
@@ -393,7 +391,7 @@ export class RulesReference {
     if (!category) return [];
     const normalizedCategory = category.toLowerCase();
     return [...this._rulesCache.values()].filter(
-      rule => rule.category?.toLowerCase() === normalizedCategory
+      (rule) => rule.category?.toLowerCase() === normalizedCategory
     );
   }
 
@@ -449,7 +447,7 @@ export class RulesReference {
   /**
    * Detects if text contains a rules question
    * @param {string} text - The text to analyze (transcription or query)
-   * @returns {Object} Detection result with isRulesQuestion flag and details
+   * @returns {object} Detection result with isRulesQuestion flag and details
    * @property {boolean} isRulesQuestion - Whether text contains a rules question
    * @property {number} confidence - Confidence score 0-1
    * @property {string[]} detectedTerms - Rules-related terms found
@@ -526,7 +524,9 @@ export class RulesReference {
       extractedTopic
     };
 
-    this._logger.debug(`detectRulesQuestion() exit — isRulesQuestion=${result.isRulesQuestion}, confidence=${result.confidence.toFixed(2)}, type=${questionType}, terms=[${detectedTerms.join(',')}]`);
+    this._logger.debug(
+      `detectRulesQuestion() exit — isRulesQuestion=${result.isRulesQuestion}, confidence=${result.confidence.toFixed(2)}, type=${questionType}, terms=[${detectedTerms.join(',')}]`
+    );
     return result;
   }
 
@@ -540,7 +540,8 @@ export class RulesReference {
     this._questionPatterns = [
       // English patterns
       {
-        regex: /(?:how does|how do|what is the rule for|what are the rules for)\s+([a-z\s]+?)(?:\s+work|\?|$)/i,
+        regex:
+          /(?:how does|how do|what is the rule for|what are the rules for)\s+([a-z\s]+?)(?:\s+work|\?|$)/i,
         confidence: 0.9,
         type: 'mechanic',
         name: 'how_does_work'
@@ -560,7 +561,8 @@ export class RulesReference {
 
       // Italian patterns
       {
-        regex: /(?:come funziona|come funzionano|qual è la regola per|quali sono le regole per)\s+([a-z\s]+?)(?:\?|$)/i,
+        regex:
+          /(?:come funziona|come funzionano|qual è la regola per|quali sono le regole per)\s+([a-z\s]+?)(?:\?|$)/i,
         confidence: 0.9,
         type: 'mechanic',
         name: 'come_funziona'
@@ -604,54 +606,54 @@ export class RulesReference {
     if (this._mechanicTerms) return this._mechanicTerms;
     this._mechanicTerms = {
       // Combat mechanics
-      'grappling': 'combat',
-      'lotta': 'combat',
+      grappling: 'combat',
+      lotta: 'combat',
       'opportunity attack': 'combat',
       'attacco di opportunità': 'combat',
-      'advantage': 'combat',
-      'vantaggio': 'combat',
-      'disadvantage': 'combat',
-      'svantaggio': 'combat',
+      advantage: 'combat',
+      vantaggio: 'combat',
+      disadvantage: 'combat',
+      svantaggio: 'combat',
       'critical hit': 'combat',
       'colpo critico': 'combat',
-      'initiative': 'combat',
-      'iniziativa': 'combat',
-      'dodge': 'combat',
-      'schivare': 'combat',
-      'dash': 'combat',
-      'scattare': 'combat',
-      'disengage': 'combat',
-      'disimpegno': 'combat',
+      initiative: 'combat',
+      iniziativa: 'combat',
+      dodge: 'combat',
+      schivare: 'combat',
+      dash: 'combat',
+      scattare: 'combat',
+      disengage: 'combat',
+      disimpegno: 'combat',
 
       // Spell mechanics
-      'concentration': 'spell',
-      'concentrazione': 'spell',
+      concentration: 'spell',
+      concentrazione: 'spell',
       'spell slot': 'spell',
       'slot incantesimo': 'spell',
-      'ritual': 'spell',
-      'rituale': 'spell',
-      'cantrip': 'spell',
-      'trucchetto': 'spell',
+      ritual: 'spell',
+      rituale: 'spell',
+      cantrip: 'spell',
+      trucchetto: 'spell',
       'casting time': 'spell',
       'tempo di lancio': 'spell',
 
       // Conditions
-      'prone': 'condition',
-      'prono': 'condition',
-      'stunned': 'condition',
-      'stordito': 'condition',
-      'paralyzed': 'condition',
-      'paralizzato': 'condition',
-      'blinded': 'condition',
-      'accecato': 'condition',
-      'charmed': 'condition',
-      'affascinato': 'condition',
-      'frightened': 'condition',
-      'spaventato': 'condition',
-      'poisoned': 'condition',
-      'avvelenato': 'condition',
-      'restrained': 'condition',
-      'trattenuto': 'condition',
+      prone: 'condition',
+      prono: 'condition',
+      stunned: 'condition',
+      stordito: 'condition',
+      paralyzed: 'condition',
+      paralizzato: 'condition',
+      blinded: 'condition',
+      accecato: 'condition',
+      charmed: 'condition',
+      affascinato: 'condition',
+      frightened: 'condition',
+      spaventato: 'condition',
+      poisoned: 'condition',
+      avvelenato: 'condition',
+      restrained: 'condition',
+      trattenuto: 'condition',
 
       // Abilities and checks
       'saving throw': 'ability',
@@ -664,12 +666,12 @@ export class RulesReference {
       // Movement
       'difficult terrain': 'movement',
       'terreno difficile': 'movement',
-      'jump': 'movement',
-      'saltare': 'movement',
-      'climb': 'movement',
-      'scalare': 'movement',
-      'swimming': 'movement',
-      'nuotare': 'movement',
+      jump: 'movement',
+      saltare: 'movement',
+      climb: 'movement',
+      scalare: 'movement',
+      swimming: 'movement',
+      nuotare: 'movement',
 
       // Rest
       'short rest': 'rest',
@@ -689,14 +691,38 @@ export class RulesReference {
   _hasQuestionWord(text) {
     const questionWords = [
       // English
-      'how', 'what', 'when', 'where', 'why', 'who', 'can', 'does', 'do', 'is', 'are',
+      'how',
+      'what',
+      'when',
+      'where',
+      'why',
+      'who',
+      'can',
+      'does',
+      'do',
+      'is',
+      'are',
       // Italian
-      'come', 'cosa', 'quando', 'dove', 'perché', 'chi', 'posso', 'può', 'puoi',
-      'è', 'sono', 'qual', 'quale', 'quanti', 'quante', 'quanto'
+      'come',
+      'cosa',
+      'quando',
+      'dove',
+      'perché',
+      'chi',
+      'posso',
+      'può',
+      'puoi',
+      'è',
+      'sono',
+      'qual',
+      'quale',
+      'quanti',
+      'quante',
+      'quanto'
     ];
 
     const words = text.split(/\s+/);
-    return words.some(word => questionWords.includes(word));
+    return words.some((word) => questionWords.includes(word));
   }
 
   /**
@@ -732,7 +758,7 @@ export class RulesReference {
   /**
    * Searches for rules content in compendium packs
    * @param {string} query - The search query
-   * @param {Object} [options={}] - Search options
+   * @param {object} [options={}] - Search options
    * @param {string[]} [options.packNames] - Specific pack names to search (optional, searches all if not specified)
    * @param {string[]} [options.documentTypes] - Filter by document types (e.g., 'JournalEntry', 'Item')
    * @param {number} [options.limit] - Maximum results to return
@@ -782,7 +808,9 @@ export class RulesReference {
     // Limit results
     const limitedResults = results.slice(0, limit);
 
-    this._logger.debug(`searchCompendiums() exit — ${results.length} total results, returning ${limitedResults.length}, ${(performance.now() - _searchStart).toFixed(1)}ms`);
+    this._logger.debug(
+      `searchCompendiums() exit — ${results.length} total results, returning ${limitedResults.length}, ${(performance.now() - _searchStart).toFixed(1)}ms`
+    );
 
     return limitedResults;
   }
@@ -826,7 +854,8 @@ export class RulesReference {
 
         // Use cached rule if available (populated by loadRules), else fetch from compendium
         const cacheKey = `${pack.collection}.${entry._id}`;
-        const ruleEntry = this._rulesCache.get(cacheKey) || await this._extractCompendiumEntry(pack, entry);
+        const ruleEntry =
+          this._rulesCache.get(cacheKey) || (await this._extractCompendiumEntry(pack, entry));
 
         if (ruleEntry) {
           results.push({
@@ -844,7 +873,7 @@ export class RulesReference {
   /**
    * Extracts a rule entry from a compendium document
    * @param {CompendiumCollection} pack - The compendium pack
-   * @param {Object} indexEntry - The index entry from the pack
+   * @param {object} indexEntry - The index entry from the pack
    * @returns {Promise<RuleEntry|null>} The extracted rule entry or null
    * @private
    */
@@ -864,9 +893,9 @@ export class RulesReference {
       if (pack.documentName === 'JournalEntry') {
         // Extract text from journal pages
         if (doc.pages) {
-          const textPages = doc.pages.filter(page => page.type === 'text');
+          const textPages = doc.pages.filter((page) => page.type === 'text');
           content = textPages
-            .map(page => {
+            .map((page) => {
               const rawContent = page.text?.content || '';
               return stripHtml(rawContent);
             })
@@ -942,7 +971,7 @@ export class RulesReference {
       tags.push(doc.system.school);
     }
 
-    return tags.filter(tag => tag && typeof tag === 'string');
+    return tags.filter((tag) => tag && typeof tag === 'string');
   }
 
   /**
@@ -1025,31 +1054,31 @@ export class RulesReference {
 
     // Known D&D 5e source abbreviations
     const knownSources = {
-      'PHB': 'PHB',
-      'PLAYER': 'PHB',
-      'PLAYERS': 'PHB',
-      'PLAYERSHANDBOOK': 'PHB',
-      'DMG': 'DMG',
-      'DUNGEON': 'DMG',
-      'DUNGEONMASTER': 'DMG',
-      'MM': 'MM',
-      'MONSTER': 'MM',
-      'MONSTERS': 'MM',
-      'XGTE': 'XGtE',
-      'XANATHAR': 'XGtE',
-      'TCE': 'TCE',
-      'TASHA': 'TCE',
-      'VGTM': 'VGtM',
-      'VOLO': 'VGtM',
-      'MTOF': 'MToF',
-      'MORDENKAINEN': 'MToF',
-      'SCAG': 'SCAG',
-      'SWORD': 'SCAG',
-      'EE': 'EE',
-      'ELEMENTAL': 'EE',
-      'EEPC': 'EEPC',
-      'SRD': 'SRD',
-      'BASIC': 'SRD'
+      PHB: 'PHB',
+      PLAYER: 'PHB',
+      PLAYERS: 'PHB',
+      PLAYERSHANDBOOK: 'PHB',
+      DMG: 'DMG',
+      DUNGEON: 'DMG',
+      DUNGEONMASTER: 'DMG',
+      MM: 'MM',
+      MONSTER: 'MM',
+      MONSTERS: 'MM',
+      XGTE: 'XGtE',
+      XANATHAR: 'XGtE',
+      TCE: 'TCE',
+      TASHA: 'TCE',
+      VGTM: 'VGtM',
+      VOLO: 'VGtM',
+      MTOF: 'MToF',
+      MORDENKAINEN: 'MToF',
+      SCAG: 'SCAG',
+      SWORD: 'SCAG',
+      EE: 'EE',
+      ELEMENTAL: 'EE',
+      EEPC: 'EEPC',
+      SRD: 'SRD',
+      BASIC: 'SRD'
     };
 
     // Try exact match first

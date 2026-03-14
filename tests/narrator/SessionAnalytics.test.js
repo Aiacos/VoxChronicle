@@ -800,14 +800,14 @@ describe('SessionAnalytics', () => {
 
     it('should calculate correct percentages for 3 speakers', () => {
       analytics.startSession();
-      analytics.addSegment({ speaker: 'Alice', start: 0, end: 10 });  // 10s
-      analytics.addSegment({ speaker: 'Bob', start: 10, end: 30 });   // 20s
+      analytics.addSegment({ speaker: 'Alice', start: 0, end: 10 }); // 10s
+      analytics.addSegment({ speaker: 'Bob', start: 10, end: 30 }); // 20s
       analytics.addSegment({ speaker: 'Charlie', start: 30, end: 40 }); // 10s
       // Total = 40s
       const stats = analytics.getSpeakerStats();
-      const alice = stats.find(s => s.speakerId === 'Alice');
-      const bob = stats.find(s => s.speakerId === 'Bob');
-      const charlie = stats.find(s => s.speakerId === 'Charlie');
+      const alice = stats.find((s) => s.speakerId === 'Alice');
+      const bob = stats.find((s) => s.speakerId === 'Bob');
+      const charlie = stats.find((s) => s.speakerId === 'Charlie');
       expect(alice.percentage).toBeCloseTo(25, 0);
       expect(bob.percentage).toBeCloseTo(50, 0);
       expect(charlie.percentage).toBeCloseTo(25, 0);

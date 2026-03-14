@@ -14,10 +14,42 @@ beforeEach(() => {
  */
 function createMockJournalParser(options = {}) {
   const flatChapterList = options.flatChapterList || [
-    { id: 'node-1', title: 'Chapter 1', level: 0, type: 'page', pageId: 'page-1', pageName: 'Chapter 1', path: 'Chapter 1' },
-    { id: 'node-2', title: 'The Tavern', level: 1, type: 'heading', pageId: 'page-1', pageName: 'Chapter 1', path: 'Chapter 1 > The Tavern' },
-    { id: 'node-3', title: 'Chapter 2', level: 0, type: 'page', pageId: 'page-2', pageName: 'Chapter 2', path: 'Chapter 2' },
-    { id: 'node-4', title: 'The Forest', level: 1, type: 'heading', pageId: 'page-2', pageName: 'Chapter 2', path: 'Chapter 2 > The Forest' }
+    {
+      id: 'node-1',
+      title: 'Chapter 1',
+      level: 0,
+      type: 'page',
+      pageId: 'page-1',
+      pageName: 'Chapter 1',
+      path: 'Chapter 1'
+    },
+    {
+      id: 'node-2',
+      title: 'The Tavern',
+      level: 1,
+      type: 'heading',
+      pageId: 'page-1',
+      pageName: 'Chapter 1',
+      path: 'Chapter 1 > The Tavern'
+    },
+    {
+      id: 'node-3',
+      title: 'Chapter 2',
+      level: 0,
+      type: 'page',
+      pageId: 'page-2',
+      pageName: 'Chapter 2',
+      path: 'Chapter 2'
+    },
+    {
+      id: 'node-4',
+      title: 'The Forest',
+      level: 1,
+      type: 'heading',
+      pageId: 'page-2',
+      pageName: 'Chapter 2',
+      path: 'Chapter 2 > The Forest'
+    }
   ];
 
   const chapterStructure = options.chapterStructure || {
@@ -25,17 +57,45 @@ function createMockJournalParser(options = {}) {
     journalName: 'Adventure',
     chapters: [
       {
-        id: 'node-1', title: 'Chapter 1', level: 0, type: 'page',
-        pageId: 'page-1', pageName: 'Chapter 1', content: 'Content of chapter 1.',
+        id: 'node-1',
+        title: 'Chapter 1',
+        level: 0,
+        type: 'page',
+        pageId: 'page-1',
+        pageName: 'Chapter 1',
+        content: 'Content of chapter 1.',
         children: [
-          { id: 'node-2', title: 'The Tavern', level: 1, type: 'heading', pageId: 'page-1', pageName: 'Chapter 1', content: 'A tavern scene.', children: [] }
+          {
+            id: 'node-2',
+            title: 'The Tavern',
+            level: 1,
+            type: 'heading',
+            pageId: 'page-1',
+            pageName: 'Chapter 1',
+            content: 'A tavern scene.',
+            children: []
+          }
         ]
       },
       {
-        id: 'node-3', title: 'Chapter 2', level: 0, type: 'page',
-        pageId: 'page-2', pageName: 'Chapter 2', content: 'Content of chapter 2.',
+        id: 'node-3',
+        title: 'Chapter 2',
+        level: 0,
+        type: 'page',
+        pageId: 'page-2',
+        pageName: 'Chapter 2',
+        content: 'Content of chapter 2.',
         children: [
-          { id: 'node-4', title: 'The Forest', level: 1, type: 'heading', pageId: 'page-2', pageName: 'Chapter 2', content: 'A dark forest.', children: [] }
+          {
+            id: 'node-4',
+            title: 'The Forest',
+            level: 1,
+            type: 'heading',
+            pageId: 'page-2',
+            pageName: 'Chapter 2',
+            content: 'A dark forest.',
+            children: []
+          }
         ]
       }
     ],
@@ -130,7 +190,12 @@ describe('ChapterTracker', () => {
     });
 
     it('detects chapter via linked journal matching selected journal', () => {
-      const scene = { id: 'scene-1', name: 'Scene One', journal: 'journal-1', journalPage: 'page-1' };
+      const scene = {
+        id: 'scene-1',
+        name: 'Scene One',
+        journal: 'journal-1',
+        journalPage: 'page-1'
+      };
       const result = tracker.updateFromScene(scene);
       // Should find chapter via _findChapterByPageId
       expect(result).not.toBeNull();
@@ -138,7 +203,12 @@ describe('ChapterTracker', () => {
     });
 
     it('caches scene-to-chapter mapping', () => {
-      const scene = { id: 'scene-1', name: 'The Tavern', journal: 'journal-1', journalPage: 'page-1' };
+      const scene = {
+        id: 'scene-1',
+        name: 'The Tavern',
+        journal: 'journal-1',
+        journalPage: 'page-1'
+      };
       const result1 = tracker.updateFromScene(scene);
       const result2 = tracker.updateFromScene(scene);
       // Second call should use cache
@@ -147,8 +217,13 @@ describe('ChapterTracker', () => {
 
     it('uses getChapterBySceneName when no linked journal match', () => {
       const matchNode = {
-        id: 'node-2', title: 'The Tavern', level: 1, type: 'heading',
-        pageId: 'page-1', pageName: 'Chapter 1', content: 'tavern content'
+        id: 'node-2',
+        title: 'The Tavern',
+        level: 1,
+        type: 'heading',
+        pageId: 'page-1',
+        pageName: 'Chapter 1',
+        content: 'tavern content'
       };
       mockParser.getChapterBySceneName.mockReturnValue(matchNode);
 
@@ -161,8 +236,13 @@ describe('ChapterTracker', () => {
     it('falls back to keyword matching', () => {
       mockParser.searchByKeywords.mockReturnValue([{ id: 'page-1' }]);
       mockParser.getChapterAtPosition.mockReturnValue({
-        id: 'node-1', title: 'Chapter 1', level: 0, type: 'page',
-        pageId: 'page-1', pageName: 'Chapter 1', content: 'content'
+        id: 'node-1',
+        title: 'Chapter 1',
+        level: 0,
+        type: 'page',
+        pageId: 'page-1',
+        pageName: 'Chapter 1',
+        content: 'content'
       });
 
       const scene = { id: 'scene-3', name: 'Dark Tavern' };
@@ -374,7 +454,11 @@ describe('ChapterTracker', () => {
     });
 
     it('builds from pageName and title', () => {
-      const path = tracker._buildChapterPath({ type: 'heading', title: 'Section', pageName: 'Chapter 1' });
+      const path = tracker._buildChapterPath({
+        type: 'heading',
+        title: 'Section',
+        pageName: 'Chapter 1'
+      });
       expect(path).toBe('Chapter 1 > Section');
     });
 
@@ -386,7 +470,10 @@ describe('ChapterTracker', () => {
 
   describe('_findNodeById()', () => {
     it('finds node at root level', () => {
-      const nodes = [{ id: 'a', children: [] }, { id: 'b', children: [] }];
+      const nodes = [
+        { id: 'a', children: [] },
+        { id: 'b', children: [] }
+      ];
       expect(tracker._findNodeById(nodes, 'b')).toEqual({ id: 'b', children: [] });
     });
 
@@ -430,13 +517,23 @@ describe('ChapterTracker', () => {
         journalName: 'Adventure',
         chapters: [
           {
-            id: 'node-1', title: 'Chapter 1', level: 0, type: 'page',
-            pageId: 'page-1', pageName: 'Chapter 1', content: 'Short.',
+            id: 'node-1',
+            title: 'Chapter 1',
+            level: 0,
+            type: 'page',
+            pageId: 'page-1',
+            pageName: 'Chapter 1',
+            content: 'Short.',
             children: []
           },
           {
-            id: 'node-3', title: 'Chapter 2', level: 0, type: 'page',
-            pageId: 'page-2', pageName: 'Chapter 2', content: longContent,
+            id: 'node-3',
+            title: 'Chapter 2',
+            level: 0,
+            type: 'page',
+            pageId: 'page-2',
+            pageName: 'Chapter 2',
+            content: longContent,
             children: []
           }
         ],
@@ -473,13 +570,23 @@ describe('ChapterTracker', () => {
         journalName: 'Adventure',
         chapters: [
           {
-            id: 'node-1', title: 'Chapter 1', level: 0, type: 'page',
-            pageId: 'page-1', pageName: 'Chapter 1', content: 'Something.',
+            id: 'node-1',
+            title: 'Chapter 1',
+            level: 0,
+            type: 'page',
+            pageId: 'page-1',
+            pageName: 'Chapter 1',
+            content: 'Something.',
             children: []
           },
           {
-            id: 'node-3', title: 'Chapter 2', level: 0, type: 'page',
-            pageId: 'page-2', pageName: 'Chapter 2', content: '',
+            id: 'node-3',
+            title: 'Chapter 2',
+            level: 0,
+            type: 'page',
+            pageId: 'page-2',
+            pageName: 'Chapter 2',
+            content: '',
             children: []
           }
         ],

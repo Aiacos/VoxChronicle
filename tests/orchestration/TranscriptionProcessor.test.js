@@ -303,9 +303,7 @@ describe('TranscriptionProcessor', () => {
   describe('processTranscription', () => {
     describe('input validation', () => {
       it('should throw if audioBlob is null', async () => {
-        await expect(processor.processTranscription(null)).rejects.toThrow(
-          'Invalid audio blob'
-        );
+        await expect(processor.processTranscription(null)).rejects.toThrow('Invalid audio blob');
       });
 
       it('should throw if audioBlob is undefined', async () => {
@@ -321,15 +319,11 @@ describe('TranscriptionProcessor', () => {
       });
 
       it('should throw if audioBlob is a number', async () => {
-        await expect(processor.processTranscription(42)).rejects.toThrow(
-          'Invalid audio blob'
-        );
+        await expect(processor.processTranscription(42)).rejects.toThrow('Invalid audio blob');
       });
 
       it('should throw if audioBlob is an object', async () => {
-        await expect(processor.processTranscription({})).rejects.toThrow(
-          'Invalid audio blob'
-        );
+        await expect(processor.processTranscription({})).rejects.toThrow('Invalid audio blob');
       });
     });
 
@@ -400,7 +394,10 @@ describe('TranscriptionProcessor', () => {
         const onProgress = vi.fn();
         await processor.processTranscription(blob, { onProgress });
 
-        expect(onProgress).toHaveBeenCalledWith(0, expect.stringContaining('Starting transcription'));
+        expect(onProgress).toHaveBeenCalledWith(
+          0,
+          expect.stringContaining('Starting transcription')
+        );
       });
 
       it('should call onProgress with completion message', async () => {
@@ -669,10 +666,7 @@ describe('TranscriptionProcessor', () => {
         const onProgress = vi.fn();
         await p.processTranscription(createAudioBlob(), { onProgress });
 
-        expect(onProgress).toHaveBeenCalledWith(
-          50,
-          expect.stringContaining('(API fallback)')
-        );
+        expect(onProgress).toHaveBeenCalledWith(50, expect.stringContaining('(API fallback)'));
       });
     });
 
@@ -826,7 +820,9 @@ describe('TranscriptionProcessor', () => {
         eventBus: mockEventBus
       });
 
-      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('Transcription failed');
+      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow(
+        'Transcription failed'
+      );
 
       expect(mockEventBus.emit).toHaveBeenCalledWith(
         'ai:transcriptionError',
@@ -1048,7 +1044,9 @@ describe('TranscriptionProcessor', () => {
         eventBus: mockEventBus
       });
 
-      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow('API rate limit exceeded');
+      await expect(p.processTranscription(createAudioBlob())).rejects.toThrow(
+        'API rate limit exceeded'
+      );
 
       // Verify started was emitted before error
       expect(mockEventBus.emit).toHaveBeenCalledWith('ai:transcriptionStarted', expect.any(Object));
@@ -1125,9 +1123,11 @@ describe('TranscriptionProcessor', () => {
   describe('circuit breaker passthrough', () => {
     it('should propagate circuit breaker error from TranscriptionService', async () => {
       const service = createMockTranscriptionService({
-        transcribe: vi.fn().mockRejectedValue(
-          new Error('Circuit breaker is open: too many consecutive transcription failures.')
-        )
+        transcribe: vi
+          .fn()
+          .mockRejectedValue(
+            new Error('Circuit breaker is open: too many consecutive transcription failures.')
+          )
       });
 
       const p = new TranscriptionProcessor({
@@ -1142,9 +1142,7 @@ describe('TranscriptionProcessor', () => {
 
     it('should propagate circuit breaker error without triggering fallback in API mode', async () => {
       const service = createMockTranscriptionService({
-        transcribe: vi.fn().mockRejectedValue(
-          new Error('Circuit breaker is open')
-        )
+        transcribe: vi.fn().mockRejectedValue(new Error('Circuit breaker is open'))
       });
 
       const p = new TranscriptionProcessor({
@@ -1285,7 +1283,7 @@ describe('TranscriptionProcessor', () => {
       await p.processTranscription(createAudioBlob());
 
       const speakersDetectedCalls = mockEventBus.emit.mock.calls.filter(
-        c => c[0] === 'ai:speakersDetected'
+        (c) => c[0] === 'ai:speakersDetected'
       );
       expect(speakersDetectedCalls).toHaveLength(0);
     });
@@ -1320,7 +1318,7 @@ describe('TranscriptionProcessor', () => {
 
       await p.processTranscription(createAudioBlob());
 
-      const readyCall = mockEventBus.emit.mock.calls.find(c => c[0] === 'ai:transcriptionReady');
+      const readyCall = mockEventBus.emit.mock.calls.find((c) => c[0] === 'ai:transcriptionReady');
       expect(readyCall).toBeTruthy();
       expect(readyCall[1]).toHaveProperty('segments');
       expect(Array.isArray(readyCall[1].segments)).toBe(true);
@@ -1328,9 +1326,7 @@ describe('TranscriptionProcessor', () => {
 
     // Task 1.3 — Auto-apply saved labels
     it('should call applyLabelsToSegments on transcription result', async () => {
-      const labeledSegments = [
-        { speaker: 'Game Master', text: 'Hello', start: 0, end: 1 }
-      ];
+      const labeledSegments = [{ speaker: 'Game Master', text: 'Hello', start: 0, end: 1 }];
       SpeakerLabeling.applyLabelsToSegments.mockReturnValue(labeledSegments);
 
       const service = createMockTranscriptionService({
@@ -1348,9 +1344,9 @@ describe('TranscriptionProcessor', () => {
 
       const result = await p.processTranscription(createAudioBlob());
 
-      expect(SpeakerLabeling.applyLabelsToSegments).toHaveBeenCalledWith(
-        [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
-      );
+      expect(SpeakerLabeling.applyLabelsToSegments).toHaveBeenCalledWith([
+        { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
+      ]);
       expect(result.segments).toEqual(labeledSegments);
     });
 
@@ -1450,9 +1446,7 @@ describe('TranscriptionProcessor', () => {
 
       const fallbackResult = {
         text: 'Fallback',
-        segments: [
-          { speaker: 'SPEAKER_00', text: 'Fallback', start: 0, end: 1 }
-        ]
+        segments: [{ speaker: 'SPEAKER_00', text: 'Fallback', start: 0, end: 1 }]
       };
       MockTranscriptionServiceClass.mockImplementation(() => ({
         transcribe: vi.fn().mockResolvedValue(fallbackResult)

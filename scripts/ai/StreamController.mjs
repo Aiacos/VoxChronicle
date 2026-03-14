@@ -26,12 +26,12 @@ export class StreamController {
 
   /**
    * @param {HTMLElement} targetElement - DOM element to render streaming text into
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.flushInterval=16] - Minimum ms between flushes (16ms = 60fps)
    * @param {Function} [options.onToken] - Called for each token received
    * @param {Function} [options.onComplete] - Called when stream completes
    * @param {Function} [options.onError] - Called on stream error
-   * @param {Object} [options.eventBus] - EventBus instance for emitting events
+   * @param {object} [options.eventBus] - EventBus instance for emitting events
    */
   constructor(targetElement, options = {}) {
     if (!targetElement) throw new Error('targetElement is required');
@@ -40,17 +40,21 @@ export class StreamController {
       flushInterval: options.flushInterval ?? 16,
       onToken: options.onToken ?? null,
       onComplete: options.onComplete ?? null,
-      onError: options.onError ?? null,
+      onError: options.onError ?? null
     };
     this.#eventBus = options.eventBus ?? null;
     this.#logger = Logger.createChild('StreamController');
   }
 
   /** @returns {'idle'|'streaming'|'complete'|'cancelled'|'error'} */
-  get state() { return this.#state; }
+  get state() {
+    return this.#state;
+  }
 
   /** @returns {string} All text accumulated during streaming */
-  get fullText() { return this.#fullText; }
+  get fullText() {
+    return this.#fullText;
+  }
 
   /**
    * Consume an async iterator and render tokens to DOM.
@@ -84,7 +88,7 @@ export class StreamController {
 
     this.#emitSafe('ai:streamStart', {
       targetElement: this.#target,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
 
     // Start flush loop
@@ -132,7 +136,7 @@ export class StreamController {
       fullText: this.#fullText,
       charCount: this.#fullText.length,
       duration: performance.now() - this.#startTime,
-      cancelled: true,
+      cancelled: true
     });
   }
 
@@ -148,7 +152,9 @@ export class StreamController {
     this.#fullText = '';
     this.#target.textContent = '';
     this.#target.classList.remove(
-      'vox-chronicle-stream', 'vox-chronicle-stream--active', 'vox-chronicle-stream--complete'
+      'vox-chronicle-stream',
+      'vox-chronicle-stream--active',
+      'vox-chronicle-stream--complete'
     );
     this.#target.removeAttribute('aria-live');
   }
@@ -195,7 +201,7 @@ export class StreamController {
 
     this.#emitSafe('ai:token', {
       tokens: text,
-      charCount: this.#fullText.length,
+      charCount: this.#fullText.length
     });
   }
 
@@ -213,13 +219,13 @@ export class StreamController {
       fullText: this.#fullText,
       charCount: this.#fullText.length,
       duration,
-      cancelled: false,
+      cancelled: false
     });
 
     this.#callbackSafe('onComplete', {
       fullText: this.#fullText,
       charCount: this.#fullText.length,
-      duration,
+      duration
     });
 
     this.#logger.debug('Stream complete', { chars: this.#fullText.length, duration });
@@ -233,7 +239,7 @@ export class StreamController {
 
     this.#emitSafe('ai:streamError', {
       error,
-      partialText: this.#fullText,
+      partialText: this.#fullText
     });
 
     this.#emitSafe('ai:streamEnd', {
@@ -241,7 +247,7 @@ export class StreamController {
       charCount: this.#fullText.length,
       duration: performance.now() - this.#startTime,
       cancelled: false,
-      error: true,
+      error: true
     });
 
     this.#callbackSafe('onError', error);
@@ -255,7 +261,9 @@ export class StreamController {
 
   #isScrolledToBottom() {
     const threshold = 10;
-    return this.#target.scrollHeight - this.#target.scrollTop - this.#target.clientHeight < threshold;
+    return (
+      this.#target.scrollHeight - this.#target.scrollTop - this.#target.clientHeight < threshold
+    );
   }
 
   #emitSafe(event, payload) {

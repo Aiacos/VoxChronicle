@@ -53,7 +53,10 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open main panel:', error);
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenPanel') || 'VoxChronicle: Failed to open panel. Check console.');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenPanel') ||
+          'VoxChronicle: Failed to open panel. Check console.'
+      );
     }
   },
   speakerLabels: async () => {
@@ -67,7 +70,10 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open speaker labeling:', error);
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSpeakerLabeling') || 'VoxChronicle: Failed to open speaker labeling. Check console.');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSpeakerLabeling') ||
+          'VoxChronicle: Failed to open speaker labeling. Check console.'
+      );
     }
   },
   vocabulary: async () => {
@@ -81,7 +87,10 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open vocabulary manager:', error);
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenVocabularyManager') || 'VoxChronicle: Failed to open vocabulary manager. Check console.');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenVocabularyManager') ||
+          'VoxChronicle: Failed to open vocabulary manager. Check console.'
+      );
     }
   },
   relationshipGraph: async () => {
@@ -95,15 +104,22 @@ const toolHandlers = {
       }
     } catch (error) {
       logger.error('Failed to open relationship graph:', error);
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenRelationshipGraph') || 'VoxChronicle: Failed to open relationship graph. Check console.');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenRelationshipGraph') ||
+          'VoxChronicle: Failed to open relationship graph. Check console.'
+      );
     }
   },
   settings: () => {
     try {
-      const SettingsApp = foundry?.applications?.settings?.SettingsConfig ?? globalThis.SettingsConfig;
+      const SettingsApp =
+        foundry?.applications?.settings?.SettingsConfig ?? globalThis.SettingsConfig;
       if (!SettingsApp) {
         logger.error('SettingsConfig class not found');
-        ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSettings') || 'VoxChronicle: Failed to open settings. Check console.');
+        ui.notifications?.error(
+          game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSettings') ||
+            'VoxChronicle: Failed to open settings. Check console.'
+        );
         return;
       }
       const app = new SettingsApp();
@@ -114,7 +130,10 @@ const toolHandlers = {
       }, 100);
     } catch (error) {
       logger.error('Failed to open settings:', error);
-      ui.notifications?.error(game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSettings') || 'VoxChronicle: Failed to open settings. Check console.');
+      ui.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Errors.FailedToOpenSettings') ||
+          'VoxChronicle: Failed to open settings. Check console.'
+      );
     }
   }
 };
@@ -167,7 +186,8 @@ Hooks.once('ready', async () => {
   } catch (error) {
     logger.error('Failed to initialize module:', error);
     ui.notifications?.error(
-      game.i18n?.localize('VOXCHRONICLE.Errors.FailedToInitialize') || 'VoxChronicle: Failed to initialize module. Check console for details.'
+      game.i18n?.localize('VOXCHRONICLE.Errors.FailedToInitialize') ||
+        'VoxChronicle: Failed to initialize module. Check console for details.'
     );
   }
 });
@@ -327,7 +347,9 @@ function injectValidationButton(container, inputName, targetName, validateFn) {
   const icon = document.createElement('i');
   icon.className = 'fa-solid fa-plug';
   validateButton.appendChild(icon);
-  validateButton.append(` ${game.i18n?.localize('VOXCHRONICLE.Settings.TestConnection') || 'Test Connection'}`);
+  validateButton.append(
+    ` ${game.i18n?.localize('VOXCHRONICLE.Settings.TestConnection') || 'Test Connection'}`
+  );
 
   inputElement.parentElement.appendChild(validateButton);
 
@@ -388,7 +410,8 @@ Hooks.on('renderSettingsConfig', (app, html) => {
     const defaultOption = document.createElement('option');
     defaultOption.value = currentValue;
     defaultOption.selected = true;
-    defaultOption.textContent = currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder');
+    defaultOption.textContent =
+      currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder');
     campaignSelect.appendChild(defaultOption);
 
     const refreshButton = document.createElement('button');
@@ -432,7 +455,9 @@ Hooks.on('renderSettingsConfig', (app, html) => {
 
         const placeholderOpt = document.createElement('option');
         placeholderOpt.value = '';
-        placeholderOpt.textContent = game.i18n.localize('VOXCHRONICLE.Settings.CampaignPlaceholder');
+        placeholderOpt.textContent = game.i18n.localize(
+          'VOXCHRONICLE.Settings.CampaignPlaceholder'
+        );
         campaignSelect.appendChild(placeholderOpt);
 
         for (const campaign of campaigns) {
@@ -455,7 +480,8 @@ Hooks.on('renderSettingsConfig', (app, html) => {
         campaignSelect.innerHTML = '';
         const errOpt = document.createElement('option');
         errOpt.value = currentValue;
-        errOpt.textContent = currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignError');
+        errOpt.textContent =
+          currentValue || game.i18n.localize('VOXCHRONICLE.Settings.CampaignError');
         campaignSelect.appendChild(errOpt);
       } finally {
         refreshIcon.classList.remove('fa-spin');
@@ -503,4 +529,3 @@ Hooks.on('renderSettingsConfig', (app, html) => {
 
 // Export for testing
 export { resolveHtmlElement, injectValidationButton, VALIDATION_RESET_DELAY_MS };
-

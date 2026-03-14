@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnthropicChatProvider } from '../../../scripts/ai/providers/AnthropicChatProvider.mjs';
 
 vi.mock('../../../scripts/utils/Logger.mjs', () => ({
-  Logger: { createChild: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })) }
+  Logger: {
+    createChild: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+  }
 }));
 
 describe('AnthropicChatProvider', () => {
@@ -24,10 +26,11 @@ describe('AnthropicChatProvider', () => {
     it('should send messages to Anthropic API and return content', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          content: [{ text: 'Hello from Claude!' }],
-          usage: { input_tokens: 10, output_tokens: 5 }
-        })
+        json: () =>
+          Promise.resolve({
+            content: [{ text: 'Hello from Claude!' }],
+            usage: { input_tokens: 10, output_tokens: 5 }
+          })
       });
 
       const result = await provider.chat([
@@ -65,8 +68,9 @@ describe('AnthropicChatProvider', () => {
         json: () => Promise.resolve({ error: { message: 'Invalid key' } })
       });
 
-      await expect(provider.chat([{ role: 'user', content: 'test' }]))
-        .rejects.toThrow('Anthropic API error 401');
+      await expect(provider.chat([{ role: 'user', content: 'test' }])).rejects.toThrow(
+        'Anthropic API error 401'
+      );
     });
 
     it('should pass model and temperature options', async () => {
@@ -75,10 +79,11 @@ describe('AnthropicChatProvider', () => {
         json: () => Promise.resolve({ content: [{ text: 'ok' }], usage: {} })
       });
 
-      await provider.chat(
-        [{ role: 'user', content: 'test' }],
-        { model: 'claude-opus-4-20250514', temperature: 0.3, maxTokens: 500 }
-      );
+      await provider.chat([{ role: 'user', content: 'test' }], {
+        model: 'claude-opus-4-20250514',
+        temperature: 0.3,
+        maxTokens: 500
+      });
 
       const body = JSON.parse(fetch.mock.calls[0][1].body);
       expect(body.model).toBe('claude-opus-4-20250514');

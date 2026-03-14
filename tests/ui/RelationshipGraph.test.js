@@ -18,16 +18,23 @@ vi.hoisted(() => {
         this.rendered = false;
         this._element = null;
       }
-      render() { this.rendered = true; return this; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      render() {
+        this.rendered = true;
+        return this;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -76,12 +83,8 @@ describe('RelationshipGraph', () => {
         { name: 'Gandalf', description: 'A powerful wizard' },
         { name: 'Frodo', description: 'A brave hobbit' }
       ],
-      locations: [
-        { name: 'Rivendell', description: 'Elven city' }
-      ],
-      items: [
-        { name: 'The One Ring', description: 'The ring of power' }
-      ]
+      locations: [{ name: 'Rivendell', description: 'Elven city' }],
+      items: [{ name: 'The One Ring', description: 'The ring of power' }]
     };
 
     sampleRelationships = [
@@ -398,12 +401,10 @@ describe('RelationshipGraph', () => {
     });
 
     it('should only include relationship types that have matches', async () => {
-      graph.setRelationships([
-        { sourceEntity: 'A', targetEntity: 'B', relationType: 'ally' }
-      ]);
+      graph.setRelationships([{ sourceEntity: 'A', targetEntity: 'B', relationType: 'ally' }]);
       const ctx = await graph._prepareContext({});
       // 'all' + 'ally' only
-      const typeValues = ctx.relationshipTypeOptions.map(o => o.value);
+      const typeValues = ctx.relationshipTypeOptions.map((o) => o.value);
       expect(typeValues).toContain('all');
       expect(typeValues).toContain('ally');
       expect(typeValues).not.toContain('enemy');
@@ -430,7 +431,7 @@ describe('RelationshipGraph', () => {
       graph.setEntities(sampleEntities);
       graph.setRelationships(sampleRelationships);
       const { nodes } = graph._buildGraphData();
-      const labels = nodes.map(n => n.label);
+      const labels = nodes.map((n) => n.label);
       expect(labels).toContain('Gandalf');
       expect(labels).toContain('Frodo');
       expect(labels).toContain('Rivendell');
@@ -439,7 +440,9 @@ describe('RelationshipGraph', () => {
 
     it('should use "Unknown" for entities without names', () => {
       graph._entities.characters = [{ description: 'No name' }];
-      graph._relationships = [{ sourceEntity: 'Unknown', targetEntity: 'Unknown', relationType: 'ally' }];
+      graph._relationships = [
+        { sourceEntity: 'Unknown', targetEntity: 'Unknown', relationType: 'ally' }
+      ];
       const { nodes } = graph._buildGraphData();
       expect(nodes[0].label).toBe('Unknown');
     });
@@ -473,9 +476,9 @@ describe('RelationshipGraph', () => {
       graph.setEntities(sampleEntities);
       graph.setRelationships(sampleRelationships);
       const { nodes } = graph._buildGraphData();
-      const gandalfNode = nodes.find(n => n.label === 'Gandalf');
-      const rivendellNode = nodes.find(n => n.label === 'Rivendell');
-      const ringNode = nodes.find(n => n.label === 'The One Ring');
+      const gandalfNode = nodes.find((n) => n.label === 'Gandalf');
+      const rivendellNode = nodes.find((n) => n.label === 'Rivendell');
+      const ringNode = nodes.find((n) => n.label === 'The One Ring');
 
       expect(gandalfNode.color).toBe(graph._entityColors[EntityType.CHARACTER]);
       expect(rivendellNode.color).toBe(graph._entityColors[EntityType.LOCATION]);
@@ -486,7 +489,7 @@ describe('RelationshipGraph', () => {
       graph.setEntities(sampleEntities);
       graph.setRelationships(sampleRelationships);
       const { nodes } = graph._buildGraphData();
-      const gandalfNode = nodes.find(n => n.label === 'Gandalf');
+      const gandalfNode = nodes.find((n) => n.label === 'Gandalf');
       expect(gandalfNode.group).toBe(EntityType.CHARACTER);
     });
 
@@ -509,9 +512,7 @@ describe('RelationshipGraph', () => {
       graph.setEntities({
         characters: [{ name: 'A' }, { name: 'B' }]
       });
-      graph._relationships = [
-        { sourceEntity: 'A', targetEntity: 'B', relationType: 'ally' }
-      ];
+      graph._relationships = [{ sourceEntity: 'A', targetEntity: 'B', relationType: 'ally' }];
       const { edges } = graph._buildGraphData();
       expect(edges[0].value).toBe(5);
     });
@@ -524,7 +525,7 @@ describe('RelationshipGraph', () => {
       graph._filters.entityType = EntityType.CHARACTER;
       const { nodes } = graph._buildGraphData();
       expect(nodes).toHaveLength(2); // only characters
-      nodes.forEach(n => expect(n.group).toBe(EntityType.CHARACTER));
+      nodes.forEach((n) => expect(n.group).toBe(EntityType.CHARACTER));
     });
 
     it('should filter edges by relationship type', () => {
@@ -567,9 +568,7 @@ describe('RelationshipGraph', () => {
       graph.setEntities({
         characters: [{ name: 'A' }, { name: 'B' }]
       });
-      graph._relationships = [
-        { sourceEntity: 'A', targetEntity: 'B' }
-      ];
+      graph._relationships = [{ sourceEntity: 'A', targetEntity: 'B' }];
       const { edges } = graph._buildGraphData();
       expect(edges[0].color).toBe(graph._relationshipColors['unknown']);
     });
@@ -640,7 +639,9 @@ describe('RelationshipGraph', () => {
 
     it('should handle error during refresh', () => {
       const mockNetwork = {
-        setData: vi.fn(() => { throw new Error('setData failed'); }),
+        setData: vi.fn(() => {
+          throw new Error('setData failed');
+        }),
         fit: vi.fn()
       };
       graph._network = mockNetwork;
@@ -751,7 +752,9 @@ describe('RelationshipGraph', () => {
       graph._onRender({}, {});
 
       expect(mockElement.querySelectorAll).toHaveBeenCalledWith('[data-filter="entity-type"]');
-      expect(mockElement.querySelectorAll).toHaveBeenCalledWith('[data-filter="relationship-type"]');
+      expect(mockElement.querySelectorAll).toHaveBeenCalledWith(
+        '[data-filter="relationship-type"]'
+      );
       expect(mockSelect.addEventListener).toHaveBeenCalledTimes(2);
     });
 
@@ -786,7 +789,7 @@ describe('RelationshipGraph', () => {
       graph._onRender({}, {});
 
       // Wait for the catch handler to execute
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(graph._mode).toBe(GraphMode.ERROR);
       expect(graph.render).toHaveBeenCalled();
@@ -909,7 +912,9 @@ describe('RelationshipGraph', () => {
 
     it('should handle initialization error', async () => {
       globalThis.vis = {
-        DataSet: vi.fn(() => { throw new Error('DataSet error'); }),
+        DataSet: vi.fn(() => {
+          throw new Error('DataSet error');
+        }),
         Network: vi.fn()
       };
 
@@ -969,7 +974,9 @@ describe('RelationshipGraph', () => {
         script.onerror();
       });
 
-      await expect(graph._loadVisLibrary()).rejects.toThrow('vis-network library failed to load from local bundle');
+      await expect(graph._loadVisLibrary()).rejects.toThrow(
+        'vis-network library failed to load from local bundle'
+      );
 
       appendChildSpy.mockRestore();
     });
@@ -1022,7 +1029,9 @@ describe('RelationshipGraph', () => {
 
       // Force error by making Blob constructor throw
       const origBlob = globalThis.Blob;
-      globalThis.Blob = vi.fn(() => { throw new Error('Blob error'); });
+      globalThis.Blob = vi.fn(() => {
+        throw new Error('Blob error');
+      });
 
       await RelationshipGraph._onExportClick.call(mockInstance, {}, null);
 

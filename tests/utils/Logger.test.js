@@ -154,10 +154,7 @@ describe('Logger', () => {
     it('should include [DEBUG] tag in output', () => {
       Logger.setDebugEnabled(true);
       Logger.debug('msg');
-      expect(console.debug).toHaveBeenCalledWith(
-        expect.stringContaining('[DEBUG]'),
-        'msg'
-      );
+      expect(console.debug).toHaveBeenCalledWith(expect.stringContaining('[DEBUG]'), 'msg');
     });
   });
 
@@ -171,10 +168,7 @@ describe('Logger', () => {
     it('should log when log level is INFO', () => {
       Logger.setLogLevel(LogLevel.INFO);
       Logger.info('test info');
-      expect(console.info).toHaveBeenCalledWith(
-        expect.stringContaining('[INFO]'),
-        'test info'
-      );
+      expect(console.info).toHaveBeenCalledWith(expect.stringContaining('[INFO]'), 'test info');
     });
 
     it('should log when log level is DEBUG', () => {
@@ -213,10 +207,7 @@ describe('Logger', () => {
   describe('warn()', () => {
     it('should log warnings at default level', () => {
       Logger.warn('warning msg');
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('[WARN]'),
-        'warning msg'
-      );
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('[WARN]'), 'warning msg');
     });
 
     it('should not log when level is ERROR', () => {
@@ -235,10 +226,7 @@ describe('Logger', () => {
   describe('error()', () => {
     it('should log errors at default level', () => {
       Logger.error('error msg');
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('[ERROR]'),
-        'error msg'
-      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('[ERROR]'), 'error msg');
     });
 
     it('should log errors at WARN level', () => {
@@ -259,25 +247,19 @@ describe('Logger', () => {
   describe('group()', () => {
     it('should start a collapsed group by default', () => {
       Logger.group('My Group');
-      expect(console.groupCollapsed).toHaveBeenCalledWith(
-        expect.stringContaining('My Group')
-      );
+      expect(console.groupCollapsed).toHaveBeenCalledWith(expect.stringContaining('My Group'));
       expect(console.group).not.toHaveBeenCalled();
     });
 
     it('should start an expanded group when collapsed=false', () => {
       Logger.group('Expanded Group', false);
-      expect(console.group).toHaveBeenCalledWith(
-        expect.stringContaining('Expanded Group')
-      );
+      expect(console.group).toHaveBeenCalledWith(expect.stringContaining('Expanded Group'));
       expect(console.groupCollapsed).not.toHaveBeenCalled();
     });
 
     it('should include the module prefix', () => {
       Logger.group('test');
-      expect(console.groupCollapsed).toHaveBeenCalledWith(
-        expect.stringContaining('vox-chronicle')
-      );
+      expect(console.groupCollapsed).toHaveBeenCalledWith(expect.stringContaining('vox-chronicle'));
     });
   });
 
@@ -387,11 +369,7 @@ describe('Logger', () => {
     it('should call console.trace with prefix when level is DEBUG', () => {
       Logger.setLogLevel(LogLevel.DEBUG);
       Logger.trace('tracing', 42);
-      expect(console.trace).toHaveBeenCalledWith(
-        expect.stringContaining('[TRACE]'),
-        'tracing',
-        42
-      );
+      expect(console.trace).toHaveBeenCalledWith(expect.stringContaining('[TRACE]'), 'tracing', 42);
     });
   });
 
@@ -445,10 +423,7 @@ describe('Logger', () => {
     it('should prefix messages with the sub-module name', () => {
       const child = Logger.createChild('SubMod');
       child.log('hello');
-      expect(console.log).toHaveBeenCalledWith(
-        'vox-chronicle:SubMod |',
-        'hello'
-      );
+      expect(console.log).toHaveBeenCalledWith('vox-chronicle:SubMod |', 'hello');
     });
 
     it('should respect log level for child debug()', () => {
@@ -547,9 +522,7 @@ describe('Logger', () => {
     it('should use expanded group when collapsed=false in child', () => {
       const child = Logger.createChild('Sub');
       child.group('G', false);
-      expect(console.group).toHaveBeenCalledWith(
-        expect.stringContaining('vox-chronicle:Sub')
-      );
+      expect(console.group).toHaveBeenCalledWith(expect.stringContaining('vox-chronicle:Sub'));
     });
 
     // Sanitization option

@@ -7,14 +7,14 @@ vi.mock('../../scripts/utils/Logger.mjs', () => {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn(),
+    error: vi.fn()
   };
   return {
     Logger: {
       createChild: vi.fn(() => childLogger),
       _childInstance: childLogger,
-      isDebugMode: vi.fn(() => false),
-    },
+      isDebugMode: vi.fn(() => false)
+    }
   };
 });
 
@@ -22,8 +22,8 @@ vi.mock('../../scripts/utils/Logger.mjs', () => {
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 // Mock ui global
@@ -31,8 +31,8 @@ globalThis.ui = {
   notifications: {
     error: vi.fn(),
     warn: vi.fn(),
-    info: vi.fn(),
-  },
+    info: vi.fn()
+  }
 };
 
 describe('ResilienceRegistry', () => {
@@ -43,7 +43,7 @@ describe('ResilienceRegistry', () => {
     vi.useFakeTimers();
     mockEventBus = {
       emit: vi.fn(),
-      on: vi.fn(),
+      on: vi.fn()
     };
     registry = new ResilienceRegistry(mockEventBus);
     vi.clearAllMocks();
@@ -62,7 +62,9 @@ describe('ResilienceRegistry', () => {
     });
 
     it('should be frozen (immutable)', () => {
-      expect(() => { CircuitState.NEW = 'new'; }).toThrow();
+      expect(() => {
+        CircuitState.NEW = 'new';
+      }).toThrow();
     });
   });
 
@@ -82,7 +84,7 @@ describe('ResilienceRegistry', () => {
       registry.register('customService', {
         maxFailures: 3,
         cooldown: 30000,
-        fallback,
+        fallback
       });
 
       const status = registry.getStatus('customService');
@@ -116,7 +118,11 @@ describe('ResilienceRegistry', () => {
 
       // Cause some failures
       for (let i = 0; i < 3; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       expect(registry.getStatus('svc').consecutiveFailures).toBe(3);
 
@@ -127,7 +133,11 @@ describe('ResilienceRegistry', () => {
 
     it('should increment failure counter on error', async () => {
       registry.register('svc');
-      await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+      await registry
+        .execute('svc', () => {
+          throw new Error('fail');
+        })
+        .catch(() => {});
       expect(registry.getStatus('svc').consecutiveFailures).toBe(1);
     });
 
@@ -139,7 +149,11 @@ describe('ResilienceRegistry', () => {
       registry.register('svc', { maxFailures: 5 });
 
       for (let i = 0; i < 5; i++) {
-        await registry.execute('svc', () => { throw new Error(`fail ${i}`); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error(`fail ${i}`);
+          })
+          .catch(() => {});
       }
 
       expect(registry.getStatus('svc').state).toBe(CircuitState.OPEN);
@@ -153,7 +167,11 @@ describe('ResilienceRegistry', () => {
 
       // Open the circuit
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       expect(registry.getStatus('svc').state).toBe(CircuitState.OPEN);
 
@@ -167,14 +185,20 @@ describe('ResilienceRegistry', () => {
 
   describe('fallback chain', () => {
     it('should execute fallbacks in order and return first success', async () => {
-      const fb1 = vi.fn(() => { throw new Error('fb1 fail'); });
+      const fb1 = vi.fn(() => {
+        throw new Error('fb1 fail');
+      });
       const fb2 = vi.fn(() => 'fb2 success');
       const fb3 = vi.fn(() => 'fb3 success');
 
       registry.register('svc', { maxFailures: 1, fallback: [fb1, fb2, fb3] });
 
       // Open circuit
-      await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+      await registry
+        .execute('svc', () => {
+          throw new Error('fail');
+        })
+        .catch(() => {});
 
       // Execute with open circuit — fallback chain
       const result = await registry.execute('svc', () => 'live');
@@ -185,13 +209,21 @@ describe('ResilienceRegistry', () => {
     });
 
     it('should throw wrapped error when all fallbacks fail', async () => {
-      const fb1 = vi.fn(() => { throw new Error('fb1 fail'); });
-      const fb2 = vi.fn(() => { throw new Error('fb2 fail'); });
+      const fb1 = vi.fn(() => {
+        throw new Error('fb1 fail');
+      });
+      const fb2 = vi.fn(() => {
+        throw new Error('fb2 fail');
+      });
 
       registry.register('svc', { maxFailures: 1, fallback: [fb1, fb2] });
 
       // Open circuit
-      await registry.execute('svc', () => { throw new Error('original'); }).catch(() => {});
+      await registry
+        .execute('svc', () => {
+          throw new Error('original');
+        })
+        .catch(() => {});
 
       // All fallbacks fail
       await expect(registry.execute('svc', () => 'live')).rejects.toThrow();
@@ -201,7 +233,9 @@ describe('ResilienceRegistry', () => {
       const fallback = vi.fn(() => 'fallback result');
       registry.register('svc', { maxFailures: 5, fallback: [fallback] });
 
-      const result = await registry.execute('svc', () => { throw new Error('fail'); });
+      const result = await registry.execute('svc', () => {
+        throw new Error('fail');
+      });
       expect(fallback).toHaveBeenCalled();
       expect(result).toBe('fallback result');
     });
@@ -210,7 +244,9 @@ describe('ResilienceRegistry', () => {
       registry.register('svc', { maxFailures: 5 });
 
       await expect(
-        registry.execute('svc', () => { throw new Error('original error'); })
+        registry.execute('svc', () => {
+          throw new Error('original error');
+        })
       ).rejects.toThrow('original error');
     });
   });
@@ -221,7 +257,11 @@ describe('ResilienceRegistry', () => {
 
       // Open circuit
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       expect(registry.getStatus('svc').state).toBe(CircuitState.OPEN);
 
@@ -235,7 +275,11 @@ describe('ResilienceRegistry', () => {
 
       // Open circuit
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
 
       // Wait for HALF_OPEN
@@ -253,14 +297,22 @@ describe('ResilienceRegistry', () => {
 
       // Open circuit
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
 
       // Wait for HALF_OPEN
       vi.advanceTimersByTime(60000);
 
       // Fail in HALF_OPEN → back to OPEN
-      await registry.execute('svc', () => { throw new Error('still failing'); }).catch(() => {});
+      await registry
+        .execute('svc', () => {
+          throw new Error('still failing');
+        })
+        .catch(() => {});
       expect(registry.getStatus('svc').state).toBe(CircuitState.OPEN);
 
       // Should restart cooldown — advance again
@@ -272,25 +324,39 @@ describe('ResilienceRegistry', () => {
   describe('dual error channel (EventBus)', () => {
     it('should emit error:technical on every failure', async () => {
       registry.register('svc');
-      await registry.execute('svc', () => { throw new Error('api error'); }).catch(() => {});
+      await registry
+        .execute('svc', () => {
+          throw new Error('api error');
+        })
+        .catch(() => {});
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith('error:technical', expect.objectContaining({
-        service: 'svc',
-        state: CircuitState.CLOSED,
-        consecutiveFailures: 1,
-      }));
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'error:technical',
+        expect.objectContaining({
+          service: 'svc',
+          state: CircuitState.CLOSED,
+          consecutiveFailures: 1
+        })
+      );
     });
 
     it('should emit error:user when circuit opens', async () => {
       registry.register('svc', { maxFailures: 2 });
 
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith('error:user', expect.objectContaining({
-        service: 'svc',
-      }));
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'error:user',
+        expect.objectContaining({
+          service: 'svc'
+        })
+      );
     });
 
     it('should emit error:user with recovery message when circuit closes', async () => {
@@ -298,7 +364,11 @@ describe('ResilienceRegistry', () => {
 
       // Open
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       vi.clearAllMocks();
 
@@ -308,9 +378,12 @@ describe('ResilienceRegistry', () => {
       // Recover
       await registry.execute('svc', () => 'ok');
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith('error:user', expect.objectContaining({
-        service: 'svc',
-      }));
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'error:user',
+        expect.objectContaining({
+          service: 'svc'
+        })
+      );
     });
 
     it('should emit session:resilienceChanged on state transitions', async () => {
@@ -318,14 +391,21 @@ describe('ResilienceRegistry', () => {
 
       // CLOSED → OPEN
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
 
-      expect(mockEventBus.emit).toHaveBeenCalledWith('session:resilienceChanged', expect.objectContaining({
-        service: 'svc',
-        from: CircuitState.CLOSED,
-        to: CircuitState.OPEN,
-      }));
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'session:resilienceChanged',
+        expect.objectContaining({
+          service: 'svc',
+          from: CircuitState.CLOSED,
+          to: CircuitState.OPEN
+        })
+      );
     });
   });
 
@@ -337,7 +417,7 @@ describe('ResilienceRegistry', () => {
         state: CircuitState.CLOSED,
         consecutiveFailures: 0,
         lastFailure: null,
-        lastSuccess: null,
+        lastSuccess: null
       });
     });
 
@@ -361,7 +441,11 @@ describe('ResilienceRegistry', () => {
 
       // Open circuit
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       expect(registry.getStatus('svc').state).toBe(CircuitState.OPEN);
 
@@ -377,16 +461,23 @@ describe('ResilienceRegistry', () => {
     it('should emit session:resilienceChanged when resetting from non-CLOSED state', async () => {
       registry.register('svc', { maxFailures: 2, cooldown: 60000 });
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       vi.clearAllMocks();
 
       registry.resetService('svc');
-      expect(mockEventBus.emit).toHaveBeenCalledWith('session:resilienceChanged', expect.objectContaining({
-        service: 'svc',
-        from: CircuitState.OPEN,
-        to: CircuitState.CLOSED,
-      }));
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
+        'session:resilienceChanged',
+        expect.objectContaining({
+          service: 'svc',
+          from: CircuitState.OPEN,
+          to: CircuitState.CLOSED
+        })
+      );
     });
 
     it('should not emit event when already CLOSED', () => {
@@ -402,8 +493,16 @@ describe('ResilienceRegistry', () => {
       registry.register('svc2', { maxFailures: 1 });
 
       // Open both circuits
-      await registry.execute('svc1', () => { throw new Error('fail'); }).catch(() => {});
-      await registry.execute('svc2', () => { throw new Error('fail'); }).catch(() => {});
+      await registry
+        .execute('svc1', () => {
+          throw new Error('fail');
+        })
+        .catch(() => {});
+      await registry
+        .execute('svc2', () => {
+          throw new Error('fail');
+        })
+        .catch(() => {});
 
       registry.resetAll();
 
@@ -419,7 +518,11 @@ describe('ResilienceRegistry', () => {
 
       // Should not throw even when emitting events
       for (let i = 0; i < 2; i++) {
-        await noEventBusRegistry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await noEventBusRegistry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
 
       expect(noEventBusRegistry.getStatus('svc').state).toBe(CircuitState.OPEN);
@@ -438,7 +541,11 @@ describe('ResilienceRegistry', () => {
 
     it('should set lastFailure after failed execute', async () => {
       registry.register('svc');
-      await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+      await registry
+        .execute('svc', () => {
+          throw new Error('fail');
+        })
+        .catch(() => {});
       const status = registry.getStatus('svc');
       expect(status.lastFailure).toBeTypeOf('number');
       expect(status.lastSuccess).toBeNull();
@@ -451,7 +558,11 @@ describe('ResilienceRegistry', () => {
 
       // Open circuit (2 failures)
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       expect(registry.getStatus('svc').consecutiveFailures).toBe(2);
 
@@ -459,7 +570,11 @@ describe('ResilienceRegistry', () => {
       vi.advanceTimersByTime(60000);
 
       // Fail in HALF_OPEN — counter should reset to 1, not increment to 3
-      await registry.execute('svc', () => { throw new Error('still failing'); }).catch(() => {});
+      await registry
+        .execute('svc', () => {
+          throw new Error('still failing');
+        })
+        .catch(() => {});
       expect(registry.getStatus('svc').consecutiveFailures).toBe(1);
     });
   });
@@ -472,7 +587,11 @@ describe('ResilienceRegistry', () => {
 
       // Should use new config (maxFailures=2)
       for (let i = 0; i < 2; i++) {
-        await registry.execute('svc', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('svc', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
       expect(registry.getStatus('svc').state).toBe(CircuitState.OPEN);
       expect(Logger._childInstance.warn).toHaveBeenCalled();
@@ -486,7 +605,11 @@ describe('ResilienceRegistry', () => {
 
       // Open aiAssistant circuit
       for (let i = 0; i < 2; i++) {
-        await registry.execute('aiAssistant', () => { throw new Error('fail'); }).catch(() => {});
+        await registry
+          .execute('aiAssistant', () => {
+            throw new Error('fail');
+          })
+          .catch(() => {});
       }
 
       // audioRecorder should still work

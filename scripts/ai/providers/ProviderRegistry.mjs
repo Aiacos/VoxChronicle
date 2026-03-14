@@ -14,7 +14,7 @@ import { eventBus } from '../../core/EventBus.mjs';
 export class ProviderRegistry {
   static #instance = null;
 
-  /** @type {Map<string, {provider: Object, capabilities: string[]}>} */
+  /** @type {Map<string, {provider: object, capabilities: string[]}>} */
   #providers = new Map();
 
   /** @type {Map<string, string>} capability → providerName */
@@ -36,20 +36,26 @@ export class ProviderRegistry {
   /**
    * Register a provider instance.
    * @param {string} name - Unique provider name
-   * @param {Object} providerInstance - Provider instance with static capabilities
-   * @param {Object} [options={}]
+   * @param {object} providerInstance - Provider instance with static capabilities
+   * @param {object} [options={}]
    * @param {boolean} [options.default=false] - Set as default for all its capabilities
    */
   register(name, providerInstance, options = {}) {
-    if (!providerInstance || typeof providerInstance !== 'object' || typeof providerInstance.constructor !== 'function') {
-      throw new TypeError(`Cannot register '${name}': providerInstance must be a valid provider object`);
+    if (
+      !providerInstance ||
+      typeof providerInstance !== 'object' ||
+      typeof providerInstance.constructor !== 'function'
+    ) {
+      throw new TypeError(
+        `Cannot register '${name}': providerInstance must be a valid provider object`
+      );
     }
     const capabilities = providerInstance.constructor.capabilities ?? [];
 
     if (this.#providers.has(name)) {
       this.#logger.warn(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.AlreadyRegistered', { name })
-          ?? `Provider '${name}' is already registered, overwriting`
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.AlreadyRegistered', { name }) ??
+          `Provider '${name}' is already registered, overwriting`
       );
       // Clean up old defaults for this provider name
       for (const [cap, defName] of this.#defaults) {
@@ -70,28 +76,28 @@ export class ProviderRegistry {
 
     eventBus.emit('ai:providerRegistered', {
       providerName: name,
-      capabilities: [...capabilities],
+      capabilities: [...capabilities]
     });
   }
 
   /**
    * Get the default provider for a capability.
    * @param {string} capability
-   * @returns {Object} Provider instance
+   * @returns {object} Provider instance
    */
   getProvider(capability) {
     const providerName = this.#defaults.get(capability);
     if (!providerName) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NoProvider', { capability })
-          ?? `No provider registered for capability: ${capability}`
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NoProvider', { capability }) ??
+          `No provider registered for capability: ${capability}`
       );
     }
     const entry = this.#providers.get(providerName);
     if (!entry) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name: providerName })
-          ?? `Provider '${providerName}' not found in registry`
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name: providerName }) ??
+          `Provider '${providerName}' not found in registry`
       );
     }
     return entry.provider;
@@ -100,14 +106,14 @@ export class ProviderRegistry {
   /**
    * Get a provider by its registered name.
    * @param {string} name
-   * @returns {Object} Provider instance
+   * @returns {object} Provider instance
    */
   getProviderByName(name) {
     const entry = this.#providers.get(name);
     if (!entry) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name })
-          ?? `Provider '${name}' not found in registry`
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name }) ??
+          `Provider '${name}' not found in registry`
       );
     }
     return entry.provider;
@@ -115,7 +121,7 @@ export class ProviderRegistry {
 
   /**
    * List all registered providers with their capabilities.
-   * @returns {Object} Map of name → capabilities array
+   * @returns {object} Map of name → capabilities array
    */
   listProviders() {
     const result = {};
@@ -134,15 +140,17 @@ export class ProviderRegistry {
     const entry = this.#providers.get(name);
     if (!entry) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name })
-          ?? `Provider '${name}' not found in registry`
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name }) ??
+          `Provider '${name}' not found in registry`
       );
     }
 
     if (!entry.capabilities.includes(capability)) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.ProviderCapabilityMismatch', { name, capability })
-          ?? `Provider '${name}' does not support capability: ${capability}`
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.ProviderCapabilityMismatch', {
+          name,
+          capability
+        }) ?? `Provider '${name}' does not support capability: ${capability}`
       );
     }
 
@@ -150,7 +158,7 @@ export class ProviderRegistry {
 
     eventBus.emit('ai:defaultChanged', {
       providerName: name,
-      capability,
+      capability
     });
   }
 
@@ -162,8 +170,8 @@ export class ProviderRegistry {
     const entry = this.#providers.get(name);
     if (!entry) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name })
-          ?? `Provider '${name}' not found in registry`
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotFound', { name }) ??
+          `Provider '${name}' not found in registry`
       );
     }
 
@@ -186,7 +194,7 @@ export class ProviderRegistry {
 
     eventBus.emit('ai:providerUnregistered', {
       providerName: name,
-      capabilities: [...capabilities],
+      capabilities: [...capabilities]
     });
   }
 }

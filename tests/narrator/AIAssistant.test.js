@@ -17,7 +17,12 @@ function createMockChatProvider(responseOverride = null) {
   const defaultResponse = {
     content: JSON.stringify({
       suggestions: [
-        { type: 'narration', content: 'A dark figure emerges from the shadows.', confidence: 0.8, pageReference: 'Chapter 1' }
+        {
+          type: 'narration',
+          content: 'A dark figure emerges from the shadows.',
+          confidence: 0.8,
+          pageReference: 'Chapter 1'
+        }
       ],
       offTrackStatus: { isOffTrack: false, severity: 0, reason: 'On track' },
       relevantPages: ['page-1'],
@@ -405,9 +410,7 @@ describe('AIAssistant', () => {
 
     it('generates page reference options', () => {
       const options = assistant.generateChapterRecoveryOptions({
-        pageReferences: [
-          { pageId: 'p1', pageName: 'Scene One', journalName: 'Adventure' }
-        ]
+        pageReferences: [{ pageId: 'p1', pageName: 'Scene One', journalName: 'Adventure' }]
       });
       expect(options).toHaveLength(1);
       expect(options[0].type).toBe('page');
@@ -489,11 +492,12 @@ describe('AIAssistant', () => {
     it('detects rules questions when enabled', async () => {
       const response = {
         content: JSON.stringify({
-              suggestions: [],
-              offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
-              relevantPages: [],
-              summary: 'rules question'
-            }), usage: {}
+          suggestions: [],
+          offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
+          relevantPages: [],
+          summary: 'rules question'
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(response);
 
@@ -519,28 +523,34 @@ describe('AIAssistant', () => {
     it('returns usage from the OpenAI response', async () => {
       const responseWithUsage = {
         content: JSON.stringify({
-              suggestions: [{ type: 'narration', content: 'Test', confidence: 0.8, pageReference: '' }],
-              offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
-              relevantPages: [],
-              summary: 'Test'
-            }), usage: {},
+          suggestions: [{ type: 'narration', content: 'Test', confidence: 0.8, pageReference: '' }],
+          offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
+          relevantPages: [],
+          summary: 'Test'
+        }),
+        usage: {},
         usage: { prompt_tokens: 150, completion_tokens: 50, total_tokens: 200 },
         model: 'gpt-4o-mini-2024-07-18'
       };
       mockClient.chat.mockResolvedValue(responseWithUsage);
 
       const result = await assistant.analyzeContext('The players rest at the inn.');
-      expect(result.usage).toEqual({ prompt_tokens: 150, completion_tokens: 50, total_tokens: 200 });
+      expect(result.usage).toEqual({
+        prompt_tokens: 150,
+        completion_tokens: 50,
+        total_tokens: 200
+      });
     });
 
     it('returns model from the OpenAI response', async () => {
       const responseWithModel = {
         content: JSON.stringify({
-              suggestions: [],
-              offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
-              relevantPages: [],
-              summary: 'Test'
-            }), usage: {},
+          suggestions: [],
+          offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
+          relevantPages: [],
+          summary: 'Test'
+        }),
+        usage: {},
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
         model: 'gpt-4o-mini-2024-07-18'
       };
@@ -576,11 +586,12 @@ describe('AIAssistant', () => {
     it('performs detection when adventure context is set', async () => {
       const offTrackResponse = {
         content: JSON.stringify({
-              isOffTrack: true,
-              severity: 0.7,
-              reason: 'Players discussing real-world events',
-              narrativeBridge: 'A loud crash from the tavern grabs attention.'
-            }), usage: {}
+          isOffTrack: true,
+          severity: 0.7,
+          reason: 'Players discussing real-world events',
+          narrativeBridge: 'A loud crash from the tavern grabs attention.'
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(offTrackResponse);
       assistant.setAdventureContext('The adventure takes place in a dark forest.');
@@ -595,7 +606,8 @@ describe('AIAssistant', () => {
       const rag = createMockRAGProvider();
       assistant.setRAGProvider(rag);
       const offTrackResponse = {
-        content: '{"isOffTrack": false, "severity": 0, "reason": "ok"}', usage: {}
+        content: '{"isOffTrack": false, "severity": 0, "reason": "ok"}',
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(offTrackResponse);
 
@@ -619,11 +631,12 @@ describe('AIAssistant', () => {
     it('returns suggestions', async () => {
       const suggResponse = {
         content: JSON.stringify({
-              suggestions: [
-                { type: 'dialogue', content: 'NPC speaks.', confidence: 0.9 },
-                { type: 'action', content: 'Roll perception.', confidence: 0.7 }
-              ]
-            }), usage: {}
+          suggestions: [
+            { type: 'dialogue', content: 'NPC speaks.', confidence: 0.9 },
+            { type: 'action', content: 'Roll perception.', confidence: 0.7 }
+          ]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(suggResponse);
 
@@ -635,12 +648,13 @@ describe('AIAssistant', () => {
     it('respects maxSuggestions option', async () => {
       const suggResponse = {
         content: JSON.stringify({
-              suggestions: [
-                { type: 'narration', content: 'A', confidence: 0.9 },
-                { type: 'narration', content: 'B', confidence: 0.8 },
-                { type: 'narration', content: 'C', confidence: 0.7 }
-              ]
-            }), usage: {}
+          suggestions: [
+            { type: 'narration', content: 'A', confidence: 0.9 },
+            { type: 'narration', content: 'B', confidence: 0.8 },
+            { type: 'narration', content: 'C', confidence: 0.7 }
+          ]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(suggResponse);
 
@@ -657,12 +671,15 @@ describe('AIAssistant', () => {
   describe('generateNarrativeBridge()', () => {
     it('throws when not configured', async () => {
       const a = new AIAssistant();
-      await expect(a.generateNarrativeBridge('a', 'b')).rejects.toThrow('OpenAI client not configured');
+      await expect(a.generateNarrativeBridge('a', 'b')).rejects.toThrow(
+        'OpenAI client not configured'
+      );
     });
 
     it('returns narrative bridge text', async () => {
       const bridgeResponse = {
-        content: 'A sudden gust of wind carries the scent of adventure.', usage: {}
+        content: 'A sudden gust of wind carries the scent of adventure.',
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(bridgeResponse);
 
@@ -672,7 +689,8 @@ describe('AIAssistant', () => {
 
     it('trims whitespace from response', async () => {
       const bridgeResponse = {
-        content: '  Some text with spaces  ', usage: {}
+        content: '  Some text with spaces  ',
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(bridgeResponse);
 
@@ -684,30 +702,41 @@ describe('AIAssistant', () => {
   describe('generateNPCDialogue()', () => {
     it('throws when not configured', async () => {
       const a = new AIAssistant();
-      await expect(a.generateNPCDialogue('Thane', '', 'text')).rejects.toThrow('OpenAI client not configured');
+      await expect(a.generateNPCDialogue('Thane', '', 'text')).rejects.toThrow(
+        'OpenAI client not configured'
+      );
     });
 
     it('throws when no NPC name', async () => {
-      await expect(assistant.generateNPCDialogue(null, '', 'text')).rejects.toThrow('NPC name is required');
+      await expect(assistant.generateNPCDialogue(null, '', 'text')).rejects.toThrow(
+        'NPC name is required'
+      );
     });
 
     it('throws for non-string NPC name', async () => {
-      await expect(assistant.generateNPCDialogue(123, '', 'text')).rejects.toThrow('NPC name is required');
+      await expect(assistant.generateNPCDialogue(123, '', 'text')).rejects.toThrow(
+        'NPC name is required'
+      );
     });
 
     it('returns dialogue options', async () => {
       const dialogueResponse = {
         content: JSON.stringify({
-              dialogueOptions: [
-                'Welcome to my tavern, travelers!',
-                'What can I get you?',
-                'Be careful out there tonight.'
-              ]
-            }), usage: {}
+          dialogueOptions: [
+            'Welcome to my tavern, travelers!',
+            'What can I get you?',
+            'Be careful out there tonight.'
+          ]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(dialogueResponse);
 
-      const result = await assistant.generateNPCDialogue('Thane', 'Gruff bartender', 'Players sit at bar.');
+      const result = await assistant.generateNPCDialogue(
+        'Thane',
+        'Gruff bartender',
+        'Players sit at bar.'
+      );
       expect(result).toHaveLength(3);
       expect(result[0]).toBe('Welcome to my tavern, travelers!');
     });
@@ -902,8 +931,14 @@ describe('AIAssistant', () => {
 
   describe('_detectRulesQuestions()', () => {
     it('returns empty result for null/non-string', () => {
-      expect(assistant._detectRulesQuestions(null)).toEqual({ hasRulesQuestions: false, questions: [] });
-      expect(assistant._detectRulesQuestions(123)).toEqual({ hasRulesQuestions: false, questions: [] });
+      expect(assistant._detectRulesQuestions(null)).toEqual({
+        hasRulesQuestions: false,
+        questions: []
+      });
+      expect(assistant._detectRulesQuestions(123)).toEqual({
+        hasRulesQuestions: false,
+        questions: []
+      });
     });
 
     it('detects English rules questions', () => {
@@ -947,7 +982,8 @@ describe('AIAssistant', () => {
   describe('_parseAnalysisResponse() fallback', () => {
     it('handles non-JSON response gracefully', () => {
       const response = {
-        content: 'Not valid JSON at all', usage: {}
+        content: 'Not valid JSON at all',
+        usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions).toHaveLength(1);
@@ -965,7 +1001,8 @@ describe('AIAssistant', () => {
   describe('_parseOffTrackResponse() fallback', () => {
     it('handles non-JSON response', () => {
       const response = {
-        content: 'unparseable', usage: {}
+        content: 'unparseable',
+        usage: {}
       };
       const result = assistant._parseOffTrackResponse(response);
       expect(result.isOffTrack).toBe(false);
@@ -976,7 +1013,8 @@ describe('AIAssistant', () => {
   describe('_parseSuggestionsResponse() fallback', () => {
     it('handles non-JSON response', () => {
       const response = {
-        content: 'Some plain text suggestion', usage: {}
+        content: 'Some plain text suggestion',
+        usage: {}
       };
       const result = assistant._parseSuggestionsResponse(response, 3);
       expect(result).toHaveLength(1);
@@ -987,7 +1025,8 @@ describe('AIAssistant', () => {
   describe('_parseNPCDialogueResponse() fallback', () => {
     it('handles non-JSON response with content', () => {
       const response = {
-        content: 'A single dialogue line', usage: {}
+        content: 'A single dialogue line',
+        usage: {}
       };
       const result = assistant._parseNPCDialogueResponse(response, 3);
       expect(result).toHaveLength(1);
@@ -1111,8 +1150,9 @@ describe('AIAssistant', () => {
 
       const suggResponse = {
         content: JSON.stringify({
-              suggestions: [{ type: 'narration', content: 'A suggestion', confidence: 0.8 }]
-            }), usage: {}
+          suggestions: [{ type: 'narration', content: 'A suggestion', confidence: 0.8 }]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(suggResponse);
 
@@ -1123,10 +1163,12 @@ describe('AIAssistant', () => {
         silenceCount: 1
       });
 
-      expect(callback).toHaveBeenCalledWith(expect.objectContaining({
-        suggestion: expect.objectContaining({ type: 'narration' }),
-        silenceEvent: expect.objectContaining({ silenceCount: 1 })
-      }));
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          suggestion: expect.objectContaining({ type: 'narration' }),
+          silenceEvent: expect.objectContaining({ silenceCount: 1 })
+        })
+      );
       expect(assistant.getStats().silenceSuggestionCount).toBe(1);
     });
 
@@ -1134,28 +1176,43 @@ describe('AIAssistant', () => {
       const a = new AIAssistant();
       // SilenceMonitor's generateSuggestionFn calls _generateAutonomousSuggestion which will fail
       // Should not throw
-      await a._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await a._silenceMonitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: 0,
+        silenceCount: 1
+      });
     });
 
     it('handles callback error gracefully', async () => {
-      const callback = vi.fn().mockImplementation(() => { throw new Error('callback error'); });
+      const callback = vi.fn().mockImplementation(() => {
+        throw new Error('callback error');
+      });
       assistant.setOnAutonomousSuggestionCallback(callback);
 
       const suggResponse = {
         content: JSON.stringify({
-              suggestions: [{ type: 'narration', content: 'suggestion', confidence: 0.8 }]
-            }), usage: {}
+          suggestions: [{ type: 'narration', content: 'suggestion', confidence: 0.8 }]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(suggResponse);
 
       // Should not throw
-      await assistant._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await assistant._silenceMonitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: 0,
+        silenceCount: 1
+      });
     });
 
     it('handles API error gracefully', async () => {
       mockClient.chat.mockRejectedValue(new Error('API down'));
       // Should not throw
-      await assistant._silenceMonitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await assistant._silenceMonitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: 0,
+        silenceCount: 1
+      });
     });
   });
 
@@ -1165,8 +1222,9 @@ describe('AIAssistant', () => {
 
       const suggResponse = {
         content: JSON.stringify({
-              suggestions: [{ type: 'narration', content: 'suggestion', confidence: 0.8 }]
-            }), usage: {}
+          suggestions: [{ type: 'narration', content: 'suggestion', confidence: 0.8 }]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(suggResponse);
 
@@ -1180,8 +1238,9 @@ describe('AIAssistant', () => {
 
       const suggResponse = {
         content: JSON.stringify({
-              suggestions: [{ type: 'action', content: 'Next action', confidence: 0.7 }]
-            }), usage: {}
+          suggestions: [{ type: 'action', content: 'Next action', confidence: 0.7 }]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(suggResponse);
 
@@ -1192,8 +1251,9 @@ describe('AIAssistant', () => {
     it('uses generic prompt when no context', async () => {
       const suggResponse = {
         content: JSON.stringify({
-              suggestions: [{ type: 'narration', content: 'generic', confidence: 0.5 }]
-            }), usage: {}
+          suggestions: [{ type: 'narration', content: 'generic', confidence: 0.5 }]
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(suggResponse);
 
@@ -1203,7 +1263,8 @@ describe('AIAssistant', () => {
 
     it('returns null when no suggestions generated', async () => {
       const emptyResponse = {
-        content: JSON.stringify({ suggestions: [] }), usage: {}
+        content: JSON.stringify({ suggestions: [] }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(emptyResponse);
 
@@ -1222,16 +1283,19 @@ describe('AIAssistant', () => {
     it('sends only off-track request when includeSuggestions is false', async () => {
       const response = {
         content: JSON.stringify({
-              offTrackStatus: { isOffTrack: true, severity: 0.6, reason: 'Players discussing food' },
-              summary: 'Off topic discussion'
-            }), usage: {}
+          offTrackStatus: { isOffTrack: true, severity: 0.6, reason: 'Players discussing food' },
+          summary: 'Off topic discussion'
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(response);
 
-      const result = await assistant.analyzeContext('Let us order some pizza.', { includeSuggestions: false });
+      const result = await assistant.analyzeContext('Let us order some pizza.', {
+        includeSuggestions: false
+      });
 
       // Verify the prompt only contains off-track assessment (not suggestion generation)
-      const userMessage = mockClient.chat.mock.calls[0][0].find(m => m.role === 'user');
+      const userMessage = mockClient.chat.mock.calls[0][0].find((m) => m.role === 'user');
       expect(userMessage.content).toContain('off-track');
       expect(userMessage.content).not.toContain('"suggestions"');
 
@@ -1246,18 +1310,19 @@ describe('AIAssistant', () => {
     it('sends only suggestions request when checkOffTrack is false', async () => {
       const response = {
         content: JSON.stringify({
-              suggestions: [
-                { type: 'narration', content: 'The merchant beckons.', confidence: 0.85 }
-              ],
-              summary: 'Players at the market'
-            }), usage: {}
+          suggestions: [{ type: 'narration', content: 'The merchant beckons.', confidence: 0.85 }],
+          summary: 'Players at the market'
+        }),
+        usage: {}
       };
       mockClient.chat.mockResolvedValue(response);
 
-      const result = await assistant.analyzeContext('We browse the market stalls.', { checkOffTrack: false });
+      const result = await assistant.analyzeContext('We browse the market stalls.', {
+        checkOffTrack: false
+      });
 
       // Verify the prompt only contains suggestion generation (not off-track assessment)
-      const userMessage = mockClient.chat.mock.calls[0][0].find(m => m.role === 'user');
+      const userMessage = mockClient.chat.mock.calls[0][0].find((m) => m.role === 'user');
       expect(userMessage.content).toContain('suggestions');
       expect(userMessage.content).not.toContain('"offTrackStatus"');
 
@@ -1303,7 +1368,10 @@ describe('AIAssistant', () => {
     it('returns empty string for empty content', async () => {
       mockClient.chat.mockResolvedValue({ content: '', usage: {} });
 
-      const result = await assistant.generateNarrativeBridge('Players are shopping', 'Return to dungeon');
+      const result = await assistant.generateNarrativeBridge(
+        'Players are shopping',
+        'Return to dungeon'
+      );
       expect(result).toBe('');
     });
 
@@ -1326,7 +1394,8 @@ describe('AIAssistant', () => {
       assistant.setRAGProvider(rag);
 
       mockClient.chat.mockResolvedValue({
-        content: 'A bridge narrative.', usage: {}
+        content: 'A bridge narrative.',
+        usage: {}
       });
 
       const result = await assistant.generateNarrativeBridge('Lost in town', 'Dragon lair');
@@ -1432,7 +1501,8 @@ describe('AIAssistant', () => {
   describe('parse methods log warnings with error details (H-7b)', () => {
     it('_parseAnalysisResponse should log error.message on parse failure', () => {
       const response = {
-        content: 'not valid json {{{', usage: {}
+        content: 'not valid json {{{',
+        usage: {}
       };
 
       const result = assistant._parseAnalysisResponse(response);
@@ -1444,7 +1514,8 @@ describe('AIAssistant', () => {
 
     it('_parseOffTrackResponse should log error.message on parse failure', () => {
       const response = {
-        content: '<<<not json>>>', usage: {}
+        content: '<<<not json>>>',
+        usage: {}
       };
 
       const result = assistant._parseOffTrackResponse(response);
@@ -1455,7 +1526,8 @@ describe('AIAssistant', () => {
 
     it('_parseSuggestionsResponse should log error.message on parse failure', () => {
       const response = {
-        content: '<<<broken json>>>', usage: {}
+        content: '<<<broken json>>>',
+        usage: {}
       };
 
       const result = assistant._parseSuggestionsResponse(response, 3);
@@ -1467,7 +1539,8 @@ describe('AIAssistant', () => {
 
     it('_parseNPCDialogueResponse should log error.message on parse failure', () => {
       const response = {
-        content: '<<<invalid>>>', usage: {}
+        content: '<<<invalid>>>',
+        usage: {}
       };
 
       const result = assistant._parseNPCDialogueResponse(response, 3);
@@ -1484,19 +1557,21 @@ describe('AIAssistant', () => {
     it('extracts source field from suggestions', () => {
       const response = {
         content: JSON.stringify({
-              suggestions: [{
-                type: 'narration',
-                content: 'A dark figure emerges.',
-                confidence: 0.8,
-                source: {
-                  chapter: 'Chapter 3',
-                  page: 'The Thieves Guild',
-                  journalName: 'Lost Mine of Phandelver'
-                }
-              }],
-              offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
-              summary: 'Test'
-            }),
+          suggestions: [
+            {
+              type: 'narration',
+              content: 'A dark figure emerges.',
+              confidence: 0.8,
+              source: {
+                chapter: 'Chapter 3',
+                page: 'The Thieves Guild',
+                journalName: 'Lost Mine of Phandelver'
+              }
+            }
+          ],
+          offTrackStatus: { isOffTrack: false, severity: 0, reason: '' },
+          summary: 'Test'
+        }),
         usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
@@ -1510,13 +1585,16 @@ describe('AIAssistant', () => {
     it('defaults source to null when missing', () => {
       const response = {
         content: JSON.stringify({
-              suggestions: [{
-                type: 'narration',
-                content: 'A suggestion without source.',
-                confidence: 0.7
-              }],
-              summary: 'Test'
-            }), usage: {}
+          suggestions: [
+            {
+              type: 'narration',
+              content: 'A suggestion without source.',
+              confidence: 0.7
+            }
+          ],
+          summary: 'Test'
+        }),
+        usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions[0].source).toBeNull();
@@ -1525,17 +1603,19 @@ describe('AIAssistant', () => {
     it('handles partial source (missing page) with empty string', () => {
       const response = {
         content: JSON.stringify({
-              suggestions: [{
-                type: 'narration',
-                content: 'Partial source test.',
-                confidence: 0.6,
-                source: {
-                  chapter: 'Chapter 1'
-                  // page and journalName missing
-                }
-              }],
-              summary: 'Test'
-            }),
+          suggestions: [
+            {
+              type: 'narration',
+              content: 'Partial source test.',
+              confidence: 0.6,
+              source: {
+                chapter: 'Chapter 1'
+                // page and journalName missing
+              }
+            }
+          ],
+          summary: 'Test'
+        }),
         usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
@@ -1546,7 +1626,8 @@ describe('AIAssistant', () => {
 
     it('sets source to null in fallback parsing', () => {
       const response = {
-        content: 'Not valid JSON', usage: {}
+        content: 'Not valid JSON',
+        usage: {}
       };
       const result = assistant._parseAnalysisResponse(response);
       expect(result.suggestions[0].source).toBeNull();
@@ -1802,7 +1883,9 @@ describe('AIAssistant', () => {
 
       assistant._syncPromptBuilderState();
 
-      expect(assistant._promptBuilder.setRollingSummary).toHaveBeenCalledWith('Test summary for prompt builder');
+      expect(assistant._promptBuilder.setRollingSummary).toHaveBeenCalledWith(
+        'Test summary for prompt builder'
+      );
     });
 
     it('should reset _rollingSummary and _summarizedTurnCount on resetSession', () => {
@@ -1867,7 +1950,11 @@ describe('AIAssistant', () => {
         mockAsyncGenerator([
           { token: 'Hello', done: false },
           { token: ' world', done: false },
-          { token: '', done: true, usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }
+          {
+            token: '',
+            done: true,
+            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
+          }
         ])
       );
       assistant = new AIAssistant({ chatProvider: mockClient });
@@ -1875,26 +1962,21 @@ describe('AIAssistant', () => {
 
     it('yields accumulated text on each token via onToken callback', async () => {
       const tokens = [];
-      await assistant._makeChatRequestStreaming(
-        [{ role: 'user', content: 'Hi' }],
-        { onToken: (text) => tokens.push(text) }
-      );
+      await assistant._makeChatRequestStreaming([{ role: 'user', content: 'Hi' }], {
+        onToken: (text) => tokens.push(text)
+      });
 
       expect(tokens).toEqual(['Hello', 'Hello world']);
     });
 
     it('returns full response text when stream completes', async () => {
-      const result = await assistant._makeChatRequestStreaming(
-        [{ role: 'user', content: 'Hi' }]
-      );
+      const result = await assistant._makeChatRequestStreaming([{ role: 'user', content: 'Hi' }]);
 
       expect(result.text).toBe('Hello world');
     });
 
     it('returns usage data from final chunk', async () => {
-      const result = await assistant._makeChatRequestStreaming(
-        [{ role: 'user', content: 'Hi' }]
-      );
+      const result = await assistant._makeChatRequestStreaming([{ role: 'user', content: 'Hi' }]);
 
       expect(result.usage).toEqual({ prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 });
     });
@@ -1910,9 +1992,7 @@ describe('AIAssistant', () => {
     it('resets consecutive errors on success', async () => {
       assistant._consecutiveErrors = 3;
 
-      await assistant._makeChatRequestStreaming(
-        [{ role: 'user', content: 'Hi' }]
-      );
+      await assistant._makeChatRequestStreaming([{ role: 'user', content: 'Hi' }]);
 
       expect(assistant._consecutiveErrors).toBe(0);
       expect(assistant._circuitOpen).toBe(false);
@@ -1937,10 +2017,9 @@ describe('AIAssistant', () => {
     it('passes signal option through to chatStream', async () => {
       const controller = new AbortController();
 
-      await assistant._makeChatRequestStreaming(
-        [{ role: 'user', content: 'Hi' }],
-        { signal: controller.signal }
-      );
+      await assistant._makeChatRequestStreaming([{ role: 'user', content: 'Hi' }], {
+        signal: controller.signal
+      });
 
       expect(assistant._chatProvider.chatStream).toHaveBeenCalledWith(
         expect.any(Array),
@@ -2007,7 +2086,9 @@ describe('AIAssistant', () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
       let sceneChangedCallback;
       const eventBus = {
-        on: vi.fn((event, cb) => { if (event === 'scene:changed') sceneChangedCallback = cb; })
+        on: vi.fn((event, cb) => {
+          if (event === 'scene:changed') sceneChangedCallback = cb;
+        })
       };
       const a = new AIAssistant({ chatProvider: mockClient, cache, eventBus });
 

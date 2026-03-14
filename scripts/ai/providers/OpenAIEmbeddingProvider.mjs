@@ -5,7 +5,7 @@
  * Uses OpenAIClient internally for HTTP transport (retry, queue, rate limiting).
  *
  * @class OpenAIEmbeddingProvider
- * @extends EmbeddingProvider
+ * @augments EmbeddingProvider
  * @module vox-chronicle
  */
 
@@ -17,13 +17,13 @@ export class OpenAIEmbeddingProvider extends EmbeddingProvider {
 
   /**
    * @param {string} apiKey - OpenAI API key
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.timeout=120000] - Request timeout in ms
    */
   constructor(apiKey, options = {}) {
     super();
     this.#client = new OpenAIClient(apiKey, {
-      timeout: options.timeout ?? 120000,
+      timeout: options.timeout ?? 120000
     });
   }
 
@@ -35,7 +35,7 @@ export class OpenAIEmbeddingProvider extends EmbeddingProvider {
   /**
    * Generate an embedding vector for text.
    * @param {string} text - Text to embed
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {string} [options.model] - Model to use (default: text-embedding-3-small)
    * @param {AbortSignal} [options.abortSignal]
    * @returns {Promise<{embedding: number[], dimensions: number}>}
@@ -46,12 +46,12 @@ export class OpenAIEmbeddingProvider extends EmbeddingProvider {
 
     const body = {
       model: options.model ?? 'text-embedding-3-small',
-      input: text,
+      input: text
     };
 
     const response = await this.#client.post('/embeddings', body, {
       signal: options.abortSignal,
-      queueCategory: 'embedding',
+      queueCategory: 'embedding'
     });
 
     const embedding = response?.data?.[0]?.embedding;
@@ -60,7 +60,7 @@ export class OpenAIEmbeddingProvider extends EmbeddingProvider {
     }
     return {
       embedding,
-      dimensions: embedding.length,
+      dimensions: embedding.length
     };
   }
 }

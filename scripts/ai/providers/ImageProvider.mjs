@@ -29,7 +29,7 @@ export class ImageProvider {
   /**
    * Generate an image from a text prompt.
    * @param {string} prompt - Text description of the image
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {string} [options.model]
    * @param {AbortSignal} [options.abortSignal]
    * @returns {Promise<{data: string, format: string}>}
@@ -37,8 +37,9 @@ export class ImageProvider {
    */
   async generateImage(prompt, options = {}) {
     throw new Error(
-      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', { method: 'generateImage' })
-        ?? 'Method generateImage must be implemented by provider subclass'
+      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', {
+        method: 'generateImage'
+      }) ?? 'Method generateImage must be implemented by provider subclass'
     );
   }
 
@@ -55,7 +56,7 @@ export class ImageProvider {
 
   /**
    * Validate common options.
-   * @param {Object} options
+   * @param {object} options
    * @protected
    */
   _validateOptions(options) {

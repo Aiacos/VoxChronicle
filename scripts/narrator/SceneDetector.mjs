@@ -13,7 +13,7 @@ import { Logger } from '../utils/Logger.mjs';
 
 /**
  * Scene type constants
- * @constant {Object}
+ * @constant {object}
  */
 export const SCENE_TYPES = {
   EXPLORATION: 'exploration',
@@ -24,7 +24,7 @@ export const SCENE_TYPES = {
 };
 
 /**
- * @typedef {Object} SceneTransition
+ * @typedef {object} SceneTransition
  * @property {boolean} detected - Whether a scene transition was detected
  * @property {string} type - The type of transition (location, time, combat, combat_end, none)
  * @property {number} confidence - Confidence score 0-1
@@ -33,7 +33,7 @@ export const SCENE_TYPES = {
  */
 
 /**
- * @typedef {Object} SceneDetectionOptions
+ * @typedef {object} SceneDetectionOptions
  * @property {string} [sensitivity='medium'] - Detection sensitivity (low, medium, high)
  * @property {number} [minimumConfidence=0.6] - Minimum confidence to report transition
  * @property {boolean} [enableCombatDetection=true] - Enable combat scene detection
@@ -102,7 +102,10 @@ export class SceneDetector {
     if (['low', 'medium', 'high'].includes(sensitivity)) {
       this._sensitivity = sensitivity;
       this._updateConfidenceThreshold();
-      this._logger.debug('Sensitivity updated', { sensitivity, threshold: this._minimumConfidence });
+      this._logger.debug('Sensitivity updated', {
+        sensitivity,
+        threshold: this._minimumConfidence
+      });
     }
   }
 
@@ -121,7 +124,9 @@ export class SceneDetector {
    * @returns {SceneTransition} The scene transition detection result
    */
   detectSceneTransition(text, _previousText = '') {
-    this._logger.debug(`detectSceneTransition() entry — text length: ${(text || '').length}, current scene: ${this._currentSceneType}`);
+    this._logger.debug(
+      `detectSceneTransition() entry — text length: ${(text || '').length}, current scene: ${this._currentSceneType}`
+    );
 
     if (!text || typeof text !== 'string') {
       return {
@@ -160,7 +165,11 @@ export class SceneDetector {
 
       // Check combat end (only if currently in combat)
       if (this._currentSceneType === SCENE_TYPES.COMBAT) {
-        const combatEndTransition = this._checkPatterns(text, this._combatEndPatterns, 'combat_end');
+        const combatEndTransition = this._checkPatterns(
+          text,
+          this._combatEndPatterns,
+          'combat_end'
+        );
         if (combatEndTransition.detected) {
           transitions.push(combatEndTransition);
         }
@@ -177,7 +186,9 @@ export class SceneDetector {
         const prevType = this._currentSceneType;
         this._updateSceneHistory(bestTransition.sceneType, text);
         this._currentSceneType = bestTransition.sceneType;
-        this._logger.debug(`detectSceneTransition() — transition "${prevType}" -> "${bestTransition.sceneType}", type=${bestTransition.type}, confidence=${bestTransition.confidence.toFixed(2)}, trigger="${bestTransition.trigger.substring(0, 50)}"`);
+        this._logger.debug(
+          `detectSceneTransition() — transition "${prevType}" -> "${bestTransition.sceneType}", type=${bestTransition.type}, confidence=${bestTransition.confidence.toFixed(2)}, trigger="${bestTransition.trigger.substring(0, 50)}"`
+        );
         return bestTransition;
       }
     }
@@ -232,11 +243,15 @@ export class SceneDetector {
 
     // Require minimum score to classify
     if (bestScore < 0.5) {
-      this._logger.debug(`identifySceneType() exit — unknown (best score ${bestScore.toFixed(2)} below threshold)`);
+      this._logger.debug(
+        `identifySceneType() exit — unknown (best score ${bestScore.toFixed(2)} below threshold)`
+      );
       return SCENE_TYPES.UNKNOWN;
     }
 
-    this._logger.debug(`identifySceneType() exit — type="${bestType}", score=${bestScore.toFixed(2)}`);
+    this._logger.debug(
+      `identifySceneType() exit — type="${bestType}", score=${bestScore.toFixed(2)}`
+    );
     return bestType;
   }
 
@@ -287,7 +302,7 @@ export class SceneDetector {
 
   /**
    * Enables or disables specific detection features
-   * @param {Object} features - Feature flags
+   * @param {object} features - Feature flags
    * @param {boolean} [features.combat] - Enable combat detection
    * @param {boolean} [features.time] - Enable time detection
    * @param {boolean} [features.location] - Enable location detection
@@ -306,7 +321,7 @@ export class SceneDetector {
 
   /**
    * Gets the current feature flags
-   * @returns {Object} The feature flags
+   * @returns {object} The feature flags
    */
   getFeatures() {
     return {
@@ -610,7 +625,8 @@ export class SceneDetector {
         weight: 0.9
       },
       {
-        pattern: /\b(the\s+)?(enemy|enemies|monster|monsters|creature|creatures)\s+(attack|approach|charge)/i,
+        pattern:
+          /\b(the\s+)?(enemy|enemies|monster|monsters|creature|creatures)\s+(attack|approach|charge)/i,
         sceneType: SCENE_TYPES.COMBAT,
         weight: 0.9
       }

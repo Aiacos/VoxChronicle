@@ -546,7 +546,9 @@ class KankaService extends KankaClient {
    * });
    */
   async createJournal(journalData) {
-    this._logger.debug(`createJournal: name="${journalData?.name}", type="${journalData?.type || 'Session Chronicle'}"`);
+    this._logger.debug(
+      `createJournal: name="${journalData?.name}", type="${journalData?.type || 'Session Chronicle'}"`
+    );
     // Apply default type for session chronicles if not specified
     // This makes it easier for callers who just want to record sessions
     const dataWithDefaults = {
@@ -581,8 +583,14 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated journal data
    */
   async updateJournal(journalId, journalData) {
-    this._logger.debug(`updateJournal: id=${journalId}, fields=[${Object.keys(journalData || {}).join(', ')}]`);
-    const result = await this._entityManager.update(KankaEntityType.JOURNAL, journalId, journalData);
+    this._logger.debug(
+      `updateJournal: id=${journalId}, fields=[${Object.keys(journalData || {}).join(', ')}]`
+    );
+    const result = await this._entityManager.update(
+      KankaEntityType.JOURNAL,
+      journalId,
+      journalData
+    );
     this._logger.debug(`updateJournal: updated ID=${result?.id}`);
     return result;
   }
@@ -664,7 +672,9 @@ class KankaService extends KankaClient {
    * });
    */
   async createCharacter(characterData) {
-    this._logger.debug(`createCharacter: name="${characterData?.name}", type="${characterData?.type || CharacterType.NPC}"`);
+    this._logger.debug(
+      `createCharacter: name="${characterData?.name}", type="${characterData?.type || CharacterType.NPC}"`
+    );
     // Apply default type 'NPC' if not specified
     // This is the most common case for entities extracted from transcripts
     const dataWithDefaults = {
@@ -699,8 +709,14 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated character data
    */
   async updateCharacter(characterId, characterData) {
-    this._logger.debug(`updateCharacter: id=${characterId}, fields=[${Object.keys(characterData || {}).join(', ')}]`);
-    const result = await this._entityManager.update(KankaEntityType.CHARACTER, characterId, characterData);
+    this._logger.debug(
+      `updateCharacter: id=${characterId}, fields=[${Object.keys(characterData || {}).join(', ')}]`
+    );
+    const result = await this._entityManager.update(
+      KankaEntityType.CHARACTER,
+      characterId,
+      characterData
+    );
     this._logger.debug(`updateCharacter: updated ID=${result?.id}`);
     return result;
   }
@@ -755,7 +771,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Created location data
    */
   async createLocation(locationData) {
-    this._logger.debug(`createLocation: name="${locationData?.name}", type="${locationData?.type || ''}"`);
+    this._logger.debug(
+      `createLocation: name="${locationData?.name}", type="${locationData?.type || ''}"`
+    );
     const result = await this._entityManager.create(KankaEntityType.LOCATION, locationData);
     this._logger.debug(`createLocation: created ID=${result?.id}`);
     return result;
@@ -782,8 +800,14 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated location data
    */
   async updateLocation(locationId, locationData) {
-    this._logger.debug(`updateLocation: id=${locationId}, fields=[${Object.keys(locationData || {}).join(', ')}]`);
-    const result = await this._entityManager.update(KankaEntityType.LOCATION, locationId, locationData);
+    this._logger.debug(
+      `updateLocation: id=${locationId}, fields=[${Object.keys(locationData || {}).join(', ')}]`
+    );
+    const result = await this._entityManager.update(
+      KankaEntityType.LOCATION,
+      locationId,
+      locationData
+    );
     this._logger.debug(`updateLocation: updated ID=${result?.id}`);
     return result;
   }
@@ -863,7 +887,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated item data
    */
   async updateItem(itemId, itemData) {
-    this._logger.debug(`updateItem: id=${itemId}, fields=[${Object.keys(itemData || {}).join(', ')}]`);
+    this._logger.debug(
+      `updateItem: id=${itemId}, fields=[${Object.keys(itemData || {}).join(', ')}]`
+    );
     const result = await this._entityManager.update(KankaEntityType.ITEM, itemId, itemData);
     this._logger.debug(`updateItem: updated ID=${result?.id}`);
     return result;
@@ -915,7 +941,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Created organisation data
    */
   async createOrganisation(organisationData) {
-    this._logger.debug(`createOrganisation: name="${organisationData?.name}", type="${organisationData?.type || OrganisationType.OTHER}"`);
+    this._logger.debug(
+      `createOrganisation: name="${organisationData?.name}", type="${organisationData?.type || OrganisationType.OTHER}"`
+    );
     // Set default type if not provided
     const dataWithDefaults = {
       ...organisationData,
@@ -948,7 +976,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated organisation data
    */
   async updateOrganisation(organisationId, organisationData) {
-    this._logger.debug(`updateOrganisation: id=${organisationId}, fields=[${Object.keys(organisationData || {}).join(', ')}]`);
+    this._logger.debug(
+      `updateOrganisation: id=${organisationId}, fields=[${Object.keys(organisationData || {}).join(', ')}]`
+    );
     const result = await this._entityManager.update(
       KankaEntityType.ORGANISATION,
       organisationId,
@@ -1006,7 +1036,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Created quest data
    */
   async createQuest(questData) {
-    this._logger.debug(`createQuest: name="${questData?.name}", type="${questData?.type || QuestType.OTHER}"`);
+    this._logger.debug(
+      `createQuest: name="${questData?.name}", type="${questData?.type || QuestType.OTHER}"`
+    );
     // Set default type if not provided
     const dataWithDefaults = {
       ...questData,
@@ -1039,7 +1071,9 @@ class KankaService extends KankaClient {
    * @returns {Promise<object>} Updated quest data
    */
   async updateQuest(questId, questData) {
-    this._logger.debug(`updateQuest: id=${questId}, fields=[${Object.keys(questData || {}).join(', ')}]`);
+    this._logger.debug(
+      `updateQuest: id=${questId}, fields=[${Object.keys(questData || {}).join(', ')}]`
+    );
     const result = await this._entityManager.update(KankaEntityType.QUEST, questId, questData);
     this._logger.debug(`updateQuest: updated ID=${result?.id}`);
     return result;
@@ -1494,7 +1528,9 @@ class KankaService extends KankaClient {
    * console.log(`Created ${success.length}, Failed ${errors.length}`);
    */
   async batchCreate(entityType, entitiesData, options = {}) {
-    this._logger.debug(`batchCreate: type=${entityType}, count=${entitiesData?.length || 0}, skipExisting=${options.skipExisting ?? true}`);
+    this._logger.debug(
+      `batchCreate: type=${entityType}, count=${entitiesData?.length || 0}, skipExisting=${options.skipExisting ?? true}`
+    );
     const batchStartTime = Date.now();
     const skipExisting = options.skipExisting ?? true;
     const onProgress = options.onProgress || (() => {});
@@ -1557,9 +1593,11 @@ class KankaService extends KankaClient {
     }
 
     const batchElapsed = Date.now() - batchStartTime;
-    const successCount = results.filter(r => !r._error).length;
-    const errorCount = results.filter(r => r._error).length;
-    this._logger.debug(`batchCreate: completed in ${batchElapsed}ms — ${successCount} succeeded, ${errorCount} failed`);
+    const successCount = results.filter((r) => !r._error).length;
+    const errorCount = results.filter((r) => r._error).length;
+    this._logger.debug(
+      `batchCreate: completed in ${batchElapsed}ms — ${successCount} succeeded, ${errorCount} failed`
+    );
     return results;
   }
 
@@ -1598,7 +1636,9 @@ class KankaService extends KankaClient {
    * const errors = results.filter(r => r._error);
    */
   async batchCreateRelations(sourceEntityId, relations, options = {}) {
-    this._logger.debug(`batchCreateRelations: sourceEntityId=${sourceEntityId}, count=${relations?.length || 0}`);
+    this._logger.debug(
+      `batchCreateRelations: sourceEntityId=${sourceEntityId}, count=${relations?.length || 0}`
+    );
 
     const continueOnError = options.continueOnError ?? true;
     const onProgress = options.onProgress || (() => {});
@@ -1643,8 +1683,8 @@ class KankaService extends KankaClient {
       }
     }
 
-    const successCount = results.filter(r => !r._error).length;
-    const errorCount = results.filter(r => r._error).length;
+    const successCount = results.filter((r) => !r._error).length;
+    const errorCount = results.filter((r) => r._error).length;
     this._logger.debug(
       `batchCreateRelations: completed — ${successCount} succeeded, ${errorCount} failed`
     );

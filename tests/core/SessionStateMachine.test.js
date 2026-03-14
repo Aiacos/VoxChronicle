@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SessionStateMachine, SessionState, SessionEvent } from '../../scripts/core/SessionStateMachine.mjs';
+import {
+  SessionStateMachine,
+  SessionState,
+  SessionEvent
+} from '../../scripts/core/SessionStateMachine.mjs';
 
 // Mock Logger
 vi.mock('../../scripts/utils/Logger.mjs', () => {
@@ -7,21 +11,21 @@ vi.mock('../../scripts/utils/Logger.mjs', () => {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn(),
+    error: vi.fn()
   };
   return {
     Logger: {
       createChild: vi.fn(() => childLogger),
-      _childInstance: childLogger,
-    },
+      _childInstance: childLogger
+    }
   };
 });
 
 // Mock game global
 globalThis.game = {
   i18n: {
-    localize: vi.fn((key) => key),
-  },
+    localize: vi.fn((key) => key)
+  }
 };
 
 describe('SessionStateMachine', () => {
@@ -30,7 +34,7 @@ describe('SessionStateMachine', () => {
 
   beforeEach(() => {
     mockEventBus = {
-      emit: vi.fn(),
+      emit: vi.fn()
     };
     sm = new SessionStateMachine(mockEventBus);
     vi.clearAllMocks();
@@ -49,7 +53,9 @@ describe('SessionStateMachine', () => {
     });
 
     it('should be frozen (immutable)', () => {
-      expect(() => { SessionState.NEW = 'new'; }).toThrow();
+      expect(() => {
+        SessionState.NEW = 'new';
+      }).toThrow();
     });
   });
 
@@ -72,7 +78,9 @@ describe('SessionStateMachine', () => {
     });
 
     it('should be frozen (immutable)', () => {
-      expect(() => { SessionEvent.NEW = 'NEW'; }).toThrow();
+      expect(() => {
+        SessionEvent.NEW = 'NEW';
+      }).toThrow();
     });
   });
 
@@ -98,7 +106,7 @@ describe('SessionStateMachine', () => {
         from: SessionState.IDLE,
         to: SessionState.CONFIGURING,
         event: SessionEvent.START_CONFIG,
-        timestamp: expect.any(Number),
+        timestamp: expect.any(Number)
       });
     });
 
@@ -151,7 +159,7 @@ describe('SessionStateMachine', () => {
         from: SessionState.ERROR,
         to: SessionState.LIVE,
         event: SessionEvent.RETRY,
-        timestamp: expect.any(Number),
+        timestamp: expect.any(Number)
       });
     });
 
@@ -269,8 +277,12 @@ describe('SessionStateMachine', () => {
     });
 
     it('should throw when registering non-function guard', () => {
-      expect(() => sm.addGuard(SessionEvent.START_CONFIG, 'not a function')).toThrow('Guard must be a function');
-      expect(() => sm.addGuard(SessionEvent.START_CONFIG, null)).toThrow('Guard must be a function');
+      expect(() => sm.addGuard(SessionEvent.START_CONFIG, 'not a function')).toThrow(
+        'Guard must be a function'
+      );
+      expect(() => sm.addGuard(SessionEvent.START_CONFIG, null)).toThrow(
+        'Guard must be a function'
+      );
     });
 
     // Guard predefinite come esempio (non hardcoded)
@@ -321,7 +333,11 @@ describe('SessionStateMachine', () => {
     });
 
     it('should deserialize to restore state', () => {
-      const data = { state: SessionState.LIVE, previousState: SessionState.CONFIGURING, timestamp: Date.now() };
+      const data = {
+        state: SessionState.LIVE,
+        previousState: SessionState.CONFIGURING,
+        timestamp: Date.now()
+      };
       const restored = SessionStateMachine.deserialize(data, mockEventBus);
 
       expect(restored.state).toBe(SessionState.LIVE);
@@ -356,7 +372,11 @@ describe('SessionStateMachine', () => {
     });
 
     it('should discard invalid previousState during deserialization', () => {
-      const data = { state: SessionState.ERROR, previousState: 'hackedState', timestamp: Date.now() };
+      const data = {
+        state: SessionState.ERROR,
+        previousState: 'hackedState',
+        timestamp: Date.now()
+      };
       const restored = SessionStateMachine.deserialize(data, mockEventBus);
 
       expect(restored.state).toBe(SessionState.ERROR);
@@ -367,7 +387,11 @@ describe('SessionStateMachine', () => {
     });
 
     it('should preserve valid previousState during deserialization', () => {
-      const data = { state: SessionState.ERROR, previousState: SessionState.LIVE, timestamp: Date.now() };
+      const data = {
+        state: SessionState.ERROR,
+        previousState: SessionState.LIVE,
+        timestamp: Date.now()
+      };
       const restored = SessionStateMachine.deserialize(data, mockEventBus);
 
       const result = restored.transition(SessionEvent.RETRY);
@@ -385,7 +409,11 @@ describe('SessionStateMachine', () => {
     });
 
     it('should work without eventBus on deserialize', () => {
-      const data = { state: SessionState.LIVE, previousState: SessionState.CONFIGURING, timestamp: Date.now() };
+      const data = {
+        state: SessionState.LIVE,
+        previousState: SessionState.CONFIGURING,
+        timestamp: Date.now()
+      };
       const restored = SessionStateMachine.deserialize(data);
 
       expect(restored.state).toBe(SessionState.LIVE);
@@ -465,7 +493,7 @@ describe('SessionStateMachine', () => {
         from: SessionState.CONFIGURING,
         to: SessionState.IDLE,
         event: 'RESET',
-        timestamp: expect.any(Number),
+        timestamp: expect.any(Number)
       });
     });
 

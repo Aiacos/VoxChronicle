@@ -18,16 +18,23 @@ vi.hoisted(() => {
         this.rendered = false;
         this._element = null;
       }
-      render() { this.rendered = true; return this; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      render() {
+        this.rendered = true;
+        return this;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -100,7 +107,9 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should handle settings load failure gracefully', () => {
-      mockSettings.getSpeakerLabels.mockImplementation(() => { throw new Error('fail'); });
+      mockSettings.getSpeakerLabels.mockImplementation(() => {
+        throw new Error('fail');
+      });
 
       const instance = new SpeakerLabeling();
       expect(instance._labels).toEqual({});
@@ -179,7 +188,9 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should handle errors gracefully', () => {
-      mockSettings.getSpeakerLabels.mockImplementation(() => { throw new Error('fail'); });
+      mockSettings.getSpeakerLabels.mockImplementation(() => {
+        throw new Error('fail');
+      });
 
       labeling._loadCurrentLabels();
 
@@ -213,7 +224,7 @@ describe('SpeakerLabeling', () => {
     it('should deduplicate speaker IDs', () => {
       labeling._knownSpeakers = ['SPEAKER_00', 'SPEAKER_01'];
       const ids = labeling._getAllSpeakerIds();
-      const speakerZeroCount = ids.filter(id => id === 'SPEAKER_00').length;
+      const speakerZeroCount = ids.filter((id) => id === 'SPEAKER_00').length;
       expect(speakerZeroCount).toBe(1);
     });
 
@@ -271,29 +282,31 @@ describe('SpeakerLabeling', () => {
     it('should mark known speakers', async () => {
       labeling._knownSpeakers = ['SPEAKER_00'];
       const ctx = await labeling._prepareContext();
-      const speaker0 = ctx.speakers.find(s => s.id === 'SPEAKER_00');
+      const speaker0 = ctx.speakers.find((s) => s.id === 'SPEAKER_00');
       expect(speaker0.isKnown).toBe(true);
     });
 
     it('should include labels in speaker data', async () => {
       labeling._labels = { SPEAKER_00: 'Game Master' };
       const ctx = await labeling._prepareContext();
-      const speaker0 = ctx.speakers.find(s => s.id === 'SPEAKER_00');
+      const speaker0 = ctx.speakers.find((s) => s.id === 'SPEAKER_00');
       expect(speaker0.label).toBe('Game Master');
     });
 
     it('should default label to empty string when not set', async () => {
       const ctx = await labeling._prepareContext();
-      const speaker0 = ctx.speakers.find(s => s.id === 'SPEAKER_00');
+      const speaker0 = ctx.speakers.find((s) => s.id === 'SPEAKER_00');
       expect(speaker0.label).toBe('');
     });
 
     it('should include game users', async () => {
       game.users = {
-        map: vi.fn((fn) => [
-          { id: 'gm1', name: 'Game Master', isGM: true },
-          { id: 'p1', name: 'Player One', isGM: false }
-        ].map(fn))
+        map: vi.fn((fn) =>
+          [
+            { id: 'gm1', name: 'Game Master', isGM: true },
+            { id: 'p1', name: 'Player One', isGM: false }
+          ].map(fn)
+        )
       };
 
       const ctx = await labeling._prepareContext();
@@ -331,10 +344,12 @@ describe('SpeakerLabeling', () => {
 
     it('should return mapped users sorted GMs first', () => {
       game.users = {
-        map: vi.fn((fn) => [
-          { id: 'p1', name: 'Player One', isGM: false },
-          { id: 'gm1', name: 'Game Master', isGM: true }
-        ].map(fn))
+        map: vi.fn((fn) =>
+          [
+            { id: 'p1', name: 'Player One', isGM: false },
+            { id: 'gm1', name: 'Game Master', isGM: true }
+          ].map(fn)
+        )
       };
 
       const users = labeling._getGameUsers();
@@ -344,10 +359,12 @@ describe('SpeakerLabeling', () => {
 
     it('should sort users alphabetically within same role', () => {
       game.users = {
-        map: vi.fn((fn) => [
-          { id: 'p2', name: 'Zack', isGM: false },
-          { id: 'p1', name: 'Alice', isGM: false }
-        ].map(fn))
+        map: vi.fn((fn) =>
+          [
+            { id: 'p2', name: 'Zack', isGM: false },
+            { id: 'p1', name: 'Alice', isGM: false }
+          ].map(fn)
+        )
       };
 
       const users = labeling._getGameUsers();
@@ -357,9 +374,7 @@ describe('SpeakerLabeling', () => {
 
     it('should return user id, name, and isGM', () => {
       game.users = {
-        map: vi.fn((fn) => [
-          { id: 'p1', name: 'Test', isGM: false }
-        ].map(fn))
+        map: vi.fn((fn) => [{ id: 'p1', name: 'Test', isGM: false }].map(fn))
       };
 
       const users = labeling._getGameUsers();
@@ -488,10 +503,12 @@ describe('SpeakerLabeling', () => {
 
     it('should assign users to empty speaker inputs in order', () => {
       game.users = {
-        map: vi.fn((fn) => [
-          { id: 'gm1', name: 'DM', isGM: true },
-          { id: 'p1', name: 'Alice', isGM: false }
-        ].map(fn))
+        map: vi.fn((fn) =>
+          [
+            { id: 'gm1', name: 'DM', isGM: true },
+            { id: 'p1', name: 'Alice', isGM: false }
+          ].map(fn)
+        )
       };
 
       const input1 = { value: '', name: 'speaker-SPEAKER_00' };
@@ -515,10 +532,12 @@ describe('SpeakerLabeling', () => {
 
     it('should not overwrite existing input values', () => {
       game.users = {
-        map: vi.fn((fn) => [
-          { id: 'gm1', name: 'DM', isGM: true },
-          { id: 'p1', name: 'Alice', isGM: false }
-        ].map(fn))
+        map: vi.fn((fn) =>
+          [
+            { id: 'gm1', name: 'DM', isGM: true },
+            { id: 'p1', name: 'Alice', isGM: false }
+          ].map(fn)
+        )
       };
 
       const input1 = { value: 'Existing Name', name: 'speaker-SPEAKER_00' };
@@ -542,9 +561,7 @@ describe('SpeakerLabeling', () => {
 
     it('should format GM names with prefix', () => {
       game.users = {
-        map: vi.fn((fn) => [
-          { id: 'gm1', name: 'John', isGM: true }
-        ].map(fn))
+        map: vi.fn((fn) => [{ id: 'gm1', name: 'John', isGM: true }].map(fn))
       };
 
       const input1 = { value: '', name: 'speaker-SPEAKER_00' };
@@ -795,7 +812,9 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should not throw if onClose callback throws', async () => {
-      const onClose = vi.fn(() => { throw new Error('callback boom'); });
+      const onClose = vi.fn(() => {
+        throw new Error('callback boom');
+      });
       const instance = new SpeakerLabeling({ onClose });
       await expect(instance.close()).resolves.not.toThrow();
       expect(onClose).toHaveBeenCalledTimes(1);
@@ -811,7 +830,9 @@ describe('SpeakerLabeling', () => {
       const instance = new SpeakerLabeling({ onClose });
       // Override super.close to throw
       const originalClose = Object.getPrototypeOf(Object.getPrototypeOf(instance)).close;
-      Object.getPrototypeOf(Object.getPrototypeOf(instance)).close = vi.fn().mockRejectedValue(new Error('close failed'));
+      Object.getPrototypeOf(Object.getPrototypeOf(instance)).close = vi
+        .fn()
+        .mockRejectedValue(new Error('close failed'));
       try {
         await instance.close().catch(() => {});
       } finally {
@@ -854,7 +875,9 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      mockSettings.get.mockImplementation(() => { throw new Error('fail'); });
+      mockSettings.get.mockImplementation(() => {
+        throw new Error('fail');
+      });
 
       await expect(SpeakerLabeling.addKnownSpeaker('SPEAKER_00')).resolves.not.toThrow();
     });
@@ -878,10 +901,7 @@ describe('SpeakerLabeling', () => {
       await SpeakerLabeling.addKnownSpeakers(['SPEAKER_10', 'SPEAKER_11']);
 
       // Only SPEAKER_11 should be new
-      expect(mockSettings.set).toHaveBeenCalledWith(
-        'knownSpeakers',
-        ['SPEAKER_10', 'SPEAKER_11']
-      );
+      expect(mockSettings.set).toHaveBeenCalledWith('knownSpeakers', ['SPEAKER_10', 'SPEAKER_11']);
     });
 
     it('should not call set if no new speakers', async () => {
@@ -908,14 +928,13 @@ describe('SpeakerLabeling', () => {
 
       await SpeakerLabeling.addKnownSpeakers(['SPEAKER_10', '', null]);
 
-      expect(mockSettings.set).toHaveBeenCalledWith(
-        'knownSpeakers',
-        ['SPEAKER_10']
-      );
+      expect(mockSettings.set).toHaveBeenCalledWith('knownSpeakers', ['SPEAKER_10']);
     });
 
     it('should handle errors gracefully', async () => {
-      mockSettings.get.mockImplementation(() => { throw new Error('fail'); });
+      mockSettings.get.mockImplementation(() => {
+        throw new Error('fail');
+      });
 
       await expect(SpeakerLabeling.addKnownSpeakers(['TEST'])).resolves.not.toThrow();
     });
@@ -1063,7 +1082,9 @@ describe('SpeakerLabeling', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      mockSettings.getSpeakerLabels.mockImplementation(() => { throw new Error('fail'); });
+      mockSettings.getSpeakerLabels.mockImplementation(() => {
+        throw new Error('fail');
+      });
 
       const count = await SpeakerLabeling.renameSpeaker('old', 'new');
       expect(count).toBe(0);
@@ -1071,7 +1092,7 @@ describe('SpeakerLabeling', () => {
 
     it('should update key value when key matches oldName and value also matches', async () => {
       mockSettings.getSpeakerLabels.mockReturnValue({
-        OldName: 'OldName'  // Key and value both match
+        OldName: 'OldName' // Key and value both match
       });
 
       const count = await SpeakerLabeling.renameSpeaker('OldName', 'NewName');

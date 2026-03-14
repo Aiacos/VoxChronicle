@@ -171,7 +171,10 @@ class LocalWhisperService {
    * @returns {Promise<TranscriptionResult>} Transcription result with speaker-labeled segments
    */
   async transcribe(audioBlob, options = {}) {
-    this._logger.debug('transcribe called', { blobSize: audioBlob?.size, language: options.language });
+    this._logger.debug('transcribe called', {
+      blobSize: audioBlob?.size,
+      language: options.language
+    });
     const t0 = Date.now();
 
     if (!audioBlob || !(audioBlob instanceof Blob)) {
@@ -242,7 +245,9 @@ class LocalWhisperService {
       });
       return mappedResult;
     } catch (error) {
-      this._logger.error(`_transcribeSingle failed after ${Date.now() - t0}ms: ${error.message}`, { blobSizeMB: AudioUtils.getBlobSizeMB(audioBlob) });
+      this._logger.error(`_transcribeSingle failed after ${Date.now() - t0}ms: ${error.message}`, {
+        blobSizeMB: AudioUtils.getBlobSizeMB(audioBlob)
+      });
       throw error;
     }
   }
@@ -615,7 +620,9 @@ class LocalWhisperService {
   async checkDiarizationSupport() {
     this._logger.debug('checkDiarizationSupport called');
     if (this._supportsDiarization !== null) {
-      this._logger.debug('checkDiarizationSupport: returning cached value', { supportsDiarization: this._supportsDiarization });
+      this._logger.debug('checkDiarizationSupport: returning cached value', {
+        supportsDiarization: this._supportsDiarization
+      });
       return this._supportsDiarization;
     }
 

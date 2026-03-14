@@ -91,7 +91,9 @@ describe('RAGProviderFactory', () => {
 
     it('should register a custom provider class', () => {
       class CustomProvider extends RAGProvider {
-        constructor() { super(); }
+        constructor() {
+          super();
+        }
       }
 
       const type = uniqueType();
@@ -116,7 +118,9 @@ describe('RAGProviderFactory', () => {
 
     it('should appear in getAvailableProviders() after registration', () => {
       class YetAnotherProvider extends RAGProvider {
-        constructor() { super(); }
+        constructor() {
+          super();
+        }
       }
 
       const type = uniqueType();
@@ -126,8 +130,16 @@ describe('RAGProviderFactory', () => {
     });
 
     it('should overwrite an existing registration for the same type', () => {
-      class ProviderA extends RAGProvider { constructor() { super(); } }
-      class ProviderB extends RAGProvider { constructor() { super(); } }
+      class ProviderA extends RAGProvider {
+        constructor() {
+          super();
+        }
+      }
+      class ProviderB extends RAGProvider {
+        constructor() {
+          super();
+        }
+      }
 
       const type = uniqueType();
       RAGProviderFactory.register(type, ProviderA);
@@ -140,28 +152,44 @@ describe('RAGProviderFactory', () => {
     });
 
     it('should throw if type is empty string', () => {
-      class EmptyTypeProvider extends RAGProvider { constructor() { super(); } }
+      class EmptyTypeProvider extends RAGProvider {
+        constructor() {
+          super();
+        }
+      }
       expect(() => RAGProviderFactory.register('', EmptyTypeProvider)).toThrow(
         'Provider type must be a non-empty string'
       );
     });
 
     it('should throw if type is null', () => {
-      class NullTypeProvider extends RAGProvider { constructor() { super(); } }
+      class NullTypeProvider extends RAGProvider {
+        constructor() {
+          super();
+        }
+      }
       expect(() => RAGProviderFactory.register(null, NullTypeProvider)).toThrow(
         'Provider type must be a non-empty string'
       );
     });
 
     it('should throw if type is undefined', () => {
-      class UndefinedTypeProvider extends RAGProvider { constructor() { super(); } }
+      class UndefinedTypeProvider extends RAGProvider {
+        constructor() {
+          super();
+        }
+      }
       expect(() => RAGProviderFactory.register(undefined, UndefinedTypeProvider)).toThrow(
         'Provider type must be a non-empty string'
       );
     });
 
     it('should throw if type is a number', () => {
-      class NumberTypeProvider extends RAGProvider { constructor() { super(); } }
+      class NumberTypeProvider extends RAGProvider {
+        constructor() {
+          super();
+        }
+      }
       expect(() => RAGProviderFactory.register(42, NumberTypeProvider)).toThrow(
         'Provider type must be a non-empty string'
       );

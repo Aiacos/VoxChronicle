@@ -10,7 +10,7 @@
  * Retry/queue system adapted from Narrator Master's OpenAIServiceBase.
  *
  * @class OpenAIClient
- * @extends BaseAPIClient
+ * @augments BaseAPIClient
  * @module vox-chronicle
  */
 
@@ -134,10 +134,11 @@ class OpenAIClient extends BaseAPIClient {
       timeout: options.timeout || DEFAULT_TIMEOUT_MS,
       loggerName: 'OpenAIClient',
       sanitizeLogger: true,
-      authErrorMessage: 'OpenAI API key not configured. Please add your API key in module settings.',
+      authErrorMessage:
+        'OpenAI API key not configured. Please add your API key in module settings.',
       AuthErrorClass: OpenAIError,
       authErrorType: OpenAIErrorType.AUTHENTICATION_ERROR,
-      rateLimiter,
+      rateLimiter
     });
 
     this._maxRetries = maxRetries;
@@ -415,7 +416,7 @@ class OpenAIClient extends BaseAPIClient {
 
       // Start processing this category if not already processing (fire-and-forget with safety catch)
       if (!cat.processing) {
-        this._processCategory(category).catch(err =>
+        this._processCategory(category).catch((err) =>
           this._logger.error('_processCategory crashed unexpectedly:', err)
         );
       }
@@ -630,8 +631,14 @@ class OpenAIClient extends BaseAPIClient {
         fallbackController = new AbortController();
         listenerCleanup = new AbortController();
         const onAbort = () => fallbackController.abort();
-        controller.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
-        options.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
+        controller.signal.addEventListener('abort', onAbort, {
+          once: true,
+          signal: listenerCleanup.signal
+        });
+        options.signal.addEventListener('abort', onAbort, {
+          once: true,
+          signal: listenerCleanup.signal
+        });
         combinedSignal = fallbackController.signal;
       }
     }
@@ -664,7 +671,9 @@ class OpenAIClient extends BaseAPIClient {
 
           // Handle error responses
           if (!response.ok) {
-            this._logger.debug(`Request to ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`);
+            this._logger.debug(
+              `Request to ${endpoint} returned HTTP ${response.status} in ${Date.now() - t0}ms`
+            );
             const error = await this._parseErrorResponse(response);
 
             // If rate limited, pause the rate limiter
@@ -678,7 +687,9 @@ class OpenAIClient extends BaseAPIClient {
 
           // Parse and return JSON response
           const data = await response.json();
-          this._logger.debug(`Request to ${endpoint} completed successfully in ${Date.now() - t0}ms, status: ${response.status}`);
+          this._logger.debug(
+            `Request to ${endpoint} completed successfully in ${Date.now() - t0}ms, status: ${response.status}`
+          );
           return data;
         } catch (error) {
           // Clear timeout
@@ -749,7 +760,12 @@ class OpenAIClient extends BaseAPIClient {
    * @throws {OpenAIError} If the request fails
    */
   async request(endpoint, options = {}) {
-    this._logger.debug('request called', { endpoint, method: options.method || 'GET', useQueue: options.useQueue ?? true, useRetry: options.useRetry ?? true });
+    this._logger.debug('request called', {
+      endpoint,
+      method: options.method || 'GET',
+      useQueue: options.useQueue ?? true,
+      useRetry: options.useRetry ?? true
+    });
 
     if (!this.isConfigured) {
       throw new OpenAIError(
@@ -759,7 +775,13 @@ class OpenAIClient extends BaseAPIClient {
     }
 
     // Extract queue/retry options (not passed to _makeRequest)
-    const { useQueue = true, useRetry = true, priority = 0, queueCategory, ...requestOptions } = options;
+    const {
+      useQueue = true,
+      useRetry = true,
+      priority = 0,
+      queueCategory,
+      ...requestOptions
+    } = options;
 
     // The raw fetch operation
     const operation = () => this._makeRequest(endpoint, requestOptions);
@@ -772,7 +794,11 @@ class OpenAIClient extends BaseAPIClient {
 
     // Wrap with queue if enabled
     if (useQueue) {
-      return this._enqueueRequest(retryWrapped, { operationName: endpoint, queueCategory }, priority);
+      return this._enqueueRequest(
+        retryWrapped,
+        { operationName: endpoint, queueCategory },
+        priority
+      );
     }
 
     return retryWrapped();
@@ -860,8 +886,14 @@ class OpenAIClient extends BaseAPIClient {
         fallbackController = new AbortController();
         listenerCleanup = new AbortController();
         const onAbort = () => fallbackController.abort();
-        controller.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
-        options.signal.addEventListener('abort', onAbort, { once: true, signal: listenerCleanup.signal });
+        controller.signal.addEventListener('abort', onAbort, {
+          once: true,
+          signal: listenerCleanup.signal
+        });
+        options.signal.addEventListener('abort', onAbort, {
+          once: true,
+          signal: listenerCleanup.signal
+        });
         combinedSignal = fallbackController.signal;
       }
     }
@@ -955,11 +987,13 @@ class OpenAIClient extends BaseAPIClient {
       }
       // Non-auth errors mean we cannot verify — don't assume valid
       const sanitizedMessage = SensitiveDataFilter.sanitizeString(error.message);
-      this._logger.error(`API key validation could not be completed after ${Date.now() - t0}ms:`, sanitizedMessage);
+      this._logger.error(
+        `API key validation could not be completed after ${Date.now() - t0}ms:`,
+        sanitizedMessage
+      );
       throw error;
     }
   }
-
 }
 
 // Export the OpenAIClient class and related exports

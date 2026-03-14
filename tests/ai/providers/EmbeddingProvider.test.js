@@ -4,8 +4,8 @@ import { EmbeddingProvider } from '../../../scripts/ai/providers/EmbeddingProvid
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 class TestEmbeddingProvider extends EmbeddingProvider {

@@ -13,17 +13,26 @@ vi.hoisted(() => {
     class MockAppV2 {
       static DEFAULT_OPTIONS = {};
       static PARTS = {};
-      constructor() { this.rendered = false; this._element = null; }
-      render() { this.rendered = true; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      constructor() {
+        this.rendered = false;
+        this._element = null;
+      }
+      render() {
+        this.rendered = true;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -307,9 +316,7 @@ describe('MainPanel', () => {
 
   describe('PARTS', () => {
     it('should have a main part with template path', () => {
-      expect(MainPanel.PARTS.main.template).toBe(
-        'modules/vox-chronicle/templates/main-panel.hbs'
-      );
+      expect(MainPanel.PARTS.main.template).toBe('modules/vox-chronicle/templates/main-panel.hbs');
     });
   });
 
@@ -965,7 +972,9 @@ describe('MainPanel', () => {
     });
 
     it('should handle settings error gracefully', () => {
-      game.settings.get.mockImplementation(() => { throw new Error('no setting'); });
+      game.settings.get.mockImplementation(() => {
+        throw new Error('no setting');
+      });
       const panel = MainPanel.getInstance(mockOrchestrator);
       const ragData = panel._getRAGData();
 
@@ -995,14 +1004,25 @@ describe('MainPanel', () => {
 
       // Mock game.journal with iterable journal entries
       game.journal = [
-        { id: 'j1', name: 'Journal 1', pages: { contents: [{ text: { content: 'Test content' } }] } }
+        {
+          id: 'j1',
+          name: 'Journal 1',
+          pages: { contents: [{ text: { content: 'Test content' } }] }
+        }
       ];
 
       const panel = MainPanel.getInstance(mockOrchestrator);
       await panel._handleRAGBuildIndex();
 
       expect(indexDocuments).toHaveBeenCalledWith(
-        [{ id: 'j1', title: 'Journal 1', content: 'Test content', metadata: { source: 'journal', type: 'journal' } }],
+        [
+          {
+            id: 'j1',
+            title: 'Journal 1',
+            content: 'Test content',
+            metadata: { source: 'journal', type: 'journal' }
+          }
+        ],
         expect.objectContaining({ onProgress: expect.any(Function) })
       );
       expect(ui.notifications.info).toHaveBeenCalled();
@@ -1307,7 +1327,8 @@ describe('MainPanel', () => {
 
       // Execute second rAF callback in same second — should not re-write
       const writeCount = Object.getOwnPropertyDescriptor(mockDurationSpan, 'textContent')
-        ? undefined : 1; // can't easily track setter calls on plain object, but the optimization is covered
+        ? undefined
+        : 1; // can't easily track setter calls on plain object, but the optimization is covered
       rafCallbacks[1]();
       expect(mockDurationSpan.textContent).toBe('0:05'); // same value, no error
     });
@@ -1324,7 +1345,7 @@ describe('MainPanel', () => {
         if (key === 'ragEnabled') return false;
         return '';
       });
-      game.journal = { get: vi.fn((id) => id === 'j1' ? { name: 'Lost Mine' } : null) };
+      game.journal = { get: vi.fn((id) => (id === 'j1' ? { name: 'Lost Mine' } : null)) };
 
       const panel = MainPanel.getInstance(mockOrchestrator);
       const ctx = await panel._prepareContext({});
@@ -1359,10 +1380,14 @@ describe('MainPanel', () => {
         return '';
       });
       game.journal = {
-        get: vi.fn((id) => id === 'j1' ? {
-          name: 'Short Journal',
-          pages: { contents: [{ text: { content: 'Short text' } }] }
-        } : null)
+        get: vi.fn((id) =>
+          id === 'j1'
+            ? {
+                name: 'Short Journal',
+                pages: { contents: [{ text: { content: 'Short text' } }] }
+              }
+            : null
+        )
       };
 
       const panel = MainPanel.getInstance(mockOrchestrator);
@@ -1382,10 +1407,14 @@ describe('MainPanel', () => {
         return '';
       });
       game.journal = {
-        get: vi.fn((id) => id === 'j1' ? {
-          name: 'Long Journal',
-          pages: { contents: [{ text: { content: longText } }] }
-        } : null)
+        get: vi.fn((id) =>
+          id === 'j1'
+            ? {
+                name: 'Long Journal',
+                pages: { contents: [{ text: { content: longText } }] }
+              }
+            : null
+        )
       };
 
       const panel = MainPanel.getInstance(mockOrchestrator);
@@ -1442,7 +1471,11 @@ describe('MainPanel', () => {
       await panel._handleToggleRecording();
 
       // Should auto-select the scene journal
-      expect(game.settings.set).toHaveBeenCalledWith('vox-chronicle', 'activeAdventureJournalId', 'scene-j1');
+      expect(game.settings.set).toHaveBeenCalledWith(
+        'vox-chronicle',
+        'activeAdventureJournalId',
+        'scene-j1'
+      );
       // Should proceed to start live mode
       expect(mockOrchestrator.startLiveMode).toHaveBeenCalled();
     });
@@ -1531,7 +1564,9 @@ describe('MainPanel', () => {
   describe('_parseCardContent', () => {
     it('parses title and bullet points from markdown text', () => {
       const panel = MainPanel.getInstance(mockOrchestrator);
-      const result = panel._parseCardContent('Dramatic Entrance\n- The villain appears\n- Lightning strikes\n- Thunder rolls');
+      const result = panel._parseCardContent(
+        'Dramatic Entrance\n- The villain appears\n- Lightning strikes\n- Thunder rolls'
+      );
       expect(result.title).toBe('Dramatic Entrance');
       expect(result.bullets).toEqual(['The villain appears', 'Lightning strikes', 'Thunder rolls']);
     });
@@ -1552,7 +1587,9 @@ describe('MainPanel', () => {
 
     it('splits into sentences when no bullets found', () => {
       const panel = MainPanel.getInstance(mockOrchestrator);
-      const result = panel._parseCardContent('Main Point\nThis is a long paragraph with multiple sentences. It continues here. And ends here.');
+      const result = panel._parseCardContent(
+        'Main Point\nThis is a long paragraph with multiple sentences. It continues here. And ends here.'
+      );
       expect(result.title).toBe('Main Point');
       expect(result.bullets.length).toBeGreaterThan(0);
       expect(result.bullets.length).toBeLessThanOrEqual(3);
@@ -1600,7 +1637,11 @@ describe('MainPanel', () => {
 
     it('transforms suggestions with parsedTitle and parsedBullets', async () => {
       mockOrchestrator.getAISuggestions.mockReturnValue([
-        { type: 'narration', content: 'Scene Description\n- Dark forest\n- Howling wind', confidence: 0.8 }
+        {
+          type: 'narration',
+          content: 'Scene Description\n- Dark forest\n- Howling wind',
+          confidence: 0.8
+        }
       ]);
       const panel = MainPanel.getInstance(mockOrchestrator);
       const ctx = await panel._prepareContext({});
@@ -1736,7 +1777,8 @@ describe('MainPanel', () => {
       container.className = 'vox-chronicle-suggestions-container';
       const card = document.createElement('div');
       card.className = 'vox-chronicle-suggestion vox-chronicle-suggestion--streaming';
-      card.innerHTML = '<span class="vox-chronicle-suggestion__type">narration</span><div class="vox-chronicle-suggestion__content"></div>';
+      card.innerHTML =
+        '<span class="vox-chronicle-suggestion__type">narration</span><div class="vox-chronicle-suggestion__content"></div>';
       container.appendChild(card);
 
       panel._activeStreamingCard = card;
@@ -1774,7 +1816,17 @@ describe('MainPanel', () => {
 
       panel._handleRulesCard({
         topic: 'grapple',
-        compendiumResults: [{ rule: { title: 'Grappling', content: 'You can use the Attack action to grapple...', citation: { formatted: '[PHB: Grappling, p.195]' } }, relevance: 1, matchedTerms: ['grapple'] }],
+        compendiumResults: [
+          {
+            rule: {
+              title: 'Grappling',
+              content: 'You can use the Attack action to grapple...',
+              citation: { formatted: '[PHB: Grappling, p.195]' }
+            },
+            relevance: 1,
+            matchedTerms: ['grapple']
+          }
+        ],
         synthesisPromise: null,
         source: 'manual'
       });
@@ -1797,7 +1849,9 @@ describe('MainPanel', () => {
       // Auto source
       panel._handleRulesCard({
         topic: 'grapple',
-        compendiumResults: [{ rule: { title: 'Grappling', content: 'Content here' }, relevance: 1, matchedTerms: [] }],
+        compendiumResults: [
+          { rule: { title: 'Grappling', content: 'Content here' }, relevance: 1, matchedTerms: [] }
+        ],
         synthesisPromise: null,
         source: 'auto'
       });
@@ -1808,7 +1862,9 @@ describe('MainPanel', () => {
       container.innerHTML = '';
       panel._handleRulesCard({
         topic: 'grapple',
-        compendiumResults: [{ rule: { title: 'Grappling', content: 'Content here' }, relevance: 1, matchedTerms: [] }],
+        compendiumResults: [
+          { rule: { title: 'Grappling', content: 'Content here' }, relevance: 1, matchedTerms: [] }
+        ],
         synthesisPromise: null,
         source: 'manual'
       });
@@ -1828,7 +1884,16 @@ describe('MainPanel', () => {
 
       panel._handleRulesCard({
         topic: 'grapple',
-        compendiumResults: [{ rule: { title: 'Grappling', content: 'You can use the Attack action to make a special melee attack, a grapple.' }, relevance: 1, matchedTerms: ['grapple'] }],
+        compendiumResults: [
+          {
+            rule: {
+              title: 'Grappling',
+              content: 'You can use the Attack action to make a special melee attack, a grapple.'
+            },
+            relevance: 1,
+            matchedTerms: ['grapple']
+          }
+        ],
         synthesisPromise: null,
         source: 'manual'
       });
@@ -1872,7 +1937,9 @@ describe('MainPanel', () => {
 
       panel._handleRulesCard({
         topic: 'grapple',
-        compendiumResults: [{ rule: { title: 'Grappling', content: 'Content' }, relevance: 1, matchedTerms: [] }],
+        compendiumResults: [
+          { rule: { title: 'Grappling', content: 'Content' }, relevance: 1, matchedTerms: [] }
+        ],
         synthesisPromise: null,
         source: 'manual'
       });
@@ -1891,18 +1958,24 @@ describe('MainPanel', () => {
 
       // Simulate the _onRender wiring manually
       const signal = new AbortController().signal;
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.target.value.trim()) {
-          const query = e.target.value.trim();
-          e.target.value = '';
-          panel._orchestrator?.handleManualRulesQuery?.(query);
-        }
-      }, { signal });
+      input.addEventListener(
+        'keydown',
+        (e) => {
+          if (e.key === 'Enter' && e.target.value.trim()) {
+            const query = e.target.value.trim();
+            e.target.value = '';
+            panel._orchestrator?.handleManualRulesQuery?.(query);
+          }
+        },
+        { signal }
+      );
 
       const event = new KeyboardEvent('keydown', { key: 'Enter' });
       input.dispatchEvent(event);
 
-      expect(panel._orchestrator.handleManualRulesQuery).toHaveBeenCalledWith('how does grapple work');
+      expect(panel._orchestrator.handleManualRulesQuery).toHaveBeenCalledWith(
+        'how does grapple work'
+      );
       expect(input.value).toBe('');
     });
 
@@ -1921,7 +1994,6 @@ describe('MainPanel', () => {
   // ─── Transcript Review PART (Story 3.3 Task 3) ───────────────
 
   describe('Transcript Review PART', () => {
-
     describe('PARTS registration', () => {
       it('should have a transcriptReview part with template path', () => {
         expect(MainPanel.PARTS.transcriptReview).toBeDefined();
@@ -1946,24 +2018,26 @@ describe('MainPanel', () => {
 
         expect(ctx.transcriptSegments).toBeDefined();
         expect(ctx.transcriptSegments).toHaveLength(2);
-        expect(ctx.transcriptSegments[0]).toEqual(expect.objectContaining({
-          speaker: 'SPEAKER_00',
-          text: 'Hello world',
-          timestamp: '0:00'
-        }));
-        expect(ctx.transcriptSegments[1]).toEqual(expect.objectContaining({
-          speaker: 'SPEAKER_01',
-          text: 'Good morning',
-          timestamp: '0:03'
-        }));
+        expect(ctx.transcriptSegments[0]).toEqual(
+          expect.objectContaining({
+            speaker: 'SPEAKER_00',
+            text: 'Hello world',
+            timestamp: '0:00'
+          })
+        );
+        expect(ctx.transcriptSegments[1]).toEqual(
+          expect.objectContaining({
+            speaker: 'SPEAKER_01',
+            text: 'Good morning',
+            timestamp: '0:03'
+          })
+        );
       });
 
       it('should format timestamps as mm:ss', async () => {
         mockOrchestrator.currentSession = {
           transcript: {
-            segments: [
-              { speaker: 'SPEAKER_00', text: 'Late segment', start: 125.7, end: 130.0 }
-            ]
+            segments: [{ speaker: 'SPEAKER_00', text: 'Late segment', start: 125.7, end: 130.0 }]
           }
         };
         const panel = MainPanel.getInstance(mockOrchestrator);
@@ -2011,9 +2085,7 @@ describe('MainPanel', () => {
       it('should set hasTranscriptSegments to true when segments exist', async () => {
         mockOrchestrator.currentSession = {
           transcript: {
-            segments: [
-              { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
-            ]
+            segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
           }
         };
         const panel = MainPanel.getInstance(mockOrchestrator);
@@ -2053,10 +2125,7 @@ describe('MainPanel', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
         panel.setEventBus(mockEventBus);
 
-        expect(mockEventBus.on).toHaveBeenCalledWith(
-          'ai:transcriptionReady',
-          expect.any(Function)
-        );
+        expect(mockEventBus.on).toHaveBeenCalledWith('ai:transcriptionReady', expect.any(Function));
       });
 
       it('should call setTranscriptData and render on ai:transcriptionReady', () => {
@@ -2072,7 +2141,7 @@ describe('MainPanel', () => {
         panel.setEventBus(mockEventBus);
 
         // Find the handler registered for ai:transcriptionReady
-        const call = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:transcriptionReady');
+        const call = mockEventBus.on.mock.calls.find((c) => c[0] === 'ai:transcriptionReady');
         expect(call).toBeDefined();
 
         const segments = [{ speaker: 'SP', text: 'test', start: 0, end: 1 }];
@@ -2095,7 +2164,7 @@ describe('MainPanel', () => {
         const setDataSpy = vi.spyOn(panel, 'setTranscriptData');
         panel.setEventBus(mockEventBus);
 
-        const call = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:transcriptionReady');
+        const call = mockEventBus.on.mock.calls.find((c) => c[0] === 'ai:transcriptionReady');
         call[1]({});
 
         expect(setDataSpy).not.toHaveBeenCalled();
@@ -2128,7 +2197,7 @@ describe('MainPanel', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
         panel.setEventBus(mockEventBus);
 
-        const eventNames = mockEventBus.on.mock.calls.map(c => c[0]);
+        const eventNames = mockEventBus.on.mock.calls.map((c) => c[0]);
         expect(eventNames).toContain('ai:ragIndexingStarted');
         expect(eventNames).toContain('ai:ragIndexingComplete');
       });
@@ -2141,7 +2210,7 @@ describe('MainPanel', () => {
         Object.defineProperty(panel, 'rendered', { get: () => true });
         panel.setEventBus(mockEventBus);
 
-        const call = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:ragIndexingStarted');
+        const call = mockEventBus.on.mock.calls.find((c) => c[0] === 'ai:ragIndexingStarted');
         expect(call).toBeDefined();
 
         // Handler should execute without error and trigger render
@@ -2158,12 +2227,14 @@ describe('MainPanel', () => {
         panel.setEventBus(mockEventBus);
 
         // Start indexing
-        const startCall = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:ragIndexingStarted');
+        const startCall = mockEventBus.on.mock.calls.find((c) => c[0] === 'ai:ragIndexingStarted');
         startCall[1]({ journalCount: 2 });
         renderSpy.mockClear();
 
         // Complete indexing
-        const completeCall = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:ragIndexingComplete');
+        const completeCall = mockEventBus.on.mock.calls.find(
+          (c) => c[0] === 'ai:ragIndexingComplete'
+        );
         completeCall[1]({ indexed: 5, skipped: 1 });
 
         // Should trigger render on completion
@@ -2178,7 +2249,7 @@ describe('MainPanel', () => {
 
         await panel.close();
 
-        const offEventNames = mockEventBus.off.mock.calls.map(c => c[0]);
+        const offEventNames = mockEventBus.off.mock.calls.map((c) => c[0]);
         expect(offEventNames).toContain('ai:ragIndexingStarted');
         expect(offEventNames).toContain('ai:ragIndexingComplete');
       });
@@ -2287,9 +2358,7 @@ describe('MainPanel', () => {
     describe('inline edit flow (Task 4)', () => {
       it('should store transcript data via setTranscriptData', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
-        const segments = [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
-        ];
+        const segments = [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }];
         panel.setTranscriptData(segments);
         expect(panel.getTranscriptData()).toEqual(segments);
       });
@@ -2310,9 +2379,7 @@ describe('MainPanel', () => {
 
       it('should not modify original segments (immutability)', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
-        const original = [
-          { speaker: 'SPEAKER_00', text: 'Original', start: 0, end: 1 }
-        ];
+        const original = [{ speaker: 'SPEAKER_00', text: 'Original', start: 0, end: 1 }];
         panel.setTranscriptData(original);
         panel.editSegment(0, 'Modified');
 
@@ -2330,9 +2397,7 @@ describe('MainPanel', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
         panel.setEventBus(mockEventBus);
 
-        const segments = [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
-        ];
+        const segments = [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }];
         panel.setTranscriptData(segments);
         panel.editSegment(0, 'Changed');
 
@@ -2344,9 +2409,7 @@ describe('MainPanel', () => {
 
       it('should not emit event if no EventBus is set', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
-        const segments = [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
-        ];
+        const segments = [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }];
         panel.setTranscriptData(segments);
 
         // Should not throw
@@ -2355,9 +2418,7 @@ describe('MainPanel', () => {
 
       it('should ignore edit for out-of-bounds index', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
-        const segments = [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
-        ];
+        const segments = [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }];
         panel.setTranscriptData(segments);
         panel.editSegment(5, 'No effect');
 
@@ -2367,9 +2428,7 @@ describe('MainPanel', () => {
 
       it('should ignore edit with empty text', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
-        const segments = [
-          { speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }
-        ];
+        const segments = [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }];
         panel.setTranscriptData(segments);
         panel.editSegment(0, '');
 
@@ -2419,7 +2478,6 @@ describe('MainPanel', () => {
   // ─── Speaker Labeling from MainPanel (Story 3.3 Task 5) ───────
 
   describe('Speaker Labeling from MainPanel', () => {
-
     beforeEach(() => {
       lastSpeakerLabelingInstance = null;
       speakerLabelingOnClose = null;
@@ -2437,7 +2495,11 @@ describe('MainPanel', () => {
         const { SpeakerLabeling } = await import('../../scripts/ui/SpeakerLabeling.mjs');
         const panel = MainPanel.getInstance(mockOrchestrator);
 
-        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+        await MainPanel._onOpenSpeakerLabeling.call(
+          panel,
+          new Event('click'),
+          document.createElement('button')
+        );
 
         expect(SpeakerLabeling).toHaveBeenCalled();
         expect(lastSpeakerLabelingInstance.render).toHaveBeenCalledWith(true);
@@ -2447,7 +2509,11 @@ describe('MainPanel', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
         const renderSpy = vi.spyOn(panel, 'render');
 
-        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+        await MainPanel._onOpenSpeakerLabeling.call(
+          panel,
+          new Event('click'),
+          document.createElement('button')
+        );
 
         // Simulate SpeakerLabeling closing via onClose callback
         expect(speakerLabelingOnClose).toBeDefined();
@@ -2466,7 +2532,11 @@ describe('MainPanel', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);
         panel.setEventBus(mockEventBus);
 
-        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+        await MainPanel._onOpenSpeakerLabeling.call(
+          panel,
+          new Event('click'),
+          document.createElement('button')
+        );
 
         speakerLabelingOnClose();
 
@@ -2477,13 +2547,19 @@ describe('MainPanel', () => {
         const mockEventBus = {
           on: vi.fn(),
           off: vi.fn(),
-          emit: vi.fn().mockImplementation(() => { throw new Error('EventBus error'); })
+          emit: vi.fn().mockImplementation(() => {
+            throw new Error('EventBus error');
+          })
         };
         MainPanel.resetInstance();
         const panel = MainPanel.getInstance(mockOrchestrator);
         panel.setEventBus(mockEventBus);
 
-        await MainPanel._onOpenSpeakerLabeling.call(panel, new Event('click'), document.createElement('button'));
+        await MainPanel._onOpenSpeakerLabeling.call(
+          panel,
+          new Event('click'),
+          document.createElement('button')
+        );
 
         // Should not throw
         expect(() => speakerLabelingOnClose()).not.toThrow();

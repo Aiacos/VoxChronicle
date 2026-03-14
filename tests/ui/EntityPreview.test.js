@@ -18,16 +18,23 @@ vi.hoisted(() => {
         this.rendered = false;
         this._element = null;
       }
-      render() { this.rendered = true; return this; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      render() {
+        this.rendered = true;
+        return this;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -92,14 +99,22 @@ vi.mock('../../scripts/ui/RelationshipGraph.mjs', () => {
       this._renderFn = vi.fn();
       _mockRelationshipGraphInstances.push(this);
     }
-    render() { return this._renderFn(); }
-    close() { return Promise.resolve(); }
+    render() {
+      return this._renderFn();
+    }
+    close() {
+      return Promise.resolve();
+    }
   }
   return { RelationshipGraph: MockRelationshipGraph };
 });
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { EntityPreview, EntitySelectionState, PreviewMode } from '../../scripts/ui/EntityPreview.mjs';
+import {
+  EntityPreview,
+  EntitySelectionState,
+  PreviewMode
+} from '../../scripts/ui/EntityPreview.mjs';
 import { Settings } from '../../scripts/core/Settings.mjs';
 import { VoxChronicle } from '../../scripts/core/VoxChronicle.mjs';
 import { escapeHtml } from '../../scripts/utils/HtmlUtils.mjs';
@@ -116,12 +131,8 @@ describe('EntityPreview', () => {
         { name: 'Gandalf', description: 'A wizard', isNPC: true },
         { name: 'Frodo', description: 'A hobbit', isNPC: false }
       ],
-      locations: [
-        { name: 'Rivendell', description: 'Elven city', type: 'City' }
-      ],
-      items: [
-        { name: 'The One Ring', description: 'A powerful ring', type: 'Artifact' }
-      ]
+      locations: [{ name: 'Rivendell', description: 'Elven city', type: 'City' }],
+      items: [{ name: 'The One Ring', description: 'A powerful ring', type: 'Artifact' }]
     };
 
     sampleRelationships = [
@@ -1558,12 +1569,8 @@ describe('EntityPreview', () => {
           { name: 'Gandalf', description: 'A wizard', isNPC: true },
           { name: 'Frodo', description: 'A hobbit', isNPC: false }
         ],
-        locations: [
-          { name: 'Rivendell', description: 'Elven city', type: 'City' }
-        ],
-        items: [
-          { name: 'The One Ring', description: 'A powerful ring', type: 'Artifact' }
-        ]
+        locations: [{ name: 'Rivendell', description: 'Elven city', type: 'City' }],
+        items: [{ name: 'The One Ring', description: 'A powerful ring', type: 'Artifact' }]
       });
 
       expect(preview._results.created).toHaveLength(4);
@@ -1621,12 +1628,14 @@ describe('EntityPreview', () => {
       VoxChronicle.getInstance.mockReturnValue({ kankaService: mockKanka });
 
       // Set up relationships that reference these entities to verify entityNameToId was populated
-      preview.setRelationships([{
-        sourceEntity: 'Gandalf',
-        targetEntity: 'Rivendell',
-        relationType: 'resides_in',
-        confidence: 7
-      }]);
+      preview.setRelationships([
+        {
+          sourceEntity: 'Gandalf',
+          targetEntity: 'Rivendell',
+          relationType: 'resides_in',
+          confidence: 7
+        }
+      ]);
       vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
       vi.spyOn(preview, '_flushRender').mockImplementation(() => {});
 
@@ -1838,10 +1847,9 @@ describe('EntityPreview', () => {
         }
       ]);
       const mockKanka = {
-        batchCreateRelations: vi.fn(() => Promise.resolve([
-          { id: 1 },
-          { _error: 'Target not found', relation: 'possesses' }
-        ]))
+        batchCreateRelations: vi.fn(() =>
+          Promise.resolve([{ id: 1 }, { _error: 'Target not found', relation: 'possesses' }])
+        )
       };
       vi.spyOn(preview, '_batchedRender').mockImplementation(() => {});
 
@@ -1884,12 +1892,14 @@ describe('EntityPreview', () => {
     });
 
     it('should skip relationships where only source entity exists', async () => {
-      preview.setRelationships([{
-        sourceEntity: 'Gandalf',
-        targetEntity: 'NonExistent',
-        relationType: 'ally',
-        confidence: 8
-      }]);
+      preview.setRelationships([
+        {
+          sourceEntity: 'Gandalf',
+          targetEntity: 'NonExistent',
+          relationType: 'ally',
+          confidence: 8
+        }
+      ]);
       const mockKanka = {
         batchCreateRelations: vi.fn(() => Promise.resolve([]))
       };

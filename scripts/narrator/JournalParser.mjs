@@ -13,7 +13,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Represents a parsed journal page with extracted content
- * @typedef {Object} ParsedPage
+ * @typedef {object} ParsedPage
  * @property {string} id - The unique page identifier
  * @property {string} name - The page name/title
  * @property {string} text - The extracted plain text content (HTML stripped)
@@ -23,7 +23,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Represents a parsed journal with all its content
- * @typedef {Object} ParsedJournal
+ * @typedef {object} ParsedJournal
  * @property {string} id - The journal identifier
  * @property {string} name - The journal name/title
  * @property {ParsedPage[]} pages - Array of parsed pages
@@ -33,7 +33,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Represents a chapter/section in the hierarchical structure
- * @typedef {Object} ChapterNode
+ * @typedef {object} ChapterNode
  * @property {string} id - Unique identifier for this node
  * @property {string} title - The heading/section title
  * @property {number} level - Heading level (1-6 for h1-h6, 0 for page-level)
@@ -47,7 +47,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Represents the complete chapter structure of a journal
- * @typedef {Object} ChapterStructure
+ * @typedef {object} ChapterStructure
  * @property {string} journalId - The journal ID
  * @property {string} journalName - The journal name
  * @property {ChapterNode[]} chapters - Top-level chapters (pages or h1 headings)
@@ -57,9 +57,9 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Represents a text chunk suitable for embedding
- * @typedef {Object} TextChunk
+ * @typedef {object} TextChunk
  * @property {string} text - The chunk text content
- * @property {Object} metadata - Metadata about the chunk source
+ * @property {object} metadata - Metadata about the chunk source
  * @property {string} metadata.source - Source type ('journal')
  * @property {string} metadata.journalId - The journal ID
  * @property {string} metadata.journalName - The journal name
@@ -73,7 +73,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Options for chunk extraction
- * @typedef {Object} ChunkOptions
+ * @typedef {object} ChunkOptions
  * @property {number} [chunkSize=500] - Target characters per chunk
  * @property {number} [overlap=100] - Overlap characters between chunks
  */
@@ -152,8 +152,8 @@ export class JournalParser {
     const journal = game.journal.get(journalId);
     if (!journal) {
       throw new Error(
-        game.i18n?.format('VOXCHRONICLE.Errors.JournalNotFound', { id: journalId })
-          ?? `Journal not found: ${journalId}`
+        game.i18n?.format('VOXCHRONICLE.Errors.JournalNotFound', { id: journalId }) ??
+          `Journal not found: ${journalId}`
       );
     }
 
@@ -190,7 +190,9 @@ export class JournalParser {
     // Build keyword index for the journal
     this._buildKeywordIndex(journalId, pages);
 
-    this._logger.debug(`parseJournal() exit — ${pages.length} pages, ${totalCharacters} chars from "${journal.name}", ${(performance.now() - _parseStart).toFixed(1)}ms`);
+    this._logger.debug(
+      `parseJournal() exit — ${pages.length} pages, ${totalCharacters} chars from "${journal.name}", ${(performance.now() - _parseStart).toFixed(1)}ms`
+    );
 
     return parsedJournal;
   }
@@ -216,14 +218,16 @@ export class JournalParser {
         const parsed = await this.parseJournal(journal.id);
         results.push(parsed);
         // Yield to the event loop between journals to prevent main thread freeze
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
       } catch (error) {
         this._logger.warn(`Failed to parse journal "${journal.name}":`, error);
       }
     }
 
     const totalPages = results.reduce((sum, j) => sum + j.pages.length, 0);
-    this._logger.debug(`parseAll() exit — ${results.length} journals, ${totalPages} pages total, ${(performance.now() - _startTime).toFixed(1)}ms`);
+    this._logger.debug(
+      `parseAll() exit — ${results.length} journals, ${totalPages} pages total, ${(performance.now() - _startTime).toFixed(1)}ms`
+    );
     return results;
   }
 
@@ -263,7 +267,7 @@ export class JournalParser {
       }
     }
 
-    return cached.pages.filter(page => matchingPageIds.has(page.id));
+    return cached.pages.filter((page) => matchingPageIds.has(page.id));
   }
 
   /**
@@ -481,13 +485,34 @@ export class JournalParser {
     // Keywords that indicate NPC descriptions (Italian and English)
     const npcIndicators = [
       // Italian
-      'personaggio', 'png', 'npc', 'alleato', 'nemico', 'mercante',
-      'locandiere', 'fabbro', 'mago', 'guerriero', 'chierico',
-      'personalità', 'carattere', 'temperamento', 'atteggiamento',
+      'personaggio',
+      'png',
+      'npc',
+      'alleato',
+      'nemico',
+      'mercante',
+      'locandiere',
+      'fabbro',
+      'mago',
+      'guerriero',
+      'chierico',
+      'personalità',
+      'carattere',
+      'temperamento',
+      'atteggiamento',
       // English
-      'character', 'ally', 'enemy', 'merchant', 'innkeeper',
-      'blacksmith', 'wizard', 'warrior', 'cleric',
-      'personality', 'temperament', 'attitude'
+      'character',
+      'ally',
+      'enemy',
+      'merchant',
+      'innkeeper',
+      'blacksmith',
+      'wizard',
+      'warrior',
+      'cleric',
+      'personality',
+      'temperament',
+      'attitude'
     ];
 
     const npcProfiles = [];
@@ -518,7 +543,7 @@ export class JournalParser {
           if (sentence.toLowerCase().includes(nameLower)) {
             const trimmedSentence = sentence.trim();
 
-            const hasIndicator = npcIndicators.some(indicator =>
+            const hasIndicator = npcIndicators.some((indicator) =>
               sentence.toLowerCase().includes(indicator)
             );
 
@@ -528,19 +553,35 @@ export class JournalParser {
               if (!profile.description) {
                 profile.description = trimmedSentence;
               } else {
-                profile.description += ' ' + trimmedSentence;
+                profile.description += ` ${  trimmedSentence}`;
               }
             }
 
             // Extract personality traits
             const personalityKeywords = [
-              'personalità', 'carattere', 'temperamento', 'atteggiamento',
-              'personality', 'character', 'temperament', 'attitude',
-              'gentile', 'brusco', 'amichevole', 'ostile', 'timido', 'coraggioso',
-              'kind', 'gruff', 'friendly', 'hostile', 'shy', 'brave'
+              'personalità',
+              'carattere',
+              'temperamento',
+              'atteggiamento',
+              'personality',
+              'character',
+              'temperament',
+              'attitude',
+              'gentile',
+              'brusco',
+              'amichevole',
+              'ostile',
+              'timido',
+              'coraggioso',
+              'kind',
+              'gruff',
+              'friendly',
+              'hostile',
+              'shy',
+              'brave'
             ];
 
-            const hasPersonalityKeyword = personalityKeywords.some(keyword =>
+            const hasPersonalityKeyword = personalityKeywords.some((keyword) =>
               sentence.toLowerCase().includes(keyword)
             );
 
@@ -548,7 +589,7 @@ export class JournalParser {
               if (!profile.personality) {
                 profile.personality = trimmedSentence;
               } else {
-                profile.personality += ' ' + trimmedSentence;
+                profile.personality += ` ${  trimmedSentence}`;
               }
             }
           }
@@ -558,10 +599,10 @@ export class JournalParser {
       // Only include NPCs that have some context found
       if (contextFound && profile.pages.length > 0) {
         if (profile.description.length > 500) {
-          profile.description = profile.description.substring(0, 500) + '...';
+          profile.description = `${profile.description.substring(0, 500)  }...`;
         }
         if (profile.personality.length > 300) {
-          profile.personality = profile.personality.substring(0, 300) + '...';
+          profile.personality = `${profile.personality.substring(0, 300)  }...`;
         }
         npcProfiles.push(profile);
       }
@@ -646,9 +687,7 @@ export class JournalParser {
       return '';
     }
 
-    return cached.pages
-      .map(page => `## ${page.name}\n${page.text}`)
-      .join('\n\n');
+    return cached.pages.map((page) => `## ${page.name}\n${page.text}`).join('\n\n');
   }
 
   /**
@@ -737,7 +776,7 @@ export class JournalParser {
 
     this._logger.debug(
       `getChunksForEmbedding() exit — ${allChunks.length} chunks from "${parsedJournal.name}" ` +
-      `(${parsedJournal.pages.length} pages, chunkSize=${chunkSize}, overlap=${overlap}), ${(performance.now() - _chunkStart).toFixed(1)}ms`
+        `(${parsedJournal.pages.length} pages, chunkSize=${chunkSize}, overlap=${overlap}), ${(performance.now() - _chunkStart).toFixed(1)}ms`
     );
 
     return allChunks;
@@ -758,13 +797,15 @@ export class JournalParser {
         const chunks = await this.getChunksForEmbedding(journalId, options);
         allChunks.push(...chunks);
         // Yield to the event loop between journals
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
       } catch (error) {
         this._logger.warn(`Failed to chunk journal "${journalId}":`, error);
       }
     }
 
-    this._logger.debug(`Extracted ${allChunks.length} chunks from ${this._cachedContent.size} journals`);
+    this._logger.debug(
+      `Extracted ${allChunks.length} chunks from ${this._cachedContent.size} journals`
+    );
 
     return allChunks;
   }
@@ -821,7 +862,7 @@ export class JournalParser {
       const words = page.text
         .toLowerCase()
         .split(/\s+/)
-        .filter(word => word.length >= 3);
+        .filter((word) => word.length >= 3);
       const uniqueWords = new Set(words);
 
       for (const word of uniqueWords) {
@@ -915,21 +956,97 @@ export class JournalParser {
     // Common words to exclude (Italian and English)
     const commonWords = new Set([
       // Italian articles, prepositions, conjunctions
-      'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una',
-      'di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra',
-      'e', 'o', 'ma', 'però', 'quindi', 'allora', 'quando', 'se',
-      'che', 'chi', 'cui', 'quale', 'quanto',
+      'il',
+      'lo',
+      'la',
+      'i',
+      'gli',
+      'le',
+      'un',
+      'uno',
+      'una',
+      'di',
+      'a',
+      'da',
+      'in',
+      'con',
+      'su',
+      'per',
+      'tra',
+      'fra',
+      'e',
+      'o',
+      'ma',
+      'però',
+      'quindi',
+      'allora',
+      'quando',
+      'se',
+      'che',
+      'chi',
+      'cui',
+      'quale',
+      'quanto',
       // Italian common words
-      'non', 'si', 'anche', 'come', 'dove', 'dopo', 'prima',
-      'molto', 'tutto', 'ogni', 'altro', 'stesso', 'sempre',
+      'non',
+      'si',
+      'anche',
+      'come',
+      'dove',
+      'dopo',
+      'prima',
+      'molto',
+      'tutto',
+      'ogni',
+      'altro',
+      'stesso',
+      'sempre',
       // English articles, prepositions, conjunctions
-      'the', 'a', 'an', 'of', 'to', 'in', 'for', 'on', 'with',
-      'at', 'by', 'from', 'up', 'about', 'into', 'through',
-      'and', 'or', 'but', 'if', 'then', 'when', 'where',
-      'that', 'this', 'these', 'those', 'which', 'who', 'what',
+      'the',
+      'a',
+      'an',
+      'of',
+      'to',
+      'in',
+      'for',
+      'on',
+      'with',
+      'at',
+      'by',
+      'from',
+      'up',
+      'about',
+      'into',
+      'through',
+      'and',
+      'or',
+      'but',
+      'if',
+      'then',
+      'when',
+      'where',
+      'that',
+      'this',
+      'these',
+      'those',
+      'which',
+      'who',
+      'what',
       // English common words
-      'not', 'all', 'can', 'will', 'just', 'should', 'now',
-      'there', 'their', 'they', 'have', 'has', 'had', 'been'
+      'not',
+      'all',
+      'can',
+      'will',
+      'just',
+      'should',
+      'now',
+      'there',
+      'their',
+      'they',
+      'have',
+      'has',
+      'had',
+      'been'
     ]);
 
     const properNouns = new Map(); // Use Map to track frequency
@@ -950,7 +1067,10 @@ export class JournalParser {
           // Check if word starts with capital letter (including accented)
           if (/^[A-Z\u00C0-\u00D6\u00D8-\u00DE]/.test(word)) {
             // Clean word (remove punctuation)
-            const cleanWord = word.replace(/[^a-zA-Z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'-]/g, '');
+            const cleanWord = word.replace(
+              /[^a-zA-Z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF'-]/g,
+              ''
+            );
 
             // Filter out short words and common words
             if (cleanWord.length >= 3 && !commonWords.has(cleanWord.toLowerCase())) {
@@ -1198,7 +1318,7 @@ export class JournalParser {
   _extractSearchTermsFromSceneName(sceneName) {
     const terms = [];
 
-    let normalized = sceneName.trim();
+    const normalized = sceneName.trim();
 
     // Common separators in scene names
     const separators = [':', '-', '\u2013', '\u2014', '|', '/'];
@@ -1232,20 +1352,28 @@ export class JournalParser {
     for (const sep of separators) {
       const newParts = [];
       for (const part of parts) {
-        newParts.push(...part.split(sep).map(p => p.trim()).filter(p => p.length > 0));
+        newParts.push(
+          ...part
+            .split(sep)
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0)
+        );
       }
       parts = newParts;
     }
 
     // Process each part
     for (const part of parts) {
-      const isJustPrefix = prefixPatterns.some(pattern => {
+      const isJustPrefix = prefixPatterns.some((pattern) => {
         const match = part.match(pattern);
         return match && match[0].length === part.length;
       });
 
       if (!isJustPrefix && part.length >= 2) {
-        const cleanPart = part.replace(/^[^\w\s]+|[^\w\s]+$/g, '').trim().toLowerCase();
+        const cleanPart = part
+          .replace(/^[^\w\s]+|[^\w\s]+$/g, '')
+          .trim()
+          .toLowerCase();
         if (cleanPart.length >= 2 && !terms.includes(cleanPart)) {
           terms.push(cleanPart);
         }
@@ -1253,7 +1381,11 @@ export class JournalParser {
     }
 
     // Also add the full scene name (normalized) for exact matching
-    const fullNormalized = normalized.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const fullNormalized = normalized
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (fullNormalized.length >= 2 && !terms.includes(fullNormalized)) {
       terms.push(fullNormalized);
     }
@@ -1275,25 +1407,33 @@ export class JournalParser {
       return 0;
     }
 
-    const normalizedTitle = chapterTitle.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
-    const titleWords = normalizedTitle.split(/\s+/).filter(w => w.length >= 2);
+    const normalizedTitle = chapterTitle
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const titleWords = normalizedTitle.split(/\s+/).filter((w) => w.length >= 2);
 
     let totalScore = 0;
     let matchedTerms = 0;
 
     // Check for exact match (highest priority)
-    const normalizedSceneName = originalSceneName.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalizedSceneName = originalSceneName
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (normalizedTitle === normalizedSceneName) {
       return 1.0;
     }
 
     // Check each search term
     for (const term of searchTerms) {
-      const termWords = term.split(/\s+/).filter(w => w.length >= 2);
+      const termWords = term.split(/\s+/).filter((w) => w.length >= 2);
 
       // Check for exact term match in title
       if (normalizedTitle.includes(term)) {
-        const matchWeight = Math.min(1.0, term.length / normalizedTitle.length * 2);
+        const matchWeight = Math.min(1.0, (term.length / normalizedTitle.length) * 2);
         totalScore += 0.8 * matchWeight;
         matchedTerms++;
         continue;
@@ -1379,11 +1519,13 @@ export class JournalParser {
 
     // If text is shorter than chunk size, return as single chunk
     if (normalizedText.length <= chunkSize) {
-      return [{
-        text: normalizedText,
-        startPos: 0,
-        endPos: normalizedText.length
-      }];
+      return [
+        {
+          text: normalizedText,
+          startPos: 0,
+          endPos: normalizedText.length
+        }
+      ];
     }
 
     const chunks = [];
@@ -1394,7 +1536,7 @@ export class JournalParser {
       const targetEnd = Math.min(startPos + chunkSize, normalizedText.length);
 
       // Try to find a sentence boundary near the target end
-      let actualEnd = this._findSentenceBoundary(normalizedText, startPos, targetEnd, chunkSize);
+      const actualEnd = this._findSentenceBoundary(normalizedText, startPos, targetEnd, chunkSize);
 
       // Extract the chunk text
       const chunkText = normalizedText.substring(startPos, actualEnd).trim();

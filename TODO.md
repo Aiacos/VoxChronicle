@@ -1,6 +1,49 @@
 # TODO - VoxChronicle
 
-Aggiornato il 2026-03-14 (v4.0.0 release — 8 epic completati).
+Aggiornato il 2026-03-14 (v4.0.1 session audit).
+
+## V4.0.1 SESSION AUDIT — 2026-03-14
+
+Security scan, code review, predictive analysis, and test suite validation.
+
+### HIGH — Bugs
+
+- [x] `module.json:62` — Download URL points to v4.0.0 but version is 4.0.1; Foundry installs stale ZIP — fixed
+- [x] `package.json:33-36` — Repository URL still says `your-username` instead of `Aiacos` — fixed
+- [x] `package.json:53` — Foundry minimum compatibility said "11" but module.json says "13" — fixed
+
+### HIGH — Dependency Vulnerabilities (dev-only)
+
+- [x] `flatted` — Unbounded recursion DoS (GHSA-25h7-pfq9-p65f) — fixed via npm audit fix
+- [x] `minimatch` — ReDoS via wildcards (GHSA-3ppc-4f35-3m26) — fixed via npm audit fix
+- [x] `rollup` — Arbitrary file write via path traversal (GHSA-mw96-cpmx-2vgc) — fixed via npm audit fix
+- [ ] `esbuild/vite/vitest` chain — 7 moderate vulnerabilities, requires vitest v4 upgrade (breaking)
+
+### MEDIUM — Complexity Hotspots (from predictive analysis)
+
+- [ ] `SessionOrchestrator.mjs` — 2218 LOC, 24 catch blocks; candidate for decomposition
+- [ ] `AIAssistant.mjs` — 2027 LOC; god object, known since v3.0.4 audit
+- [ ] `MainPanel.mjs` — 1758 LOC; `_rulesCards`, `_rulesDismissTimeouts`, `_lastAISuggestions` arrays grow unbounded during long sessions
+
+### MEDIUM — Existing (carried forward)
+
+- [ ] `KankaClient.mjs:370` — Error messages from Kanka API not sanitized before use in exceptions
+- [ ] `VoxChronicle.mjs:175` — reinitialize() failure only logged, user not notified
+
+### LOW — CSS Namespace (carried forward from v3.2.5)
+
+- [ ] `speaker-labeling.hbs` — 21 CSS classes without `vox-chronicle-` prefix
+- [ ] `entity-preview.hbs` — 57 CSS classes without `vox-chronicle-` prefix
+- [ ] `relationship-graph.hbs` — 24 CSS classes without `vox-chronicle-` prefix
+- [ ] `vocabulary-manager.hbs` — 33 CSS classes without `vox-chronicle-` prefix
+- [ ] `analytics-tab.hbs` — 48 CSS classes without `vox-chronicle-` prefix
+- [ ] `journal-picker.hbs` — 31 CSS classes without `vox-chronicle-` prefix
+
+### LOW — Performance (carried forward)
+
+- [ ] `RelationshipGraph.mjs:295` — O(n*m) per-type filter; replace with single-pass count
+
+---
 
 ## V3.2.5 AUDIT — 2026-02-27
 

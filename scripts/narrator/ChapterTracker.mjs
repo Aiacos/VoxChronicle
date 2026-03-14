@@ -12,7 +12,7 @@ import { Logger } from '../utils/Logger.mjs';
 
 /**
  * Represents chapter information with navigation context
- * @typedef {Object} ChapterInfo
+ * @typedef {object} ChapterInfo
  * @property {string} id - Unique identifier for this chapter
  * @property {string} title - The chapter title
  * @property {number} level - Heading level (0 for page, 1-6 for h1-h6, 7 for section)
@@ -27,7 +27,7 @@ import { Logger } from '../utils/Logger.mjs';
 
 /**
  * Represents a subchapter/subsection for navigation
- * @typedef {Object} SubchapterInfo
+ * @typedef {object} SubchapterInfo
  * @property {string} id - Unique identifier for this subchapter
  * @property {string} title - The subchapter title
  * @property {number} level - Heading level relative to parent
@@ -37,7 +37,7 @@ import { Logger } from '../utils/Logger.mjs';
 
 /**
  * Represents the source that determined the current chapter
- * @typedef {Object} ChapterSource
+ * @typedef {object} ChapterSource
  * @property {string} type - Source type: 'scene', 'manual', 'auto', 'none'
  * @property {string} [sceneId] - The scene ID if source is 'scene'
  * @property {string} [sceneName] - The scene name if source is 'scene'
@@ -52,8 +52,8 @@ import { Logger } from '../utils/Logger.mjs';
 export class ChapterTracker {
   /**
    * Creates a new ChapterTracker instance
-   * @param {Object} [options={}] - Configuration options
-   * @param {Object} [options.journalParser=null] - JournalParser instance for chapter structure
+   * @param {object} [options={}] - Configuration options
+   * @param {object} [options.journalParser=null] - JournalParser instance for chapter structure
    */
   constructor(options = {}) {
     /**
@@ -65,7 +65,7 @@ export class ChapterTracker {
 
     /**
      * Reference to JournalParser for structure extraction
-     * @type {Object|null}
+     * @type {object | null}
      * @private
      */
     this._journalParser = options.journalParser || null;
@@ -138,7 +138,7 @@ export class ChapterTracker {
 
   /**
    * Sets the JournalParser instance to use for structure extraction
-   * @param {Object} journalParser - JournalParser instance
+   * @param {object} journalParser - JournalParser instance
    */
   setJournalParser(journalParser) {
     this._journalParser = journalParser;
@@ -180,7 +180,7 @@ export class ChapterTracker {
   /**
    * Updates current chapter position based on the active Foundry scene.
    * Uses scene name and linked journal to deduce the chapter.
-   * @param {Object} scene - The active Foundry VTT scene object
+   * @param {object} scene - The active Foundry VTT scene object
    * @returns {ChapterInfo|null} The detected chapter or null if not found
    */
   updateFromScene(scene) {
@@ -256,7 +256,7 @@ export class ChapterTracker {
 
     // Get flat chapter list to find the chapter
     const flatList = this._journalParser.getFlatChapterList(this._selectedJournalId);
-    const targetChapter = flatList.find(c => c.id === chapterId);
+    const targetChapter = flatList.find((c) => c.id === chapterId);
 
     if (!targetChapter) {
       this._logger.warn(`Chapter not found: ${chapterId}`);
@@ -336,7 +336,7 @@ export class ChapterTracker {
     }
 
     const flatList = this._journalParser.getFlatChapterList(this._selectedJournalId);
-    const currentIndex = flatList.findIndex(c => c.id === this._currentChapter.id);
+    const currentIndex = flatList.findIndex((c) => c.id === this._currentChapter.id);
 
     if (currentIndex === -1) {
       return { previous: null, next: null };
@@ -384,7 +384,9 @@ export class ChapterTracker {
       return '';
     }
 
-    this._logger.debug(`getCurrentChapterContentForAI() — chapter="${this._currentChapter.title}", maxLength=${maxLength}`);
+    this._logger.debug(
+      `getCurrentChapterContentForAI() — chapter="${this._currentChapter.title}", maxLength=${maxLength}`
+    );
 
     const parts = [];
 
@@ -397,7 +399,7 @@ export class ChapterTracker {
     if (this._currentChapter.content) {
       let content = this._currentChapter.content;
       if (content.length > maxLength) {
-        content = content.substring(0, maxLength) + '...';
+        content = `${content.substring(0, maxLength)  }...`;
       }
       parts.push('CONTENT:');
       parts.push(content);
@@ -501,7 +503,7 @@ export class ChapterTracker {
 
   /**
    * Detects chapter from scene properties
-   * @param {Object} scene - The Foundry scene object
+   * @param {object} scene - The Foundry scene object
    * @returns {ChapterInfo|null} Detected chapter or null
    * @private
    */
@@ -550,7 +552,7 @@ export class ChapterTracker {
     }
 
     const flatList = this._journalParser.getFlatChapterList(journalId);
-    const matchingChapter = flatList.find(c => c.pageId === pageId);
+    const matchingChapter = flatList.find((c) => c.pageId === pageId);
 
     if (matchingChapter) {
       return this._convertFlatNodeToChapterInfo(matchingChapter, journalId);
@@ -575,7 +577,7 @@ export class ChapterTracker {
       .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
-      .filter(word => word.length >= 3);
+      .filter((word) => word.length >= 3);
 
     if (keywords.length === 0) {
       return null;
@@ -601,7 +603,7 @@ export class ChapterTracker {
       // Fallback: get chapter structure and find matching page node
       const structure = this._journalParser.extractChapterStructure(this._selectedJournalId);
       if (structure) {
-        const pageNode = structure.chapters.find(c => c.pageId === pages[0].id);
+        const pageNode = structure.chapters.find((c) => c.pageId === pages[0].id);
         if (pageNode) {
           return this._convertNodeToChapterInfo(pageNode, this._selectedJournalId);
         }
@@ -617,7 +619,7 @@ export class ChapterTracker {
 
   /**
    * Converts a ChapterNode to ChapterInfo format
-   * @param {Object} node - The chapter node from JournalParser
+   * @param {object} node - The chapter node from JournalParser
    * @param {string} journalId - The journal ID
    * @returns {ChapterInfo} The chapter info object
    * @private
@@ -641,7 +643,7 @@ export class ChapterTracker {
 
   /**
    * Converts a flat chapter list node to ChapterInfo format
-   * @param {Object} node - The flat node from getFlatChapterList
+   * @param {object} node - The flat node from getFlatChapterList
    * @param {string} journalId - The journal ID
    * @returns {ChapterInfo} The chapter info object
    * @private
@@ -665,7 +667,7 @@ export class ChapterTracker {
 
   /**
    * Builds the hierarchical path string for a chapter
-   * @param {Object} node - The chapter node
+   * @param {object} node - The chapter node
    * @returns {string} The path string (e.g., "Chapter 1 > The Tavern")
    * @private
    */
@@ -695,7 +697,7 @@ export class ChapterTracker {
    * Sets the current chapter and updates history
    * @param {ChapterInfo} chapter - The chapter to set
    * @param {string} sourceType - The source type ('scene', 'manual', 'auto')
-   * @param {Object} [sourceData={}] - Additional source data
+   * @param {object} [sourceData={}] - Additional source data
    * @private
    */
   _setCurrentChapter(chapter, sourceType, sourceData = {}) {
@@ -726,7 +728,9 @@ export class ChapterTracker {
     // Extract subchapters for navigation
     this._updateSubchapters();
 
-    this._logger.debug(`Chapter changed: "${prevTitle}" -> "${chapter.title}" (source=${sourceType})`);
+    this._logger.debug(
+      `Chapter changed: "${prevTitle}" -> "${chapter.title}" (source=${sourceType})`
+    );
   }
 
   /**
@@ -768,9 +772,9 @@ export class ChapterTracker {
 
   /**
    * Finds a node by ID in the chapter hierarchy
-   * @param {Object[]} nodes - Array of chapter nodes
+   * @param {object[]} nodes - Array of chapter nodes
    * @param {string} nodeId - The node ID to find
-   * @returns {Object|null} The found node or null
+   * @returns {object | null} The found node or null
    * @private
    */
   _findNodeById(nodes, nodeId) {

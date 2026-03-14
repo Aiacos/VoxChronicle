@@ -134,9 +134,7 @@ describe('Settings', () => {
     it('should register aiResponseLanguage with language choices and default it', () => {
       Settings.registerSettings();
 
-      const call = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'aiResponseLanguage'
-      );
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'aiResponseLanguage');
       expect(call).toBeDefined();
       expect(call[2].choices).toBeDefined();
       expect(call[2].choices.it).toBe('Italiano');
@@ -148,9 +146,7 @@ describe('Settings', () => {
     it('should register transcriptionLanguage with language choices', () => {
       Settings.registerSettings();
 
-      const call = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'transcriptionLanguage'
-      );
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'transcriptionLanguage');
       expect(call).toBeDefined();
       expect(call[2].choices).toBeDefined();
       expect(call[2].choices).toHaveProperty('');
@@ -226,9 +222,7 @@ describe('Settings', () => {
       expect(echoCancelCall[2].default).toBe(true);
       expect(echoCancelCall[2].scope).toBe('client');
 
-      const noiseCall = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'noiseSuppression'
-      );
+      const noiseCall = game.settings.register.mock.calls.find((c) => c[1] === 'noiseSuppression');
       expect(noiseCall[2].type).toBe(Boolean);
       expect(noiseCall[2].default).toBe(true);
       expect(noiseCall[2].scope).toBe('client');
@@ -250,9 +244,7 @@ describe('Settings', () => {
     it('should register maxImagesPerSession with range 0-10', () => {
       Settings.registerSettings();
 
-      const call = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'maxImagesPerSession'
-      );
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'maxImagesPerSession');
       expect(call).toBeDefined();
       expect(call[2].type).toBe(Number);
       expect(call[2].range).toEqual({ min: 0, max: 10, step: 1 });
@@ -314,9 +306,7 @@ describe('Settings', () => {
     it('should register session storage settings as hidden', () => {
       Settings.registerSettings();
 
-      const pending = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'pendingSessions'
-      );
+      const pending = game.settings.register.mock.calls.find((c) => c[1] === 'pendingSessions');
       expect(pending[2].config).toBe(false);
       expect(pending[2].type).toBe(Array);
       expect(pending[2].default).toEqual([]);
@@ -337,9 +327,7 @@ describe('Settings', () => {
     it('should register offTrackSensitivity with low/medium/high choices', () => {
       Settings.registerSettings();
 
-      const call = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'offTrackSensitivity'
-      );
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'offTrackSensitivity');
       expect(call).toBeDefined();
       expect(call[2].choices).toEqual({
         low: 'VOXCHRONICLE.Settings.SensitivityLow',
@@ -394,16 +382,12 @@ describe('Settings', () => {
       expect(ragProvider[2].choices).toHaveProperty('openai-file-search');
       expect(ragProvider[2].default).toBe('openai-file-search');
 
-      const ragMaxResults = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'ragMaxResults'
-      );
+      const ragMaxResults = game.settings.register.mock.calls.find((c) => c[1] === 'ragMaxResults');
       expect(ragMaxResults[2].type).toBe(Number);
       expect(ragMaxResults[2].range).toEqual({ min: 1, max: 20, step: 1 });
       expect(ragMaxResults[2].default).toBe(5);
 
-      const ragAutoIndex = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'ragAutoIndex'
-      );
+      const ragAutoIndex = game.settings.register.mock.calls.find((c) => c[1] === 'ragAutoIndex');
       expect(ragAutoIndex[2].type).toBe(Boolean);
       expect(ragAutoIndex[2].default).toBe(true);
 
@@ -417,9 +401,7 @@ describe('Settings', () => {
     it('should register ragVectorStoreId as hidden internal setting', () => {
       Settings.registerSettings();
 
-      const call = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'ragVectorStoreId'
-      );
+      const call = game.settings.register.mock.calls.find((c) => c[1] === 'ragVectorStoreId');
       expect(call).toBeDefined();
       expect(call[2].config).toBe(false);
       expect(call[2].type).toBe(String);
@@ -429,9 +411,7 @@ describe('Settings', () => {
     it('should register API retry settings with correct ranges', () => {
       Settings.registerSettings();
 
-      const enabled = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'apiRetryEnabled'
-      );
+      const enabled = game.settings.register.mock.calls.find((c) => c[1] === 'apiRetryEnabled');
       expect(enabled[2].type).toBe(Boolean);
       expect(enabled[2].default).toBe(true);
 
@@ -441,21 +421,15 @@ describe('Settings', () => {
       expect(maxAttempts[2].range).toEqual({ min: 0, max: 10, step: 1 });
       expect(maxAttempts[2].default).toBe(3);
 
-      const baseDelay = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'apiRetryBaseDelay'
-      );
+      const baseDelay = game.settings.register.mock.calls.find((c) => c[1] === 'apiRetryBaseDelay');
       expect(baseDelay[2].range).toEqual({ min: 500, max: 10000, step: 500 });
       expect(baseDelay[2].default).toBe(1000);
 
-      const maxDelay = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'apiRetryMaxDelay'
-      );
+      const maxDelay = game.settings.register.mock.calls.find((c) => c[1] === 'apiRetryMaxDelay');
       expect(maxDelay[2].range).toEqual({ min: 5000, max: 120000, step: 5000 });
       expect(maxDelay[2].default).toBe(60000);
 
-      const queueSize = game.settings.register.mock.calls.find(
-        (c) => c[1] === 'apiQueueMaxSize'
-      );
+      const queueSize = game.settings.register.mock.calls.find((c) => c[1] === 'apiQueueMaxSize');
       expect(queueSize[2].range).toEqual({ min: 5, max: 100, step: 5 });
       expect(queueSize[2].default).toBe(100);
     });
@@ -1070,11 +1044,7 @@ describe('Settings', () => {
     it('should delegate to Settings.set with ragVectorStoreId key', async () => {
       await Settings.setRAGVectorStoreId('vs_abc123');
 
-      expect(game.settings.set).toHaveBeenCalledWith(
-        MODULE_ID,
-        'ragVectorStoreId',
-        'vs_abc123'
-      );
+      expect(game.settings.set).toHaveBeenCalledWith(MODULE_ID, 'ragVectorStoreId', 'vs_abc123');
     });
 
     it('should store empty string when called with falsy value', async () => {
@@ -1179,10 +1149,9 @@ describe('Settings', () => {
       Settings._onApiKeyChange('openai');
 
       expect(ui.notifications.info).toHaveBeenCalled();
-      expect(game.i18n.format).toHaveBeenCalledWith(
-        'VOXCHRONICLE.Notifications.ApiKeyUpdated',
-        { service: 'OpenAI' }
-      );
+      expect(game.i18n.format).toHaveBeenCalledWith('VOXCHRONICLE.Notifications.ApiKeyUpdated', {
+        service: 'OpenAI'
+      });
     });
 
     it('should show info notification for kanka key change when game is ready', () => {
@@ -1191,10 +1160,9 @@ describe('Settings', () => {
       Settings._onApiKeyChange('kanka');
 
       expect(ui.notifications.info).toHaveBeenCalled();
-      expect(game.i18n.format).toHaveBeenCalledWith(
-        'VOXCHRONICLE.Notifications.ApiKeyUpdated',
-        { service: 'Kanka' }
-      );
+      expect(game.i18n.format).toHaveBeenCalledWith('VOXCHRONICLE.Notifications.ApiKeyUpdated', {
+        service: 'Kanka'
+      });
     });
 
     it('should not show notification when game is not ready', () => {
@@ -1221,10 +1189,9 @@ describe('Settings', () => {
 
       Settings._onApiKeyChange('openai');
 
-      expect(game.i18n.format).toHaveBeenCalledWith(
-        'VOXCHRONICLE.Notifications.ApiKeyUpdated',
-        { service: 'OpenAI' }
-      );
+      expect(game.i18n.format).toHaveBeenCalledWith('VOXCHRONICLE.Notifications.ApiKeyUpdated', {
+        service: 'OpenAI'
+      });
       expect(ui.notifications.info).toHaveBeenCalledWith('Translated: OpenAI key updated');
     });
 
@@ -1250,7 +1217,7 @@ describe('Settings', () => {
       Settings._onApiKeyChange('openai');
 
       // Give the async import().then().catch() chain time to settle
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // If we got here without error, the catch block handled it
     });
@@ -1475,7 +1442,9 @@ describe('Settings', () => {
       Settings._validateServerUrl('ftp://evil.com', 'whisperBackendUrl');
       expect(ui.notifications.error).toHaveBeenCalled();
       expect(game.settings.set).toHaveBeenCalledWith(
-        MODULE_ID, 'whisperBackendUrl', 'http://localhost:8080'
+        MODULE_ID,
+        'whisperBackendUrl',
+        'http://localhost:8080'
       );
     });
 
@@ -1483,7 +1452,9 @@ describe('Settings', () => {
       Settings._validateServerUrl('not a url at all', 'ragflowBaseUrl');
       expect(ui.notifications.warn).toHaveBeenCalled();
       expect(game.settings.set).toHaveBeenCalledWith(
-        MODULE_ID, 'ragflowBaseUrl', 'http://localhost:9380'
+        MODULE_ID,
+        'ragflowBaseUrl',
+        'http://localhost:9380'
       );
     });
 

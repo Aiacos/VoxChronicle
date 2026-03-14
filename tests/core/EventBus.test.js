@@ -7,22 +7,22 @@ vi.mock('../../scripts/utils/Logger.mjs', () => {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn(),
+    error: vi.fn()
   };
   return {
     Logger: {
       createChild: vi.fn(() => childLogger),
       isDebugMode: vi.fn(() => false),
-      _childInstance: childLogger,
-    },
+      _childInstance: childLogger
+    }
   };
 });
 
 // Mock game global
 globalThis.game = {
   i18n: {
-    localize: vi.fn((key) => key),
-  },
+    localize: vi.fn((key) => key)
+  }
 };
 
 describe('EventBus', () => {
@@ -147,7 +147,9 @@ describe('EventBus', () => {
     });
 
     it('should not block other subscribers when one throws', () => {
-      const cb1 = vi.fn(() => { throw new Error('boom'); });
+      const cb1 = vi.fn(() => {
+        throw new Error('boom');
+      });
       const cb2 = vi.fn();
       const cb3 = vi.fn();
       bus.on('ai:suggestionReady', cb1);
@@ -239,8 +241,14 @@ describe('EventBus', () => {
 
     it('should chain multiple middleware in order', () => {
       const order = [];
-      bus.use((ch, ev, p, next) => { order.push('mw1'); next(); });
-      bus.use((ch, ev, p, next) => { order.push('mw2'); next(); });
+      bus.use((ch, ev, p, next) => {
+        order.push('mw1');
+        next();
+      });
+      bus.use((ch, ev, p, next) => {
+        order.push('mw2');
+        next();
+      });
       bus.on('ai:suggestionReady', () => order.push('subscriber'));
 
       bus.emit('ai:suggestionReady', { data: 1 });
@@ -250,7 +258,9 @@ describe('EventBus', () => {
 
     it('should not block subscribers when middleware throws', () => {
       const callback = vi.fn();
-      bus.use(() => { throw new Error('middleware crash'); });
+      bus.use(() => {
+        throw new Error('middleware crash');
+      });
       bus.on('ai:suggestionReady', callback);
 
       bus.emit('ai:suggestionReady', { data: 1 });
@@ -260,8 +270,14 @@ describe('EventBus', () => {
 
     it('should continue to next middleware when one throws (error isolation)', () => {
       const order = [];
-      bus.use(() => { order.push('mw1-throw'); throw new Error('mw1 crash'); });
-      bus.use((ch, ev, p, next) => { order.push('mw2'); next(); });
+      bus.use(() => {
+        order.push('mw1-throw');
+        throw new Error('mw1 crash');
+      });
+      bus.use((ch, ev, p, next) => {
+        order.push('mw2');
+        next();
+      });
       bus.on('ai:suggestionReady', () => order.push('subscriber'));
 
       bus.emit('ai:suggestionReady', { data: 1 });
@@ -347,13 +363,17 @@ describe('EventBus', () => {
   describe('channels', () => {
     it('should return all 7 registered channels', () => {
       const channels = bus.channels();
-      expect(channels).toEqual(expect.arrayContaining(['ai', 'audio', 'scene', 'session', 'ui', 'error', 'analytics']));
+      expect(channels).toEqual(
+        expect.arrayContaining(['ai', 'audio', 'scene', 'session', 'ui', 'error', 'analytics'])
+      );
       expect(channels).toHaveLength(7);
     });
 
     it('should return a frozen copy (immutable)', () => {
       const channels = bus.channels();
-      expect(() => { channels.push('extra'); }).toThrow();
+      expect(() => {
+        channels.push('extra');
+      }).toThrow();
     });
   });
 

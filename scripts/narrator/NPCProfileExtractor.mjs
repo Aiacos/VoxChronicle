@@ -12,7 +12,7 @@ import { Logger } from '../utils/Logger.mjs';
 
 /**
  * Structured NPC profile extracted from adventure text
- * @typedef {Object} NPCProfile
+ * @typedef {object} NPCProfile
  * @property {string} name - Display name of the NPC
  * @property {string} personality - Personality description
  * @property {string} motivation - Primary motivation
@@ -60,7 +60,7 @@ class NPCProfileExtractor {
    * Creates a new NPCProfileExtractor instance
    *
    * @param {import('../ai/OpenAIClient.mjs').OpenAIClient} openAIClient - OpenAI client instance
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} [options={}] - Configuration options
    * @param {string} [options.model='gpt-4o-mini'] - The model to use for extraction
    */
   constructor(openAIClient, options = {}) {
@@ -94,7 +94,7 @@ class NPCProfileExtractor {
    * Extracts NPC profiles from adventure journal text via a single LLM call
    *
    * @param {string} journalText - The adventure journal text to extract NPCs from
-   * @param {Object} [options={}] - Extraction options
+   * @param {object} [options={}] - Extraction options
    * @returns {Promise<Map<string, NPCProfile>>} Map keyed by lowercase NPC name/alias
    */
   async extractProfiles(journalText, options = {}) {
@@ -141,7 +141,10 @@ Example output:
 
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Extract all named NPCs from this adventure text:\n\n${journalText}` }
+      {
+        role: 'user',
+        content: `Extract all named NPCs from this adventure text:\n\n${journalText}`
+      }
     ];
 
     try {
@@ -223,7 +226,7 @@ Example output:
 
       // Word-boundary match (case-insensitive)
       const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp('\\b' + escapedKey + '\\b', 'i');
+      const regex = new RegExp(`\\b${  escapedKey  }\\b`, 'i');
 
       if (regex.test(contextText)) {
         seen.add(profile.name);
@@ -261,7 +264,7 @@ Example output:
   /**
    * Builds a Map from an array of NPC data, keyed by lowercase name and aliases
    *
-   * @param {Object[]} npcs - Array of raw NPC objects from LLM response
+   * @param {object[]} npcs - Array of raw NPC objects from LLM response
    * @returns {Map<string, NPCProfile>} Profiles map
    * @private
    */

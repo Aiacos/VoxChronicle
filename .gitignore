@@ -17,6 +17,7 @@ coverage/
 
 # Transient session files
 fix-todos/
+security-scan/
 
 # BMad Method framework (dev tool, not project code)
 _bmad/

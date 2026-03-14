@@ -223,7 +223,11 @@ class SessionOrchestrator {
    */
   setCallbacks(callbacks) {
     this._callbacks = { ...this._callbacks, ...callbacks };
-    this._logger.debug(`Callbacks set: ${Object.keys(callbacks).filter(k => callbacks[k]).join(', ')}`);
+    this._logger.debug(
+      `Callbacks set: ${Object.keys(callbacks)
+        .filter((k) => callbacks[k])
+        .join(', ')}`
+    );
   }
 
   _updateState(newState, data = {}) {
@@ -251,12 +255,12 @@ class SessionOrchestrator {
   /**
    * Creates a new session data object with standard defaults.
    *
-   * @param {Object} [overrides={}] - Values to override defaults
+   * @param {object} [overrides={}] - Values to override defaults
    * @param {string} [overrides.title] - Session title
    * @param {string} [overrides.date] - Session date (YYYY-MM-DD)
-   * @param {Object} [overrides.speakerMap] - Speaker ID to name mapping
+   * @param {object} [overrides.speakerMap] - Speaker ID to name mapping
    * @param {string} [overrides.language] - Session language code
-   * @returns {Object} The session object
+   * @returns {object} The session object
    * @private
    */
   _createSessionObject(overrides = {}) {
@@ -307,7 +311,9 @@ class SessionOrchestrator {
 
       await this._audioRecorder.startRecording(sessionOptions.recordingOptions || {});
       this._updateState(SessionState.RECORDING, { session: this._currentSession });
-      this._logger.log(`Session started: ${this._currentSession.title} (id: ${this._currentSession.id})`);
+      this._logger.log(
+        `Session started: ${this._currentSession.title} (id: ${this._currentSession.id})`
+      );
     } catch (error) {
       this._logger.error('Failed to start session:', error);
       this._handleError(error, 'startSession');
@@ -335,7 +341,9 @@ class SessionOrchestrator {
       this._currentSession.audioBlob = audioBlob;
 
       const blobSizeMB = audioBlob ? (audioBlob.size / (1024 * 1024)).toFixed(2) : '0';
-      this._logger.log(`Recording stopped. Duration: ${this._getSessionDuration()}s, audio: ${blobSizeMB}MB`);
+      this._logger.log(
+        `Recording stopped. Duration: ${this._getSessionDuration()}s, audio: ${blobSizeMB}MB`
+      );
 
       if (options.processImmediately ?? true) {
         await this.processTranscription();
@@ -501,11 +509,13 @@ class SessionOrchestrator {
       return null;
     }
 
-    this._logger.log(`Extracting entities and moments (text: ${this._currentSession.transcript.text.length} chars)...`);
+    this._logger.log(
+      `Extracting entities and moments (text: ${this._currentSession.transcript.text.length} chars)...`
+    );
     this._updateState(SessionState.EXTRACTING);
 
     const extractionStart = Date.now();
-    
+
     // Use consolidated extraction (Entities + Moments in one call)
     // This reduces API calls and cost by 50% compared to separate calls
     const extractionResult = await this._entityProcessor.extractAll(
@@ -523,8 +533,8 @@ class SessionOrchestrator {
         timestamp: Date.now()
       });
       ui?.notifications?.warn(
-        game.i18n?.localize('VOXCHRONICLE.Warnings.EntityExtractionFailed')
-          || 'VoxChronicle: Entity extraction failed. Session will continue without entities.'
+        game.i18n?.localize('VOXCHRONICLE.Warnings.EntityExtractionFailed') ||
+          'VoxChronicle: Entity extraction failed. Session will continue without entities.'
       );
       return null;
     }
@@ -545,13 +555,17 @@ class SessionOrchestrator {
     if (this._options.autoExtractRelationships && !extractionResult.warnings?.length) {
       await this._extractRelationships(extractionResult);
     } else if (extractionResult.warnings?.length) {
-      this._logger.warn('Skipping relationship extraction due to partial entity extraction failure');
+      this._logger.warn(
+        'Skipping relationship extraction due to partial entity extraction failure'
+      );
     }
 
     // Show entity preview dialog if confirmation required and entities found
-    if (this._options.confirmEntityCreation &&
-        (extractionResult.totalCount || 0) > 0 &&
-        this._callbacks.onEntityPreview) {
+    if (
+      this._options.confirmEntityCreation &&
+      (extractionResult.totalCount || 0) > 0 &&
+      this._callbacks.onEntityPreview
+    ) {
       this._callbacks.onEntityPreview({
         entities: { ...this._currentSession.entities, totalCount: extractionResult.totalCount },
         relationships: this._currentSession.relationships || [],
@@ -631,7 +645,9 @@ class SessionOrchestrator {
     if (results && results.length > 0) {
       this._currentSession.images = results;
       const imageMs = Date.now() - imageStart;
-      this._logger.log(`Generated ${results.filter((r) => r.success !== false).length} images in ${imageMs}ms`);
+      this._logger.log(
+        `Generated ${results.filter((r) => r.success !== false).length} images in ${imageMs}ms`
+      );
     } else {
       this._currentSession.errors.push({
         stage: 'image_generation',
@@ -639,8 +655,8 @@ class SessionOrchestrator {
         timestamp: Date.now()
       });
       globalThis.ui?.notifications?.warn(
-        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.ImageGenerationEmpty')
-          || 'VoxChronicle: Image generation produced no results. Try again or check your API key.'
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.ImageGenerationEmpty') ||
+          'VoxChronicle: Image generation produced no results. Try again or check your API key.'
       );
     }
 
@@ -682,7 +698,9 @@ class SessionOrchestrator {
     await this._enrichSessionWithJournalContext();
 
     // Resume from previous partial results if retrying (NFR35)
-    const resumeFromResults = options.resume ? (this._currentSession.kankaResults || null) : undefined;
+    const resumeFromResults = options.resume
+      ? this._currentSession.kankaResults || null
+      : undefined;
 
     const publishStart = Date.now();
     try {
@@ -700,7 +718,9 @@ class SessionOrchestrator {
       }
 
       const publishMs = Date.now() - publishStart;
-      this._logger.log(`Published to Kanka in ${publishMs}ms (errors: ${results.errors?.length || 0})`);
+      this._logger.log(
+        `Published to Kanka in ${publishMs}ms (errors: ${results.errors?.length || 0})`
+      );
       return results;
     } catch (error) {
       this._logger.error('Publishing failed:', error);
@@ -729,7 +749,7 @@ class SessionOrchestrator {
     if (services.sessionAnalytics !== undefined) this._sessionAnalytics = services.sessionAnalytics;
 
     this._initializeProcessors();
-    const updatedKeys = Object.keys(services).filter(k => services[k] !== undefined);
+    const updatedKeys = Object.keys(services).filter((k) => services[k] !== undefined);
     this._logger.debug(`Services updated: ${updatedKeys.join(', ')}`);
   }
 
@@ -761,7 +781,7 @@ class SessionOrchestrator {
     if (services.journalParser) this._journalParser = services.journalParser;
     // Rules services support explicit null clearing (for when rulesDetection is disabled)
     if (Object.hasOwn(services, 'rulesReference')) this._rulesReference = services.rulesReference;
-    if (Object.hasOwn(services, 'rulesLookupService')) this._rulesLookupService = services.rulesLookupService;
+    if (Object.hasOwn(services, 'rulesLookupService')) {this._rulesLookupService = services.rulesLookupService;}
     this._logger.debug('Narrator services connected');
   }
 
@@ -804,9 +824,11 @@ class SessionOrchestrator {
    * @private
    */
   _isLiveState(state) {
-    return state === SessionState.LIVE_LISTENING ||
-           state === SessionState.LIVE_TRANSCRIBING ||
-           state === SessionState.LIVE_ANALYZING;
+    return (
+      state === SessionState.LIVE_LISTENING ||
+      state === SessionState.LIVE_TRANSCRIBING ||
+      state === SessionState.LIVE_ANALYZING
+    );
   }
 
   _generateSessionId() {
@@ -833,7 +855,9 @@ class SessionOrchestrator {
   }
 
   reset() {
-    this._logger.debug(`Resetting orchestrator (from state: ${this._state}, liveMode: ${this._liveMode})`);
+    this._logger.debug(
+      `Resetting orchestrator (from state: ${this._state}, liveMode: ${this._liveMode})`
+    );
     if (this._liveCycleTimer) {
       clearTimeout(this._liveCycleTimer);
       this._liveCycleTimer = null;
@@ -892,7 +916,8 @@ class SessionOrchestrator {
     this._logger.log(`Starting live mode (batch interval: ${batchDuration}ms)...`);
     this._liveMode = true;
     this._liveBatchDuration = batchDuration;
-    this._adaptiveChunkingEnabled = game?.settings?.get?.('vox-chronicle', 'adaptiveChunkingEnabled') ?? true;
+    this._adaptiveChunkingEnabled =
+      game?.settings?.get?.('vox-chronicle', 'adaptiveChunkingEnabled') ?? true;
     this._lastSpeechActivityTime = null;
     this._liveTranscript = [];
     this._silenceStartTime = null;
@@ -938,7 +963,10 @@ class SessionOrchestrator {
 
       await this._audioRecorder.startRecording(options.recordingOptions || {});
       this._updateState(SessionState.LIVE_LISTENING);
-      this._emitSafe('session:liveStarted', { batchDuration: this._liveBatchDuration, timestamp: Date.now() });
+      this._emitSafe('session:liveStarted', {
+        batchDuration: this._liveBatchDuration,
+        timestamp: Date.now()
+      });
       this._scheduleLiveCycle();
 
       // Register scene change hook for auto-updating chapter during live mode
@@ -946,7 +974,9 @@ class SessionOrchestrator {
         const currentScene = typeof canvas !== 'undefined' ? canvas?.scene : null;
         if (currentScene && this._chapterTracker) {
           this._chapterTracker.updateFromScene(currentScene);
-          this._logger.log(`Chapter updated from scene change: ${currentScene.name || currentScene.id}`);
+          this._logger.log(
+            `Chapter updated from scene change: ${currentScene.name || currentScene.id}`
+          );
         }
       };
       if (typeof Hooks !== 'undefined') {
@@ -1018,7 +1048,8 @@ class SessionOrchestrator {
       // 1. Check user-selected journal from settings (Plan 02-02)
       let journalId = null;
       try {
-        journalId = globalThis.game?.settings?.get('vox-chronicle', 'activeAdventureJournalId') || null;
+        journalId =
+          globalThis.game?.settings?.get('vox-chronicle', 'activeAdventureJournalId') || null;
         if (journalId) {
           this._logger.log(`Using user-selected journal from settings: ${journalId}`);
         }
@@ -1036,7 +1067,9 @@ class SessionOrchestrator {
           const firstJournal = game.journal.contents?.[0];
           if (firstJournal) {
             journalId = firstJournal.id;
-            this._logger.log(`No scene journal linked, using first world journal: ${firstJournal.name}`);
+            this._logger.log(
+              `No scene journal linked, using first world journal: ${firstJournal.name}`
+            );
           }
         }
       }
@@ -1068,13 +1101,20 @@ class SessionOrchestrator {
         if (currentChapter) {
           this._aiAssistant.setChapterContext({
             chapterName: currentChapter.title || '',
-            subsections: currentChapter.subchapters?.map(s => s.title) || [],
-            pageReferences: currentChapter.pageId ? [{
-              pageId: currentChapter.pageId,
-              pageName: currentChapter.pageName || '',
-              journalName: currentChapter.journalName || ''
-            }] : [],
-            summary: this._chapterTracker.getCurrentChapterContentForAI?.(8000) || currentChapter.content?.substring(0, 3000) || ''
+            subsections: currentChapter.subchapters?.map((s) => s.title) || [],
+            pageReferences: currentChapter.pageId
+              ? [
+                  {
+                    pageId: currentChapter.pageId,
+                    pageName: currentChapter.pageName || '',
+                    journalName: currentChapter.journalName || ''
+                  }
+                ]
+              : [],
+            summary:
+              this._chapterTracker.getCurrentChapterContentForAI?.(8000) ||
+              currentChapter.content?.substring(0, 3000) ||
+              ''
           });
           this._logger.log(`Chapter context set: ${currentChapter.title}`);
         }
@@ -1082,8 +1122,8 @@ class SessionOrchestrator {
     } catch (error) {
       this._logger.warn(`Failed to initialize journal context: ${error.message}`);
       globalThis.ui?.notifications?.info(
-        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.JournalContextFailed')
-          || 'VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.'
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.JournalContextFailed') ||
+          'VoxChronicle: Could not load adventure journal for AI context. Suggestions will be generic.'
       );
     }
 
@@ -1094,11 +1134,12 @@ class SessionOrchestrator {
     if (fullText && this._aiAssistant?._openaiClient) {
       this._npcExtractor = new NPCProfileExtractor(this._aiAssistant._openaiClient);
       parallelTasks.push(
-        this._npcExtractor.extractProfiles(fullText)
-          .then(profiles => {
+        this._npcExtractor
+          .extractProfiles(fullText)
+          .then((profiles) => {
             this._logger.log(`NPC profiles extracted: ${profiles.size} NPCs`);
           })
-          .catch(npcError => {
+          .catch((npcError) => {
             this._logger.warn(`NPC extraction failed (non-blocking): ${npcError.message}`);
           })
       );
@@ -1116,7 +1157,7 @@ class SessionOrchestrator {
               });
             }
           }
-        }).catch(indexError => {
+        }).catch((indexError) => {
           this._logger.warn(`RAG indexing failed (non-blocking): ${indexError.message}`);
         })
       );
@@ -1138,7 +1179,8 @@ class SessionOrchestrator {
     const data = encoder.encode(text);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   /**
@@ -1153,7 +1195,8 @@ class SessionOrchestrator {
     if (!this._ragProvider || !this._journalParser) return { indexed: 0, skipped: 0 };
 
     const primaryId = globalThis.game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || '';
-    const supplementaryIds = globalThis.game?.settings?.get(MODULE_ID, 'supplementaryJournalIds') || [];
+    const supplementaryIds =
+      globalThis.game?.settings?.get(MODULE_ID, 'supplementaryJournalIds') || [];
     const allJournalIds = [primaryId, ...supplementaryIds].filter(Boolean);
 
     if (allJournalIds.length === 0) {
@@ -1215,7 +1258,11 @@ class SessionOrchestrator {
       this._emitSafe('ai:ragIndexingComplete', { indexed: totalIndexed, skipped: totalSkipped });
       return { indexed: totalIndexed, skipped: totalSkipped };
     } catch (indexError) {
-      this._emitSafe('ai:ragIndexingComplete', { indexed: totalIndexed, skipped: totalSkipped, error: indexError.message });
+      this._emitSafe('ai:ragIndexingComplete', {
+        indexed: totalIndexed,
+        skipped: totalSkipped,
+        error: indexError.message
+      });
       throw indexError;
     }
   }
@@ -1230,7 +1277,8 @@ class SessionOrchestrator {
   async reindexJournal(journalId) {
     // Check if this journal is in the selected set
     const primaryId = globalThis.game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || '';
-    const supplementaryIds = globalThis.game?.settings?.get(MODULE_ID, 'supplementaryJournalIds') || [];
+    const supplementaryIds =
+      globalThis.game?.settings?.get(MODULE_ID, 'supplementaryJournalIds') || [];
     const isSelected = journalId === primaryId || supplementaryIds.includes(journalId);
 
     if (!isSelected) {
@@ -1368,7 +1416,7 @@ class SessionOrchestrator {
       // Race: wait for current cycle OR 5-second deadline
       const currentCycle = this._currentCyclePromise || Promise.resolve();
       let deadlineTimer;
-      const deadline = new Promise(resolve => {
+      const deadline = new Promise((resolve) => {
         deadlineTimer = setTimeout(() => {
           this._shutdownController.abort();
           forceAborted = true;
@@ -1384,7 +1432,8 @@ class SessionOrchestrator {
         this._currentSession.endTime = Date.now();
 
         // Use _fullTranscriptText for the complete transcript text (not truncated by rolling window)
-        const transcriptText = this._fullTranscriptText || this._liveTranscript.map(s => s.text).join(' ');
+        const transcriptText =
+          this._fullTranscriptText || this._liveTranscript.map((s) => s.text).join(' ');
         if (this._liveTranscript.length > 0 || this._fullTranscriptText) {
           this._currentSession.transcript = {
             text: transcriptText,
@@ -1425,17 +1474,22 @@ class SessionOrchestrator {
       : 0;
     const suggestionCount = this._lastAISuggestions?.length || 0;
     const cost = this._costTracker?.getTotalCost()?.toFixed(2) || '0.00';
-    const summaryMsg = globalThis.game?.i18n?.format('VOXCHRONICLE.Live.SessionSummary', {
-      duration: String(duration),
-      suggestions: String(suggestionCount),
-      cost
-    }) || `Session ended: ${duration}min, ${suggestionCount} suggestions, $${cost}`;
+    const summaryMsg =
+      globalThis.game?.i18n?.format('VOXCHRONICLE.Live.SessionSummary', {
+        duration: String(duration),
+        suggestions: String(suggestionCount),
+        cost
+      }) || `Session ended: ${duration}min, ${suggestionCount} suggestions, $${cost}`;
     globalThis.ui?.notifications?.info(summaryMsg);
 
     this._updateState(SessionState.IDLE);
     const stopMs = Date.now() - stopStart;
     this._logger.log(`Live mode stopped (shutdown: ${stopMs}ms, force-aborted: ${forceAborted})`);
-    this._emitSafe('session:liveStopped', { shutdownMs: stopMs, forceAborted, timestamp: Date.now() });
+    this._emitSafe('session:liveStopped', {
+      shutdownMs: stopMs,
+      forceAborted,
+      timestamp: Date.now()
+    });
     this._isStopping = false;
     this._callbacks.onSessionEnd?.();
     return this._currentSession;
@@ -1545,11 +1599,11 @@ class SessionOrchestrator {
 
     const silenceMs = Date.now() - this._lastSpeechActivityTime;
 
-    if (silenceMs > 45000) return 60000;   // Long silence: 60s
-    if (silenceMs > 30000) return 45000;   // Medium-long silence: 45s
-    if (silenceMs > 15000) return 30000;   // Medium silence: 30s
-    if (silenceMs < 5000) return 5000;     // Active speech: 5s
-    return this._liveBatchDuration;         // Default: configured batch duration
+    if (silenceMs > 45000) return 60000; // Long silence: 60s
+    if (silenceMs > 30000) return 45000; // Medium-long silence: 45s
+    if (silenceMs > 15000) return 30000; // Medium silence: 30s
+    if (silenceMs < 5000) return 5000; // Active speech: 5s
+    return this._liveBatchDuration; // Default: configured batch duration
   }
 
   /**
@@ -1608,11 +1662,12 @@ class SessionOrchestrator {
             this._transcriptionHealth = 'healthy';
 
             // Offset segment timestamps based on existing transcript duration
-            const offset = this._liveTranscript.length > 0
-              ? this._liveTranscript[this._liveTranscript.length - 1].end
-              : 0;
+            const offset =
+              this._liveTranscript.length > 0
+                ? this._liveTranscript[this._liveTranscript.length - 1].end
+                : 0;
 
-            const offsetSegments = result.segments.map(s => ({
+            const offsetSegments = result.segments.map((s) => ({
               ...s,
               start: s.start + offset,
               end: s.end + offset
@@ -1623,7 +1678,7 @@ class SessionOrchestrator {
             this._silenceStartTime = null;
 
             // Append to full transcript accumulator (append-only, never truncated)
-            const newText = offsetSegments.map(s => s.text).join(' ');
+            const newText = offsetSegments.map((s) => s.text).join(' ');
             this._fullTranscriptText += (this._fullTranscriptText ? ' ' : '') + newText;
 
             // Apply rolling window (keep last MAX_LIVE_SEGMENTS)
@@ -1713,7 +1768,7 @@ class SessionOrchestrator {
         if (this._consecutiveLiveCycleErrors === 3) {
           ui?.notifications?.warn(
             game.i18n?.localize('VOXCHRONICLE.Errors.LiveCycleRepeatedFailures') ||
-            'VoxChronicle: Live transcription is experiencing repeated errors. Check your API key and connection.'
+              'VoxChronicle: Live transcription is experiencing repeated errors. Check your API key and connection.'
           );
         }
       } finally {
@@ -1729,10 +1784,13 @@ class SessionOrchestrator {
 
         // Warn if average cycle duration exceeds 2x baseline
         if (this._cycleDurations.length >= 5) {
-          const avgDuration = this._cycleDurations.reduce((a, b) => a + b, 0) / this._cycleDurations.length;
+          const avgDuration =
+            this._cycleDurations.reduce((a, b) => a + b, 0) / this._cycleDurations.length;
           const baseline = this._liveBatchDuration; // ~10-15s default
           if (avgDuration > baseline * 2) {
-            this._logger.warn(`Self-monitoring: avg cycle duration ${Math.round(avgDuration)}ms exceeds 2x baseline (${baseline}ms)`);
+            this._logger.warn(
+              `Self-monitoring: avg cycle duration ${Math.round(avgDuration)}ms exceeds 2x baseline (${baseline}ms)`
+            );
           }
         }
 
@@ -1740,7 +1798,9 @@ class SessionOrchestrator {
         if (typeof performance !== 'undefined' && performance.memory?.usedJSHeapSize) {
           const heapMB = performance.memory.usedJSHeapSize / (1024 * 1024);
           if (heapMB > 500) {
-            this._logger.warn(`Self-monitoring: JS heap ${Math.round(heapMB)}MB exceeds 500MB threshold`);
+            this._logger.warn(
+              `Self-monitoring: JS heap ${Math.round(heapMB)}MB exceeds 500MB threshold`
+            );
           }
         }
 
@@ -1785,10 +1845,10 @@ class SessionOrchestrator {
         const s = this._liveTranscript[i];
         const line = `${s.speaker || 'Unknown'}: ${s.text}`;
         if (contextText.length + line.length + 1 > windowSize) {
-          contextText = '... ' + (line + '\n' + contextText).slice(-(windowSize));
+          contextText = `... ${  (`${line  }\n${  contextText}`).slice(-windowSize)}`;
           break;
         }
-        contextText = contextText ? line + '\n' + contextText : line;
+        contextText = contextText ? `${line  }\n${  contextText}` : line;
       }
 
       const currentChapter = this._chapterTracker?.getCurrentChapter?.() || null;
@@ -1797,13 +1857,20 @@ class SessionOrchestrator {
       if (currentChapter && this._aiAssistant.setChapterContext) {
         this._aiAssistant.setChapterContext({
           chapterName: currentChapter.title || '',
-          subsections: currentChapter.subchapters?.map(s => s.title) || [],
-          pageReferences: currentChapter.pageId ? [{
-            pageId: currentChapter.pageId,
-            pageName: currentChapter.pageName || '',
-            journalName: currentChapter.journalName || ''
-          }] : [],
-          summary: this._chapterTracker?.getCurrentChapterContentForAI?.(8000) || currentChapter.content?.substring(0, 3000) || ''
+          subsections: currentChapter.subchapters?.map((s) => s.title) || [],
+          pageReferences: currentChapter.pageId
+            ? [
+                {
+                  pageId: currentChapter.pageId,
+                  pageName: currentChapter.pageName || '',
+                  journalName: currentChapter.journalName || ''
+                }
+              ]
+            : [],
+          summary:
+            this._chapterTracker?.getCurrentChapterContentForAI?.(8000) ||
+            currentChapter.content?.substring(0, 3000) ||
+            ''
         });
       }
 
@@ -1819,7 +1886,9 @@ class SessionOrchestrator {
         this._aiAssistant.setNextChapterLookahead(lookahead);
       }
 
-      this._logger.log(`Running AI analysis (context: ${contextText.length} chars, chapter: ${currentChapter?.title || 'none'})`);
+      this._logger.log(
+        `Running AI analysis (context: ${contextText.length} chars, chapter: ${currentChapter?.title || 'none'})`
+      );
 
       // Fire-and-forget rules lookup (independent of suggestion cycle)
       try {
@@ -1829,27 +1898,29 @@ class SessionOrchestrator {
             const lookupPromise = this._rulesLookupService.lookup(detection.extractedTopic, {
               signal: this._shutdownController?.signal
             });
-            lookupPromise.then(result => {
-              if (result && this._liveMode && this._callbacks.onRulesCard) {
-                this._callbacks.onRulesCard({
-                  topic: result.question || detection.extractedTopic,
-                  compendiumResults: result.compendiumResults,
-                  synthesisPromise: result.synthesisPromise,
-                  source: 'auto'
-                });
-              }
-            }).catch(err => {
-              this._logger.warn('Rules lookup failed:', err.message);
-              if (this._liveMode && this._callbacks.onRulesCard) {
-                this._callbacks.onRulesCard({
-                  topic: detection.extractedTopic,
-                  compendiumResults: [],
-                  synthesisPromise: null,
-                  source: 'auto',
-                  unavailable: true
-                });
-              }
-            });
+            lookupPromise
+              .then((result) => {
+                if (result && this._liveMode && this._callbacks.onRulesCard) {
+                  this._callbacks.onRulesCard({
+                    topic: result.question || detection.extractedTopic,
+                    compendiumResults: result.compendiumResults,
+                    synthesisPromise: result.synthesisPromise,
+                    source: 'auto'
+                  });
+                }
+              })
+              .catch((err) => {
+                this._logger.warn('Rules lookup failed:', err.message);
+                if (this._liveMode && this._callbacks.onRulesCard) {
+                  this._callbacks.onRulesCard({
+                    topic: detection.extractedTopic,
+                    compendiumResults: [],
+                    synthesisPromise: null,
+                    source: 'auto',
+                    unavailable: true
+                  });
+                }
+              });
           }
         }
       } catch (err) {
@@ -1905,7 +1976,9 @@ class SessionOrchestrator {
             this._costTracker.addUsage(analysis.model, streamResult.usage);
           }
         } catch (streamError) {
-          this._logger.warn(`Streaming failed, falling back to non-streaming: ${streamError.message}`);
+          this._logger.warn(
+            `Streaming failed, falling back to non-streaming: ${streamError.message}`
+          );
           usedStreaming = false;
         }
       }
@@ -1928,11 +2001,19 @@ class SessionOrchestrator {
       const analysisMs = Date.now() - analysisStart;
       if (analysis?.suggestions) {
         this._lastAISuggestions = analysis.suggestions;
-        this._emitSafe('ai:suggestionReceived', { suggestions: analysis.suggestions, analysisMs, timestamp: Date.now() });
-        this._logger.log(`AI suggestions received: ${analysis.suggestions.length} suggestion(s) in ${analysisMs}ms`);
+        this._emitSafe('ai:suggestionReceived', {
+          suggestions: analysis.suggestions,
+          analysisMs,
+          timestamp: Date.now()
+        });
+        this._logger.log(
+          `AI suggestions received: ${analysis.suggestions.length} suggestion(s) in ${analysisMs}ms`
+        );
         for (const s of analysis.suggestions) {
           const preview = (s.content || '').substring(0, 100);
-          this._logger.debug(`  [${s.type || 'unknown'}] ${preview}${(s.content || '').length > 100 ? '...' : ''}`);
+          this._logger.debug(
+            `  [${s.type || 'unknown'}] ${preview}${(s.content || '').length > 100 ? '...' : ''}`
+          );
         }
       } else {
         this._logger.debug('AI analysis returned no suggestions');
@@ -1958,7 +2039,9 @@ class SessionOrchestrator {
       if (analysis?.offTrackStatus !== undefined) {
         this._lastOffTrackStatus = analysis.offTrackStatus;
         if (analysis.offTrackStatus.isOffTrack) {
-          this._logger.log(`Off-track detected: severity=${analysis.offTrackStatus.severity}, reason="${analysis.offTrackStatus.reason || 'N/A'}"`);
+          this._logger.log(
+            `Off-track detected: severity=${analysis.offTrackStatus.severity}, reason="${analysis.offTrackStatus.reason || 'N/A'}"`
+          );
         } else {
           this._logger.debug('Players on track');
         }
@@ -1977,7 +2060,7 @@ class SessionOrchestrator {
         this._aiAnalysisErrorNotified = true;
         ui?.notifications?.warn(
           game.i18n?.localize('VOXCHRONICLE.Errors.AIAnalysisFailed') ||
-          'VoxChronicle: AI suggestions unavailable. Check your OpenAI API key.'
+            'VoxChronicle: AI suggestions unavailable. Check your OpenAI API key.'
         );
       }
     }
@@ -2051,7 +2134,11 @@ class SessionOrchestrator {
    * @private
    */
   _emitSafe(channel, data) {
-    try { this._eventBus?.emit(channel, data); } catch (e) { this._logger.warn('EventBus emit failed:', e); }
+    try {
+      this._eventBus?.emit(channel, data);
+    } catch (e) {
+      this._logger.warn('EventBus emit failed:', e);
+    }
   }
 
   /**

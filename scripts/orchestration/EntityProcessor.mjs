@@ -83,7 +83,9 @@ class EntityProcessor {
     }
 
     const textLength = transcriptText.length;
-    this._logger.log(`Extracting entities (text: ${textLength} chars, checkDuplicates: ${options.checkDuplicates !== false})...`);
+    this._logger.log(
+      `Extracting entities (text: ${textLength} chars, checkDuplicates: ${options.checkDuplicates !== false})...`
+    );
 
     const onProgress = options.onProgress || (() => {});
     onProgress(0, 'Extracting entities from transcript...');
@@ -126,7 +128,7 @@ class EntityProcessor {
         }
         ui?.notifications?.warn(
           game.i18n?.localize('VOXCHRONICLE.Errors.PartialExtractionFailure') ||
-          'VoxChronicle: Some extraction steps failed. Results may be incomplete.'
+            'VoxChronicle: Some extraction steps failed. Results may be incomplete.'
         );
       }
 
@@ -137,7 +139,7 @@ class EntityProcessor {
       // Don't throw - extraction failure shouldn't stop the workflow
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.EntityExtractionFailed') ||
-        'VoxChronicle: Entity extraction failed. Entities will not be available for this session.'
+          'VoxChronicle: Entity extraction failed. Entities will not be available for this session.'
       );
       return null;
     }
@@ -172,7 +174,9 @@ class EntityProcessor {
       ...(extractionResult.items || [])
     ];
 
-    this._logger.log(`Extracting relationships (text: ${transcriptText.length} chars, ${allEntities.length} entities, minConfidence: ${options.minConfidence || 5})...`);
+    this._logger.log(
+      `Extracting relationships (text: ${transcriptText.length} chars, ${allEntities.length} entities, minConfidence: ${options.minConfidence || 5})...`
+    );
 
     const onProgress = options.onProgress || (() => {});
     onProgress(0, 'Extracting relationships from transcript...');
@@ -206,7 +210,7 @@ class EntityProcessor {
       // Don't throw - relationship extraction failure shouldn't stop the workflow
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.RelationshipExtractionFailed') ||
-        'VoxChronicle: Relationship extraction failed.'
+          'VoxChronicle: Relationship extraction failed.'
       );
       return [];
     }
@@ -264,7 +268,9 @@ class EntityProcessor {
       throw new Error('EntityExtractor cannot be null');
     }
     this._entityExtractor = entityExtractor;
-    this._logger.debug(`Entity extractor updated: ${entityExtractor.constructor?.name || 'unknown'}`);
+    this._logger.debug(
+      `Entity extractor updated: ${entityExtractor.constructor?.name || 'unknown'}`
+    );
   }
 
   /**

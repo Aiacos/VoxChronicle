@@ -23,7 +23,10 @@ vi.mock('../../scripts/utils/Logger.mjs', () => ({
   }
 }));
 
-import { ImageProcessor, DEFAULT_IMAGE_OPTIONS } from '../../scripts/orchestration/ImageProcessor.mjs';
+import {
+  ImageProcessor,
+  DEFAULT_IMAGE_OPTIONS
+} from '../../scripts/orchestration/ImageProcessor.mjs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -290,9 +293,7 @@ describe('ImageProcessor', () => {
 
       it('should return results with metadata attached', async () => {
         const moments = [{ id: 'm1', title: 'Battle', imagePrompt: 'scene' }];
-        mockService.generateBatch.mockResolvedValue([
-          { success: true, imageData: 'data' }
-        ]);
+        mockService.generateBatch.mockResolvedValue([{ success: true, imageData: 'data' }]);
 
         const results = await processor.generateImages(moments, {});
         expect(results).toHaveLength(1);
@@ -312,17 +313,25 @@ describe('ImageProcessor', () => {
       });
 
       it('should allow overriding maxImagesPerSession per call', async () => {
-        await processor.generateImages(createSampleMoments(5), {}, {
-          maxImagesPerSession: 1
-        });
+        await processor.generateImages(
+          createSampleMoments(5),
+          {},
+          {
+            maxImagesPerSession: 1
+          }
+        );
         const requests = mockService.generateBatch.mock.calls[0][0];
         expect(requests).toHaveLength(1);
       });
 
       it('should allow overriding imageQuality per call', async () => {
-        await processor.generateImages(createSampleMoments(1), {}, {
-          imageQuality: 'low'
-        });
+        await processor.generateImages(
+          createSampleMoments(1),
+          {},
+          {
+            imageQuality: 'low'
+          }
+        );
         const requests = mockService.generateBatch.mock.calls[0][0];
         expect(requests[0].options.quality).toBe('low');
       });
@@ -352,10 +361,7 @@ describe('ImageProcessor', () => {
           generateBatch: vi.fn().mockImplementation((requests, progressCb) => {
             progressCb({ progress: 50, current: 1, total: 2 });
             progressCb({ progress: 100, current: 2, total: 2 });
-            return Promise.resolve([
-              { success: true },
-              { success: true }
-            ]);
+            return Promise.resolve([{ success: true }, { success: true }]);
           })
         });
 
@@ -565,7 +571,7 @@ describe('ImageProcessor', () => {
         ]);
 
         const results = await processor.generateImages(createSampleMoments(3), {});
-        const successCount = results.filter(r => r.success !== false).length;
+        const successCount = results.filter((r) => r.success !== false).length;
         expect(successCount).toBe(2);
       });
 
@@ -576,7 +582,7 @@ describe('ImageProcessor', () => {
         ]);
 
         const results = await processor.generateImages(createSampleMoments(2), {});
-        const successCount = results.filter(r => r.success !== false).length;
+        const successCount = results.filter((r) => r.success !== false).length;
         expect(successCount).toBe(1);
       });
     });

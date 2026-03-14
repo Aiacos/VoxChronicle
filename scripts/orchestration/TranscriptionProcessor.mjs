@@ -111,12 +111,12 @@ class TranscriptionProcessor {
     if (!segments || segments.length === 0) return;
 
     // Extract unique speaker IDs
-    const speakerIds = [...new Set(segments.map(s => s.speaker).filter(Boolean))];
+    const speakerIds = [...new Set(segments.map((s) => s.speaker).filter(Boolean))];
     if (speakerIds.length === 0) return;
 
     // Register known speakers (fire-and-forget, error-isolated)
     try {
-      SpeakerLabeling.addKnownSpeakers(speakerIds).catch(e => {
+      SpeakerLabeling.addKnownSpeakers(speakerIds).catch((e) => {
         this._logger.warn('Failed to register known speakers (async):', e);
       });
     } catch (e) {
@@ -160,7 +160,9 @@ class TranscriptionProcessor {
     const mode =
       this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
 
-    this._logger.log(`Processing transcription: ${blobSizeMB}MB, mode=${mode}, language=${language || 'auto'}, speakers=${Object.keys(speakerMap).length}`);
+    this._logger.log(
+      `Processing transcription: ${blobSizeMB}MB, mode=${mode}, language=${language || 'auto'}, speakers=${Object.keys(speakerMap).length}`
+    );
 
     onProgress(0, `Starting transcription (${mode} mode)...`);
 
@@ -307,7 +309,8 @@ class TranscriptionProcessor {
    */
   getMode() {
     const isLocalService = this._transcriptionService instanceof LocalWhisperService;
-    const mode = this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
+    const mode =
+      this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
     this._logger.debug(`getMode: ${mode}`);
     return mode;
   }
@@ -319,9 +322,13 @@ class TranscriptionProcessor {
    */
   hasFallback() {
     const isLocalService = this._transcriptionService instanceof LocalWhisperService;
-    const mode = this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
-    const result = isLocalService && mode === TranscriptionMode.AUTO && !!this._config?.openaiApiKey;
-    this._logger.debug(`hasFallback: ${result} (isLocal=${isLocalService}, mode=${mode}, hasKey=${!!this._config?.openaiApiKey})`);
+    const mode =
+      this._config?.mode || (isLocalService ? TranscriptionMode.LOCAL : TranscriptionMode.API);
+    const result =
+      isLocalService && mode === TranscriptionMode.AUTO && !!this._config?.openaiApiKey;
+    this._logger.debug(
+      `hasFallback: ${result} (isLocal=${isLocalService}, mode=${mode}, hasKey=${!!this._config?.openaiApiKey})`
+    );
     return result;
   }
 
@@ -334,7 +341,9 @@ class TranscriptionProcessor {
    */
   updateConfig(config) {
     this._config = { ...this._config, ...config };
-    this._logger.debug(`Transcription configuration updated: mode=${this._config.mode || 'default'}, hasKey=${!!this._config.openaiApiKey}`);
+    this._logger.debug(
+      `Transcription configuration updated: mode=${this._config.mode || 'default'}, hasKey=${!!this._config.openaiApiKey}`
+    );
   }
 }
 

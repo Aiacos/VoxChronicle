@@ -25,7 +25,7 @@ export const DEFAULT_BUCKET_SIZE = 60;
 export const MAX_HISTORY_SIZE = 100;
 
 /**
- * @typedef {Object} SpeakerMetrics
+ * @typedef {object} SpeakerMetrics
  * @property {string} speakerId - The speaker identifier
  * @property {number} speakingTime - Total speaking time in seconds
  * @property {number} segmentCount - Number of segments spoken
@@ -36,14 +36,14 @@ export const MAX_HISTORY_SIZE = 100;
  */
 
 /**
- * @typedef {Object} TimelineBucket
+ * @typedef {object} TimelineBucket
  * @property {number} timestamp - Start timestamp of the bucket
  * @property {Object.<string, number>} speakers - Map of speakerId to speaking duration in this bucket
  * @property {number} totalActivity - Total speaking time across all speakers in this bucket
  */
 
 /**
- * @typedef {Object} SessionMetadata
+ * @typedef {object} SessionMetadata
  * @property {string} sessionId - Unique session identifier
  * @property {number} startTime - Session start timestamp (ms since epoch)
  * @property {number|null} endTime - Session end timestamp (null if active)
@@ -52,7 +52,7 @@ export const MAX_HISTORY_SIZE = 100;
  */
 
 /**
- * @typedef {Object} SessionSummary
+ * @typedef {object} SessionSummary
  * @property {SessionMetadata} metadata - Session metadata
  * @property {Object.<string, SpeakerMetrics>} speakers - Map of speakerId to metrics
  * @property {number} totalSpeakingTime - Total speaking time across all speakers (seconds)
@@ -63,7 +63,7 @@ export const MAX_HISTORY_SIZE = 100;
  */
 
 /**
- * @typedef {Object} TranscriptionSegment
+ * @typedef {object} TranscriptionSegment
  * @property {string} speaker - The identified speaker name or ID
  * @property {string} [text] - The transcribed text for this segment
  * @property {number} start - Start time in seconds (relative to session)
@@ -84,7 +84,7 @@ export class SessionAnalytics {
   /**
    * Creates a new SessionAnalytics instance.
    *
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} [options={}] - Configuration options
    * @param {number} [options.bucketSize=60] - Timeline bucket size in seconds
    * @param {number} [options.maxHistorySize=100] - Maximum sessions to keep in history
    */
@@ -163,7 +163,9 @@ export class SessionAnalytics {
    * @returns {string} The session ID
    */
   startSession(sessionId = null) {
-    this._logger.debug(`startSession() entry — sessionId="${sessionId || '(auto)'}", bucketSize=${this._bucketSize}`);
+    this._logger.debug(
+      `startSession() entry — sessionId="${sessionId || '(auto)'}", bucketSize=${this._bucketSize}`
+    );
 
     // End any active session first
     if (this._currentSession && this._currentSession.status === 'active') {
@@ -196,8 +198,10 @@ export class SessionAnalytics {
    * @returns {SessionSummary|null} The completed session summary, or null if no active session
    */
   endSession() {
-    if (!this._currentSession ||
-        (this._currentSession.status !== 'active' && this._currentSession.status !== 'paused')) {
+    if (
+      !this._currentSession ||
+      (this._currentSession.status !== 'active' && this._currentSession.status !== 'paused')
+    ) {
       this._logger.warn('No active session to end');
       return null;
     }
@@ -221,7 +225,9 @@ export class SessionAnalytics {
       this._sessionHistory = this._sessionHistory.slice(0, this._maxHistorySize);
     }
 
-    this._logger.debug(`endSession() — session "${this._currentSession.sessionId}": duration=${this._currentSession.duration.toFixed(1)}s, speakers=${summary.speakerCount}, segments=${this._segments.length}, dominant="${summary.dominantSpeaker || 'none'}"`);
+    this._logger.debug(
+      `endSession() — session "${this._currentSession.sessionId}": duration=${this._currentSession.duration.toFixed(1)}s, speakers=${summary.speakerCount}, segments=${this._segments.length}, dominant="${summary.dominantSpeaker || 'none'}"`
+    );
 
     // Reset current session
     this._currentSession = null;
@@ -281,7 +287,9 @@ export class SessionAnalytics {
 
     this._segments.push(segment);
     this._metricsDirty = true;
-    this._logger.debug(`addSegment() — speaker="${segment.speaker}", duration=${(segment.end - segment.start).toFixed(1)}s, total segments: ${this._segments.length}`);
+    this._logger.debug(
+      `addSegment() — speaker="${segment.speaker}", duration=${(segment.end - segment.start).toFixed(1)}s, total segments: ${this._segments.length}`
+    );
 
     // Initialize speaker metrics if this is a new speaker
     if (!this._speakerMetrics[segment.speaker]) {
@@ -344,9 +352,7 @@ export class SessionAnalytics {
   getSpeakerStats() {
     // Ensure metrics are up-to-date
     this._calculateMetrics();
-    return Object.values(this._speakerMetrics).sort(
-      (a, b) => b.speakingTime - a.speakingTime
-    );
+    return Object.values(this._speakerMetrics).sort((a, b) => b.speakingTime - a.speakingTime);
   }
 
   /**
@@ -431,7 +437,9 @@ export class SessionAnalytics {
       timeline: this.getTimeline()
     };
 
-    this._logger.debug(`getSessionSummary() — speakers=${summary.speakerCount}, totalSpeakingTime=${totalSpeakingTime.toFixed(1)}s, timeline buckets=${summary.timeline.length}`);
+    this._logger.debug(
+      `getSessionSummary() — speakers=${summary.speakerCount}, totalSpeakingTime=${totalSpeakingTime.toFixed(1)}s, timeline buckets=${summary.timeline.length}`
+    );
     return summary;
   }
 

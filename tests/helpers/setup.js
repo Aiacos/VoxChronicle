@@ -26,11 +26,21 @@ beforeEach(() => {
 
   // Dialog stub (v1 — still used in some files)
   globalThis.Dialog = class Dialog {
-    constructor(data) { this.data = data; }
-    render(force) { return this; }
-    close() { return Promise.resolve(); }
-    static confirm(config) { return Promise.resolve(true); }
-    static prompt(config) { return Promise.resolve(''); }
+    constructor(data) {
+      this.data = data;
+    }
+    render(force) {
+      return this;
+    }
+    close() {
+      return Promise.resolve();
+    }
+    static confirm(config) {
+      return Promise.resolve(true);
+    }
+    static prompt(config) {
+      return Promise.resolve('');
+    }
   };
 
   // ChatMessage stub
@@ -39,12 +49,18 @@ beforeEach(() => {
   // Minimal FormData polyfill (jsdom may not have full version)
   if (typeof globalThis.FormData === 'undefined') {
     globalThis.FormData = class FormData {
-      constructor() { this._data = new Map(); }
+      constructor() {
+        this._data = new Map();
+      }
       append(key, value, filename) {
         this._data.set(key, { value, filename });
       }
-      get(key) { return this._data.get(key)?.value; }
-      has(key) { return this._data.has(key); }
+      get(key) {
+        return this._data.get(key)?.value;
+      }
+      has(key) {
+        return this._data.has(key);
+      }
     };
   }
 });

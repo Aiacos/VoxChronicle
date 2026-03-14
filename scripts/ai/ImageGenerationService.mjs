@@ -180,7 +180,12 @@ class ImageGenerationService {
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generatePortrait(entityType, description, options = {}) {
-    this._logger.debug('generatePortrait called', { entityType, descriptionLength: description?.length, size: options.size, quality: options.quality });
+    this._logger.debug('generatePortrait called', {
+      entityType,
+      descriptionLength: description?.length,
+      size: options.size,
+      quality: options.quality
+    });
     const t0 = Date.now();
 
     if (!description || typeof description !== 'string') {
@@ -238,10 +243,20 @@ class ImageGenerationService {
       }
 
       this._logger.log(`Image generated successfully in ${Date.now() - t0}ms`);
-      this._logger.debug('generatePortrait result', { durationMs: Date.now() - t0, entityType: validEntityType, size, quality, hasBase64: Boolean(result.base64) });
+      this._logger.debug('generatePortrait result', {
+        durationMs: Date.now() - t0,
+        entityType: validEntityType,
+        size,
+        quality,
+        hasBase64: Boolean(result.base64)
+      });
       return result;
     } catch (error) {
-      this._logger.error(`Image generation failed after ${Date.now() - t0}ms: ${error.message}`, { entityType: validEntityType, size, quality });
+      this._logger.error(`Image generation failed after ${Date.now() - t0}ms: ${error.message}`, {
+        entityType: validEntityType,
+        size,
+        quality
+      });
       throw error;
     }
   }
@@ -254,7 +269,9 @@ class ImageGenerationService {
    * @returns {Promise<ImageGenerationResult>} Generated image result
    */
   async generateCharacterPortrait(description, options = {}) {
-    this._logger.debug('generateCharacterPortrait called', { descriptionLength: description?.length });
+    this._logger.debug('generateCharacterPortrait called', {
+      descriptionLength: description?.length
+    });
     return this.generatePortrait(EntityType.CHARACTER, description, {
       size: options.size || ImageSize.SQUARE,
       ...options
@@ -366,8 +383,12 @@ class ImageGenerationService {
       });
     }
 
-    const successCount = results.filter(r => r.success).length;
-    this._logger.debug(`generateBatch completed in ${Date.now() - t0}ms`, { total: requests.length, successCount, failedCount: requests.length - successCount });
+    const successCount = results.filter((r) => r.success).length;
+    this._logger.debug(`generateBatch completed in ${Date.now() - t0}ms`, {
+      total: requests.length,
+      successCount,
+      failedCount: requests.length - successCount
+    });
     return results;
   }
 
@@ -393,7 +414,9 @@ class ImageGenerationService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        this._logger.error(`downloadImage failed after ${Date.now() - t0}ms: HTTP ${response.status}`);
+        this._logger.error(
+          `downloadImage failed after ${Date.now() - t0}ms: HTTP ${response.status}`
+        );
         throw new OpenAIError(
           `Failed to download image: ${response.status} ${response.statusText}`,
           OpenAIErrorType.API_ERROR,
@@ -402,7 +425,9 @@ class ImageGenerationService {
       }
 
       const blob = await response.blob();
-      this._logger.debug(`Downloaded image in ${Date.now() - t0}ms: ${(blob.size / 1024).toFixed(1)}KB`);
+      this._logger.debug(
+        `Downloaded image in ${Date.now() - t0}ms: ${(blob.size / 1024).toFixed(1)}KB`
+      );
       return blob;
     } catch (error) {
       if (error instanceof OpenAIError) {
@@ -457,7 +482,10 @@ class ImageGenerationService {
    * @returns {Promise<void>}
    */
   async saveToGallery(imageData) {
-    this._logger.debug('saveToGallery called', { entityType: imageData?.entityType, hasBase64: Boolean(imageData?.base64) });
+    this._logger.debug('saveToGallery called', {
+      entityType: imageData?.entityType,
+      hasBase64: Boolean(imageData?.base64)
+    });
     try {
       let gallery = await this.loadGallery();
 
@@ -490,8 +518,8 @@ class ImageGenerationService {
     } catch (error) {
       this._logger.error('Failed to save image to gallery:', error.message);
       globalThis.ui?.notifications?.warn(
-        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.ImageGallerySaveFailed')
-          || 'VoxChronicle: Failed to save image to gallery. The image may be lost after page reload.'
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.ImageGallerySaveFailed') ||
+          'VoxChronicle: Failed to save image to gallery. The image may be lost after page reload.'
       );
     }
   }
@@ -511,8 +539,8 @@ class ImageGenerationService {
     } catch (error) {
       this._logger.warn('Failed to load image gallery:', error.message);
       ui?.notifications?.warn(
-        game.i18n?.localize('VOXCHRONICLE.Errors.ImageGalleryLoadFailed')
-          || 'VoxChronicle: Could not load image gallery from settings.'
+        game.i18n?.localize('VOXCHRONICLE.Errors.ImageGalleryLoadFailed') ||
+          'VoxChronicle: Could not load image gallery from settings.'
       );
       this._gallery = [];
       return this._gallery;
@@ -533,7 +561,7 @@ class ImageGenerationService {
       this._logger.error('Failed to clear gallery:', error.message);
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.GalleryClearFailed') ||
-        'VoxChronicle: Failed to clear image gallery.'
+          'VoxChronicle: Failed to clear image gallery.'
       );
     }
   }

@@ -15,23 +15,23 @@ import { eventBus as defaultEventBus } from './EventBus.mjs';
 export const CircuitState = Object.freeze({
   CLOSED: 'closed',
   OPEN: 'open',
-  HALF_OPEN: 'half_open',
+  HALF_OPEN: 'half_open'
 });
 
 /**
  * Centralized resilience registry with circuit breaker and fallback chain support.
  */
 export class ResilienceRegistry {
-  /** @type {Map<string, Object>} */
+  /** @type {Map<string, object>} */
   #services = new Map();
 
-  /** @type {Object|null} */
+  /** @type {object | null} */
   #eventBus = null;
 
   #logger = Logger.createChild('ResilienceRegistry');
 
   /**
-   * @param {Object} [eventBus] - Optional EventBus instance for dual error channel
+   * @param {object} [eventBus] - Optional EventBus instance for dual error channel
    */
   constructor(eventBus) {
     this.#eventBus = eventBus ?? null;
@@ -40,7 +40,7 @@ export class ResilienceRegistry {
   /**
    * Register a service with circuit breaker policy.
    * @param {string} serviceName - Unique service identifier
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.maxFailures=5] - Consecutive failures before opening circuit
    * @param {number} [options.cooldown=60000] - Milliseconds before attempting recovery
    * @param {Function[]} [options.fallback=[]] - Ordered fallback functions
@@ -48,8 +48,9 @@ export class ResilienceRegistry {
   register(serviceName, options = {}) {
     if (typeof serviceName !== 'string' || serviceName.length === 0) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.ServiceNotRegistered', { service: serviceName })
-          ?? `Invalid service name: "${serviceName}". Must be a non-empty string.`
+        game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.ServiceNotRegistered', {
+          service: serviceName
+        }) ?? `Invalid service name: "${serviceName}". Must be a non-empty string.`
       );
     }
 
@@ -76,7 +77,7 @@ export class ResilienceRegistry {
       consecutiveFailures: 0,
       lastFailure: null,
       lastSuccess: null,
-      cooldownTimer: null,
+      cooldownTimer: null
     });
   }
 
@@ -108,9 +109,11 @@ export class ResilienceRegistry {
         this.#startCooldownTimer(serviceName, svc);
         this.#emitEvent('error:user', {
           service: serviceName,
-          message: game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.CircuitOpen', { service: serviceName })
-            ?? `Service ${serviceName} temporarily unavailable`,
-          timestamp: Date.now(),
+          message:
+            game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.CircuitOpen', {
+              service: serviceName
+            }) ?? `Service ${serviceName} temporarily unavailable`,
+          timestamp: Date.now()
         });
       }
 
@@ -126,7 +129,7 @@ export class ResilienceRegistry {
   /**
    * Get status of a specific service, or all services if no name provided.
    * @param {string} [serviceName] - Service name, or omit for all
-   * @returns {Object} Status object or map of all statuses
+   * @returns {object} Status object or map of all statuses
    */
   getStatus(serviceName) {
     if (serviceName === undefined) {
@@ -158,7 +161,7 @@ export class ResilienceRegistry {
         service: serviceName,
         from: previousState,
         to: CircuitState.CLOSED,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       });
     }
   }
@@ -179,7 +182,7 @@ export class ResilienceRegistry {
           service: name,
           from: previousState,
           to: CircuitState.CLOSED,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         });
       }
     }
@@ -190,14 +193,15 @@ export class ResilienceRegistry {
   /**
    * Get a registered service or throw.
    * @param {string} serviceName
-   * @returns {Object}
+   * @returns {object}
    */
   #getService(serviceName) {
     const svc = this.#services.get(serviceName);
     if (!svc) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.ServiceNotRegistered', { service: serviceName })
-          ?? `Service "${serviceName}" is not registered`
+        game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.ServiceNotRegistered', {
+          service: serviceName
+        }) ?? `Service "${serviceName}" is not registered`
       );
     }
     return svc;
@@ -205,6 +209,8 @@ export class ResilienceRegistry {
 
   /**
    * Handle a successful execution.
+   * @param serviceName
+   * @param svc
    */
   #onSuccess(serviceName, svc) {
     const previousState = svc.state;
@@ -215,15 +221,20 @@ export class ResilienceRegistry {
       this.#transitionTo(serviceName, svc, CircuitState.CLOSED);
       this.#emitEvent('error:user', {
         service: serviceName,
-        message: game?.i18n?.format?.('VOXCHRONICLE.Resilience.Status.Recovered', { service: serviceName })
-          ?? `Service ${serviceName} recovered`,
-        timestamp: Date.now(),
+        message:
+          game?.i18n?.format?.('VOXCHRONICLE.Resilience.Status.Recovered', {
+            service: serviceName
+          }) ?? `Service ${serviceName} recovered`,
+        timestamp: Date.now()
       });
     }
   }
 
   /**
    * Handle a failed execution.
+   * @param serviceName
+   * @param svc
+   * @param error
    */
   #onFailure(serviceName, svc, error) {
     svc.consecutiveFailures++;
@@ -234,7 +245,7 @@ export class ResilienceRegistry {
       error: error.message,
       state: svc.state,
       consecutiveFailures: svc.consecutiveFailures,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
 
     // Check if we should open the circuit
@@ -244,15 +255,20 @@ export class ResilienceRegistry {
 
       this.#emitEvent('error:user', {
         service: serviceName,
-        message: game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.CircuitOpen', { service: serviceName })
-          ?? `Service ${serviceName} temporarily unavailable`,
-        timestamp: Date.now(),
+        message:
+          game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.CircuitOpen', {
+            service: serviceName
+          }) ?? `Service ${serviceName} temporarily unavailable`,
+        timestamp: Date.now()
       });
     }
   }
 
   /**
    * Transition a service to a new circuit state.
+   * @param serviceName
+   * @param svc
+   * @param newState
    */
   #transitionTo(serviceName, svc, newState) {
     const from = svc.state;
@@ -263,12 +279,15 @@ export class ResilienceRegistry {
       service: serviceName,
       from,
       to: newState,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
   }
 
   /**
    * Execute the fallback chain in order.
+   * @param serviceName
+   * @param svc
+   * @param originalError
    * @returns {Promise<*>} Result from first successful fallback
    */
   async #executeFallbackChain(serviceName, svc, originalError) {
@@ -285,9 +304,11 @@ export class ResilienceRegistry {
     // All fallbacks failed
     this.#emitEvent('error:user', {
       service: serviceName,
-      message: game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.AllFallbacksFailed', { service: serviceName })
-        ?? `All recovery options exhausted for ${serviceName}`,
-      timestamp: Date.now(),
+      message:
+        game?.i18n?.format?.('VOXCHRONICLE.Resilience.Error.AllFallbacksFailed', {
+          service: serviceName
+        }) ?? `All recovery options exhausted for ${serviceName}`,
+      timestamp: Date.now()
     });
 
     throw originalError ?? new Error(`All fallbacks failed for service "${serviceName}"`);
@@ -295,6 +316,8 @@ export class ResilienceRegistry {
 
   /**
    * Start cooldown timer for auto-recovery.
+   * @param serviceName
+   * @param svc
    */
   #startCooldownTimer(serviceName, svc) {
     this.#clearCooldownTimer(svc);
@@ -305,6 +328,7 @@ export class ResilienceRegistry {
 
   /**
    * Clear an active cooldown timer.
+   * @param svc
    */
   #clearCooldownTimer(svc) {
     if (svc.cooldownTimer !== null) {
@@ -315,18 +339,21 @@ export class ResilienceRegistry {
 
   /**
    * Format service data for status output.
+   * @param svc
    */
   #formatStatus(svc) {
     return {
       state: svc.state,
       consecutiveFailures: svc.consecutiveFailures,
       lastFailure: svc.lastFailure,
-      lastSuccess: svc.lastSuccess,
+      lastSuccess: svc.lastSuccess
     };
   }
 
   /**
    * Emit an event on the EventBus if available.
+   * @param eventName
+   * @param payload
    */
   #emitEvent(eventName, payload) {
     try {

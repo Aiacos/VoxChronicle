@@ -21,8 +21,24 @@ import { Logger } from '../utils/Logger.mjs';
  * @constant {Set<string>}
  */
 const STOP_WORDS = new Set([
-  'how', 'does', 'do', 'what', 'is', 'the', 'rule', 'rules',
-  'for', 'a', 'an', 'can', 'i', 'you', 'work', 'works', 'when', 'if'
+  'how',
+  'does',
+  'do',
+  'what',
+  'is',
+  'the',
+  'rule',
+  'rules',
+  'for',
+  'a',
+  'an',
+  'can',
+  'i',
+  'you',
+  'work',
+  'works',
+  'when',
+  'if'
 ]);
 
 /**
@@ -42,10 +58,10 @@ export class RulesLookupService {
    * Creates a new RulesLookupService instance
    * @param {import('./RulesReference.mjs').RulesReference} rulesReference - Rules search service
    * @param {import('../ai/OpenAIClient.mjs').OpenAIClient} openaiClient - OpenAI API client (fallback)
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} [options={}] - Configuration options
    * @param {number} [options.cooldownMs=300000] - Cooldown duration in ms (default 5 minutes)
-   * @param {Object} [options.chatProvider] - ChatProvider instance (preferred over openaiClient)
-   * @param {Object} [options.logger] - Optional logger instance
+   * @param {object} [options.chatProvider] - ChatProvider instance (preferred over openaiClient)
+   * @param {object} [options.logger] - Optional logger instance
    */
   constructor(rulesReference, openaiClient, options = {}) {
     this._rulesReference = rulesReference;
@@ -71,7 +87,7 @@ export class RulesLookupService {
    * or if the question normalizes to empty.
    *
    * @param {string} question - The rules question to look up
-   * @param {Object} [options={}] - Lookup options
+   * @param {object} [options={}] - Lookup options
    * @param {boolean} [options.skipCooldown=false] - Skip cooldown check (on-demand queries)
    * @param {AbortSignal} [options.signal] - Abort signal for cancellation
    * @returns {Promise<{compendiumResults: Array, synthesisPromise: Promise, topic: string}|null>}
@@ -104,9 +120,10 @@ export class RulesLookupService {
 
     // Step 5: Phase 2 — create synthesis promise (NOT awaited)
     // Skip synthesis when no compendium results — avoids misleading "Refining..." spinner
-    const synthesisPromise = (compendiumResults && compendiumResults.length > 0)
-      ? this._synthesize(question, compendiumResults, { signal })
-      : null;
+    const synthesisPromise =
+      compendiumResults && compendiumResults.length > 0
+        ? this._synthesize(question, compendiumResults, { signal })
+        : null;
 
     // Step 6: Set cooldown (unless skipCooldown)
     if (!skipCooldown) {
@@ -128,23 +145,33 @@ export class RulesLookupService {
    *
    * @param {string} question - The original question
    * @param {Array} compendiumResults - Compendium search results
-   * @param {Object} [options={}] - Options
+   * @param {object} [options={}] - Options
    * @param {AbortSignal} [options.signal] - Abort signal
-   * @returns {Promise<{answer: string, citations: string[], usage: Object}>}
+   * @returns {Promise<{answer: string, citations: string[], usage: object}>}
    * @private
    */
   async _synthesize(question, compendiumResults, { signal } = {}) {
     // Build excerpts from compendium results
-    const excerpts = (compendiumResults || []).map(result => {
-      const citation = result.rule.citation?.formatted || result.rule.source || 'Unknown';
-      const content = (result.rule.content || '').substring(0, MAX_EXCERPT_LENGTH);
-      return `[${citation}] ${result.rule.title}:\n${content}`;
-    }).join('\n\n');
+    const excerpts = (compendiumResults || [])
+      .map((result) => {
+        const citation = result.rule.citation?.formatted || result.rule.source || 'Unknown';
+        const content = (result.rule.content || '').substring(0, MAX_EXCERPT_LENGTH);
+        return `[${citation}] ${result.rule.title}:\n${content}`;
+      })
+      .join('\n\n');
 
     const languageNames = {
-      it: 'Italian', en: 'English', de: 'German', fr: 'French',
-      es: 'Spanish', pt: 'Portuguese', ja: 'Japanese', ko: 'Korean',
-      zh: 'Chinese', pl: 'Polish', ru: 'Russian'
+      it: 'Italian',
+      en: 'English',
+      de: 'German',
+      fr: 'French',
+      es: 'Spanish',
+      pt: 'Portuguese',
+      ja: 'Japanese',
+      ko: 'Korean',
+      zh: 'Chinese',
+      pl: 'Polish',
+      ru: 'Russian'
     };
     const responseLang = languageNames[this._language] || 'English';
 
@@ -172,12 +199,16 @@ export class RulesLookupService {
       answer = response?.content;
       usage = response?.usage || null;
     } else {
-      const response = await this._openaiClient.post('/chat/completions', {
-        model: 'gpt-4o',
-        messages,
-        temperature: 0.2,
-        max_tokens: 300
-      }, { signal });
+      const response = await this._openaiClient.post(
+        '/chat/completions',
+        {
+          model: 'gpt-4o',
+          messages,
+          temperature: 0.2,
+          max_tokens: 300
+        },
+        { signal }
+      );
       answer = response?.choices?.[0]?.message?.content;
       usage = response?.usage || null;
     }
@@ -188,7 +219,7 @@ export class RulesLookupService {
 
     // Extract citations from compendium results
     const citations = (compendiumResults || [])
-      .map(result => result.rule.citation?.formatted || result.rule.source)
+      .map((result) => result.rule.citation?.formatted || result.rule.source)
       .filter(Boolean);
 
     return {
@@ -217,7 +248,7 @@ export class RulesLookupService {
       .toLowerCase()
       .replace(/[?!.,;:'"]/g, '')
       .split(/\s+/)
-      .filter(word => word.length >= 2 && !STOP_WORDS.has(word))
+      .filter((word) => word.length >= 2 && !STOP_WORDS.has(word))
       .sort()
       .join(' ');
   }

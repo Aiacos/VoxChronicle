@@ -35,12 +35,12 @@ function createMockEntityExtractor(overrides = {}) {
       characters: [{ name: 'Gandalf', description: 'A wizard' }],
       locations: [{ name: 'Shire', description: 'Green rolling hills' }],
       items: [{ name: 'Ring', description: 'One ring to rule them all' }],
-      moments: [{ id: 'm1', title: 'Battle of Helm\'s Deep', imagePrompt: 'epic battle' }],
+      moments: [{ id: 'm1', title: "Battle of Helm's Deep", imagePrompt: 'epic battle' }],
       totalCount: 3
     }),
-    extractRelationships: vi.fn().mockResolvedValue([
-      { source: 'Gandalf', target: 'Shire', type: 'visited', confidence: 8 }
-    ]),
+    extractRelationships: vi
+      .fn()
+      .mockResolvedValue([{ source: 'Gandalf', target: 'Shire', type: 'visited', confidence: 8 }]),
     ...overrides
   };
 }
@@ -434,7 +434,11 @@ describe('EntityProcessor', () => {
       it('should notify user when extractAll returns warnings array', async () => {
         const warningExtractor = createMockEntityExtractor({
           extractAll: vi.fn().mockResolvedValue({
-            characters: [], locations: [], items: [], moments: [], totalCount: 0,
+            characters: [],
+            locations: [],
+            items: [],
+            moments: [],
+            totalCount: 0,
             warnings: ['Entity extraction failed; results may be incomplete']
           })
         });
@@ -458,7 +462,11 @@ describe('EntityProcessor', () => {
       it('should show warning notification when multiple warnings present', async () => {
         const warningExtractor = createMockEntityExtractor({
           extractAll: vi.fn().mockResolvedValue({
-            characters: [], locations: [], items: [], moments: [], totalCount: 0,
+            characters: [],
+            locations: [],
+            items: [],
+            moments: [],
+            totalCount: 0,
             warnings: ['Entity extraction failed', 'Moment extraction failed']
           })
         });
@@ -630,7 +638,9 @@ describe('EntityProcessor', () => {
     describe('error handling', () => {
       it('should return empty array when extractRelationships fails', async () => {
         const failingExtractor = createMockEntityExtractor({
-          extractRelationships: vi.fn().mockRejectedValue(new Error('Relationship extraction error'))
+          extractRelationships: vi
+            .fn()
+            .mockRejectedValue(new Error('Relationship extraction error'))
         });
 
         const p = new EntityProcessor({ entityExtractor: failingExtractor });
@@ -644,9 +654,7 @@ describe('EntityProcessor', () => {
         });
 
         const p = new EntityProcessor({ entityExtractor: failingExtractor });
-        await expect(
-          p.extractRelationships('text', sampleExtractionResult)
-        ).resolves.toEqual([]);
+        await expect(p.extractRelationships('text', sampleExtractionResult)).resolves.toEqual([]);
       });
 
       it('should return empty array when extractRelationships returns null', async () => {

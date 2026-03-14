@@ -100,7 +100,9 @@ class ImageProcessor {
     const imageQuality = options.imageQuality || this._options.imageQuality;
 
     // Build image generation requests
-    this._logger.debug(`generateImages called: ${moments?.length || 0} moments, maxImages=${maxImages}, quality=${imageQuality}`);
+    this._logger.debug(
+      `generateImages called: ${moments?.length || 0} moments, maxImages=${maxImages}, quality=${imageQuality}`
+    );
     const requests = this._buildImageRequests(moments, entities, maxImages, imageQuality);
 
     if (requests.length === 0) {
@@ -110,7 +112,9 @@ class ImageProcessor {
 
     this._logger.log(`Generating ${requests.length} images (quality: ${imageQuality})...`);
     for (let i = 0; i < requests.length; i++) {
-      this._logger.debug(`  Request ${i + 1}: type=${requests[i].entityType}, title="${requests[i].meta?.title || 'untitled'}"`);
+      this._logger.debug(
+        `  Request ${i + 1}: type=${requests[i].entityType}, title="${requests[i].meta?.title || 'untitled'}"`
+      );
     }
     onProgress(0, `Generating ${requests.length} images...`);
 
@@ -136,7 +140,9 @@ class ImageProcessor {
       const totalMs = Date.now() - totalStart;
       const successCount = resultsWithMetadata.filter((r) => r.success !== false).length;
       const failCount = resultsWithMetadata.length - successCount;
-      this._logger.log(`Generated ${successCount}/${resultsWithMetadata.length} images in ${totalMs}ms (${failCount} failed)`);
+      this._logger.log(
+        `Generated ${successCount}/${resultsWithMetadata.length} images in ${totalMs}ms (${failCount} failed)`
+      );
 
       return resultsWithMetadata;
     } catch (error) {
@@ -145,7 +151,7 @@ class ImageProcessor {
       onProgress(0, `Image generation failed: ${error.message}`);
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.ImageGenerationBatchFailed') ||
-        'VoxChronicle: Image generation failed. Chronicle will be published without images.'
+          'VoxChronicle: Image generation failed. Chronicle will be published without images.'
       );
       return [];
     }
@@ -166,8 +172,10 @@ class ImageProcessor {
 
     if (moments?.length > 0) {
       const candidateMoments = moments.slice(0, maxImages);
-      const withPrompt = candidateMoments.filter(m => m.imagePrompt);
-      this._logger.debug(`Building image requests: ${moments.length} moments, ${candidateMoments.length} candidates, ${withPrompt.length} with prompts`);
+      const withPrompt = candidateMoments.filter((m) => m.imagePrompt);
+      this._logger.debug(
+        `Building image requests: ${moments.length} moments, ${candidateMoments.length} candidates, ${withPrompt.length} with prompts`
+      );
 
       for (const moment of candidateMoments) {
         if (moment.imagePrompt) {
@@ -196,7 +204,9 @@ class ImageProcessor {
    */
   updateOptions(options) {
     this._options = { ...this._options, ...options };
-    this._logger.debug(`Image options updated: maxImages=${this._options.maxImagesPerSession}, quality=${this._options.imageQuality}`);
+    this._logger.debug(
+      `Image options updated: maxImages=${this._options.maxImagesPerSession}, quality=${this._options.imageQuality}`
+    );
   }
 
   /**

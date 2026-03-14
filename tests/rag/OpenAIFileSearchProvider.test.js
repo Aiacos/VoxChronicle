@@ -52,18 +52,18 @@ describe('OpenAIFileSearchProvider', () => {
 
       // Query to see which model is used
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{ type: 'output_text', text: 'Test answer' }]
-        }]
+        output: [
+          {
+            type: 'message',
+            content: [{ type: 'output_text', text: 'Test answer' }]
+          }
+        ]
       });
 
       await provider.query('test question');
 
       // The second post call should be the query with default model
-      const queryCall = client.post.mock.calls.find(
-        call => call[0] === '/responses'
-      );
+      const queryCall = client.post.mock.calls.find((call) => call[0] === '/responses');
       expect(queryCall[1].model).toBe('gpt-4o-mini');
     });
 
@@ -75,16 +75,16 @@ describe('OpenAIFileSearchProvider', () => {
       await provider.initialize({ client });
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{ type: 'output_text', text: 'Answer' }]
-        }]
+        output: [
+          {
+            type: 'message',
+            content: [{ type: 'output_text', text: 'Answer' }]
+          }
+        ]
       });
 
       await provider.query('test');
-      const queryCall = client.post.mock.calls.find(
-        call => call[0] === '/responses'
-      );
+      const queryCall = client.post.mock.calls.find((call) => call[0] === '/responses');
       expect(queryCall[1].model).toBe('gpt-4o');
     });
   });
@@ -120,13 +120,16 @@ describe('OpenAIFileSearchProvider', () => {
       const provider = new OpenAIFileSearchProvider();
       await provider.initialize({ client });
 
-      expect(client.post).toHaveBeenCalledWith('/vector_stores', expect.objectContaining({
-        name: 'vox-chronicle-rag',
-        expires_after: expect.objectContaining({
-          anchor: 'last_active_at',
-          days: 30
+      expect(client.post).toHaveBeenCalledWith(
+        '/vector_stores',
+        expect.objectContaining({
+          name: 'vox-chronicle-rag',
+          expires_after: expect.objectContaining({
+            anchor: 'last_active_at',
+            days: 30
+          })
         })
-      }));
+      );
       expect(provider.getVectorStoreId()).toBe('vs_new123');
     });
 
@@ -137,9 +140,12 @@ describe('OpenAIFileSearchProvider', () => {
       const provider = new OpenAIFileSearchProvider();
       await provider.initialize({ client, storeName: 'my-custom-store' });
 
-      expect(client.post).toHaveBeenCalledWith('/vector_stores', expect.objectContaining({
-        name: 'my-custom-store'
-      }));
+      expect(client.post).toHaveBeenCalledWith(
+        '/vector_stores',
+        expect.objectContaining({
+          name: 'my-custom-store'
+        })
+      );
     });
 
     it('should reuse existing vector store when vectorStoreId is valid', async () => {
@@ -192,28 +198,33 @@ describe('OpenAIFileSearchProvider', () => {
     });
 
     it('should throw on indexDocuments() if not initialized', async () => {
-      await expect(provider.indexDocuments([]))
-        .rejects.toThrow('OpenAIFileSearchProvider is not initialized');
+      await expect(provider.indexDocuments([])).rejects.toThrow(
+        'OpenAIFileSearchProvider is not initialized'
+      );
     });
 
     it('should throw on removeDocument() if not initialized', async () => {
-      await expect(provider.removeDocument('doc-1'))
-        .rejects.toThrow('OpenAIFileSearchProvider is not initialized');
+      await expect(provider.removeDocument('doc-1')).rejects.toThrow(
+        'OpenAIFileSearchProvider is not initialized'
+      );
     });
 
     it('should throw on clearIndex() if not initialized', async () => {
-      await expect(provider.clearIndex())
-        .rejects.toThrow('OpenAIFileSearchProvider is not initialized');
+      await expect(provider.clearIndex()).rejects.toThrow(
+        'OpenAIFileSearchProvider is not initialized'
+      );
     });
 
     it('should throw on query() if not initialized', async () => {
-      await expect(provider.query('test'))
-        .rejects.toThrow('OpenAIFileSearchProvider is not initialized');
+      await expect(provider.query('test')).rejects.toThrow(
+        'OpenAIFileSearchProvider is not initialized'
+      );
     });
 
     it('should throw on destroy() if not initialized', async () => {
-      await expect(provider.destroy())
-        .rejects.toThrow('OpenAIFileSearchProvider is not initialized');
+      await expect(provider.destroy()).rejects.toThrow(
+        'OpenAIFileSearchProvider is not initialized'
+      );
     });
   });
 
@@ -249,9 +260,7 @@ describe('OpenAIFileSearchProvider', () => {
       const provider = new OpenAIFileSearchProvider();
       await provider.initialize({ client });
 
-      const docs = [
-        { id: 'doc-1', title: 'Session 1', content: 'The adventure began...' }
-      ];
+      const docs = [{ id: 'doc-1', title: 'Session 1', content: 'The adventure began...' }];
 
       const result = await provider.indexDocuments(docs);
       expect(result).toEqual({ indexed: 1, failed: 0 });
@@ -484,9 +493,7 @@ describe('OpenAIFileSearchProvider', () => {
       await provider.initialize({ client });
 
       // Index a document first
-      await provider.indexDocuments([
-        { id: 'removable', title: 'Removable', content: 'Content' }
-      ]);
+      await provider.indexDocuments([{ id: 'removable', title: 'Removable', content: 'Content' }]);
 
       // Reset mock to track removal calls
       client.request.mockReset();
@@ -516,9 +523,7 @@ describe('OpenAIFileSearchProvider', () => {
       const provider = new OpenAIFileSearchProvider();
       await provider.initialize({ client });
 
-      await provider.indexDocuments([
-        { id: 'err-doc', title: 'Error Doc', content: 'Content' }
-      ]);
+      await provider.indexDocuments([{ id: 'err-doc', title: 'Error Doc', content: 'Content' }]);
 
       // Make the remove request fail
       client.request.mockRejectedValue(new Error('API error'));
@@ -536,9 +541,7 @@ describe('OpenAIFileSearchProvider', () => {
       const provider = new OpenAIFileSearchProvider();
       await provider.initialize({ client });
 
-      await provider.indexDocuments([
-        { id: 'gone-doc', title: 'Gone', content: 'Content' }
-      ]);
+      await provider.indexDocuments([{ id: 'gone-doc', title: 'Gone', content: 'Content' }]);
 
       client.request.mockResolvedValue({});
       await provider.removeDocument('gone-doc');
@@ -634,23 +637,28 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{ type: 'output_text', text: 'The dragon attacked.' }]
-        }]
+        output: [
+          {
+            type: 'message',
+            content: [{ type: 'output_text', text: 'The dragon attacked.' }]
+          }
+        ]
       });
 
       await provider.query('What did the dragon do?');
 
-      expect(client.post).toHaveBeenCalledWith('/responses', expect.objectContaining({
-        input: 'What did the dragon do?',
-        tools: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'file_search',
-            vector_store_ids: ['vs_default']
-          })
-        ])
-      }));
+      expect(client.post).toHaveBeenCalledWith(
+        '/responses',
+        expect.objectContaining({
+          input: 'What did the dragon do?',
+          tools: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'file_search',
+              vector_store_ids: ['vs_default']
+            })
+          ])
+        })
+      );
     });
 
     it('should use default maxResults of 5', async () => {
@@ -659,7 +667,7 @@ describe('OpenAIFileSearchProvider', () => {
       client.post.mockResolvedValueOnce({ output: [] });
       await provider.query('test query');
 
-      const call = client.post.mock.calls.find(c => c[0] === '/responses');
+      const call = client.post.mock.calls.find((c) => c[0] === '/responses');
       expect(call[1].tools[0].max_num_results).toBe(5);
     });
 
@@ -669,7 +677,7 @@ describe('OpenAIFileSearchProvider', () => {
       client.post.mockResolvedValueOnce({ output: [] });
       await provider.query('test query', { maxResults: 10 });
 
-      const call = client.post.mock.calls.find(c => c[0] === '/responses');
+      const call = client.post.mock.calls.find((c) => c[0] === '/responses');
       expect(call[1].tools[0].max_num_results).toBe(10);
     });
 
@@ -679,7 +687,7 @@ describe('OpenAIFileSearchProvider', () => {
       client.post.mockResolvedValueOnce({ output: [] });
       await provider.query('test', { systemPrompt: 'You are a D&D assistant.' });
 
-      const call = client.post.mock.calls.find(c => c[0] === '/responses');
+      const call = client.post.mock.calls.find((c) => c[0] === '/responses');
       expect(call[1].instructions).toBe('You are a D&D assistant.');
     });
 
@@ -689,7 +697,7 @@ describe('OpenAIFileSearchProvider', () => {
       client.post.mockResolvedValueOnce({ output: [] });
       await provider.query('test');
 
-      const call = client.post.mock.calls.find(c => c[0] === '/responses');
+      const call = client.post.mock.calls.find((c) => c[0] === '/responses');
       expect(call[1].instructions).toBeUndefined();
     });
 
@@ -699,7 +707,7 @@ describe('OpenAIFileSearchProvider', () => {
       client.post.mockResolvedValueOnce({ output: [] });
       await provider.query('test', { model: 'gpt-4o' });
 
-      const call = client.post.mock.calls.find(c => c[0] === '/responses');
+      const call = client.post.mock.calls.find((c) => c[0] === '/responses');
       expect(call[1].model).toBe('gpt-4o');
     });
 
@@ -707,13 +715,17 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{
-            type: 'output_text',
-            text: 'The party encountered a beholder.'
-          }]
-        }]
+        output: [
+          {
+            type: 'message',
+            content: [
+              {
+                type: 'output_text',
+                text: 'The party encountered a beholder.'
+              }
+            ]
+          }
+        ]
       });
 
       const result = await provider.query('What happened in the dungeon?');
@@ -725,29 +737,33 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{
-            type: 'output_text',
-            text: 'The beholder was in the cave.',
-            annotations: [
+        output: [
+          {
+            type: 'message',
+            content: [
               {
-                type: 'file_citation',
-                filename: 'session-1.txt',
-                text: 'They entered the cave and found a beholder.',
-                score: 0.95,
-                file_id: 'file_abc'
-              },
-              {
-                type: 'file_citation',
-                filename: 'session-2.txt',
-                text: 'The beholder attacked.',
-                score: 0.8,
-                file_id: 'file_def'
+                type: 'output_text',
+                text: 'The beholder was in the cave.',
+                annotations: [
+                  {
+                    type: 'file_citation',
+                    filename: 'session-1.txt',
+                    text: 'They entered the cave and found a beholder.',
+                    score: 0.95,
+                    file_id: 'file_abc'
+                  },
+                  {
+                    type: 'file_citation',
+                    filename: 'session-2.txt',
+                    text: 'The beholder attacked.',
+                    score: 0.8,
+                    file_id: 'file_def'
+                  }
+                ]
               }
             ]
-          }]
-        }]
+          }
+        ]
       });
 
       const result = await provider.query('Where was the beholder?');
@@ -770,19 +786,23 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{
-            type: 'output_text',
-            text: 'Some answer',
-            annotations: [
+        output: [
+          {
+            type: 'message',
+            content: [
               {
-                type: 'file_citation'
-                // All other fields missing
+                type: 'output_text',
+                text: 'Some answer',
+                annotations: [
+                  {
+                    type: 'file_citation'
+                    // All other fields missing
+                  }
+                ]
               }
             ]
-          }]
-        }]
+          }
+        ]
       });
 
       const result = await provider.query('question');
@@ -799,17 +819,27 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{
-            type: 'output_text',
-            text: 'Answer',
-            annotations: [
-              { type: 'url_citation', url: 'http://example.com' },
-              { type: 'file_citation', filename: 'valid.txt', text: 'excerpt', score: 0.9, file_id: 'f1' }
+        output: [
+          {
+            type: 'message',
+            content: [
+              {
+                type: 'output_text',
+                text: 'Answer',
+                annotations: [
+                  { type: 'url_citation', url: 'http://example.com' },
+                  {
+                    type: 'file_citation',
+                    filename: 'valid.txt',
+                    text: 'excerpt',
+                    score: 0.9,
+                    file_id: 'f1'
+                  }
+                ]
+              }
             ]
-          }]
-        }]
+          }
+        ]
       });
 
       const result = await provider.query('question');
@@ -851,13 +881,15 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [
-            { type: 'output_text', text: 'Part one. ' },
-            { type: 'output_text', text: 'Part two.' }
-          ]
-        }]
+        output: [
+          {
+            type: 'message',
+            content: [
+              { type: 'output_text', text: 'Part one. ' },
+              { type: 'output_text', text: 'Part two.' }
+            ]
+          }
+        ]
       });
 
       const result = await provider.query('question');
@@ -905,13 +937,15 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [
-            { type: 'refusal', refusal: 'I cannot answer that' },
-            { type: 'output_text', text: 'Valid answer.' }
-          ]
-        }]
+        output: [
+          {
+            type: 'message',
+            content: [
+              { type: 'refusal', refusal: 'I cannot answer that' },
+              { type: 'output_text', text: 'Valid answer.' }
+            ]
+          }
+        ]
       });
 
       const result = await provider.query('question');
@@ -922,24 +956,46 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{
-            type: 'output_text',
-            text: 'Answer',
-            annotations: [
-              { type: 'file_citation', filename: 'doc.txt', text: 'excerpt 1', score: 0.7, file_id: 'f1' },
-              { type: 'file_citation', filename: 'doc.txt', text: 'excerpt 2', score: 0.9, file_id: 'f1' },
-              { type: 'file_citation', filename: 'other.txt', text: 'excerpt 3', score: 0.5, file_id: 'f2' }
+        output: [
+          {
+            type: 'message',
+            content: [
+              {
+                type: 'output_text',
+                text: 'Answer',
+                annotations: [
+                  {
+                    type: 'file_citation',
+                    filename: 'doc.txt',
+                    text: 'excerpt 1',
+                    score: 0.7,
+                    file_id: 'f1'
+                  },
+                  {
+                    type: 'file_citation',
+                    filename: 'doc.txt',
+                    text: 'excerpt 2',
+                    score: 0.9,
+                    file_id: 'f1'
+                  },
+                  {
+                    type: 'file_citation',
+                    filename: 'other.txt',
+                    text: 'excerpt 3',
+                    score: 0.5,
+                    file_id: 'f2'
+                  }
+                ]
+              }
             ]
-          }]
-        }]
+          }
+        ]
       });
 
       const result = await provider.query('question');
       expect(result.sources).toHaveLength(2);
       // The higher-scored f1 entry should win
-      const f1Source = result.sources.find(s => s.documentId === 'f1');
+      const f1Source = result.sources.find((s) => s.documentId === 'f1');
       expect(f1Source.score).toBe(0.9);
       expect(f1Source.excerpt).toBe('excerpt 2');
     });
@@ -948,17 +1004,21 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{
-            type: 'output_text',
-            text: 'Answer',
-            annotations: [
-              { type: 'file_citation', filename: 'same.txt', text: 'low score', score: 0.3 },
-              { type: 'file_citation', filename: 'same.txt', text: 'high score', score: 0.8 }
+        output: [
+          {
+            type: 'message',
+            content: [
+              {
+                type: 'output_text',
+                text: 'Answer',
+                annotations: [
+                  { type: 'file_citation', filename: 'same.txt', text: 'low score', score: 0.3 },
+                  { type: 'file_citation', filename: 'same.txt', text: 'high score', score: 0.8 }
+                ]
+              }
             ]
-          }]
-        }]
+          }
+        ]
       });
 
       const result = await provider.query('question');
@@ -985,13 +1045,15 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [
-            { type: 'output_text', text: 'Answer', annotations: null },
-            { type: 'output_text', text: ' more' }
-          ]
-        }]
+        output: [
+          {
+            type: 'message',
+            content: [
+              { type: 'output_text', text: 'Answer', annotations: null },
+              { type: 'output_text', text: ' more' }
+            ]
+          }
+        ]
       });
 
       const result = await provider.query('question');
@@ -1093,9 +1155,7 @@ describe('OpenAIFileSearchProvider', () => {
       await provider.initialize({ client });
 
       // Index 1 doc locally
-      await provider.indexDocuments([
-        { id: 'local', title: 'Local', content: 'Content' }
-      ]);
+      await provider.indexDocuments([{ id: 'local', title: 'Local', content: 'Content' }]);
 
       // But vector store says 10 completed files
       client.request.mockResolvedValueOnce({
@@ -1202,15 +1262,13 @@ describe('OpenAIFileSearchProvider', () => {
       const provider = new OpenAIFileSearchProvider();
       await provider.initialize({ client });
 
-      await provider.indexDocuments([
-        { id: 'fail-del', title: 'Fail Delete', content: 'Content' }
-      ]);
+      await provider.indexDocuments([{ id: 'fail-del', title: 'Fail Delete', content: 'Content' }]);
 
       // File deletion fails but vector store deletion succeeds
       client.request.mockReset();
       client.request
-        .mockRejectedValueOnce(new Error('File delete failed'))  // deleteFile
-        .mockResolvedValueOnce({});  // delete vector store
+        .mockRejectedValueOnce(new Error('File delete failed')) // deleteFile
+        .mockResolvedValueOnce({}); // delete vector store
 
       // Should not throw
       await expect(provider.destroy()).resolves.toBeUndefined();
@@ -1238,9 +1296,7 @@ describe('OpenAIFileSearchProvider', () => {
       const provider = new OpenAIFileSearchProvider();
       await provider.initialize({ client });
 
-      await provider.indexDocuments([
-        { id: 'clr-doc', title: 'Clear', content: 'Content' }
-      ]);
+      await provider.indexDocuments([{ id: 'clr-doc', title: 'Clear', content: 'Content' }]);
 
       client.request.mockResolvedValue({});
       await provider.destroy();
@@ -1316,17 +1372,27 @@ describe('OpenAIFileSearchProvider', () => {
       const { provider, client } = await createInitializedProvider();
 
       client.post.mockResolvedValueOnce({
-        output: [{
-          type: 'message',
-          content: [{
-            type: 'output_text',
-            text: 'Answer',
-            annotations: [
-              { type: 'file_citation', filename: 'a.txt', text: 'first', file_id: 'same' },
-              { type: 'file_citation', filename: 'a.txt', text: 'second', score: 0.5, file_id: 'same' }
+        output: [
+          {
+            type: 'message',
+            content: [
+              {
+                type: 'output_text',
+                text: 'Answer',
+                annotations: [
+                  { type: 'file_citation', filename: 'a.txt', text: 'first', file_id: 'same' },
+                  {
+                    type: 'file_citation',
+                    filename: 'a.txt',
+                    text: 'second',
+                    score: 0.5,
+                    file_id: 'same'
+                  }
+                ]
+              }
             ]
-          }]
-        }]
+          }
+        ]
       });
 
       const result = await provider.query('q');

@@ -15,7 +15,7 @@ import { CacheManager } from '../../utils/CacheManager.mjs';
  * CachingChatDecorator — Wraps a ChatProvider with L2 cache for chat() calls.
  * chatStream() is always passed through without caching.
  *
- * @extends ChatProvider
+ * @augments ChatProvider
  */
 export class CachingChatDecorator extends ChatProvider {
   #inner;
@@ -25,7 +25,7 @@ export class CachingChatDecorator extends ChatProvider {
   /**
    * @param {ChatProvider} innerProvider - The provider to wrap
    * @param {CacheManager} cache - Cache instance for L2 storage
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.ttl=3600000] - Cache TTL in milliseconds (default 1h)
    */
   constructor(innerProvider, cache, options = {}) {
@@ -63,8 +63,8 @@ export class CachingChatDecorator extends ChatProvider {
   /**
    * Chat with L2 caching. Cache key is derived from messages + model + temperature + maxTokens + responseFormat.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
-   * @returns {Promise<{content: string, usage: Object}>}
+   * @param {object} [options={}]
+   * @returns {Promise<{content: string, usage: object}>}
    */
   async chat(messages, options = {}) {
     if (options.skipCache) {
@@ -87,7 +87,7 @@ export class CachingChatDecorator extends ChatProvider {
   /**
    * Streaming is never cached — delegates directly to inner provider.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @returns {AsyncGenerator<{token: string, done: boolean}>}
    */
   async *chatStream(messages, options = {}) {
@@ -97,16 +97,17 @@ export class CachingChatDecorator extends ChatProvider {
   /**
    * Build a cache key from messages and options.
    * @param {Array} messages
-   * @param {Object} options
+   * @param {object} options
    * @returns {string}
    * @private
    */
   #buildChatKey(messages, options) {
-    const input = JSON.stringify(messages)
-      + (options.model ?? '')
-      + (options.temperature ?? '')
-      + (options.maxTokens ?? '')
-      + (options.responseFormat ? JSON.stringify(options.responseFormat) : '');
+    const input =
+      JSON.stringify(messages) +
+      (options.model ?? '') +
+      (options.temperature ?? '') +
+      (options.maxTokens ?? '') +
+      (options.responseFormat ? JSON.stringify(options.responseFormat) : '');
     return CacheManager.generateCacheKey(input, 'l2:chat');
   }
 }
@@ -114,7 +115,7 @@ export class CachingChatDecorator extends ChatProvider {
 /**
  * CachingEmbeddingDecorator — Wraps an EmbeddingProvider with L2 cache for embed() calls.
  *
- * @extends EmbeddingProvider
+ * @augments EmbeddingProvider
  */
 export class CachingEmbeddingDecorator extends EmbeddingProvider {
   #inner;
@@ -124,7 +125,7 @@ export class CachingEmbeddingDecorator extends EmbeddingProvider {
   /**
    * @param {EmbeddingProvider} innerProvider - The provider to wrap
    * @param {CacheManager} cache - Cache instance for L2 storage
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.ttl=86400000] - Cache TTL in milliseconds (default 24h)
    */
   constructor(innerProvider, cache, options = {}) {
@@ -162,7 +163,7 @@ export class CachingEmbeddingDecorator extends EmbeddingProvider {
   /**
    * Embed with L2 caching. Cache key is derived from text + model.
    * @param {string} text
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @returns {Promise<{embedding: number[], dimensions: number}>}
    */
   async embed(text, options = {}) {
@@ -186,7 +187,7 @@ export class CachingEmbeddingDecorator extends EmbeddingProvider {
   /**
    * Build a cache key from text and options.
    * @param {string} text
-   * @param {Object} options
+   * @param {object} options
    * @returns {string}
    * @private
    */

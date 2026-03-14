@@ -32,36 +32,35 @@
  * @returns {Function} A debounced version of the function with a cancel() method
  */
 export function debounce(func, delay) {
-    let timeoutId = null;
+  let timeoutId = null;
 
-    /**
-     * The debounced function that delays execution
-     * @param {...*} args - Arguments to pass to the original function
-     */
-    const debounced = function(...args) {
-        // Clear any pending execution
-        if (timeoutId !== null) {
-            clearTimeout(timeoutId);
-        }
+  /**
+   * The debounced function that delays execution
+   * @param {...*} args - Arguments to pass to the original function
+   */
+  const debounced = function (...args) {
+    // Clear any pending execution
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
 
-        // Schedule new execution
-        timeoutId = setTimeout(() => {
-            timeoutId = null;
-            func.apply(this, args);
-        }, delay);
-    };
+    // Schedule new execution
+    timeoutId = setTimeout(() => {
+      timeoutId = null;
+      func.apply(this, args);
+    }, delay);
+  };
 
-    /**
-     * Cancels any pending execution of the debounced function
-     * Use this to prevent a scheduled function call from executing
-     */
-    debounced.cancel = function() {
-        if (timeoutId !== null) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
-        }
-    };
+  /**
+   * Cancels any pending execution of the debounced function
+   * Use this to prevent a scheduled function call from executing
+   */
+  debounced.cancel = function () {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
 
-    return debounced;
+  return debounced;
 }
-

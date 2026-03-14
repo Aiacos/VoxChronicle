@@ -29,7 +29,7 @@ export class TranscriptionProvider {
   /**
    * Transcribe audio to text with optional speaker diarization.
    * @param {Blob} audioBlob - Audio data to transcribe
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {string} [options.model]
    * @param {AbortSignal} [options.abortSignal]
    * @returns {Promise<{text: string, segments: Array}>}
@@ -37,8 +37,9 @@ export class TranscriptionProvider {
    */
   async transcribe(audioBlob, options = {}) {
     throw new Error(
-      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', { method: 'transcribe' })
-        ?? 'Method transcribe must be implemented by provider subclass'
+      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', {
+        method: 'transcribe'
+      }) ?? 'Method transcribe must be implemented by provider subclass'
     );
   }
 
@@ -48,7 +49,12 @@ export class TranscriptionProvider {
    * @protected
    */
   _validateAudioBlob(audioBlob) {
-    if (!audioBlob || typeof audioBlob !== 'object' || typeof audioBlob.size !== 'number' || typeof audioBlob.type !== 'string') {
+    if (
+      !audioBlob ||
+      typeof audioBlob !== 'object' ||
+      typeof audioBlob.size !== 'number' ||
+      typeof audioBlob.type !== 'string'
+    ) {
       throw new TypeError('audioBlob must be a Blob or an object with size and type properties');
     }
     if (audioBlob.size === 0) {
@@ -58,7 +64,7 @@ export class TranscriptionProvider {
 
   /**
    * Validate common options.
-   * @param {Object} options
+   * @param {object} options
    * @protected
    */
   _validateOptions(options) {

@@ -180,7 +180,11 @@ class TranscriptionService {
    */
   async transcribe(audioBlob, options = {}) {
     options = { ...options }; // Prevent mutation of caller's object
-    this._logger.debug('transcribe called', { blobSize: audioBlob?.size, model: options.model, language: options.language });
+    this._logger.debug('transcribe called', {
+      blobSize: audioBlob?.size,
+      model: options.model,
+      language: options.language
+    });
     const t0 = Date.now();
 
     // Circuit breaker check - fail fast if too many consecutive errors
@@ -265,7 +269,9 @@ class TranscriptionService {
           `Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`
         );
       }
-      this._logger.error(`transcribe failed after ${Date.now() - t0}ms: ${error.message}`, { blobSize: audioBlob?.size });
+      this._logger.error(`transcribe failed after ${Date.now() - t0}ms: ${error.message}`, {
+        blobSize: audioBlob?.size
+      });
       throw error;
     }
   }
@@ -320,12 +326,14 @@ class TranscriptionService {
       this._logger.debug('Provider response:', response);
 
       // Map speakers to names
-      let mappedResult = this._mapSpeakersToNames(response, speakerMap);
+      const mappedResult = this._mapSpeakersToNames(response, speakerMap);
 
       // FAIL-SAFE: If text is present but segments are empty (diarization failed),
       // create a single synthetic segment so the transcript is not lost.
       if (mappedResult.text && mappedResult.segments.length === 0) {
-        this._logger.warn('Diarization returned 0 segments despite having text. Creating synthetic segment.');
+        this._logger.warn(
+          'Diarization returned 0 segments despite having text. Creating synthetic segment.'
+        );
         mappedResult.segments.push({
           speaker: speakerMap['Unknown'] || 'Unknown',
           originalSpeaker: 'Unknown',
@@ -345,7 +353,10 @@ class TranscriptionService {
       });
       return mappedResult;
     } catch (error) {
-      this._logger.error(`_transcribeSingle failed after ${Date.now() - t0}ms: ${error.message}`, { model, blobSizeMB: AudioUtils.getBlobSizeMB(audioBlob) });
+      this._logger.error(`_transcribeSingle failed after ${Date.now() - t0}ms: ${error.message}`, {
+        model,
+        blobSizeMB: AudioUtils.getBlobSizeMB(audioBlob)
+      });
       throw error;
     }
   }
@@ -683,9 +694,7 @@ class TranscriptionService {
         ...segment,
         language: segmentLanguage || undefined,
         // Tag the speaker with detected language for display
-        speaker: segmentLanguage
-          ? `${segment.speaker} (${segmentLanguage})`
-          : segment.speaker
+        speaker: segmentLanguage ? `${segment.speaker} (${segmentLanguage})` : segment.speaker
       };
     });
 

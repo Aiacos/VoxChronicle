@@ -200,9 +200,9 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
       'deselect-all': EntityPreview._onDeselectAllAction,
       'confirm-create': EntityPreview._onConfirmCreateAction,
       'skip-all': EntityPreview._onSkipAllAction,
-      'cancel': EntityPreview._onCancelAction,
-      'close': EntityPreview._onCloseAction,
-      'retry': EntityPreview._onRetryAction,
+      cancel: EntityPreview._onCancelAction,
+      close: EntityPreview._onCloseAction,
+      retry: EntityPreview._onRetryAction,
       'edit-description': EntityPreview._onEditDescriptionAction,
       'generate-portrait': EntityPreview._onGeneratePortraitAction,
       'toggle-section': EntityPreview._onToggleSectionAction,
@@ -247,57 +247,101 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
 
   // --- Static Action Handlers (dispatch to instance methods) ---
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onSelectAllAction(event, target) {
     this._onSelectAll(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onDeselectAllAction(event, target) {
     this._onDeselectAll(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onConfirmCreateAction(event, target) {
     return this._onConfirmCreate(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onSkipAllAction(event, target) {
     this._onSkipAll(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onCancelAction(event, target) {
     this._onCancel(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onCloseAction(event, target) {
     this._onClose(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onRetryAction(event, target) {
     this._onRetry(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onEditDescriptionAction(event, target) {
     return this._onEditDescription(event, target);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onGeneratePortraitAction(event, target) {
     return this._onGeneratePortrait(event, target);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onToggleSectionAction(event, target) {
     this._onToggleSection(event, target);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static _onViewGraphAction(event, target) {
     this._onViewGraph(event);
   }
@@ -310,7 +354,10 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
-    this._logger.debug('_onRender called', { mode: this._mode, entityCount: this._getTotalEntityCount() });
+    this._logger.debug('_onRender called', {
+      mode: this._mode,
+      entityCount: this._getTotalEntityCount()
+    });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
@@ -589,9 +636,10 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
       // Progress and results
       progress: {
         ...this._progress,
-        percent: this._progress.total > 0
-          ? Math.round((this._progress.current / this._progress.total) * 100)
-          : 0
+        percent:
+          this._progress.total > 0
+            ? Math.round((this._progress.current / this._progress.total) * 100)
+            : 0
       },
       hasProgress: this._mode === PreviewMode.CREATING,
       results: this._results,
@@ -805,7 +853,11 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     // Create characters
     for (const character of selectedEntities.characters) {
       try {
-        this._progress.message = game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', { type: 'character', name: character.name }) || `Creating character: ${character.name}`;
+        this._progress.message =
+          game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', {
+            type: 'character',
+            name: character.name
+          }) || `Creating character: ${character.name}`;
         this._batchedRender();
 
         const result = await kankaService.createCharacter({
@@ -842,7 +894,11 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     // Create locations
     for (const location of selectedEntities.locations) {
       try {
-        this._progress.message = game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', { type: 'location', name: location.name }) || `Creating location: ${location.name}`;
+        this._progress.message =
+          game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', {
+            type: 'location',
+            name: location.name
+          }) || `Creating location: ${location.name}`;
         this._batchedRender();
 
         const result = await kankaService.createLocation({
@@ -879,7 +935,11 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
     // Create items
     for (const item of selectedEntities.items) {
       try {
-        this._progress.message = game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', { type: 'item', name: item.name }) || `Creating item: ${item.name}`;
+        this._progress.message =
+          game.i18n?.format('VOXCHRONICLE.EntityPreview.CreatingEntity', {
+            type: 'item',
+            name: item.name
+          }) || `Creating item: ${item.name}`;
         this._batchedRender();
 
         const result = await kankaService.createItem({
@@ -1123,11 +1183,11 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Filter out already-created entities to prevent duplicates in Kanka
     if (this._results.created?.length > 0) {
-      const createdNames = new Set(this._results.created.map(e => e.name?.toLowerCase()));
+      const createdNames = new Set(this._results.created.map((e) => e.name?.toLowerCase()));
 
       ['characters', 'locations', 'items'].forEach((type) => {
         this._entities[type] = this._entities[type].filter(
-          e => !createdNames.has(e.name?.toLowerCase())
+          (e) => !createdNames.has(e.name?.toLowerCase())
         );
       });
 
@@ -1405,7 +1465,11 @@ class EntityPreview extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<void>}
    */
   async close(options = {}) {
-    this._logger.debug('EntityPreview closing', { mode: this._mode, created: this._results.created.length, failed: this._results.failed.length });
+    this._logger.debug('EntityPreview closing', {
+      mode: this._mode,
+      created: this._results.created.length,
+      failed: this._results.failed.length
+    });
     this.#listenerController?.abort();
     if (this._renderTimeout !== null) {
       clearTimeout(this._renderTimeout);

@@ -56,7 +56,9 @@ export function sanitizeHtml(html) {
   const doc = parser.parseFromString(html, 'text/html');
 
   // Remove dangerous elements
-  const dangerous = doc.querySelectorAll('script, iframe, object, embed, form, input, textarea, select, button, style, link, meta, base');
+  const dangerous = doc.querySelectorAll(
+    'script, iframe, object, embed, form, input, textarea, select, button, style, link, meta, base'
+  );
   for (const el of dangerous) {
     el.remove();
   }
@@ -72,7 +74,11 @@ export function sanitizeHtml(html) {
       // Remove dangerous protocol URLs (javascript:, data:, vbscript:)
       if (['href', 'src', 'action'].includes(attr.name)) {
         const val = attr.value.trim().toLowerCase();
-        if (val.startsWith('javascript:') || val.startsWith('data:') || val.startsWith('vbscript:')) {
+        if (
+          val.startsWith('javascript:') ||
+          val.startsWith('data:') ||
+          val.startsWith('vbscript:')
+        ) {
           el.removeAttribute(attr.name);
         }
       }

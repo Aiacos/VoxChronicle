@@ -311,9 +311,7 @@ describe('KankaEntityManager', () => {
       const result = await manager.get('characters', 123);
 
       expect(result).toEqual(entity);
-      expect(client.get).toHaveBeenCalledWith(
-        `/campaigns/${TEST_CAMPAIGN_ID}/characters/123`
-      );
+      expect(client.get).toHaveBeenCalledWith(`/campaigns/${TEST_CAMPAIGN_ID}/characters/123`);
     });
 
     it('should handle string entity ID', async () => {
@@ -321,9 +319,7 @@ describe('KankaEntityManager', () => {
 
       await manager.get('locations', '456');
 
-      expect(client.get).toHaveBeenCalledWith(
-        `/campaigns/${TEST_CAMPAIGN_ID}/locations/456`
-      );
+      expect(client.get).toHaveBeenCalledWith(`/campaigns/${TEST_CAMPAIGN_ID}/locations/456`);
     });
 
     it('should propagate errors from client', async () => {
@@ -350,10 +346,10 @@ describe('KankaEntityManager', () => {
       });
 
       expect(result).toEqual(updated);
-      expect(client.put).toHaveBeenCalledWith(
-        `/campaigns/${TEST_CAMPAIGN_ID}/characters/123`,
-        { name: 'Updated Name', age: '30' }
-      );
+      expect(client.put).toHaveBeenCalledWith(`/campaigns/${TEST_CAMPAIGN_ID}/characters/123`, {
+        name: 'Updated Name',
+        age: '30'
+      });
     });
 
     it('should support partial updates', async () => {
@@ -361,10 +357,7 @@ describe('KankaEntityManager', () => {
 
       await manager.update('characters', 123, { age: '30' });
 
-      expect(client.put).toHaveBeenCalledWith(
-        expect.any(String),
-        { age: '30' }
-      );
+      expect(client.put).toHaveBeenCalledWith(expect.any(String), { age: '30' });
     });
   });
 
@@ -378,9 +371,7 @@ describe('KankaEntityManager', () => {
 
       await manager.delete('characters', 123);
 
-      expect(client.delete).toHaveBeenCalledWith(
-        `/campaigns/${TEST_CAMPAIGN_ID}/characters/123`
-      );
+      expect(client.delete).toHaveBeenCalledWith(`/campaigns/${TEST_CAMPAIGN_ID}/characters/123`);
     });
 
     it('should propagate errors', async () => {
@@ -406,9 +397,7 @@ describe('KankaEntityManager', () => {
       expect(result.data).toEqual(entities);
       expect(result.meta).toEqual({ total: 2 });
       expect(result.links).toEqual({});
-      expect(client.get).toHaveBeenCalledWith(
-        `/campaigns/${TEST_CAMPAIGN_ID}/characters`
-      );
+      expect(client.get).toHaveBeenCalledWith(`/campaigns/${TEST_CAMPAIGN_ID}/characters`);
     });
 
     it('should append query parameters from options', async () => {
@@ -416,12 +405,8 @@ describe('KankaEntityManager', () => {
 
       await manager.list('characters', { page: 2, type: 'NPC' });
 
-      expect(client.get).toHaveBeenCalledWith(
-        expect.stringContaining('page=2')
-      );
-      expect(client.get).toHaveBeenCalledWith(
-        expect.stringContaining('type=NPC')
-      );
+      expect(client.get).toHaveBeenCalledWith(expect.stringContaining('page=2'));
+      expect(client.get).toHaveBeenCalledWith(expect.stringContaining('type=NPC'));
     });
 
     it('should URL-encode query parameter values', async () => {
@@ -429,9 +414,7 @@ describe('KankaEntityManager', () => {
 
       await manager.list('characters', { name: 'Test Character' });
 
-      expect(client.get).toHaveBeenCalledWith(
-        expect.stringContaining('name=Test%20Character')
-      );
+      expect(client.get).toHaveBeenCalledWith(expect.stringContaining('name=Test%20Character'));
     });
 
     it('should skip null/undefined option values', async () => {
@@ -523,11 +506,7 @@ describe('KankaEntityManager', () => {
 
       client.postFormData.mockResolvedValue({ data: { id: 1 } });
 
-      await manager.uploadImage(
-        'characters',
-        123,
-        'https://example.com/image.png'
-      );
+      await manager.uploadImage('characters', 123, 'https://example.com/image.png');
 
       expect(fetchSpy).toHaveBeenCalledWith('https://example.com/image.png');
       expect(client.postFormData).toHaveBeenCalled();
@@ -553,27 +532,27 @@ describe('KankaEntityManager', () => {
     });
 
     it('should throw if entityType is missing', async () => {
-      await expect(
-        manager.uploadImage('', 123, new Blob(['data']))
-      ).rejects.toThrow('Entity type and ID are required');
+      await expect(manager.uploadImage('', 123, new Blob(['data']))).rejects.toThrow(
+        'Entity type and ID are required'
+      );
     });
 
     it('should throw if entityId is missing', async () => {
-      await expect(
-        manager.uploadImage('characters', null, new Blob(['data']))
-      ).rejects.toThrow('Entity type and ID are required');
+      await expect(manager.uploadImage('characters', null, new Blob(['data']))).rejects.toThrow(
+        'Entity type and ID are required'
+      );
     });
 
     it('should throw if image source is neither string nor Blob', async () => {
-      await expect(
-        manager.uploadImage('characters', 123, 12345)
-      ).rejects.toThrow('Image source must be a URL string or Blob');
+      await expect(manager.uploadImage('characters', 123, 12345)).rejects.toThrow(
+        'Image source must be a URL string or Blob'
+      );
     });
 
     it('should throw if image source is an object', async () => {
-      await expect(
-        manager.uploadImage('characters', 123, { url: 'test' })
-      ).rejects.toThrow('Image source must be a URL string or Blob');
+      await expect(manager.uploadImage('characters', 123, { url: 'test' })).rejects.toThrow(
+        'Image source must be a URL string or Blob'
+      );
     });
   });
 
@@ -685,9 +664,7 @@ describe('KankaEntityManager', () => {
       const result = await manager.searchEntities('Dragon', 'characters');
 
       expect(result).toEqual(entities);
-      expect(client.get).toHaveBeenCalledWith(
-        expect.stringContaining('/characters?name=Dragon')
-      );
+      expect(client.get).toHaveBeenCalledWith(expect.stringContaining('/characters?name=Dragon'));
     });
 
     it('should search all common entity types when no type specified', async () => {
@@ -773,9 +750,7 @@ describe('KankaEntityManager', () => {
 
       await manager.searchEntities('The Dragon', 'characters');
 
-      expect(client.get).toHaveBeenCalledWith(
-        expect.stringContaining('name=The%20Dragon')
-      );
+      expect(client.get).toHaveBeenCalledWith(expect.stringContaining('name=The%20Dragon'));
     });
 
     it('should throw last error when all entity types fail in multi-type search', async () => {

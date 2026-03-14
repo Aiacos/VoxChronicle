@@ -8,9 +8,9 @@ vi.mock('../../../scripts/utils/Logger.mjs', () => ({
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
-      log: vi.fn(),
-    })),
-  },
+      log: vi.fn()
+    }))
+  }
 }));
 
 // Capture mock client instances
@@ -40,8 +40,8 @@ vi.mock('../../../scripts/ai/OpenAIClient.mjs', () => {
     OpenAIErrorType: {
       AUTHENTICATION_ERROR: 'authentication_error',
       RATE_LIMIT_ERROR: 'rate_limit_error',
-      API_ERROR: 'api_error',
-    },
+      API_ERROR: 'api_error'
+    }
   };
 });
 
@@ -49,8 +49,8 @@ vi.mock('../../../scripts/ai/OpenAIClient.mjs', () => {
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 import { OpenAIChatProvider } from '../../../scripts/ai/providers/OpenAIChatProvider.mjs';
@@ -98,7 +98,7 @@ describe('OpenAIChatProvider', () => {
   describe('chat()', () => {
     const openAIResponse = {
       choices: [{ message: { content: 'Hello world' } }],
-      usage: { prompt_tokens: 5, completion_tokens: 10, total_tokens: 15 },
+      usage: { prompt_tokens: 5, completion_tokens: 10, total_tokens: 15 }
     };
 
     it('should call client.post with /chat/completions endpoint', async () => {
@@ -116,7 +116,7 @@ describe('OpenAIChatProvider', () => {
       const result = await provider.chat([{ role: 'user', content: 'hi' }]);
       expect(result).toEqual({
         content: 'Hello world',
-        usage: { prompt_tokens: 5, completion_tokens: 10, total_tokens: 15 },
+        usage: { prompt_tokens: 5, completion_tokens: 10, total_tokens: 15 }
       });
     });
 
@@ -124,7 +124,7 @@ describe('OpenAIChatProvider', () => {
       mockClient.post.mockResolvedValue(openAIResponse);
       const messages = [
         { role: 'system', content: 'You are helpful' },
-        { role: 'user', content: 'Hello' },
+        { role: 'user', content: 'Hello' }
       ];
       await provider.chat(messages);
       expect(mockClient.post).toHaveBeenCalledWith(
@@ -214,9 +214,7 @@ describe('OpenAIChatProvider', () => {
     it('should propagate errors from OpenAI client', async () => {
       const error = new Error('API error');
       mockClient.post.mockRejectedValue(error);
-      await expect(
-        provider.chat([{ role: 'user', content: 'hi' }])
-      ).rejects.toThrow('API error');
+      await expect(provider.chat([{ role: 'user', content: 'hi' }])).rejects.toThrow('API error');
     });
   });
 
@@ -230,7 +228,7 @@ describe('OpenAIChatProvider', () => {
     it('should yield { token, done: false } for each content chunk', async () => {
       const chunks = [
         { content: 'Hello', usage: null },
-        { content: ' world', usage: null },
+        { content: ' world', usage: null }
       ];
       mockClient.postStream.mockReturnValue(mockAsyncGenerator(chunks));
 
@@ -244,9 +242,7 @@ describe('OpenAIChatProvider', () => {
     });
 
     it('should yield { token: "", done: true } at end of stream', async () => {
-      const chunks = [
-        { content: 'Hello', usage: null },
-      ];
+      const chunks = [{ content: 'Hello', usage: null }];
       mockClient.postStream.mockReturnValue(mockAsyncGenerator(chunks));
 
       const tokens = [];
@@ -261,7 +257,7 @@ describe('OpenAIChatProvider', () => {
     it('should handle null content chunks gracefully', async () => {
       const chunks = [
         { content: null, usage: null },
-        { content: 'text', usage: null },
+        { content: 'text', usage: null }
       ];
       mockClient.postStream.mockReturnValue(mockAsyncGenerator(chunks));
 
@@ -280,7 +276,9 @@ describe('OpenAIChatProvider', () => {
       const messages = [{ role: 'user', content: 'hi' }];
 
       // Consume the generator
-      for await (const _ of provider.chatStream(messages)) { /* drain */ }
+      for await (const _ of provider.chatStream(messages)) {
+        /* drain */
+      }
 
       expect(mockClient.postStream).toHaveBeenCalledWith(
         '/chat/completions',
@@ -293,10 +291,11 @@ describe('OpenAIChatProvider', () => {
       mockClient.postStream.mockReturnValue(mockAsyncGenerator([]));
       const controller = new AbortController();
 
-      for await (const _ of provider.chatStream(
-        [{ role: 'user', content: 'hi' }],
-        { abortSignal: controller.signal }
-      )) { /* drain */ }
+      for await (const _ of provider.chatStream([{ role: 'user', content: 'hi' }], {
+        abortSignal: controller.signal
+      })) {
+        /* drain */
+      }
 
       expect(mockClient.postStream).toHaveBeenCalledWith(
         '/chat/completions',
@@ -306,10 +305,9 @@ describe('OpenAIChatProvider', () => {
     });
 
     it('should validate options before streaming', async () => {
-      const gen = provider.chatStream(
-        [{ role: 'user', content: 'hi' }],
-        { abortSignal: 'invalid' }
-      );
+      const gen = provider.chatStream([{ role: 'user', content: 'hi' }], {
+        abortSignal: 'invalid'
+      });
       await expect(gen.next()).rejects.toThrow('abortSignal must be an instance of AbortSignal');
     });
 
@@ -336,7 +334,7 @@ describe('OpenAIChatProvider', () => {
     it('should pass queueCategory "chat" to post() in chat()', async () => {
       mockClient.post.mockResolvedValue({
         choices: [{ message: { content: 'ok' } }],
-        usage: {},
+        usage: {}
       });
       await provider.chat([{ role: 'user', content: 'hi' }]);
       expect(mockClient.post).toHaveBeenCalledWith(
@@ -347,9 +345,11 @@ describe('OpenAIChatProvider', () => {
     });
 
     it('should pass queueCategory "chat" to postStream() in chatStream()', async () => {
-      mockClient.postStream.mockReturnValue((async function* () {
-        yield { content: 'hi', usage: null };
-      })());
+      mockClient.postStream.mockReturnValue(
+        (async function* () {
+          yield { content: 'hi', usage: null };
+        })()
+      );
       const tokens = [];
       for await (const chunk of provider.chatStream([{ role: 'user', content: 'hi' }])) {
         tokens.push(chunk);

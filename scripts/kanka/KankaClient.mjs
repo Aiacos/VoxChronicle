@@ -11,7 +11,7 @@
  * - Premium tier: 90 requests per minute
  *
  * @class KankaClient
- * @extends BaseAPIClient
+ * @augments BaseAPIClient
  * @module vox-chronicle
  * @see https://api.kanka.io/docs/
  */
@@ -162,10 +162,11 @@ class KankaClient extends BaseAPIClient {
       timeout: options.timeout || DEFAULT_TIMEOUT_MS,
       loggerName: 'KankaClient',
       sanitizeLogger: true,
-      authErrorMessage: 'Kanka API token not configured. Please add your API token in module settings.',
+      authErrorMessage:
+        'Kanka API token not configured. Please add your API token in module settings.',
       AuthErrorClass: KankaError,
       authErrorType: KankaErrorType.AUTHENTICATION_ERROR,
-      rateLimiter,
+      rateLimiter
     });
 
     this._maxRetries = maxRetries;
@@ -384,7 +385,9 @@ class KankaClient extends BaseAPIClient {
 
         // Handle error responses FIRST (before processing rate limit headers)
         if (!response.ok) {
-          this._logger.debug(`Request ${method} ${sanitizedUrl} failed: status=${response.status}, elapsed=${elapsed}ms`);
+          this._logger.debug(
+            `Request ${method} ${sanitizedUrl} failed: status=${response.status}, elapsed=${elapsed}ms`
+          );
           const error = await this._parseErrorResponse(response);
 
           // If rate limited (429), pause the rate limiter
@@ -405,7 +408,9 @@ class KankaClient extends BaseAPIClient {
         const data = await response.json();
         // Sanitize endpoint to prevent exposing sensitive query parameters
         const sanitizedEndpoint = SensitiveDataFilter.sanitizeString(endpoint);
-        this._logger.debug(`Request to ${sanitizedEndpoint} completed: status=${response.status}, elapsed=${elapsed}ms`);
+        this._logger.debug(
+          `Request to ${sanitizedEndpoint} completed: status=${response.status}, elapsed=${elapsed}ms`
+        );
         return data;
       } catch (error) {
         // Clear timeout

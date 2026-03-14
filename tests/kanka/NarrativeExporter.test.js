@@ -483,10 +483,7 @@ describe('NarrativeExporter', () => {
     });
 
     it('should return empty array when no action words found', () => {
-      const segments = [
-        { text: 'They walked down the road' },
-        { text: 'It was a nice day' }
-      ];
+      const segments = [{ text: 'They walked down the road' }, { text: 'It was a nice day' }];
 
       const highlights = exporter._extractHighlights(segments, 5);
       expect(highlights).toEqual([]);
@@ -1529,9 +1526,7 @@ describe('NarrativeExporter', () => {
     });
 
     it('should handle duration of 0 minutes', () => {
-      const segments = [
-        { speaker: 'DM', text: 'Quick hello world', start: 0, end: 5 }
-      ];
+      const segments = [{ speaker: 'DM', text: 'Quick hello world', start: 0, end: 5 }];
       const summary = exporter.generateSummary(segments);
       // 5 seconds rounds to 0 minutes, which should not be included
       expect(summary).toBeDefined();

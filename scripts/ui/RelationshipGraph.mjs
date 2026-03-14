@@ -332,22 +332,26 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
-    this._logger.debug('_onRender called', { mode: this._mode, entities: this._getTotalEntityCount(), relationships: this._relationships.length });
+    this._logger.debug('_onRender called', {
+      mode: this._mode,
+      entities: this._getTotalEntityCount(),
+      relationships: this._relationships.length
+    });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
 
     // Filter change handlers
-    this.element?.querySelectorAll('[data-filter="entity-type"]').forEach(el => {
+    this.element?.querySelectorAll('[data-filter="entity-type"]').forEach((el) => {
       el.addEventListener('change', this._onEntityTypeFilterChange.bind(this), { signal });
     });
-    this.element?.querySelectorAll('[data-filter="relationship-type"]').forEach(el => {
+    this.element?.querySelectorAll('[data-filter="relationship-type"]').forEach((el) => {
       el.addEventListener('change', this._onRelationshipTypeFilterChange.bind(this), { signal });
     });
 
     // Initialize the graph if in ready mode
     if (this._mode === GraphMode.READY) {
-      this._initializeGraph().catch(err => {
+      this._initializeGraph().catch((err) => {
         this._logger.error('Graph initialization failed:', err);
         this._mode = GraphMode.ERROR;
         this.render();

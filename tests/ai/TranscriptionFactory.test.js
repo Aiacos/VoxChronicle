@@ -8,10 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import {
-  TranscriptionFactory,
-  TranscriptionMode
-} from '../../scripts/ai/TranscriptionFactory.mjs';
+import { TranscriptionFactory, TranscriptionMode } from '../../scripts/ai/TranscriptionFactory.mjs';
 
 // Mock Logger
 vi.mock('../../scripts/utils/Logger.mjs', () => ({
@@ -184,15 +181,15 @@ describe('TranscriptionFactory', () => {
 
   describe('API mode', () => {
     it('should throw if no provider provided', async () => {
-      await expect(
-        TranscriptionFactory.create({ mode: 'api' })
-      ).rejects.toThrow('A transcription provider is required');
+      await expect(TranscriptionFactory.create({ mode: 'api' })).rejects.toThrow(
+        'A transcription provider is required'
+      );
     });
 
     it('should throw if provider is null', async () => {
-      await expect(
-        TranscriptionFactory.create({ mode: 'api', provider: null })
-      ).rejects.toThrow('A transcription provider is required');
+      await expect(TranscriptionFactory.create({ mode: 'api', provider: null })).rejects.toThrow(
+        'A transcription provider is required'
+      );
     });
   });
 
@@ -200,9 +197,9 @@ describe('TranscriptionFactory', () => {
 
   describe('Local mode', () => {
     it('should throw if no backend URL provided', async () => {
-      await expect(
-        TranscriptionFactory.create({ mode: 'local' })
-      ).rejects.toThrow('Whisper backend URL is required');
+      await expect(TranscriptionFactory.create({ mode: 'local' })).rejects.toThrow(
+        'Whisper backend URL is required'
+      );
     });
 
     it('should throw if backend URL is empty', async () => {
@@ -269,9 +266,9 @@ describe('TranscriptionFactory', () => {
     });
 
     it('should throw when no backend URL and no provider', async () => {
-      await expect(
-        TranscriptionFactory.create({ mode: 'auto' })
-      ).rejects.toThrow('Auto mode failed');
+      await expect(TranscriptionFactory.create({ mode: 'auto' })).rejects.toThrow(
+        'Auto mode failed'
+      );
     });
 
     it('should pass options to auto-created local service', async () => {
@@ -332,10 +329,9 @@ describe('TranscriptionFactory', () => {
 
     it('should pass options to healthCheck', async () => {
       localWhisperMocks.healthCheckResult = true;
-      const result = await TranscriptionFactory.checkLocalBackend(
-        'http://localhost:8080',
-        { timeout: 1000 }
-      );
+      const result = await TranscriptionFactory.checkLocalBackend('http://localhost:8080', {
+        timeout: 1000
+      });
       expect(result).toBe(true);
     });
   });
@@ -390,7 +386,7 @@ describe('TranscriptionFactory', () => {
 
     it('should include api mode', () => {
       const modes = TranscriptionFactory.getAvailableModes();
-      const apiMode = modes.find(m => m.id === 'api');
+      const apiMode = modes.find((m) => m.id === 'api');
       expect(apiMode).toBeDefined();
       expect(apiMode.requiresApiKey).toBe(true);
       expect(apiMode.requiresBackend).toBe(false);
@@ -398,7 +394,7 @@ describe('TranscriptionFactory', () => {
 
     it('should include local mode', () => {
       const modes = TranscriptionFactory.getAvailableModes();
-      const localMode = modes.find(m => m.id === 'local');
+      const localMode = modes.find((m) => m.id === 'local');
       expect(localMode).toBeDefined();
       expect(localMode.requiresApiKey).toBe(false);
       expect(localMode.requiresBackend).toBe(true);
@@ -407,7 +403,7 @@ describe('TranscriptionFactory', () => {
 
     it('should include auto mode', () => {
       const modes = TranscriptionFactory.getAvailableModes();
-      const autoMode = modes.find(m => m.id === 'auto');
+      const autoMode = modes.find((m) => m.id === 'auto');
       expect(autoMode).toBeDefined();
       expect(autoMode.requiresApiKey).toBe(true);
       expect(autoMode.requiresBackend).toBe(true);
@@ -415,7 +411,7 @@ describe('TranscriptionFactory', () => {
 
     it('should include descriptions for all modes', () => {
       const modes = TranscriptionFactory.getAvailableModes();
-      modes.forEach(mode => {
+      modes.forEach((mode) => {
         expect(mode.name).toBeDefined();
         expect(mode.description).toBeDefined();
         expect(mode.description.length).toBeGreaterThan(0);

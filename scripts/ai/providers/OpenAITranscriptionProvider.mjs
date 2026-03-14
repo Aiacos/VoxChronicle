@@ -6,7 +6,7 @@
  * Uses FormData for file upload (NOT JSON).
  *
  * @class OpenAITranscriptionProvider
- * @extends TranscriptionProvider
+ * @augments TranscriptionProvider
  * @module vox-chronicle
  */
 
@@ -18,13 +18,13 @@ export class OpenAITranscriptionProvider extends TranscriptionProvider {
 
   /**
    * @param {string} apiKey - OpenAI API key
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.timeout=600000] - Request timeout in ms (10 min default)
    */
   constructor(apiKey, options = {}) {
     super();
     this.#client = new OpenAIClient(apiKey, {
-      timeout: options.timeout ?? 600000,
+      timeout: options.timeout ?? 600000
     });
   }
 
@@ -36,7 +36,7 @@ export class OpenAITranscriptionProvider extends TranscriptionProvider {
   /**
    * Transcribe audio to text.
    * @param {Blob} audioBlob - Audio data to transcribe
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {boolean} [options.diarize=false] - Enable speaker diarization
    * @param {string} [options.language] - Language code (e.g., 'en', 'it')
    * @param {string} [options.prompt] - Context prompt (ignored when diarize is true)
@@ -67,18 +67,19 @@ export class OpenAITranscriptionProvider extends TranscriptionProvider {
 
     const response = await this.#client.postFormData('/audio/transcriptions', formData, {
       signal: options.abortSignal,
-      queueCategory: 'transcription',
+      queueCategory: 'transcription'
     });
 
     if (response.text === undefined || response.text === null) {
       throw new Error(
-        game?.i18n?.format?.('VOXCHRONICLE.Provider.OpenAI.InvalidResponse', { details: 'missing text field' })
-          ?? 'OpenAI transcription response missing text field'
+        game?.i18n?.format?.('VOXCHRONICLE.Provider.OpenAI.InvalidResponse', {
+          details: 'missing text field'
+        }) ?? 'OpenAI transcription response missing text field'
       );
     }
     return {
       text: response.text,
-      segments: response.segments ?? [],
+      segments: response.segments ?? []
     };
   }
 }

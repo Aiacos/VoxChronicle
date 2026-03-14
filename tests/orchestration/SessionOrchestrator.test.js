@@ -13,17 +13,25 @@ vi.hoisted(() => {
     class MockAppV2 {
       static DEFAULT_OPTIONS = {};
       static PARTS = {};
-      constructor() { this.rendered = false; }
-      render() { this.rendered = true; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      constructor() {
+        this.rendered = false;
+      }
+      render() {
+        this.rendered = true;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -31,7 +39,11 @@ vi.hoisted(() => {
   }
 });
 
-import { SessionOrchestrator, SessionState, DEFAULT_SESSION_OPTIONS } from '../../scripts/orchestration/SessionOrchestrator.mjs';
+import {
+  SessionOrchestrator,
+  SessionState,
+  DEFAULT_SESSION_OPTIONS
+} from '../../scripts/orchestration/SessionOrchestrator.mjs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,18 +81,16 @@ function createMockEntityExtractor(overrides = {}) {
       moments: [{ id: 'm1', title: 'Battle', imagePrompt: 'epic battle scene' }],
       totalCount: 3
     }),
-    extractRelationships: vi.fn().mockResolvedValue([
-      { source: 'Gandalf', target: 'Shire', type: 'visited', confidence: 8 }
-    ]),
+    extractRelationships: vi
+      .fn()
+      .mockResolvedValue([{ source: 'Gandalf', target: 'Shire', type: 'visited', confidence: 8 }]),
     ...overrides
   };
 }
 
 function createMockImageGenerationService(overrides = {}) {
   return {
-    generateBatch: vi.fn().mockResolvedValue([
-      { success: true, imageData: 'base64data' }
-    ]),
+    generateBatch: vi.fn().mockResolvedValue([{ success: true, imageData: 'base64data' }]),
     ...overrides
   };
 }
@@ -1088,7 +1098,9 @@ describe('SessionOrchestrator', () => {
       // Make stopRecording slow to simulate async delay
       let resolveStop;
       services.audioRecorder.stopRecording.mockReturnValue(
-        new Promise(resolve => { resolveStop = resolve; })
+        new Promise((resolve) => {
+          resolveStop = resolve;
+        })
       );
 
       // Call stopLiveMode twice concurrently
@@ -1265,7 +1277,8 @@ describe('SessionOrchestrator', () => {
         new Blob(['audio'], { type: 'audio/webm' })
       );
       services.transcriptionService.transcribe.mockResolvedValue({
-        text: 'Hello', segments: [{ text: 'Hello' }]
+        text: 'Hello',
+        segments: [{ text: 'Hello' }]
       });
       await orchestrator._liveCycle();
       expect(orchestrator._consecutiveLiveCycleErrors).toBe(0);
@@ -1396,11 +1409,9 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveTranscript = [{ text: 'test' }];
 
       await orchestrator._runAIAnalysis({ text: 'test' });
-      expect(onStateChange).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        { suggestionsReady: true }
-      );
+      expect(onStateChange).toHaveBeenCalledWith(expect.any(String), expect.any(String), {
+        suggestionsReady: true
+      });
     });
 
     it('should handle off-track detection via fallback path', async () => {
@@ -1421,7 +1432,9 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test' }];
       // Both streaming and fallback fail
-      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(new Error('Stream error'));
+      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(
+        new Error('Stream error')
+      );
       services.aiAssistant.analyzeContext.mockRejectedValue(new Error('AI error'));
       const onError = vi.fn();
       orchestrator.setCallbacks({ onError });
@@ -1434,7 +1447,9 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test' }];
       // Both streaming and fallback fail
-      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(new Error('Stream error'));
+      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(
+        new Error('Stream error')
+      );
       services.aiAssistant.analyzeContext.mockRejectedValue(new Error('AI error'));
 
       // First failure: notification fires
@@ -1473,10 +1488,11 @@ describe('SessionOrchestrator', () => {
 
       await orchestrator._runAIAnalysis({ text: 'The party enters' });
 
-      expect(addUsageSpy).toHaveBeenCalledWith(
-        'gpt-4o-mini-2024-07-18',
-        { prompt_tokens: 100, completion_tokens: 30, total_tokens: 130 }
-      );
+      expect(addUsageSpy).toHaveBeenCalledWith('gpt-4o-mini-2024-07-18', {
+        prompt_tokens: 100,
+        completion_tokens: 30,
+        total_tokens: 130
+      });
     });
 
     it('should not call costTracker.addUsage when analysis has no usage (fallback path)', async () => {
@@ -1516,10 +1532,11 @@ describe('SessionOrchestrator', () => {
 
       await orchestrator._runAIAnalysis({ text: 'test' });
 
-      expect(addUsageSpy).toHaveBeenCalledWith(
-        'gpt-4o-mini',
-        { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 }
-      );
+      expect(addUsageSpy).toHaveBeenCalledWith('gpt-4o-mini', {
+        prompt_tokens: 50,
+        completion_tokens: 20,
+        total_tokens: 70
+      });
     });
   });
 
@@ -1585,7 +1602,9 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveMode = true;
       orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
 
-      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(new Error('Stream error'));
+      services.aiAssistant.generateSuggestionsStreaming.mockRejectedValue(
+        new Error('Stream error')
+      );
 
       await orchestrator._runAIAnalysis({ text: 'test' });
 
@@ -1623,10 +1642,11 @@ describe('SessionOrchestrator', () => {
 
       await orchestrator._runAIAnalysis({ text: 'test' });
 
-      expect(addUsageSpy).toHaveBeenCalledWith(
-        'gpt-4o-mini-2024-07-18',
-        { prompt_tokens: 80, completion_tokens: 25, total_tokens: 105 }
-      );
+      expect(addUsageSpy).toHaveBeenCalledWith('gpt-4o-mini-2024-07-18', {
+        prompt_tokens: 80,
+        completion_tokens: 25,
+        total_tokens: 105
+      });
     });
 
     it('should populate _lastAISuggestions after streaming completes (Test 7)', async () => {
@@ -1672,9 +1692,7 @@ describe('SessionOrchestrator', () => {
       const garrickProfile = { name: 'Garrick', sessionNotes: [] };
       const mockNPCExtractor = {
         detectMentionedNPCs: vi.fn().mockReturnValue([]),
-        getProfiles: vi.fn().mockReturnValue(new Map([
-          ['garrick', garrickProfile]
-        ])),
+        getProfiles: vi.fn().mockReturnValue(new Map([['garrick', garrickProfile]])),
         addSessionNote: vi.fn()
       };
       orchestrator._npcExtractor = mockNPCExtractor;
@@ -1916,7 +1934,7 @@ describe('SessionOrchestrator', () => {
     });
 
     it('should apply speakerMap override', () => {
-      const map = { 'SPEAKER_00': 'GM' };
+      const map = { SPEAKER_00: 'GM' };
       const session = orchestrator._createSessionObject({ speakerMap: map });
       expect(session.speakerMap).toBe(map);
     });
@@ -1984,7 +2002,12 @@ describe('SessionOrchestrator', () => {
       const jp = createMockJournalParser();
       jp.getFullText.mockReturnValue('Thorin the blacksmith guards the mountain pass.');
       jp.extractNPCProfiles.mockReturnValue([
-        { name: 'Thorin', description: 'A gruff blacksmith', personality: 'stubborn', pages: ['p1'] }
+        {
+          name: 'Thorin',
+          description: 'A gruff blacksmith',
+          personality: 'stubborn',
+          pages: ['p1']
+        }
       ]);
 
       orchestrator.setNarratorServices({ journalParser: jp });
@@ -2220,7 +2243,8 @@ describe('SessionOrchestrator', () => {
       await orchestrator.startLiveMode({ batchDuration: 999999 });
 
       // Extract the callback that was registered
-      const registeredCallback = services.aiAssistant.setOnAutonomousSuggestionCallback.mock.calls[0][0];
+      const registeredCallback =
+        services.aiAssistant.setOnAutonomousSuggestionCallback.mock.calls[0][0];
       expect(registeredCallback).toBeTypeOf('function');
 
       // Simulate an autonomous suggestion
@@ -2240,7 +2264,8 @@ describe('SessionOrchestrator', () => {
     it('should handle autonomous suggestion when no onAISuggestion callback is set', async () => {
       await orchestrator.startLiveMode({ batchDuration: 999999 });
 
-      const registeredCallback = services.aiAssistant.setOnAutonomousSuggestionCallback.mock.calls[0][0];
+      const registeredCallback =
+        services.aiAssistant.setOnAutonomousSuggestionCallback.mock.calls[0][0];
 
       // Should not throw when no callback is set
       const suggestionData = {
@@ -2375,9 +2400,9 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveTranscript = [{ text: 'Garrick entered the room', speaker: 'DM' }];
 
       const mockNPCExtractor = {
-        detectMentionedNPCs: vi.fn().mockReturnValue([
-          { name: 'Garrick', personality: 'stern', role: 'guard' }
-        ]),
+        detectMentionedNPCs: vi
+          .fn()
+          .mockReturnValue([{ name: 'Garrick', personality: 'stern', role: 'guard' }]),
         getProfiles: vi.fn().mockReturnValue(new Map()),
         addSessionNote: vi.fn()
       };
@@ -2398,7 +2423,9 @@ describe('SessionOrchestrator', () => {
       orchestrator._liveTranscript = [{ text: 'test', speaker: 'DM' }];
 
       const ct = createMockChapterTracker();
-      ct.getNextChapterContentForAI = vi.fn().mockReturnValue('NEXT CHAPTER: The Cave\n\nDark cave content...');
+      ct.getNextChapterContentForAI = vi
+        .fn()
+        .mockReturnValue('NEXT CHAPTER: The Cave\n\nDark cave content...');
       orchestrator._chapterTracker = ct;
 
       services.aiAssistant.setNextChapterLookahead = vi.fn();
@@ -2418,9 +2445,7 @@ describe('SessionOrchestrator', () => {
       const garrickProfile = { name: 'Garrick', sessionNotes: [] };
       const mockNPCExtractor = {
         detectMentionedNPCs: vi.fn().mockReturnValue([]),
-        getProfiles: vi.fn().mockReturnValue(new Map([
-          ['garrick', garrickProfile]
-        ])),
+        getProfiles: vi.fn().mockReturnValue(new Map([['garrick', garrickProfile]])),
         addSessionNote: vi.fn()
       };
       orchestrator._npcExtractor = mockNPCExtractor;
@@ -2476,7 +2501,9 @@ describe('SessionOrchestrator', () => {
         journalName: 'Journal 1',
         content: 'Long content that would be truncated at 3000 chars'
       });
-      ct.getCurrentChapterContentForAI = vi.fn().mockReturnValue('AI-ready chapter content up to 8000 chars');
+      ct.getCurrentChapterContentForAI = vi
+        .fn()
+        .mockReturnValue('AI-ready chapter content up to 8000 chars');
 
       orchestrator._chapterTracker = ct;
 
@@ -2523,13 +2550,15 @@ describe('SessionOrchestrator', () => {
       // Track Hooks.on calls
       const hookCalls = [];
       globalThis.Hooks = {
-        on: vi.fn((hook, fn) => { hookCalls.push({ hook, fn }); }),
+        on: vi.fn((hook, fn) => {
+          hookCalls.push({ hook, fn });
+        }),
         off: vi.fn()
       };
 
       await orchestrator.startLiveMode({ batchDuration: 999999 });
 
-      const canvasReadyHook = hookCalls.find(h => h.hook === 'canvasReady');
+      const canvasReadyHook = hookCalls.find((h) => h.hook === 'canvasReady');
       expect(canvasReadyHook).toBeDefined();
 
       // Simulate scene change
@@ -2717,7 +2746,12 @@ describe('SessionOrchestrator', () => {
 
         // Fill with 99 segments
         for (let i = 0; i < 99; i++) {
-          orchestrator._liveTranscript.push({ text: `seg${i}`, speaker: 'S', start: i, end: i + 1 });
+          orchestrator._liveTranscript.push({
+            text: `seg${i}`,
+            speaker: 'S',
+            start: i,
+            end: i + 1
+          });
         }
 
         // Next cycle adds 5 segments (total 104)
@@ -2811,7 +2845,8 @@ describe('SessionOrchestrator', () => {
           new Blob(['audio'], { type: 'audio/webm' })
         );
         services.transcriptionService.transcribe.mockResolvedValue({
-          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+          text: 'ok',
+          segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
         });
         await orchestrator._liveCycle();
 
@@ -2828,7 +2863,8 @@ describe('SessionOrchestrator', () => {
           new Blob(['audio'], { type: 'audio/webm' })
         );
         services.transcriptionService.transcribe.mockResolvedValue({
-          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+          text: 'ok',
+          segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
         });
         vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
 
@@ -2844,7 +2880,8 @@ describe('SessionOrchestrator', () => {
           new Blob(['audio'], { type: 'audio/webm' })
         );
         services.transcriptionService.transcribe.mockResolvedValue({
-          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+          text: 'ok',
+          segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
         });
         vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
 
@@ -2862,11 +2899,14 @@ describe('SessionOrchestrator', () => {
           new Blob(['audio'], { type: 'audio/webm' })
         );
         services.transcriptionService.transcribe.mockResolvedValue({
-          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+          text: 'ok',
+          segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
         });
 
         // Fail 3 times
-        const spy = vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
+        const spy = vi
+          .spyOn(orchestrator, '_runAIAnalysis')
+          .mockRejectedValue(new Error('AI fail'));
         for (let i = 0; i < 3; i++) {
           await orchestrator._liveCycle();
         }
@@ -2886,11 +2926,14 @@ describe('SessionOrchestrator', () => {
           new Blob(['audio'], { type: 'audio/webm' })
         );
         services.transcriptionService.transcribe.mockResolvedValue({
-          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+          text: 'ok',
+          segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
         });
 
         // Fail 3 times
-        const spy = vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
+        const spy = vi
+          .spyOn(orchestrator, '_runAIAnalysis')
+          .mockRejectedValue(new Error('AI fail'));
         for (let i = 0; i < 3; i++) {
           await orchestrator._liveCycle();
         }
@@ -2910,7 +2953,8 @@ describe('SessionOrchestrator', () => {
           new Blob(['audio'], { type: 'audio/webm' })
         );
         services.transcriptionService.transcribe.mockResolvedValue({
-          text: 'ok', segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
+          text: 'ok',
+          segments: [{ text: 'ok', speaker: 'S', start: 0, end: 1 }]
         });
         vi.spyOn(orchestrator, '_runAIAnalysis').mockRejectedValue(new Error('AI fail'));
 
@@ -2933,7 +2977,8 @@ describe('SessionOrchestrator', () => {
           new Blob(['audio'], { type: 'audio/webm' })
         );
         services.transcriptionService.transcribe.mockResolvedValue({
-          text: 'test', segments: [{ text: 'test', speaker: 'S', start: 0, end: 1 }]
+          text: 'test',
+          segments: [{ text: 'test', speaker: 'S', start: 0, end: 1 }]
         });
 
         await orchestrator._liveCycle();
@@ -3251,7 +3296,7 @@ describe('RAG Indexing Pipeline', () => {
         concurrentCalls++;
         maxConcurrentCalls = Math.max(maxConcurrentCalls, concurrentCalls);
         // Simulate async work
-        await new Promise(r => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 10));
         concurrentCalls--;
         return { indexed: 2, failed: 0 };
       });
@@ -3263,7 +3308,7 @@ describe('RAG Indexing Pipeline', () => {
       const firstReindex = orchestrator.reindexJournal('journal-1');
 
       // Wait a tick so the first reindexJournal sets _reindexInProgress
-      await new Promise(r => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
       expect(orchestrator._reindexInProgress).toBe(true);
 
       // Second call should queue (returns immediately)
@@ -3272,7 +3317,7 @@ describe('RAG Indexing Pipeline', () => {
       // Wait for everything to complete
       await firstReindex;
       // Give queued re-index time to complete
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
 
       // Concurrency should never exceed 1
       expect(maxConcurrentCalls).toBeLessThanOrEqual(1);
@@ -3282,7 +3327,7 @@ describe('RAG Indexing Pipeline', () => {
     it('should queue multiple distinct journal IDs without overwriting', async () => {
       // Make indexDocuments slow so we can queue multiple IDs
       mockRAGProvider.indexDocuments.mockImplementation(async () => {
-        await new Promise(r => setTimeout(r, 20));
+        await new Promise((r) => setTimeout(r, 20));
         return { indexed: 1, failed: 0 };
       });
 
@@ -3297,7 +3342,7 @@ describe('RAG Indexing Pipeline', () => {
 
       // Start first re-index
       const firstReindex = orchestrator.reindexJournal('journal-1');
-      await new Promise(r => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
       expect(orchestrator._reindexInProgress).toBe(true);
 
       // Queue two different journals — both should be processed
@@ -3311,7 +3356,7 @@ describe('RAG Indexing Pipeline', () => {
 
       await firstReindex;
       // Give queued re-indexes time to complete
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
 
       expect(orchestrator._reindexInProgress).toBe(false);
     });
@@ -3344,9 +3389,20 @@ describe('EventBus RAG lifecycle events (Story 4.2)', () => {
     mockJournalParser = {
       parseJournal: vi.fn().mockReturnValue({ id: 'j1', name: 'Campaign', pages: [] }),
       getFullText: vi.fn().mockReturnValue('The adventure begins...'),
-      getChunksForEmbedding: vi.fn().mockReturnValue([
-        { text: 'Chunk 1', metadata: { journalName: 'Campaign', pageName: 'Ch1', pageId: 'p1', chunkIndex: 0, totalChunks: 1 } }
-      ]),
+      getChunksForEmbedding: vi
+        .fn()
+        .mockReturnValue([
+          {
+            text: 'Chunk 1',
+            metadata: {
+              journalName: 'Campaign',
+              pageName: 'Ch1',
+              pageId: 'p1',
+              chunkIndex: 0,
+              totalChunks: 1
+            }
+          }
+        ]),
       clearAllCache: vi.fn(),
       extractNPCProfiles: vi.fn().mockReturnValue([])
     };
@@ -3497,7 +3553,9 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
       orchestrator._liveCycleTimer = null;
 
       // Start cycle but don't await yet — flag should be synchronously true
-      services.audioRecorder.getLatestChunk.mockImplementation(() => new Promise(r => setTimeout(r, 50)));
+      services.audioRecorder.getLatestChunk.mockImplementation(
+        () => new Promise((r) => setTimeout(r, 50))
+      );
       const cyclePromise = orchestrator._liveCycle();
       expect(orchestrator._isCycleInFlight).toBe(true);
       orchestrator._liveMode = false; // stop to complete cleanly
@@ -3630,15 +3688,20 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
       // Rules detection was called
       expect(mockRulesRef.detectRulesQuestion).toHaveBeenCalled();
       // Lookup was triggered
-      expect(mockRulesLookup.lookup).toHaveBeenCalledWith('grappling', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(mockRulesLookup.lookup).toHaveBeenCalledWith(
+        'grappling',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
       // Wait for fire-and-forget to settle
       await vi.waitFor(() => expect(onRulesCard).toHaveBeenCalled());
-      expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
-        topic: 'grappling',
-        compendiumResults: expect.any(Array),
-        synthesisPromise: expect.any(Promise),
-        source: 'auto'
-      }));
+      expect(onRulesCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          topic: 'grappling',
+          compendiumResults: expect.any(Array),
+          synthesisPromise: expect.any(Promise),
+          source: 'auto'
+        })
+      );
     });
 
     it('should NOT trigger rules lookup when no rules question detected', async () => {
@@ -3650,9 +3713,7 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
       orch._rulesLookupService = mockRulesLookup;
       orch._liveMode = true;
       orch._shutdownController = new AbortController();
-      orch._liveTranscript = [
-        { speaker: 'Player', text: 'I attack the goblin', start: 0, end: 1 }
-      ];
+      orch._liveTranscript = [{ speaker: 'Player', text: 'I attack the goblin', start: 0, end: 1 }];
 
       await orch._runAIAnalysis({ text: 'I attack the goblin', segments: [] });
 
@@ -3664,14 +3725,21 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
       const callOrder = [];
       const mockRulesRef = createMockRulesReference({
         detectRulesQuestion: vi.fn().mockReturnValue({
-          isRulesQuestion: true, confidence: 0.9, detectedTerms: ['grappling'],
-          questionType: 'combat', extractedTopic: 'grappling'
+          isRulesQuestion: true,
+          confidence: 0.9,
+          detectedTerms: ['grappling'],
+          questionType: 'combat',
+          extractedTopic: 'grappling'
         })
       });
       const mockRulesLookup = createMockRulesLookupService({
         lookup: vi.fn().mockImplementation(async () => {
           callOrder.push('lookup-start');
-          return { topic: 'grappling', compendiumResults: [], synthesisPromise: Promise.resolve('synth') };
+          return {
+            topic: 'grappling',
+            compendiumResults: [],
+            synthesisPromise: Promise.resolve('synth')
+          };
         })
       });
 
@@ -3700,8 +3768,11 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
     it('should emit onRulesCard with unavailable=true when lookup fails', async () => {
       const mockRulesRef = createMockRulesReference({
         detectRulesQuestion: vi.fn().mockReturnValue({
-          isRulesQuestion: true, confidence: 0.9, detectedTerms: ['grappling'],
-          questionType: 'combat', extractedTopic: 'grappling'
+          isRulesQuestion: true,
+          confidence: 0.9,
+          detectedTerms: ['grappling'],
+          questionType: 'combat',
+          extractedTopic: 'grappling'
         })
       });
       const mockRulesLookup = createMockRulesLookupService({
@@ -3721,20 +3792,25 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
 
       // Wait for the fire-and-forget rejection to settle
       await vi.waitFor(() => expect(onRulesCard).toHaveBeenCalled());
-      expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
-        topic: 'grappling',
-        compendiumResults: [],
-        synthesisPromise: null,
-        source: 'auto',
-        unavailable: true
-      }));
+      expect(onRulesCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          topic: 'grappling',
+          compendiumResults: [],
+          synthesisPromise: null,
+          source: 'auto',
+          unavailable: true
+        })
+      );
     });
 
     it('should not crash suggestion cycle when rules lookup fails', async () => {
       const mockRulesRef = createMockRulesReference({
         detectRulesQuestion: vi.fn().mockReturnValue({
-          isRulesQuestion: true, confidence: 0.9, detectedTerms: ['grappling'],
-          questionType: 'combat', extractedTopic: 'grappling'
+          isRulesQuestion: true,
+          confidence: 0.9,
+          detectedTerms: ['grappling'],
+          questionType: 'combat',
+          extractedTopic: 'grappling'
         })
       });
       const mockRulesLookup = createMockRulesLookupService({
@@ -3768,12 +3844,17 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
 
         await orch.handleManualRulesQuery('How does grappling work?');
 
-        expect(mockRulesLookup.lookup).toHaveBeenCalledWith('How does grappling work?', expect.objectContaining({
-          skipCooldown: true
-        }));
-        expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
-          source: 'manual'
-        }));
+        expect(mockRulesLookup.lookup).toHaveBeenCalledWith(
+          'How does grappling work?',
+          expect.objectContaining({
+            skipCooldown: true
+          })
+        );
+        expect(onRulesCard).toHaveBeenCalledWith(
+          expect.objectContaining({
+            source: 'manual'
+          })
+        );
       });
 
       it('should emit unavailable when manual query fails', async () => {
@@ -3789,11 +3870,13 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
 
         await orch.handleManualRulesQuery('test query');
 
-        expect(onRulesCard).toHaveBeenCalledWith(expect.objectContaining({
-          topic: 'test query',
-          unavailable: true,
-          source: 'manual'
-        }));
+        expect(onRulesCard).toHaveBeenCalledWith(
+          expect.objectContaining({
+            topic: 'test query',
+            unavailable: true,
+            source: 'manual'
+          })
+        );
       });
 
       it('should no-op when no rules lookup service', async () => {
@@ -3814,10 +3897,12 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
       // Create mock OpenAI client with postStream
       const mockClient = {
         post: vi.fn().mockResolvedValue({ choices: [{ message: { content: '{}' } }] }),
-        postStream: vi.fn().mockReturnValue((async function*() {
-          yield { content: 'Hello', usage: null };
-          yield { content: ' world', usage: { prompt_tokens: 10, completion_tokens: 5 } };
-        })())
+        postStream: vi.fn().mockReturnValue(
+          (async function* () {
+            yield { content: 'Hello', usage: null };
+            yield { content: ' world', usage: { prompt_tokens: 10, completion_tokens: 5 } };
+          })()
+        )
       };
 
       const assistant = new AIAssistant({ openaiClient: mockClient });
@@ -3921,7 +4006,10 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
     it('should emit session:liveStarted when live mode starts', () => {
       expect(mockEventBus.emit).toHaveBeenCalledWith(
         'session:liveStarted',
-        expect.objectContaining({ batchDuration: expect.any(Number), timestamp: expect.any(Number) })
+        expect.objectContaining({
+          batchDuration: expect.any(Number),
+          timestamp: expect.any(Number)
+        })
       );
     });
 
@@ -3936,7 +4024,9 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
 
     it('should emit ai:suggestionReceived after successful AI analysis', async () => {
       mockEventBus.emit.mockClear();
-      services.audioRecorder.getLatestChunk.mockResolvedValue(new Blob(['audio'], { type: 'audio/webm' }));
+      services.audioRecorder.getLatestChunk.mockResolvedValue(
+        new Blob(['audio'], { type: 'audio/webm' })
+      );
       services.transcriptionService.transcribe.mockResolvedValue({
         text: 'Hello',
         segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
@@ -3951,7 +4041,9 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
     });
 
     it('should not throw when EventBus emit fails', async () => {
-      mockEventBus.emit.mockImplementation(() => { throw new Error('EventBus error'); });
+      mockEventBus.emit.mockImplementation(() => {
+        throw new Error('EventBus error');
+      });
       await expect(orchestrator.stopLiveMode()).resolves.not.toThrow();
     });
 
@@ -3988,7 +4080,9 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
         text: 'Hello',
         segments: [{ speaker: 'SPEAKER_00', text: 'Hello', start: 0, end: 1 }]
       });
-      services.audioRecorder.getLatestChunk.mockResolvedValue(new Blob(['audio'], { type: 'audio/webm' }));
+      services.audioRecorder.getLatestChunk.mockResolvedValue(
+        new Blob(['audio'], { type: 'audio/webm' })
+      );
 
       await orchestrator._liveCycle();
 
@@ -4067,10 +4161,7 @@ describe('Scene Detection wiring (Story 4.4)', () => {
 
     orchestrator._updateSceneType('Attack the goblin');
 
-    expect(mockEventBus.emit).not.toHaveBeenCalledWith(
-      'scene:changed',
-      expect.anything()
-    );
+    expect(mockEventBus.emit).not.toHaveBeenCalledWith('scene:changed', expect.anything());
   });
 
   it('should handle missing SceneDetector gracefully', () => {
@@ -4146,7 +4237,11 @@ describe('EntityPreview callback wiring (Story 5.1)', () => {
   it('should call onEntityPreview callback after entity extraction when confirmEntityCreation=true', async () => {
     const onEntityPreview = vi.fn();
     orchestrator.setCallbacks({ onEntityPreview });
-    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+    orchestrator._options = {
+      ...orchestrator._options,
+      confirmEntityCreation: true,
+      autoExtractEntities: true
+    };
 
     await orchestrator._extractEntities();
 
@@ -4161,7 +4256,11 @@ describe('EntityPreview callback wiring (Story 5.1)', () => {
   it('should NOT call onEntityPreview when confirmEntityCreation=false', async () => {
     const onEntityPreview = vi.fn();
     orchestrator.setCallbacks({ onEntityPreview });
-    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: false, autoExtractEntities: true };
+    orchestrator._options = {
+      ...orchestrator._options,
+      confirmEntityCreation: false,
+      autoExtractEntities: true
+    };
 
     await orchestrator._extractEntities();
 
@@ -4170,11 +4269,18 @@ describe('EntityPreview callback wiring (Story 5.1)', () => {
 
   it('should NOT call onEntityPreview when no entities extracted', async () => {
     orchestrator._entityProcessor.extractAll.mockResolvedValue({
-      characters: [], locations: [], items: [], totalCount: 0
+      characters: [],
+      locations: [],
+      items: [],
+      totalCount: 0
     });
     const onEntityPreview = vi.fn();
     orchestrator.setCallbacks({ onEntityPreview });
-    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+    orchestrator._options = {
+      ...orchestrator._options,
+      confirmEntityCreation: true,
+      autoExtractEntities: true
+    };
 
     await orchestrator._extractEntities();
 
@@ -4182,7 +4288,11 @@ describe('EntityPreview callback wiring (Story 5.1)', () => {
   });
 
   it('should NOT call onEntityPreview when callback not registered', async () => {
-    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+    orchestrator._options = {
+      ...orchestrator._options,
+      confirmEntityCreation: true,
+      autoExtractEntities: true
+    };
 
     // Should not throw even without callback
     await expect(orchestrator._extractEntities()).resolves.not.toThrow();
@@ -4198,7 +4308,11 @@ describe('EntityPreview callback wiring (Story 5.1)', () => {
     });
     const onEntityPreview = vi.fn();
     orchestrator.setCallbacks({ onEntityPreview });
-    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+    orchestrator._options = {
+      ...orchestrator._options,
+      confirmEntityCreation: true,
+      autoExtractEntities: true
+    };
 
     await orchestrator._extractEntities();
 

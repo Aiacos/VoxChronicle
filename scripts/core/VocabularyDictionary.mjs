@@ -244,7 +244,9 @@ export class VocabularyDictionary {
    * @returns {Promise<object>} Import statistics (added, skipped, total)
    */
   async importDictionary(json, merge = false) {
-    this._logger.debug(`importDictionary called, merge: ${merge}, json length: ${json?.length || 0}`);
+    this._logger.debug(
+      `importDictionary called, merge: ${merge}, json length: ${json?.length || 0}`
+    );
 
     if (!json || typeof json !== 'string') {
       throw new Error('JSON must be a non-empty string');

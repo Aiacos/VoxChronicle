@@ -6,7 +6,7 @@
  * image generation, transcript viewing, entity management, and analytics.
  *
  * @class MainPanel
- * @extends HandlebarsApplicationMixin(ApplicationV2)
+ * @augments HandlebarsApplicationMixin(ApplicationV2)
  * @module vox-chronicle
  */
 
@@ -41,7 +41,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   #realtimeRafId = null;
 
   /** @type {{vectorCount: number, lastIndexed: string|null, indexing: boolean, progress: number, progressText: string}} */
-  #ragCachedStatus = { vectorCount: 0, lastIndexed: null, indexing: false, progress: 0, progressText: '' };
+  #ragCachedStatus = {
+    vectorCount: 0,
+    lastIndexed: null,
+    indexing: false,
+    progress: 0,
+    progressText: ''
+  };
 
   /** @type {boolean} */
   #ragStatusFetched = false;
@@ -109,7 +115,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._activeTab = 'live';
     this._logger = Logger.createChild('MainPanel');
     this._debouncedRender = debounce(() => this.render(), 150);
-    try { this.#collapsed = game?.settings?.get(MODULE_ID, 'panelCollapsed') ?? false; } catch { /* */ }
+    try {
+      this.#collapsed = game?.settings?.get(MODULE_ID, 'panelCollapsed') ?? false;
+    } catch {
+      /* */
+    }
 
     // Streaming state (persists across re-renders)
     this._activeStreamingCard = null;
@@ -238,9 +248,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _cleanupEventBus() {
     if (this.#eventBus) {
-      if (this.#onTranscriptionReady) this.#eventBus.off('ai:transcriptionReady', this.#onTranscriptionReady);
-      if (this.#onRAGIndexingStarted) this.#eventBus.off('ai:ragIndexingStarted', this.#onRAGIndexingStarted);
-      if (this.#onRAGIndexingComplete) this.#eventBus.off('ai:ragIndexingComplete', this.#onRAGIndexingComplete);
+      if (this.#onTranscriptionReady) {this.#eventBus.off('ai:transcriptionReady', this.#onTranscriptionReady);}
+      if (this.#onRAGIndexingStarted) {this.#eventBus.off('ai:ragIndexingStarted', this.#onRAGIndexingStarted);}
+      if (this.#onRAGIndexingComplete) {this.#eventBus.off('ai:ragIndexingComplete', this.#onRAGIndexingComplete);}
     }
     this.#eventBus = null;
     this.#onTranscriptionReady = null;
@@ -273,7 +283,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const speakerColorMap = new Map();
     let colorCounter = 0;
 
-    return segments.map(seg => {
+    return segments.map((seg) => {
       const displayName = SpeakerLabeling.getSpeakerLabel(seg.speaker);
       const isMapped = displayName !== seg.speaker;
 
@@ -296,7 +306,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {Array} segments - Transcript segments array
    */
   setTranscriptData(segments) {
-    this.#transcriptData = (segments || []).map(s => ({ ...s }));
+    this.#transcriptData = (segments || []).map((s) => ({ ...s }));
   }
 
   /**
@@ -304,7 +314,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Array} Copy of transcript segments
    */
   getTranscriptData() {
-    return this.#transcriptData.map(s => ({ ...s }));
+    return this.#transcriptData.map((s) => ({ ...s }));
   }
 
   /**
@@ -364,7 +374,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const ragData = this._getRAGData();
 
     // Map images to include a displayable src (shallow copy to avoid mutating source objects)
-    const images = (session?.images || []).map(img => {
+    const images = (session?.images || []).map((img) => {
       if (!img.src && (img.base64 || img.b64_json)) {
         return { ...img, src: `data:image/png;base64,${img.base64 || img.b64_json}` };
       }
@@ -377,13 +387,16 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       const exporter = voxChronicle?.narrativeExporter;
       if (exporter) {
         try {
-          const exportData = exporter.export({
-            title: session.title,
-            date: session.date,
-            segments: session.transcript.segments,
-            entities: session.entities,
-            moments: session.moments
-          }, { format: 'summary' });
+          const exportData = exporter.export(
+            {
+              title: session.title,
+              date: session.date,
+              segments: session.transcript.segments,
+              entities: session.entities,
+              moments: session.moments
+            },
+            { format: 'summary' }
+          );
           this.#cachedChronicleDraft = sanitizeHtml(exportData.entry);
           this.#lastDraftSegmentCount = currentSegmentCount;
         } catch (err) {
@@ -420,12 +433,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Summary age badge — shows how many turns have been summarized
     let summaryBadgeText = null;
     if (isLiveMode) {
-      const summarizedCount = voxChronicle?.aiAssistant?.summarizedTurnCount
-        || this._orchestrator?._aiAssistant?.summarizedTurnCount
-        || 0;
+      const summarizedCount =
+        voxChronicle?.aiAssistant?.summarizedTurnCount ||
+        this._orchestrator?._aiAssistant?.summarizedTurnCount ||
+        0;
       if (summarizedCount > 0) {
-        summaryBadgeText = game.i18n?.format('VOXCHRONICLE.SummaryAgeBadge', { count: summarizedCount })
-          || `Context: ${summarizedCount} turns summarized`;
+        summaryBadgeText =
+          game.i18n?.format('VOXCHRONICLE.SummaryAgeBadge', { count: summarizedCount }) ||
+          `Context: ${summarizedCount} turns summarized`;
       }
     }
 
@@ -435,24 +450,27 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       let cap = '5.00';
       try {
         cap = String(game?.settings?.get(MODULE_ID, 'sessionCostCap') || 5);
-      } catch (e) { /* default */ }
-      costCapWarning = game.i18n?.format('VOXCHRONICLE.Live.CostCapReached', { cap: `$${cap}` })
-        || `Cost cap reached ($${cap}). AI suggestions paused.`;
+      } catch (e) {
+        /* default */
+      }
+      costCapWarning =
+        game.i18n?.format('VOXCHRONICLE.Live.CostCapReached', { cap: `$${cap}` }) ||
+        `Cost cap reached ($${cap}). AI suggestions paused.`;
     }
 
     // Status badge mapping — 3 UI states from orchestrator state
     const stateStr = this._orchestrator?.state || 'idle';
     let statusState = 'idle';
-    if (stateStr === 'live_listening') statusState = 'live';
-    else if (stateStr === 'live_transcribing' || stateStr === 'live_analyzing') statusState = 'analyzing';
+    if (stateStr === 'live_listening') {statusState = 'live';} else if (stateStr === 'live_transcribing' || stateStr === 'live_analyzing') {statusState = 'analyzing';}
     if (!isLiveMode) statusState = 'idle';
 
-    const statusKey = 'VOXCHRONICLE.Live.Status.' + statusState.charAt(0).toUpperCase() + statusState.slice(1);
+    const statusKey =
+      `VOXCHRONICLE.Live.Status.${  statusState.charAt(0).toUpperCase()  }${statusState.slice(1)}`;
     const statusLabel = game.i18n?.localize(statusKey) || statusState.toUpperCase();
 
     // Parse suggestion content into structured cards
     const rawSuggestions = this._orchestrator?.getAISuggestions?.() || [];
-    const suggestions = rawSuggestions.map(s => {
+    const suggestions = rawSuggestions.map((s) => {
       const parsed = this._parseCardContent(s.content);
       return { ...s, parsedTitle: parsed.title, parsedBullets: parsed.bullets };
     });
@@ -486,7 +504,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       transcriptionMode: game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
       collapsed: this.#collapsed,
-      isFirstLaunch: !isLiveMode && !this._isRecordingActive() && !this._orchestrator?.currentSession,
+      isFirstLaunch:
+        !isLiveMode && !this._isRecordingActive() && !this._orchestrator?.currentSession,
       visibleTabs: this._getVisibleTabs(isLiveMode),
       currentSceneType: this._orchestrator?.getCurrentSceneType?.() || 'unknown',
       sceneTypeLabel: this._getSceneTypeLabel(this._orchestrator?.getCurrentSceneType?.()),
@@ -501,7 +520,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       transcriptSegments: this._buildTranscriptSegments(
         this.#transcriptData.length > 0 ? this.#transcriptData : session?.transcript?.segments
       ),
-      hasTranscriptSegments: (this.#transcriptData.length > 0) || (session?.transcript?.segments?.length || 0) > 0,
+      hasTranscriptSegments:
+        this.#transcriptData.length > 0 || (session?.transcript?.segments?.length || 0) > 0,
       entities: session?.entities || null,
       entityCount: this._countEntities(session?.entities),
       hasEntities: !!session?.entities,
@@ -529,7 +549,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {object} options - Render options
    */
   _onRender(context, options) {
-    this._logger.debug('_onRender called', { activeTab: this._activeTab, isRecording: context?.isRecording });
+    this._logger.debug('_onRender called', {
+      activeTab: this._activeTab,
+      isRecording: context?.isRecording
+    });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
@@ -538,11 +561,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._stopRealtimeUpdates();
 
     // Tab switching (uses data-tab attribute, not data-action)
-    this.element?.querySelectorAll('.vox-chronicle-tab').forEach(el => {
-      el.addEventListener('click', (event) => {
-        const tab = event.currentTarget.dataset.tab;
-        if (tab) this.switchTab(tab);
-      }, { signal });
+    this.element?.querySelectorAll('.vox-chronicle-tab').forEach((el) => {
+      el.addEventListener(
+        'click',
+        (event) => {
+          const tab = event.currentTarget.dataset.tab;
+          if (tab) this.switchTab(tab);
+        },
+        { signal }
+      );
     });
 
     // Start real-time updates if recording is active
@@ -576,21 +603,29 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const rulesInput = this.element?.querySelector('.vox-chronicle-rules-input__field');
     if (rulesInput) {
       rulesInput.value = this._rulesInputValue || '';
-      rulesInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.target.value.trim()) {
-          const query = e.target.value.trim();
-          if (!this._orchestrator?.handleManualRulesQuery) {
-            this._logger.warn('Rules query submitted but orchestrator is not available');
-            return;
+      rulesInput.addEventListener(
+        'keydown',
+        (e) => {
+          if (e.key === 'Enter' && e.target.value.trim()) {
+            const query = e.target.value.trim();
+            if (!this._orchestrator?.handleManualRulesQuery) {
+              this._logger.warn('Rules query submitted but orchestrator is not available');
+              return;
+            }
+            e.target.value = '';
+            this._rulesInputValue = '';
+            this._orchestrator.handleManualRulesQuery(query);
           }
-          e.target.value = '';
-          this._rulesInputValue = '';
-          this._orchestrator.handleManualRulesQuery(query);
-        }
-      }, { signal });
-      rulesInput.addEventListener('input', (e) => {
-        this._rulesInputValue = e.target.value;
-      }, { signal });
+        },
+        { signal }
+      );
+      rulesInput.addEventListener(
+        'input',
+        (e) => {
+          this._rulesInputValue = e.target.value;
+        },
+        { signal }
+      );
     }
 
     // Process any pending rules cards queued during tab switch
@@ -603,35 +638,49 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     // Transcript inline editing — dblclick to edit, blur/Enter to save
-    this.element?.querySelectorAll('.vox-chronicle-transcript-review__text[data-editable]').forEach(span => {
-      span.addEventListener('dblclick', () => {
-        span.contentEditable = 'true';
-        span.classList.add('vox-chronicle-transcript-review__text--editing');
-        span.focus();
-      }, { signal });
+    this.element
+      ?.querySelectorAll('.vox-chronicle-transcript-review__text[data-editable]')
+      .forEach((span) => {
+        span.addEventListener(
+          'dblclick',
+          () => {
+            span.contentEditable = 'true';
+            span.classList.add('vox-chronicle-transcript-review__text--editing');
+            span.focus();
+          },
+          { signal }
+        );
 
-      span.addEventListener('blur', () => {
-        span.contentEditable = 'false';
-        span.classList.remove('vox-chronicle-transcript-review__text--editing');
-        const row = span.closest('[data-segment-index]');
-        if (row) {
-          const index = parseInt(row.dataset.segmentIndex, 10);
-          const newText = span.textContent;
-          this.editSegment(index, newText);
-        }
-      }, { signal });
+        span.addEventListener(
+          'blur',
+          () => {
+            span.contentEditable = 'false';
+            span.classList.remove('vox-chronicle-transcript-review__text--editing');
+            const row = span.closest('[data-segment-index]');
+            if (row) {
+              const index = parseInt(row.dataset.segmentIndex, 10);
+              const newText = span.textContent;
+              this.editSegment(index, newText);
+            }
+          },
+          { signal }
+        );
 
-      span.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          span.blur();
-        }
-        if (e.key === 'Escape') {
-          span.contentEditable = 'false';
-          span.classList.remove('vox-chronicle-transcript-review__text--editing');
-        }
-      }, { signal });
-    });
+        span.addEventListener(
+          'keydown',
+          (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              span.blur();
+            }
+            if (e.key === 'Escape') {
+              span.contentEditable = 'false';
+              span.classList.remove('vox-chronicle-transcript-review__text--editing');
+            }
+          },
+          { signal }
+        );
+      });
 
     // Auto-scroll transcript to bottom
     if (this._activeTab === 'transcript') {
@@ -705,13 +754,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // CSS-only tab switching — avoid full re-render
     if (this.element) {
-      this.element.querySelectorAll('.vox-chronicle-tab-pane').forEach(el => el.hidden = true);
+      this.element.querySelectorAll('.vox-chronicle-tab-pane').forEach((el) => (el.hidden = true));
       const activeContent = this.element.querySelector(`[data-tab-pane="${tabName}"]`);
       if (activeContent) activeContent.hidden = false;
 
-      this.element.querySelectorAll('.vox-chronicle-tab').forEach(el =>
-        el.classList.toggle('vox-chronicle-tab--active', el.dataset.tab === tabName)
-      );
+      this.element
+        .querySelectorAll('.vox-chronicle-tab')
+        .forEach((el) =>
+          el.classList.toggle('vox-chronicle-tab--active', el.dataset.tab === tabName)
+        );
     } else {
       this.render();
     }
@@ -773,7 +824,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       rest: 'VOXCHRONICLE.Scene.Rest'
     };
     const key = labelMap[sceneType];
-    return key ? (game.i18n?.localize(key) || sceneType) : (sceneType || 'unknown');
+    return key ? game.i18n?.localize(key) || sceneType : sceneType || 'unknown';
   }
 
   /**
@@ -865,7 +916,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         } else {
           await this._orchestrator.stopSession({ processImmediately: false });
         }
-        ui?.notifications?.info(game.i18n?.format('VOXCHRONICLE.Notifications.RecordingStopped', { duration: this._formatDuration() }) || 'Recording stopped');
+        ui?.notifications?.info(
+          game.i18n?.format('VOXCHRONICLE.Notifications.RecordingStopped', {
+            duration: this._formatDuration()
+          }) || 'Recording stopped'
+        );
       } else {
         // Check journal selection before starting
         let journalId = '';
@@ -889,7 +944,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!journalId) {
           ui?.notifications?.warn(
             game.i18n?.localize('VOXCHRONICLE.Panel.SelectJournalFirst') ||
-            'Please select an adventure journal first.'
+              'Please select an adventure journal first.'
           );
           await this._handleChangeJournal();
           return;
@@ -901,7 +956,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         } else {
           await this._orchestrator.startSession();
         }
-        ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStarted') || 'Recording started');
+        ui?.notifications?.info(
+          game.i18n?.localize('VOXCHRONICLE.Notifications.RecordingStarted') || 'Recording started'
+        );
       }
       this.render();
     } catch (error) {
@@ -936,7 +993,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _handleProcessSession() {
     if (!this._orchestrator?.currentSession?.audioBlob) {
-      ui?.notifications?.warn(game.i18n?.localize('VOXCHRONICLE.Panel.NoTranscriptVC') || 'No audio to process');
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Panel.NoTranscriptVC') || 'No audio to process'
+      );
       return;
     }
 
@@ -955,7 +1014,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _handlePublishKanka() {
     if (!this._orchestrator?.currentSession?.entities) {
-      ui?.notifications?.warn(game.i18n?.localize('VOXCHRONICLE.Panel.NoEntities') || 'No entities to publish');
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Panel.NoEntities') || 'No entities to publish'
+      );
       return;
     }
 
@@ -1020,8 +1081,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   _isRecordingActive() {
     if (!this._orchestrator) return false;
     const state = this._orchestrator.state;
-    return state === 'recording' || state === 'paused' ||
-           state === 'live_listening' || state === 'live_transcribing' || state === 'live_analyzing';
+    return (
+      state === 'recording' ||
+      state === 'paused' ||
+      state === 'live_listening' ||
+      state === 'live_transcribing' ||
+      state === 'live_analyzing'
+    );
   }
 
   /**
@@ -1034,7 +1100,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     if (!ragProvider) {
       this._logger.warn('RAG provider not available');
-      ui?.notifications?.warn(game.i18n?.localize('VOXCHRONICLE.RAG.NotConfigured') || 'RAG not configured');
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.RAG.NotConfigured') || 'RAG not configured'
+      );
       return;
     }
 
@@ -1054,10 +1122,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       for (const journal of journals) {
         const pages = journal.pages?.contents ?? [];
         const content = pages
-          .map(p => stripHtml(p.text?.content || ''))
+          .map((p) => stripHtml(p.text?.content || ''))
           .filter(Boolean)
           .join('\n\n');
-        
+
         if (content) {
           documents.push({
             id: journal.id,
@@ -1098,9 +1166,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         this._logger.debug('Could not update ragIndexMetadata setting:', error.message);
       }
 
-      const msg = result.failed > 0
-        ? `RAG index built: ${result.indexed} indexed, ${result.failed} failed`
-        : (game.i18n?.localize('VOXCHRONICLE.RAG.IndexComplete') || 'RAG index built successfully');
+      const msg =
+        result.failed > 0
+          ? `RAG index built: ${result.indexed} indexed, ${result.failed} failed`
+          : game.i18n?.localize('VOXCHRONICLE.RAG.IndexComplete') || 'RAG index built successfully';
       ui?.notifications?.info(msg);
       this.render();
     } catch (error) {
@@ -1108,7 +1177,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       this.#ragCachedStatus.progress = 0;
       this.#ragCachedStatus.progressText = '';
       this._logger.error('RAG index build failed:', error);
-      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.IndexFailed', { error: escapeHtml(error.message) }) || `RAG index failed: ${escapeHtml(error.message)}`);
+      ui?.notifications?.error(
+        game.i18n?.format('VOXCHRONICLE.RAG.IndexFailed', { error: escapeHtml(error.message) }) ||
+          `RAG index failed: ${escapeHtml(error.message)}`
+      );
       this.render();
     }
   }
@@ -1129,7 +1201,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Confirm before clearing
     const confirmed = await Dialog?.confirm({
       title: game.i18n?.localize('VOXCHRONICLE.RAG.ClearConfirmTitle') || 'Clear RAG Index',
-      content: game.i18n?.localize('VOXCHRONICLE.RAG.ClearConfirmContent') || 'Are you sure you want to clear the RAG index? This will remove all indexed vectors.',
+      content:
+        game.i18n?.localize('VOXCHRONICLE.RAG.ClearConfirmContent') ||
+        'Are you sure you want to clear the RAG index? This will remove all indexed vectors.',
       yes: () => true,
       no: () => false,
       defaultYes: false
@@ -1156,11 +1230,16 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         this._logger.debug('Could not clear ragIndexMetadata setting:', error.message);
       }
 
-      ui?.notifications?.info(game.i18n?.localize('VOXCHRONICLE.RAG.IndexCleared') || 'RAG index cleared');
+      ui?.notifications?.info(
+        game.i18n?.localize('VOXCHRONICLE.RAG.IndexCleared') || 'RAG index cleared'
+      );
       this.render();
     } catch (error) {
       this._logger.error('RAG index clear failed:', error);
-      ui?.notifications?.error(game.i18n?.format('VOXCHRONICLE.RAG.ClearFailed', { error: escapeHtml(error.message) }) || `Failed to clear RAG index: ${escapeHtml(error.message)}`);
+      ui?.notifications?.error(
+        game.i18n?.format('VOXCHRONICLE.RAG.ClearFailed', { error: escapeHtml(error.message) }) ||
+          `Failed to clear RAG index: ${escapeHtml(error.message)}`
+      );
     }
   }
 
@@ -1251,7 +1330,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       // Content length warnings
       if (journal?.pages?.contents) {
         const fullText = journal.pages.contents
-          .map(p => stripHtml(p.text?.content || ''))
+          .map((p) => stripHtml(p.text?.content || ''))
           .filter(Boolean)
           .join('\n\n');
         if (fullText.length < 500) isJournalTooShort = true;
@@ -1276,7 +1355,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   _getChapterNavData() {
     const chapterTracker = this._orchestrator?._chapterTracker;
     if (!this._isRecordingActive() || !chapterTracker) {
-      return { currentChapter: null, prevChapter: null, nextChapter: null, indexStatus: this._getIndexStatus() };
+      return {
+        currentChapter: null,
+        prevChapter: null,
+        nextChapter: null,
+        indexStatus: this._getIndexStatus()
+      };
     }
 
     const current = chapterTracker.getCurrentChapter?.();
@@ -1321,8 +1405,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
       chapterTracker.navigateToChapter(target.title);
 
-      const msg = game.i18n?.format('VOXCHRONICLE.Panel.ChapterUpdated', { name: target.title })
-        || `Chapter updated: ${target.title}`;
+      const msg =
+        game.i18n?.format('VOXCHRONICLE.Panel.ChapterUpdated', { name: target.title }) ||
+        `Chapter updated: ${target.title}`;
       ui?.notifications?.info(msg);
 
       this.render();
@@ -1362,7 +1447,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   _parseCardContent(text) {
     if (!text) return { title: '', bullets: [] };
 
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
     if (lines.length === 0) return { title: '', bullets: [] };
 
     // Title: first line, strip markdown heading prefixes
@@ -1371,13 +1459,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     // Remaining lines: look for bullet patterns
     const remaining = lines.slice(1);
     const bulletPattern = /^[-*]\s+|^\d+[.)]\s+/;
-    const bulletLines = remaining.filter(l => bulletPattern.test(l));
+    const bulletLines = remaining.filter((l) => bulletPattern.test(l));
 
     let bullets;
     if (bulletLines.length > 0) {
-      bullets = bulletLines
-        .map(l => l.replace(bulletPattern, ''))
-        .slice(0, 3);
+      bullets = bulletLines.map((l) => l.replace(bulletPattern, '')).slice(0, 3);
     } else if (remaining.length > 0) {
       // No bullet markers — split into sentences
       const joined = remaining.join(' ');
@@ -1500,7 +1586,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     if (data.unavailable) {
       // Unavailable card — muted, auto-dismiss after 10s
-      card.className = 'vox-chronicle-suggestion vox-chronicle-suggestion--rules vox-chronicle-suggestion--unavailable';
+      card.className =
+        'vox-chronicle-suggestion vox-chronicle-suggestion--rules vox-chronicle-suggestion--unavailable';
       card.innerHTML = `
         <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--reference">reference</span>
         <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss'}"><i class="fa-solid fa-xmark"></i></button>
@@ -1528,7 +1615,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     card.className = `vox-chronicle-suggestion vox-chronicle-suggestion--rules${hasSynthesis ? ' vox-chronicle-suggestion--refining' : ''}`;
     card.innerHTML = `
       <span class="vox-chronicle-suggestion__type vox-chronicle-suggestion__type--reference">reference</span>
-      ${data.source === 'auto' ? '<span class="vox-chronicle-suggestion__auto-badge">' + (game.i18n?.localize('VOXCHRONICLE.Rules.AutoDetected') || 'auto') + '</span>' : ''}
+      ${data.source === 'auto' ? `<span class="vox-chronicle-suggestion__auto-badge">${  game.i18n?.localize('VOXCHRONICLE.Rules.AutoDetected') || 'auto'  }</span>` : ''}
       <button type="button" class="vox-chronicle-suggestion__dismiss" data-action="dismiss-suggestion" title="${game.i18n?.localize('VOXCHRONICLE.Live.DismissSuggestion') || 'Dismiss'}"><i class="fa-solid fa-xmark"></i></button>
       <div class="vox-chronicle-suggestion__content">
         <strong class="vox-chronicle-suggestion__title">${escapeHtml(data.topic || '')}</strong>
@@ -1544,51 +1631,53 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Two-phase update: when synthesis resolves, update card in-place
     if (data.synthesisPromise) {
-      data.synthesisPromise.then(synthesis => {
-        if (!this.element || !card.isConnected) return; // Panel closed or card detached by re-render
+      data.synthesisPromise
+        .then((synthesis) => {
+          if (!this.element || !card.isConnected) return; // Panel closed or card detached by re-render
 
-        // Update card content with AI answer
-        const content = card.querySelector('.vox-chronicle-suggestion__content');
-        if (content && synthesis?.answer) {
-          content.innerHTML = `
+          // Update card content with AI answer
+          const content = card.querySelector('.vox-chronicle-suggestion__content');
+          if (content && synthesis?.answer) {
+            content.innerHTML = `
             <strong class="vox-chronicle-suggestion__title">${escapeHtml(data.topic || '')}</strong>
             <p>${escapeHtml(synthesis.answer)}</p>
           `;
-        }
-
-        // Update citations
-        if (synthesis?.citations?.length) {
-          const existingCitation = card.querySelector('.vox-chronicle-suggestion__citation');
-          const citationText = synthesis.citations.join(', ');
-          if (existingCitation) {
-            existingCitation.textContent = citationText;
-          } else {
-            const citBadge = document.createElement('span');
-            citBadge.className = 'vox-chronicle-suggestion__citation';
-            citBadge.textContent = citationText;
-            card.appendChild(citBadge);
           }
-        }
 
-        // Remove refining state
-        card.classList.remove('vox-chronicle-suggestion--refining');
-        const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
-        if (refiningEl) refiningEl.remove();
+          // Update citations
+          if (synthesis?.citations?.length) {
+            const existingCitation = card.querySelector('.vox-chronicle-suggestion__citation');
+            const citationText = synthesis.citations.join(', ');
+            if (existingCitation) {
+              existingCitation.textContent = citationText;
+            } else {
+              const citBadge = document.createElement('span');
+              citBadge.className = 'vox-chronicle-suggestion__citation';
+              citBadge.textContent = citationText;
+              card.appendChild(citBadge);
+            }
+          }
 
-        // Track synthesis cost
-        if (synthesis?.usage) {
-          this._orchestrator?._costTracker?.addUsage?.('gpt-4o', synthesis.usage);
-        }
-      }).catch((err) => {
-        this._logger.warn('Rules synthesis failed:', err.message);
-        if (!card.isConnected) return;
-        card.classList.remove('vox-chronicle-suggestion--refining');
-        const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
-        if (refiningEl) {
-          refiningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Synthesis unavailable'}`;
-          refiningEl.classList.add('vox-chronicle-suggestion__synthesis-failed');
-        }
-      });
+          // Remove refining state
+          card.classList.remove('vox-chronicle-suggestion--refining');
+          const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
+          if (refiningEl) refiningEl.remove();
+
+          // Track synthesis cost
+          if (synthesis?.usage) {
+            this._orchestrator?._costTracker?.addUsage?.('gpt-4o', synthesis.usage);
+          }
+        })
+        .catch((err) => {
+          this._logger.warn('Rules synthesis failed:', err.message);
+          if (!card.isConnected) return;
+          card.classList.remove('vox-chronicle-suggestion--refining');
+          const refiningEl = card.querySelector('.vox-chronicle-suggestion__refining');
+          if (refiningEl) {
+            refiningEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${game.i18n?.localize('VOXCHRONICLE.Rules.Unavailable') || 'Synthesis unavailable'}`;
+            refiningEl.classList.add('vox-chronicle-suggestion__synthesis-failed');
+          }
+        });
     }
   }
 
@@ -1624,11 +1713,17 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Toggle panel collapsed/expanded state and persist to settings.
+   * @param event
+   * @param target
    * @static
    */
   static _onToggleCollapse(event, target) {
     this.#collapsed = !this.#collapsed;
-    try { game?.settings?.set(MODULE_ID, 'panelCollapsed', this.#collapsed); } catch { /* */ }
+    try {
+      game?.settings?.set(MODULE_ID, 'panelCollapsed', this.#collapsed);
+    } catch {
+      /* */
+    }
     this.element?.classList.toggle('vox-chronicle-panel--collapsed', this.#collapsed);
   }
 
@@ -1737,7 +1832,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _isScrolledToBottom(container) {
     if (!container) return true;
-    return (container.scrollHeight - container.scrollTop - container.clientHeight) <= 30;
+    return container.scrollHeight - container.scrollTop - container.clientHeight <= 30;
   }
 
   /**
@@ -1749,9 +1844,11 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   _countEntities(entities) {
     if (!entities) return 0;
 
-    return (entities.characters?.length || 0) +
-           (entities.locations?.length || 0) +
-           (entities.items?.length || 0);
+    return (
+      (entities.characters?.length || 0) +
+      (entities.locations?.length || 0) +
+      (entities.items?.length || 0)
+    );
   }
 }
 

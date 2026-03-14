@@ -298,7 +298,7 @@ class Logger {
     const childPrefix = `${MODULE_ID}:${subModule} |`;
 
     // Handle options parameter (boolean or object)
-    const sanitize = typeof options === 'boolean' ? options : options?.sanitize ?? true;
+    const sanitize = typeof options === 'boolean' ? options : (options?.sanitize ?? true);
 
     // Helper to sanitize arguments if enabled
     const maybeSanitize = (args) => {

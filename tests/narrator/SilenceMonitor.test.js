@@ -304,10 +304,15 @@ describe('SilenceMonitor', () => {
       });
 
       expect(generateFn).toHaveBeenCalled();
-      expect(callback).toHaveBeenCalledWith(expect.objectContaining({
-        suggestion: expect.objectContaining({ type: 'narration', content: 'A dark figure appears' }),
-        silenceEvent: expect.objectContaining({ silenceCount: 1 })
-      }));
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          suggestion: expect.objectContaining({
+            type: 'narration',
+            content: 'A dark figure appears'
+          }),
+          silenceEvent: expect.objectContaining({ silenceCount: 1 })
+        })
+      );
       expect(monitor.silenceSuggestionCount).toBe(1);
     });
 
@@ -345,13 +350,19 @@ describe('SilenceMonitor', () => {
     it('handles callback error gracefully', async () => {
       const suggestion = { type: 'narration', content: 'suggestion', confidence: 0.8 };
       const generateFn = vi.fn().mockResolvedValue(suggestion);
-      const callback = vi.fn().mockImplementation(() => { throw new Error('callback error'); });
+      const callback = vi.fn().mockImplementation(() => {
+        throw new Error('callback error');
+      });
 
       monitor.setGenerateSuggestionFn(generateFn);
       monitor.setOnAutonomousSuggestionCallback(callback);
 
       // Should not throw
-      await monitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: 0,
+        silenceCount: 1
+      });
 
       // Suggestion was still tracked
       expect(monitor.silenceSuggestionCount).toBe(1);
@@ -362,7 +373,11 @@ describe('SilenceMonitor', () => {
       monitor.setGenerateSuggestionFn(generateFn);
 
       // Should not throw
-      await monitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: 0,
+        silenceCount: 1
+      });
 
       expect(monitor.silenceSuggestionCount).toBe(0);
     });
@@ -373,7 +388,11 @@ describe('SilenceMonitor', () => {
       monitor.setGenerateSuggestionFn(generateFn);
 
       // No callback set - should not throw
-      await monitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 2 });
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: 0,
+        silenceCount: 2
+      });
 
       // Suggestion still counted
       expect(monitor.silenceSuggestionCount).toBe(1);
@@ -410,9 +429,21 @@ describe('SilenceMonitor', () => {
       const generateFn = vi.fn().mockResolvedValue(suggestion);
       monitor.setGenerateSuggestionFn(generateFn);
 
-      await monitor._handleSilenceEvent({ silenceDurationMs: 30000, lastActivityTime: 0, silenceCount: 1 });
-      await monitor._handleSilenceEvent({ silenceDurationMs: 60000, lastActivityTime: 0, silenceCount: 2 });
-      await monitor._handleSilenceEvent({ silenceDurationMs: 90000, lastActivityTime: 0, silenceCount: 3 });
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 30000,
+        lastActivityTime: 0,
+        silenceCount: 1
+      });
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 60000,
+        lastActivityTime: 0,
+        silenceCount: 2
+      });
+      await monitor._handleSilenceEvent({
+        silenceDurationMs: 90000,
+        lastActivityTime: 0,
+        silenceCount: 3
+      });
 
       expect(monitor.silenceSuggestionCount).toBe(3);
     });
@@ -462,7 +493,8 @@ describe('SilenceMonitor', () => {
     });
 
     it('resets failure counter on successful suggestion after failures', async () => {
-      const generateFn = vi.fn()
+      const generateFn = vi
+        .fn()
         .mockRejectedValueOnce(new Error('fail 1'))
         .mockRejectedValueOnce(new Error('fail 2'))
         .mockResolvedValueOnce({ type: 'narration', content: 'Success!', confidence: 0.8 });
@@ -491,7 +523,9 @@ describe('SilenceMonitor', () => {
     });
 
     it('drops silence event when _isCycleInFlightFn returns true', async () => {
-      const generateFn = vi.fn().mockResolvedValue({ type: 'narration', content: 'test', confidence: 0.8 });
+      const generateFn = vi
+        .fn()
+        .mockResolvedValue({ type: 'narration', content: 'test', confidence: 0.8 });
       monitor.setGenerateSuggestionFn(generateFn);
       monitor.setIsCycleInFlightFn(() => true);
 
@@ -540,7 +574,9 @@ describe('SilenceMonitor', () => {
     it('logs debug message when dropping silence event', async () => {
       // Directly spy on the monitor's logger debug method
       const loggerDebugSpy = vi.spyOn(monitor._logger, 'debug');
-      monitor.setGenerateSuggestionFn(vi.fn().mockResolvedValue({ type: 'test', content: 'x', confidence: 1 }));
+      monitor.setGenerateSuggestionFn(
+        vi.fn().mockResolvedValue({ type: 'test', content: 'x', confidence: 1 })
+      );
       monitor.setIsCycleInFlightFn(() => true);
 
       await monitor._handleSilenceEvent({

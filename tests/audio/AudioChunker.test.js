@@ -392,10 +392,7 @@ describe('AudioChunker', () => {
   describe('_combineBlobs()', () => {
     it('should combine multiple blobs with correct type', async () => {
       // Access private method for direct testing
-      const result = await chunker._combineBlobs(
-        [makeBlob(100), makeBlob(200)],
-        'audio/ogg'
-      );
+      const result = await chunker._combineBlobs([makeBlob(100), makeBlob(200)], 'audio/ogg');
       expect(result.size).toBe(300);
       expect(result.type).toBe('audio/ogg');
     });
@@ -446,7 +443,7 @@ describe('AudioChunker', () => {
       // Use 2x max size to ensure at least 2 chunks (small remainder gets merged)
       const blob = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE * 2)], { type: 'audio/webm' });
       await chunker.split(blob);
-      const chunkEvents = eventBus.emit.mock.calls.filter(c => c[0] === 'audio:chunkCreated');
+      const chunkEvents = eventBus.emit.mock.calls.filter((c) => c[0] === 'audio:chunkCreated');
       expect(chunkEvents.length).toBeGreaterThanOrEqual(2);
       expect(chunkEvents[0][1]).toEqual(expect.objectContaining({ index: 0 }));
     });
@@ -471,7 +468,9 @@ describe('AudioChunker', () => {
     });
 
     it('does not throw when eventBus.emit throws', async () => {
-      eventBus.emit = vi.fn(() => { throw new Error('bus broken'); });
+      eventBus.emit = vi.fn(() => {
+        throw new Error('bus broken');
+      });
       const chunker = new AudioChunker({ eventBus });
       const blob = new Blob([new ArrayBuffer(MAX_CHUNK_SIZE + 1024)], { type: 'audio/webm' });
       // Should not throw despite eventBus failure

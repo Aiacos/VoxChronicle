@@ -49,8 +49,8 @@ describe('RAGFlowProvider', () => {
   async function initProvider(config = {}) {
     // Mock: create dataset → create chat assistant
     mockFetchResponses(
-      { body: { code: 0, data: { id: DATASET_ID } } },  // create dataset
-      { body: { code: 0, data: { id: CHAT_ID } } }       // create chat
+      { body: { code: 0, data: { id: DATASET_ID } } }, // create dataset
+      { body: { code: 0, data: { id: CHAT_ID } } } // create chat
     );
 
     await provider.initialize({
@@ -95,18 +95,15 @@ describe('RAGFlowProvider', () => {
 
   describe('initialize()', () => {
     it('should throw if baseUrl is missing', async () => {
-      await expect(provider.initialize({ apiKey: API_KEY }))
-        .rejects.toThrow(/baseUrl/);
+      await expect(provider.initialize({ apiKey: API_KEY })).rejects.toThrow(/baseUrl/);
     });
 
     it('should throw if apiKey is missing', async () => {
-      await expect(provider.initialize({ baseUrl: BASE_URL }))
-        .rejects.toThrow(/API key/);
+      await expect(provider.initialize({ baseUrl: BASE_URL })).rejects.toThrow(/API key/);
     });
 
     it('should throw if config is null', async () => {
-      await expect(provider.initialize(null))
-        .rejects.toThrow(/baseUrl/);
+      await expect(provider.initialize(null)).rejects.toThrow(/baseUrl/);
     });
 
     it('should create dataset and chat assistant on fresh init', async () => {
@@ -146,8 +143,8 @@ describe('RAGFlowProvider', () => {
 
     it('should reuse existing dataset if valid', async () => {
       mockFetchResponses(
-        { body: { code: 0, data: [{ id: DATASET_ID }] } },  // validate dataset
-        { body: { code: 0, data: { id: CHAT_ID } } }         // create chat
+        { body: { code: 0, data: [{ id: DATASET_ID }] } }, // validate dataset
+        { body: { code: 0, data: { id: CHAT_ID } } } // create chat
       );
 
       await provider.initialize({
@@ -163,9 +160,9 @@ describe('RAGFlowProvider', () => {
 
     it('should create new dataset if existing one is invalid', async () => {
       mockFetchResponses(
-        { body: { code: 0, data: [] } },                     // validate dataset: not found
-        { body: { code: 0, data: { id: 'new-ds' } } },       // create dataset
-        { body: { code: 0, data: { id: CHAT_ID } } }         // create chat
+        { body: { code: 0, data: [] } }, // validate dataset: not found
+        { body: { code: 0, data: { id: 'new-ds' } } }, // create dataset
+        { body: { code: 0, data: { id: CHAT_ID } } } // create chat
       );
 
       await provider.initialize({
@@ -179,8 +176,8 @@ describe('RAGFlowProvider', () => {
 
     it('should reuse existing chat if valid', async () => {
       mockFetchResponses(
-        { body: { code: 0, data: { id: DATASET_ID } } },       // create dataset
-        { body: { code: 0, data: [{ id: CHAT_ID }] } }         // validate chat
+        { body: { code: 0, data: { id: DATASET_ID } } }, // create dataset
+        { body: { code: 0, data: [{ id: CHAT_ID }] } } // validate chat
       );
 
       await provider.initialize({
@@ -226,12 +223,11 @@ describe('RAGFlowProvider', () => {
     });
 
     it('should throw if dataset creation returns no ID', async () => {
-      mockFetchResponses(
-        { body: { code: 0, data: {} } }
-      );
+      mockFetchResponses({ body: { code: 0, data: {} } });
 
-      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: API_KEY }))
-        .rejects.toThrow(/no ID returned/);
+      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: API_KEY })).rejects.toThrow(
+        /no ID returned/
+      );
     });
 
     it('should throw if chat creation returns no ID', async () => {
@@ -240,8 +236,9 @@ describe('RAGFlowProvider', () => {
         { body: { code: 0, data: {} } }
       );
 
-      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: API_KEY }))
-        .rejects.toThrow(/no ID returned/);
+      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: API_KEY })).rejects.toThrow(
+        /no ID returned/
+      );
     });
 
     it('should send Authorization header', async () => {
@@ -265,8 +262,8 @@ describe('RAGFlowProvider', () => {
       mockFetch.mockClear();
 
       mockFetchResponses(
-        { body: { code: 0 } },  // delete chat
-        { body: { code: 0 } }   // delete dataset
+        { body: { code: 0 } }, // delete chat
+        { body: { code: 0 } } // delete dataset
       );
 
       await provider.destroy();
@@ -318,10 +315,7 @@ describe('RAGFlowProvider', () => {
       expect(status.ready).toBe(true);
 
       mockFetch.mockClear();
-      mockFetchResponses(
-        { body: { code: 0 } },
-        { body: { code: 0 } }
-      );
+      mockFetchResponses({ body: { code: 0 } }, { body: { code: 0 } });
 
       await provider.destroy();
 
@@ -359,16 +353,18 @@ describe('RAGFlowProvider', () => {
       mockFetch.mockClear();
 
       mockFetchResponses(
-        { body: { code: 0, data: [{ id: 'doc-1' }] } },   // upload document
-        { body: { code: 0 } },                               // trigger parsing
-        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'DONE' }] } } }  // poll parsing
+        { body: { code: 0, data: [{ id: 'doc-1' }] } }, // upload document
+        { body: { code: 0 } }, // trigger parsing
+        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'DONE' }] } } } // poll parsing
       );
 
-      const docs = [{
-        id: 'test-doc',
-        title: 'Test Document',
-        content: 'This is test content'
-      }];
+      const docs = [
+        {
+          id: 'test-doc',
+          title: 'Test Document',
+          content: 'This is test content'
+        }
+      ];
 
       const result = await provider.indexDocuments(docs);
       expect(result).toEqual({ indexed: 1, failed: 0 });
@@ -384,12 +380,14 @@ describe('RAGFlowProvider', () => {
         { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'DONE' }] } } }
       );
 
-      const docs = [{
-        id: 'test-doc',
-        title: 'Quest Log',
-        content: 'The party defeated the dragon.',
-        metadata: { source: 'journal', type: 'quest' }
-      }];
+      const docs = [
+        {
+          id: 'test-doc',
+          title: 'Quest Log',
+          content: 'The party defeated the dragon.',
+          metadata: { source: 'journal', type: 'quest' }
+        }
+      ];
 
       const result = await provider.indexDocuments(docs);
       expect(result).toEqual({ indexed: 1, failed: 0 });
@@ -426,9 +424,7 @@ describe('RAGFlowProvider', () => {
       await initProvider();
       mockFetch.mockClear();
 
-      mockFetchResponses(
-        { ok: false, status: 500, body: { code: 1, message: 'Upload failed' } }
-      );
+      mockFetchResponses({ ok: false, status: 500, body: { code: 1, message: 'Upload failed' } });
 
       const docs = [{ id: 'doc-1', title: 'Failing Doc', content: 'Content' }];
       const result = await provider.indexDocuments(docs);
@@ -459,13 +455,20 @@ describe('RAGFlowProvider', () => {
       mockFetch.mockClear();
 
       mockFetchResponses(
-        { body: { code: 0, data: [{ id: 'rf-1' }] } },   // upload doc 1
-        { body: { code: 0, data: [{ id: 'rf-2' }] } },   // upload doc 2
-        { body: { code: 0 } },                             // trigger parsing
-        { body: { code: 0, data: { docs: [
-          { id: 'rf-1', run: 'DONE' },
-          { id: 'rf-2', run: 'DONE' }
-        ] } } }
+        { body: { code: 0, data: [{ id: 'rf-1' }] } }, // upload doc 1
+        { body: { code: 0, data: [{ id: 'rf-2' }] } }, // upload doc 2
+        { body: { code: 0 } }, // trigger parsing
+        {
+          body: {
+            code: 0,
+            data: {
+              docs: [
+                { id: 'rf-1', run: 'DONE' },
+                { id: 'rf-2', run: 'DONE' }
+              ]
+            }
+          }
+        }
       );
 
       const docs = [
@@ -561,10 +564,17 @@ describe('RAGFlowProvider', () => {
         { body: { code: 0, data: [{ id: 'rf-1' }] } },
         { body: { code: 0, data: [{ id: 'rf-2' }] } },
         { body: { code: 0 } },
-        { body: { code: 0, data: { docs: [
-          { id: 'rf-1', run: 'DONE' },
-          { id: 'rf-2', run: 'DONE' }
-        ] } } }
+        {
+          body: {
+            code: 0,
+            data: {
+              docs: [
+                { id: 'rf-1', run: 'DONE' },
+                { id: 'rf-2', run: 'DONE' }
+              ]
+            }
+          }
+        }
       );
       await provider.indexDocuments([
         { id: 'doc-1', title: 'Doc 1', content: 'C1' },
@@ -613,11 +623,13 @@ describe('RAGFlowProvider', () => {
 
       mockFetchResponses({
         body: {
-          choices: [{
-            message: {
-              content: 'The dragon was defeated in session 5.'
+          choices: [
+            {
+              message: {
+                content: 'The dragon was defeated in session 5.'
+              }
             }
-          }]
+          ]
         }
       });
 
@@ -643,15 +655,19 @@ describe('RAGFlowProvider', () => {
 
       mockFetchResponses({
         body: {
-          choices: [{
-            message: { content: 'The dragon lair is in the mountains.' }
-          }],
-          references: [{
-            document_name: 'session-3.txt',
-            content: 'The party found the dragon lair in the Frostpeak Mountains.',
-            similarity: 0.92,
-            document_id: 'doc-abc'
-          }]
+          choices: [
+            {
+              message: { content: 'The dragon lair is in the mountains.' }
+            }
+          ],
+          references: [
+            {
+              document_name: 'session-3.txt',
+              content: 'The party found the dragon lair in the Frostpeak Mountains.',
+              similarity: 0.92,
+              document_id: 'doc-abc'
+            }
+          ]
         }
       });
 
@@ -691,12 +707,14 @@ describe('RAGFlowProvider', () => {
         body: {
           data: {
             answer: 'Native answer',
-            reference: [{
-              doc_name: 'journal.txt',
-              text: 'Some reference text',
-              score: 0.85,
-              doc_id: 'rf-doc-1'
-            }]
+            reference: [
+              {
+                doc_name: 'journal.txt',
+                text: 'Some reference text',
+                score: 0.85,
+                doc_id: 'rf-doc-1'
+              }
+            ]
           }
         }
       });
@@ -753,7 +771,9 @@ describe('RAGFlowProvider', () => {
       mockFetch.mockClear();
 
       mockFetchResponses({
-        ok: false, status: 500, body: { code: 1, message: 'Error' }
+        ok: false,
+        status: 500,
+        body: { code: 1, message: 'Error' }
       });
 
       const status = await provider.getStatus();
@@ -794,9 +814,9 @@ describe('RAGFlowProvider', () => {
       mockFetch.mockClear();
 
       mockFetchResponses(
-        { body: { code: 0, data: [{ id: 'doc-1' }] } },   // upload document
-        { body: { code: 0 } },                               // trigger parsing
-        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'FAIL' }] } } }  // poll: FAIL
+        { body: { code: 0, data: [{ id: 'doc-1' }] } }, // upload document
+        { body: { code: 0 } }, // trigger parsing
+        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'FAIL' }] } } } // poll: FAIL
       );
 
       const docs = [{ id: 'test-doc', title: 'Test', content: 'Content' }];
@@ -811,9 +831,9 @@ describe('RAGFlowProvider', () => {
       mockFetch.mockClear();
 
       mockFetchResponses(
-        { body: { code: 0, data: [{ id: 'doc-1' }] } },   // upload document
-        { body: { code: 0 } },                               // trigger parsing
-        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'CANCEL' }] } } }  // poll: CANCEL
+        { body: { code: 0, data: [{ id: 'doc-1' }] } }, // upload document
+        { body: { code: 0 } }, // trigger parsing
+        { body: { code: 0, data: { docs: [{ id: 'doc-1', run: 'CANCEL' }] } } } // poll: CANCEL
       );
 
       const docs = [{ id: 'test-doc', title: 'Test', content: 'Content' }];
@@ -827,13 +847,20 @@ describe('RAGFlowProvider', () => {
       mockFetch.mockClear();
 
       mockFetchResponses(
-        { body: { code: 0, data: [{ id: 'rf-1' }] } },   // upload doc 1
-        { body: { code: 0, data: [{ id: 'rf-2' }] } },   // upload doc 2
-        { body: { code: 0 } },                             // trigger parsing
-        { body: { code: 0, data: { docs: [
-          { id: 'rf-1', run: 'DONE' },
-          { id: 'rf-2', run: 'FAIL' }
-        ] } } }
+        { body: { code: 0, data: [{ id: 'rf-1' }] } }, // upload doc 1
+        { body: { code: 0, data: [{ id: 'rf-2' }] } }, // upload doc 2
+        { body: { code: 0 } }, // trigger parsing
+        {
+          body: {
+            code: 0,
+            data: {
+              docs: [
+                { id: 'rf-1', run: 'DONE' },
+                { id: 'rf-2', run: 'FAIL' }
+              ]
+            }
+          }
+        }
       );
 
       const docs = [
@@ -852,9 +879,9 @@ describe('RAGFlowProvider', () => {
   describe('initialize() invalid chatId fallback', () => {
     it('should create new chat when existing chatId is invalid', async () => {
       mockFetchResponses(
-        { body: { code: 0, data: [{ id: DATASET_ID }] } },  // validate dataset (valid)
-        { body: { code: 0, data: [] } },                     // validate chat: not found
-        { body: { code: 0, data: { id: 'new-chat-789' } } }  // create new chat
+        { body: { code: 0, data: [{ id: DATASET_ID }] } }, // validate dataset (valid)
+        { body: { code: 0, data: [] } }, // validate chat: not found
+        { body: { code: 0, data: { id: 'new-chat-789' } } } // create new chat
       );
 
       await provider.initialize({
@@ -889,7 +916,8 @@ describe('RAGFlowProvider', () => {
         if (callIndex === 1) {
           // validate dataset — valid
           return Promise.resolve({
-            ok: true, status: 200,
+            ok: true,
+            status: 200,
             json: () => Promise.resolve({ code: 0, data: [{ id: DATASET_ID }] }),
             text: () => Promise.resolve('')
           });
@@ -897,14 +925,16 @@ describe('RAGFlowProvider', () => {
         if (callIndex === 2) {
           // validate chat — network error
           return Promise.resolve({
-            ok: false, status: 500,
+            ok: false,
+            status: 500,
             json: () => Promise.resolve({ code: 1, message: 'Server error' }),
             text: () => Promise.resolve('Server error')
           });
         }
         // create new chat
         return Promise.resolve({
-          ok: true, status: 200,
+          ok: true,
+          status: 200,
           json: () => Promise.resolve({ code: 0, data: { id: 'fallback-chat' } }),
           text: () => Promise.resolve('')
         });
@@ -931,17 +961,21 @@ describe('RAGFlowProvider', () => {
 
       mockFetchResponses({
         body: {
-          choices: [{
-            message: {
-              content: 'The forest is ancient.',
-              references: [{
-                document_name: 'lore.txt',
-                content: 'The ancient forest predates civilization.',
-                similarity: 0.88,
-                document_id: 'doc-lore'
-              }]
+          choices: [
+            {
+              message: {
+                content: 'The forest is ancient.',
+                references: [
+                  {
+                    document_name: 'lore.txt',
+                    content: 'The ancient forest predates civilization.',
+                    similarity: 0.88,
+                    document_id: 'doc-lore'
+                  }
+                ]
+              }
             }
-          }]
+          ]
           // Note: no top-level "references" — they are on message only
         }
       });
@@ -961,15 +995,19 @@ describe('RAGFlowProvider', () => {
 
       mockFetchResponses({
         body: {
-          choices: [{
-            message: { content: 'Answer text' }
-          }],
-          references: [{
-            document_name: 'notes.txt',
-            content: 'Some reference',
-            score: 0.75,           // score instead of similarity
-            document_id: 'doc-notes'
-          }]
+          choices: [
+            {
+              message: { content: 'Answer text' }
+            }
+          ],
+          references: [
+            {
+              document_name: 'notes.txt',
+              content: 'Some reference',
+              score: 0.75, // score instead of similarity
+              document_id: 'doc-notes'
+            }
+          ]
         }
       });
 
@@ -984,14 +1022,18 @@ describe('RAGFlowProvider', () => {
 
       mockFetchResponses({
         body: {
-          choices: [{
-            message: { content: 'Answer' }
-          }],
-          references: [{
-            document_name: 'doc.txt',
-            content: 'Content'
-            // No similarity, no score
-          }]
+          choices: [
+            {
+              message: { content: 'Answer' }
+            }
+          ],
+          references: [
+            {
+              document_name: 'doc.txt',
+              content: 'Content'
+              // No similarity, no score
+            }
+          ]
         }
       });
 
@@ -1006,15 +1048,19 @@ describe('RAGFlowProvider', () => {
 
       mockFetchResponses({
         body: {
-          choices: [{
-            message: { content: 'Answer' }
-          }],
-          references: [{
-            doc_name: 'alt-name.txt',
-            text: 'Alternative text field',
-            score: 0.6,
-            doc_id: 'alt-doc-id'
-          }]
+          choices: [
+            {
+              message: { content: 'Answer' }
+            }
+          ],
+          references: [
+            {
+              doc_name: 'alt-name.txt',
+              text: 'Alternative text field',
+              score: 0.6,
+              doc_id: 'alt-doc-id'
+            }
+          ]
         }
       });
 
@@ -1037,8 +1083,9 @@ describe('RAGFlowProvider', () => {
         body: 'Unauthorized'
       });
 
-      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: 'bad-key' }))
-        .rejects.toThrow(/RAGFlow API error 401/);
+      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: 'bad-key' })).rejects.toThrow(
+        /RAGFlow API error 401/
+      );
     });
 
     it('should throw on RAGFlow error code', async () => {
@@ -1046,8 +1093,9 @@ describe('RAGFlowProvider', () => {
         body: { code: 102, message: 'Dataset not found' }
       });
 
-      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: API_KEY }))
-        .rejects.toThrow(/RAGFlow error.*102/);
+      await expect(provider.initialize({ baseUrl: BASE_URL, apiKey: API_KEY })).rejects.toThrow(
+        /RAGFlow error.*102/
+      );
     });
   });
 
@@ -1061,7 +1109,8 @@ describe('RAGFlowProvider', () => {
         if (callIndex === 1) {
           // validate dataset — network error
           return Promise.resolve({
-            ok: false, status: 500,
+            ok: false,
+            status: 500,
             json: () => Promise.resolve({}),
             text: () => Promise.resolve('Internal Server Error')
           });
@@ -1069,14 +1118,16 @@ describe('RAGFlowProvider', () => {
         if (callIndex === 2) {
           // create new dataset
           return Promise.resolve({
-            ok: true, status: 200,
+            ok: true,
+            status: 200,
             json: () => Promise.resolve({ code: 0, data: { id: 'new-ds' } }),
             text: () => Promise.resolve('')
           });
         }
         // create chat
         return Promise.resolve({
-          ok: true, status: 200,
+          ok: true,
+          status: 200,
           json: () => Promise.resolve({ code: 0, data: { id: CHAT_ID } }),
           text: () => Promise.resolve('')
         });
@@ -1099,7 +1150,8 @@ describe('RAGFlowProvider', () => {
         if (callIndex === 1) {
           // validate dataset — valid
           return Promise.resolve({
-            ok: true, status: 200,
+            ok: true,
+            status: 200,
             json: () => Promise.resolve({ code: 0, data: [{ id: DATASET_ID }] }),
             text: () => Promise.resolve('')
           });
@@ -1107,14 +1159,16 @@ describe('RAGFlowProvider', () => {
         if (callIndex === 2) {
           // validate chat — network error
           return Promise.resolve({
-            ok: false, status: 500,
+            ok: false,
+            status: 500,
             json: () => Promise.resolve({}),
             text: () => Promise.resolve('Internal Server Error')
           });
         }
         // create new chat
         return Promise.resolve({
-          ok: true, status: 200,
+          ok: true,
+          status: 200,
           json: () => Promise.resolve({ code: 0, data: { id: 'new-chat' } }),
           text: () => Promise.resolve('')
         });

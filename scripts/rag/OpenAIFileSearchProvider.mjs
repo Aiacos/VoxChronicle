@@ -8,7 +8,7 @@
  * file_search tool for retrieval-augmented generation.
  *
  * @class OpenAIFileSearchProvider
- * @extends RAGProvider
+ * @augments RAGProvider
  * @module vox-chronicle
  */
 
@@ -83,7 +83,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
    */
   async initialize(config) {
     const startTime = Date.now();
-    this._logger.debug(`initialize() called — vectorStoreId="${config?.vectorStoreId || '(none)'}", storeName="${config?.storeName || '(default)'}"`);
+    this._logger.debug(
+      `initialize() called — vectorStoreId="${config?.vectorStoreId || '(none)'}", storeName="${config?.storeName || '(default)'}"`
+    );
 
     if (!config?.client) {
       throw new Error('OpenAIFileSearchProvider requires an OpenAIClient instance (config.client)');
@@ -99,14 +101,16 @@ export class OpenAIFileSearchProvider extends RAGProvider {
         this.#vectorStoreId = config.vectorStoreId;
         this._logger.info(`Reusing vector store: ${this.#vectorStoreId}`);
         this.#initialized = true;
-        
+
         // Load persisted state (file mapping)
         await this._loadState();
-        
+
         this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms (reused store)`);
         return;
       }
-      this._logger.warn(`Vector store ${config.vectorStoreId} not found or expired, creating new one`);
+      this._logger.warn(
+        `Vector store ${config.vectorStoreId} not found or expired, creating new one`
+      );
     }
 
     // Create new vector store
@@ -114,10 +118,10 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     this.#vectorStoreId = await this.#createVectorStore(storeName);
     this._logger.info(`Created vector store: ${this.#vectorStoreId}`);
     this.#initialized = true;
-    
+
     // Load persisted state (file mapping)
     await this._loadState();
-    
+
     this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms (new store)`);
   }
 
@@ -128,21 +132,23 @@ export class OpenAIFileSearchProvider extends RAGProvider {
   async _loadState() {
     try {
       const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
-      
+
       // Load file mapping if it exists and matches current vector store
       if (metadata.vectorStoreId === this.#vectorStoreId && metadata.fileMap) {
         this.#fileIds = new Map(Object.entries(metadata.fileMap));
         this._logger.debug(`Loaded ${this.#fileIds.size} file mappings from settings`);
       } else if (metadata.vectorStoreId && metadata.vectorStoreId !== this.#vectorStoreId) {
-        this._logger.warn(`Vector store mismatch in settings (stored: ${metadata.vectorStoreId}, current: ${this.#vectorStoreId}). Clearing file map.`);
+        this._logger.warn(
+          `Vector store mismatch in settings (stored: ${metadata.vectorStoreId}, current: ${this.#vectorStoreId}). Clearing file map.`
+        );
         this.#fileIds.clear();
         await this._saveState();
       }
     } catch (err) {
       this._logger.error('Failed to load RAG state:', err);
       ui?.notifications?.warn(
-        game.i18n?.localize('VOXCHRONICLE.Errors.RagStateLoadFailed')
-          || 'VoxChronicle: Could not restore RAG file mappings — reindexing may be required.'
+        game.i18n?.localize('VOXCHRONICLE.Errors.RagStateLoadFailed') ||
+          'VoxChronicle: Could not restore RAG file mappings — reindexing may be required.'
       );
     }
   }
@@ -154,18 +160,18 @@ export class OpenAIFileSearchProvider extends RAGProvider {
   async _saveState() {
     try {
       const metadata = game?.settings?.get(MODULE_ID, 'ragIndexMetadata') || {};
-      
+
       metadata.vectorStoreId = this.#vectorStoreId;
       metadata.fileMap = Object.fromEntries(this.#fileIds);
       metadata.lastUpdated = new Date().toISOString();
-      
+
       await game?.settings?.set(MODULE_ID, 'ragIndexMetadata', metadata);
       this._logger.debug('Saved RAG state to settings');
     } catch (err) {
       this._logger.error('Failed to save RAG state:', err);
       globalThis.ui?.notifications?.warn(
-        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.RagStateSaveFailed')
-          || 'VoxChronicle: Failed to persist RAG state — reindexing may be required next session.'
+        globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.RagStateSaveFailed') ||
+          'VoxChronicle: Failed to persist RAG state — reindexing may be required next session.'
       );
     }
   }
@@ -177,13 +183,15 @@ export class OpenAIFileSearchProvider extends RAGProvider {
   async destroy() {
     const startTime = Date.now();
     this.#ensureInitialized();
-    this._logger.info(`Destroying OpenAI File Search provider — ${this.#fileIds.size} files, vectorStore=${this.#vectorStoreId}`);
+    this._logger.info(
+      `Destroying OpenAI File Search provider — ${this.#fileIds.size} files, vectorStore=${this.#vectorStoreId}`
+    );
 
     // Delete all uploaded files
     const deletePromises = [];
     for (const [docId, fileId] of this.#fileIds) {
       deletePromises.push(
-        this.#deleteFile(fileId).catch(err =>
+        this.#deleteFile(fileId).catch((err) =>
           this._logger.warn(`Failed to delete file ${fileId} (doc: ${docId}): ${err.message}`)
         )
       );
@@ -230,7 +238,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     let failed = 0;
 
     const totalContentSize = documents.reduce((sum, d) => sum + (d.content?.length || 0), 0);
-    this._logger.info(`Indexing ${documents.length} documents (total content: ${totalContentSize} chars)`);
+    this._logger.info(
+      `Indexing ${documents.length} documents (total content: ${totalContentSize} chars)`
+    );
 
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i];
@@ -247,12 +257,16 @@ export class OpenAIFileSearchProvider extends RAGProvider {
         // Upload file
         const uploadStart = Date.now();
         const fileId = await this.#uploadDocument(doc);
-        this._logger.debug(`Upload took ${Date.now() - uploadStart}ms for "${doc.title}" (${doc.content?.length || 0} chars)`);
+        this._logger.debug(
+          `Upload took ${Date.now() - uploadStart}ms for "${doc.title}" (${doc.content?.length || 0} chars)`
+        );
 
         // Add to vector store
         const processStart = Date.now();
         await this.#addFileToVectorStore(fileId);
-        this._logger.debug(`Vector store processing took ${Date.now() - processStart}ms for "${doc.title}"`);
+        this._logger.debug(
+          `Vector store processing took ${Date.now() - processStart}ms for "${doc.title}"`
+        );
 
         this.#fileIds.set(doc.id, fileId);
         indexed++;
@@ -264,12 +278,14 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     }
 
     onProgress?.(documents.length, documents.length, `Done: ${indexed} indexed, ${failed} failed`);
-    
+
     if (indexed > 0) {
       await this._saveState();
     }
-    
-    this._logger.info(`Indexing complete: ${indexed} indexed, ${failed} failed in ${Date.now() - startTime}ms`);
+
+    this._logger.info(
+      `Indexing complete: ${indexed} indexed, ${failed} failed in ${Date.now() - startTime}ms`
+    );
     return { indexed, failed };
   }
 
@@ -325,7 +341,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     await this._saveState();
 
     if (errors.length > 0) {
-      this._logger.warn(`Cleared index with ${errors.length} errors in ${Date.now() - startTime}ms: ${errors.join('; ')}`);
+      this._logger.warn(
+        `Cleared index with ${errors.length} errors in ${Date.now() - startTime}ms: ${errors.join('; ')}`
+      );
     } else {
       this._logger.info(`Index cleared successfully in ${Date.now() - startTime}ms`);
     }
@@ -354,16 +372,20 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     const maxResults = options.maxResults ?? 5;
     const model = options.model || this.#model;
 
-    this._logger.debug(`Querying RAG: "${question.substring(0, 80)}..." (max ${maxResults} results, model=${model})`);
+    this._logger.debug(
+      `Querying RAG: "${question.substring(0, 80)}..." (max ${maxResults} results, model=${model})`
+    );
 
     const requestBody = {
       model,
       input: question,
-      tools: [{
-        type: 'file_search',
-        vector_store_ids: [this.#vectorStoreId],
-        max_num_results: maxResults
-      }]
+      tools: [
+        {
+          type: 'file_search',
+          vector_store_ids: [this.#vectorStoreId],
+          max_num_results: maxResults
+        }
+      ]
     };
 
     // Add system instructions if provided
@@ -373,7 +395,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
 
     const response = await this.#client.post('/responses', requestBody);
     const result = this.#parseQueryResponse(response);
-    this._logger.debug(`query() complete in ${Date.now() - startTime}ms — answer=${result.answer.length} chars, ${result.sources.length} sources`);
+    this._logger.debug(
+      `query() complete in ${Date.now() - startTime}ms — answer=${result.answer.length} chars, ${result.sources.length} sources`
+    );
     return result;
   }
 
@@ -398,7 +422,9 @@ export class OpenAIFileSearchProvider extends RAGProvider {
     // Fetch vector store details if initialized
     if (this.#initialized && this.#vectorStoreId) {
       try {
-        const vs = await this.#client.request(`/vector_stores/${this.#vectorStoreId}`, { method: 'GET' });
+        const vs = await this.#client.request(`/vector_stores/${this.#vectorStoreId}`, {
+          method: 'GET'
+        });
         status.providerMeta.fileCounts = vs.file_counts;
         status.providerMeta.status = vs.status;
         status.providerMeta.expiresAt = vs.expires_at;
@@ -464,15 +490,15 @@ export class OpenAIFileSearchProvider extends RAGProvider {
   async #uploadDocument(doc) {
     // Build file content with metadata header
     const header = `# ${doc.title}\n`;
-    const metaLine = doc.metadata
-      ? `<!-- metadata: ${JSON.stringify(doc.metadata)} -->\n\n`
-      : '\n';
+    const metaLine = doc.metadata ? `<!-- metadata: ${JSON.stringify(doc.metadata)} -->\n\n` : '\n';
     const content = header + metaLine + doc.content;
 
     // Check size limit
     const blob = new Blob([content], { type: 'text/plain' });
     if (blob.size > MAX_FILE_SIZE) {
-      throw new Error(`Document "${doc.title}" exceeds max file size (${Math.round(blob.size / 1024 / 1024)}MB > 512MB)`);
+      throw new Error(
+        `Document "${doc.title}" exceeds max file size (${Math.round(blob.size / 1024 / 1024)}MB > 512MB)`
+      );
     }
 
     // Upload via FormData
@@ -543,7 +569,7 @@ export class OpenAIFileSearchProvider extends RAGProvider {
       }
 
       // Still in_progress — wait and retry
-      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
 
     throw new Error(`File processing timed out after ${POLL_TIMEOUT_MS / 1000}s`);

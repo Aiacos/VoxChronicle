@@ -4,7 +4,7 @@
  * Implements chat() and chatStream() using the Anthropic Messages API.
  *
  * @class AnthropicChatProvider
- * @extends ChatProvider
+ * @augments ChatProvider
  * @module vox-chronicle
  */
 
@@ -20,7 +20,7 @@ export class AnthropicChatProvider extends ChatProvider {
 
   /**
    * @param {string} apiKey - Anthropic API key
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.timeout=120000] - Request timeout in ms
    */
   constructor(apiKey, options = {}) {
@@ -38,20 +38,20 @@ export class AnthropicChatProvider extends ChatProvider {
   /**
    * Send a chat completion request via Anthropic Messages API.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
-   * @returns {Promise<{content: string, usage: Object}>}
+   * @param {object} [options={}]
+   * @returns {Promise<{content: string, usage: object}>}
    */
   async chat(messages, options = {}) {
     this._validateOptions(options);
 
     // Anthropic uses a separate system parameter, not a system message in the array
-    const systemMessage = messages.find(m => m.role === 'system');
-    const userMessages = messages.filter(m => m.role !== 'system');
+    const systemMessage = messages.find((m) => m.role === 'system');
+    const userMessages = messages.filter((m) => m.role !== 'system');
 
     const body = {
       model: options.model ?? 'claude-sonnet-4-20250514',
       messages: userMessages,
-      max_tokens: options.maxTokens ?? 1024,
+      max_tokens: options.maxTokens ?? 1024
     };
     if (systemMessage) body.system = systemMessage.content;
     if (options.temperature !== undefined) body.temperature = options.temperature;
@@ -79,7 +79,9 @@ export class AnthropicChatProvider extends ChatProvider {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Anthropic API error ${response.status}: ${errorData.error?.message || response.statusText}`);
+        throw new Error(
+          `Anthropic API error ${response.status}: ${errorData.error?.message || response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -103,14 +105,14 @@ export class AnthropicChatProvider extends ChatProvider {
   /**
    * Send a streaming chat completion request via Anthropic Messages API.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @returns {AsyncGenerator<{token: string, done: boolean}>}
    */
   async *chatStream(messages, options = {}) {
     this._validateOptions(options);
 
-    const systemMessage = messages.find(m => m.role === 'system');
-    const userMessages = messages.filter(m => m.role !== 'system');
+    const systemMessage = messages.find((m) => m.role === 'system');
+    const userMessages = messages.filter((m) => m.role !== 'system');
 
     const body = {
       model: options.model ?? 'claude-sonnet-4-20250514',
@@ -153,14 +155,19 @@ export class AnthropicChatProvider extends ChatProvider {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6);
-          if (data === '[DONE]') { yield { token: '', done: true }; return; }
+          if (data === '[DONE]') {
+            yield { token: '', done: true };
+            return;
+          }
 
           try {
             const parsed = JSON.parse(data);
             if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
               yield { token: parsed.delta.text, done: false };
             }
-          } catch { /* skip non-JSON lines */ }
+          } catch {
+            /* skip non-JSON lines */
+          }
         }
       }
     } finally {

@@ -221,7 +221,7 @@ describe('TranscriptionService', () => {
 
       const blob = createAudioBlob();
       const result = await svc.transcribe(blob);
-      const gmSegment = result.segments.find(s => s.speaker === 'GM');
+      const gmSegment = result.segments.find((s) => s.speaker === 'GM');
       expect(gmSegment).toBeDefined();
     });
 
@@ -231,7 +231,7 @@ describe('TranscriptionService', () => {
       const result = await service.transcribe(blob, {
         speakerMap: { SPEAKER_00: 'Custom GM' }
       });
-      const gmSegment = result.segments.find(s => s.speaker === 'Custom GM');
+      const gmSegment = result.segments.find((s) => s.speaker === 'Custom GM');
       expect(gmSegment).toBeDefined();
     });
 
@@ -313,7 +313,7 @@ describe('TranscriptionService', () => {
       expect(providerCall.language).toBe('es');
     });
 
-    it('should not mutate the caller\'s options object', async () => {
+    it("should not mutate the caller's options object", async () => {
       const blob = createAudioBlob();
       const originalOptions = {
         prompt: 'my custom prompt',
@@ -379,7 +379,7 @@ describe('TranscriptionService', () => {
       expect(result.segments[0].end).toBe(5.0);
 
       // Should also have a speaker entry for 'Unknown'
-      const unknownSpeaker = result.speakers.find(s => s.id === 'Unknown');
+      const unknownSpeaker = result.speakers.find((s) => s.id === 'Unknown');
       expect(unknownSpeaker).toBeDefined();
       expect(unknownSpeaker.isMapped).toBe(false);
     });
@@ -393,7 +393,7 @@ describe('TranscriptionService', () => {
 
       const blob = createAudioBlob();
       const result = await service.transcribe(blob, {
-        speakerMap: { 'Unknown': 'Narrator' }
+        speakerMap: { Unknown: 'Narrator' }
       });
 
       // The fail-safe uses speakerMap['Unknown'] || 'Unknown'
@@ -438,7 +438,10 @@ describe('TranscriptionService', () => {
     it('should omit language from provider options in multi-language mode', async () => {
       service.setMultiLanguageMode(true);
       const provider = createMockProvider();
-      const svc = new TranscriptionService(provider, { defaultLanguage: 'en', multiLanguageMode: true });
+      const svc = new TranscriptionService(provider, {
+        defaultLanguage: 'en',
+        multiLanguageMode: true
+      });
 
       mockProvider.transcribe.mockResolvedValueOnce({ text: 'hi', segments: [] });
       const blob = createAudioBlob();
@@ -609,10 +612,7 @@ describe('TranscriptionService', () => {
     });
 
     it('should handle results with missing segments', () => {
-      const results = [
-        { text: 'Hello' },
-        { text: 'world', segments: [{ start: 1, end: 2 }] }
-      ];
+      const results = [{ text: 'Hello' }, { text: 'world', segments: [{ start: 1, end: 2 }] }];
       const combined = service._combineChunkResults(results, new Set());
       expect(combined.segments).toHaveLength(1);
     });
@@ -687,10 +687,10 @@ describe('TranscriptionService', () => {
       };
       const mapped = service._mapSpeakersToNames(result, { SPEAKER_00: 'GM' });
       expect(mapped.speakers).toHaveLength(2);
-      const gmSpeaker = mapped.speakers.find(s => s.id === 'SPEAKER_00');
+      const gmSpeaker = mapped.speakers.find((s) => s.id === 'SPEAKER_00');
       expect(gmSpeaker.name).toBe('GM');
       expect(gmSpeaker.isMapped).toBe(true);
-      const unmappedSpeaker = mapped.speakers.find(s => s.id === 'SPEAKER_01');
+      const unmappedSpeaker = mapped.speakers.find((s) => s.id === 'SPEAKER_01');
       expect(unmappedSpeaker.isMapped).toBe(false);
     });
 
@@ -943,7 +943,7 @@ describe('TranscriptionService', () => {
       expect(langs.length).toBeGreaterThan(0);
       expect(langs[0].code).toBe('');
       expect(langs[0].name).toBe('Auto-detect');
-      const english = langs.find(l => l.code === 'en');
+      const english = langs.find((l) => l.code === 'en');
       expect(english).toBeDefined();
     });
 
@@ -951,7 +951,7 @@ describe('TranscriptionService', () => {
       const models = TranscriptionService.getAvailableModels();
       expect(Array.isArray(models)).toBe(true);
       expect(models).toHaveLength(3);
-      const diarize = models.find(m => m.supportsDiarization);
+      const diarize = models.find((m) => m.supportsDiarization);
       expect(diarize).toBeDefined();
       expect(diarize.id).toBe(TranscriptionModel.GPT4O_DIARIZE);
     });

@@ -89,37 +89,65 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
 
   // --- Static Action Handlers ---
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onAddTermAction(event, target) {
     return this._onAddTerm(event, target);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onRemoveTermAction(event, target) {
     return this._onRemoveTerm(event, target);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onClearCategoryAction(event, target) {
     return this._onClearCategory(event, target);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onClearAllAction(event, target) {
     return this._onClearAll(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onSuggestFromFoundryAction(event, target) {
     return this._onSuggestFromFoundry(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onImportAction(event, target) {
     return this._onImport(event);
   }
 
-  /** @private */
+  /**
+   * @param event
+   * @param target
+   * @private
+   */
   static async _onExportAction(event, target) {
     return this._onExport(event);
   }
@@ -132,26 +160,37 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
    * @param {object} options - Render options
    */
   _onRender(context, options) {
-    this._logger.debug('_onRender called', { activeCategory: this._activeCategory, totalTerms: this._dictionary.getTotalTermCount() });
+    this._logger.debug('_onRender called', {
+      activeCategory: this._activeCategory,
+      totalTerms: this._dictionary.getTotalTermCount()
+    });
     this.#listenerController?.abort();
     this.#listenerController = new AbortController();
     const { signal } = this.#listenerController;
 
     // Enter key on term input triggers add-term
     this.element?.querySelectorAll('.vox-chronicle-term-input').forEach((input) => {
-      input.addEventListener('keypress', (event) => {
-        if (event.which === 13 || event.key === 'Enter') {
-          event.preventDefault();
-          this._onAddTerm(event);
-        }
-      }, { signal });
+      input.addEventListener(
+        'keypress',
+        (event) => {
+          if (event.which === 13 || event.key === 'Enter') {
+            event.preventDefault();
+            this._onAddTerm(event);
+          }
+        },
+        { signal }
+      );
     });
 
     // Track active tab from tab clicks
     this.element?.querySelectorAll('.tabs .item').forEach((tab) => {
-      tab.addEventListener('click', (event) => {
-        this._activeCategory = event.currentTarget.dataset.tab;
-      }, { signal });
+      tab.addEventListener(
+        'click',
+        (event) => {
+          this._activeCategory = event.currentTarget.dataset.tab;
+        },
+        { signal }
+      );
     });
 
     this._logger.debug('Event listeners activated');
@@ -280,10 +319,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportMerge') || 'Merge with existing terms',
         importReplace:
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.ImportReplace') || 'Replace all terms',
-        termCountLabel:
-          game.i18n?.localize('VOXCHRONICLE.Vocabulary.TermCountLabel') || 'terms',
-        noTermsCount:
-          game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoTermsCount') || 'No terms'
+        termCountLabel: game.i18n?.localize('VOXCHRONICLE.Vocabulary.TermCountLabel') || 'terms',
+        noTermsCount: game.i18n?.localize('VOXCHRONICLE.Vocabulary.NoTermsCount') || 'No terms'
       }
     };
   }
@@ -316,7 +353,9 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
       const added = await this._dictionary.addTerm(category, term);
 
       if (added) {
-        this._logger.debug(`Term added: "${term}" in ${category}, total: ${this._dictionary.getTotalTermCount()}`);
+        this._logger.debug(
+          `Term added: "${term}" in ${category}, total: ${this._dictionary.getTotalTermCount()}`
+        );
         ui.notifications.info(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.AddSuccess') || 'Term added successfully'
         );
@@ -355,7 +394,9 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
       const removed = await this._dictionary.removeTerm(category, term);
 
       if (removed) {
-        this._logger.debug(`Term removed: "${term}" from ${category}, total: ${this._dictionary.getTotalTermCount()}`);
+        this._logger.debug(
+          `Term removed: "${term}" from ${category}, total: ${this._dictionary.getTotalTermCount()}`
+        );
         ui.notifications.info(
           game.i18n?.localize('VOXCHRONICLE.Vocabulary.RemoveSuccess') || 'Term removed'
         );
@@ -506,8 +547,9 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
             } catch (error) {
               this._logger.error('Failed to import dictionary:', error);
               ui.notifications.error(
-                game.i18n?.format('VOXCHRONICLE.Error.Message', { error: escapeHtml(error.message) }) ||
-                  `Error: ${escapeHtml(error.message)}`
+                game.i18n?.format('VOXCHRONICLE.Error.Message', {
+                  error: escapeHtml(error.message)
+                }) || `Error: ${escapeHtml(error.message)}`
               );
             }
           }
@@ -561,7 +603,10 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
                     'Dictionary copied to clipboard'
                 );
               } catch (clipboardError) {
-                this._logger.debug('Clipboard API failed, trying fallback:', clipboardError.message);
+                this._logger.debug(
+                  'Clipboard API failed, trying fallback:',
+                  clipboardError.message
+                );
                 try {
                   const textarea = document.createElement('textarea');
                   textarea.value = json;
@@ -576,7 +621,8 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
                 } catch (fallbackError) {
                   this._logger.error('Clipboard write failed:', fallbackError.message);
                   ui?.notifications?.error(
-                    game.i18n?.localize('VOXCHRONICLE.Errors.ClipboardFailed') || 'Failed to copy to clipboard.'
+                    game.i18n?.localize('VOXCHRONICLE.Errors.ClipboardFailed') ||
+                      'Failed to copy to clipboard.'
                   );
                 }
               }
@@ -651,7 +697,7 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
       this._logger.error('Failed to collect Foundry suggestions:', error);
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Vocabulary.SuggestPartialFailure') ||
-        'Some Foundry data could not be read. Suggestions may be incomplete.'
+          'Some Foundry data could not be read. Suggestions may be incomplete.'
       );
       return suggestions;
     }
@@ -779,7 +825,9 @@ export class VocabularyManager extends HandlebarsApplicationMixin(ApplicationV2)
               // Add selected character names
               el.querySelectorAll('input[name="character"]:checked:not(:disabled)').forEach(
                 (checkbox) => {
-                  if (this._dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, checkbox.value)) {
+                  if (
+                    this._dictionary.addTerm(VocabularyCategory.CHARACTER_NAMES, checkbox.value)
+                  ) {
                     addedCount++;
                   }
                 }

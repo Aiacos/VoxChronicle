@@ -8,8 +8,8 @@ import { EmbeddingProvider } from '../../../scripts/ai/providers/EmbeddingProvid
 // Mock EventBus
 vi.mock('../../../scripts/core/EventBus.mjs', () => ({
   eventBus: {
-    emit: vi.fn(),
-  },
+    emit: vi.fn()
+  }
 }));
 
 import { eventBus } from '../../../scripts/core/EventBus.mjs';
@@ -17,8 +17,8 @@ import { eventBus } from '../../../scripts/core/EventBus.mjs';
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 // Concrete test providers
@@ -100,7 +100,7 @@ describe('ProviderRegistry', () => {
       registry.register('openai', provider);
       expect(eventBus.emit).toHaveBeenCalledWith('ai:providerRegistered', {
         providerName: 'openai',
-        capabilities: ['chat', 'chatStream'],
+        capabilities: ['chat', 'chatStream']
       });
     });
 
@@ -189,7 +189,7 @@ describe('ProviderRegistry', () => {
       const list = registry.listProviders();
       expect(list).toEqual({
         openai: ['chat', 'chatStream'],
-        whisper: ['transcribe'],
+        whisper: ['transcribe']
       });
     });
   });
@@ -215,7 +215,7 @@ describe('ProviderRegistry', () => {
       registry.setDefault('anthropic', 'chat');
       expect(eventBus.emit).toHaveBeenCalledWith('ai:defaultChanged', {
         providerName: 'anthropic',
-        capability: 'chat',
+        capability: 'chat'
       });
     });
 
@@ -246,7 +246,7 @@ describe('ProviderRegistry', () => {
       registry.unregister('openai');
       expect(eventBus.emit).toHaveBeenCalledWith('ai:providerUnregistered', {
         providerName: 'openai',
-        capabilities: ['chat', 'chatStream'],
+        capabilities: ['chat', 'chatStream']
       });
     });
 

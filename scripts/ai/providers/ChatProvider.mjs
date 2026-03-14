@@ -30,38 +30,39 @@ export class ChatProvider {
   /**
    * Send a chat completion request.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {string} [options.model]
    * @param {number} [options.temperature]
    * @param {number} [options.maxTokens]
    * @param {AbortSignal} [options.abortSignal]
-   * @returns {Promise<{content: string, usage: Object}>}
+   * @returns {Promise<{content: string, usage: object}>}
    * @abstract
    */
   async chat(messages, options = {}) {
     throw new Error(
-      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', { method: 'chat' })
-        ?? 'Method chat must be implemented by provider subclass'
+      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', { method: 'chat' }) ??
+        'Method chat must be implemented by provider subclass'
     );
   }
 
   /**
    * Send a streaming chat completion request.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @returns {AsyncGenerator<{token: string, done: boolean}>}
    * @abstract
    */
   async *chatStream(messages, options = {}) {
     throw new Error(
-      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', { method: 'chatStream' })
-        ?? 'Method chatStream must be implemented by provider subclass'
+      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', {
+        method: 'chatStream'
+      }) ?? 'Method chatStream must be implemented by provider subclass'
     );
   }
 
   /**
    * Validate common options.
-   * @param {Object} options
+   * @param {object} options
    * @protected
    */
   _validateOptions(options) {

@@ -42,7 +42,7 @@ describe('PromptBuilder', () => {
       builder.setAdventureContext('The tavern is dark.');
       // Verify by checking buildAnalysisMessages includes it
       const messages = builder.buildAnalysisMessages('test', true, false);
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg).toBeDefined();
       expect(contextMsg.content).toContain('The tavern is dark.');
     });
@@ -51,7 +51,7 @@ describe('PromptBuilder', () => {
       builder.setAdventureContext('something');
       builder.setAdventureContext('');
       const messages = builder.buildAnalysisMessages('test', true, false);
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg).toBeUndefined();
     });
 
@@ -80,14 +80,14 @@ describe('PromptBuilder', () => {
         { role: 'assistant', content: 'Previous answer' }
       ]);
       const messages = builder.buildAnalysisMessages('test', true, false);
-      const historyMsg = messages.find(m => m.content === 'Previous question');
+      const historyMsg = messages.find((m) => m.content === 'Previous question');
       expect(historyMsg).toBeDefined();
     });
 
     it('setPreviousTranscription sets text used in autonomous suggestions', () => {
       builder.setPreviousTranscription('The party was in the forest.');
       const messages = builder.buildAutonomousSuggestionMessages('context query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('The party was in the forest.');
     });
 
@@ -121,7 +121,7 @@ describe('PromptBuilder', () => {
     it('setPreviousTranscription with null defaults to empty string', () => {
       builder.setPreviousTranscription(null);
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).not.toContain('Recent conversation context');
     });
   });
@@ -161,7 +161,17 @@ describe('PromptBuilder', () => {
     });
 
     it('uses correct language for each supported code', () => {
-      const langMap = { it: 'Italian', en: 'English', de: 'German', fr: 'French', es: 'Spanish', pt: 'Portuguese', ja: 'Japanese', ko: 'Korean', zh: 'Chinese' };
+      const langMap = {
+        it: 'Italian',
+        en: 'English',
+        de: 'German',
+        fr: 'French',
+        es: 'Spanish',
+        pt: 'Portuguese',
+        ja: 'Japanese',
+        ko: 'Korean',
+        zh: 'Chinese'
+      };
       for (const [code, name] of Object.entries(langMap)) {
         builder.setPrimaryLanguage(code);
         expect(builder.buildSystemPrompt()).toContain(name);
@@ -203,7 +213,7 @@ describe('PromptBuilder', () => {
     it('includes adventure context when set', () => {
       builder.setAdventureContext('The adventure begins in a tavern.');
       const messages = builder.buildAnalysisMessages('test', true, false);
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg).toBeDefined();
       expect(contextMsg.content).toContain('The adventure begins in a tavern.');
     });
@@ -211,7 +221,7 @@ describe('PromptBuilder', () => {
     it('uses RAG context over adventure context when provided', () => {
       builder.setAdventureContext('Fallback adventure context');
       const messages = builder.buildAnalysisMessages('test', true, false, 'RAG retrieved context');
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg.content).toContain('RAG retrieved context');
       expect(contextMsg.content).not.toContain('Fallback adventure context');
     });
@@ -224,7 +234,7 @@ describe('PromptBuilder', () => {
       builder.setConversationHistory(history);
       const messages = builder.buildAnalysisMessages('test', true, false);
       // Should include last 5 history entries
-      const historyMsgs = messages.filter(m => m.content.startsWith('msg-'));
+      const historyMsgs = messages.filter((m) => m.content.startsWith('msg-'));
       expect(historyMsgs).toHaveLength(5);
       expect(historyMsgs[0].content).toBe('msg-3');
       expect(historyMsgs[4].content).toBe('msg-7');
@@ -232,13 +242,13 @@ describe('PromptBuilder', () => {
 
     it('includes transcription in user message', () => {
       const messages = builder.buildAnalysisMessages('Players enter the cave.', true, false);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('Players enter the cave.');
     });
 
     it('includes suggestions + offTrack JSON format when both true', () => {
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"suggestions"');
       expect(userMsg.content).toContain('"offTrackStatus"');
       expect(userMsg.content).toContain('"relevantPages"');
@@ -246,21 +256,21 @@ describe('PromptBuilder', () => {
 
     it('includes only suggestions JSON format when suggestions=true, offTrack=false', () => {
       const messages = builder.buildAnalysisMessages('test', true, false);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"suggestions"');
       expect(userMsg.content).not.toContain('"offTrackStatus"');
     });
 
     it('includes only offTrack JSON format when suggestions=false, offTrack=true', () => {
       const messages = builder.buildAnalysisMessages('test', false, true);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"offTrackStatus"');
       expect(userMsg.content).not.toContain('"suggestions"');
     });
 
     it('no adventure context message when neither RAG nor adventure context set', () => {
       const messages = builder.buildAnalysisMessages('test', true, false);
-      const contextMsg = messages.find(m => m.content?.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'));
       expect(contextMsg).toBeUndefined();
     });
   });
@@ -277,13 +287,13 @@ describe('PromptBuilder', () => {
 
     it('includes transcription in user message', () => {
       const messages = builder.buildOffTrackMessages('Players went shopping.');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('Players went shopping.');
     });
 
     it('includes off-track JSON format', () => {
       const messages = builder.buildOffTrackMessages('test');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"isOffTrack"');
       expect(userMsg.content).toContain('"severity"');
       expect(userMsg.content).toContain('"narrativeBridge"');
@@ -291,14 +301,14 @@ describe('PromptBuilder', () => {
 
     it('uses RAG context when provided', () => {
       const messages = builder.buildOffTrackMessages('test', 'RAG context here');
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg.content).toContain('RAG context here');
     });
 
     it('falls back to adventure context when no RAG context', () => {
       builder.setAdventureContext('Adventure fallback');
       const messages = builder.buildOffTrackMessages('test');
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg.content).toContain('Adventure fallback');
     });
   });
@@ -314,26 +324,26 @@ describe('PromptBuilder', () => {
 
     it('includes maxSuggestions count in prompt', () => {
       const messages = builder.buildSuggestionMessages('test', 5);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('up to 5 suggestions');
     });
 
     it('includes transcription in user message', () => {
       const messages = builder.buildSuggestionMessages('The dragon attacks.', 3);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('The dragon attacks.');
     });
 
     it('includes suggestions JSON format', () => {
       const messages = builder.buildSuggestionMessages('test', 3);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"suggestions"');
       expect(userMsg.content).toContain('"pageReference"');
     });
 
     it('uses RAG context when provided', () => {
       const messages = builder.buildSuggestionMessages('test', 3, 'RAG data');
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg.content).toContain('RAG data');
     });
   });
@@ -348,22 +358,25 @@ describe('PromptBuilder', () => {
     });
 
     it('includes current situation and target scene', () => {
-      const messages = builder.buildNarrativeBridgeMessages('Players went to the market', 'The dungeon entrance');
-      const userMsg = messages.find(m => m.role === 'user');
+      const messages = builder.buildNarrativeBridgeMessages(
+        'Players went to the market',
+        'The dungeon entrance'
+      );
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('Players went to the market');
       expect(userMsg.content).toContain('The dungeon entrance');
     });
 
     it('asks for brief narration', () => {
       const messages = builder.buildNarrativeBridgeMessages('situation', 'target');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('brief narration');
       expect(userMsg.content).toContain('2-3 sentences');
     });
 
     it('uses RAG context when provided', () => {
       const messages = builder.buildNarrativeBridgeMessages('sit', 'target', 'RAG bridge context');
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg.content).toContain('RAG bridge context');
     });
   });
@@ -373,13 +386,23 @@ describe('PromptBuilder', () => {
   // =========================================================================
   describe('buildNPCDialogueMessages()', () => {
     it('starts with system prompt', () => {
-      const messages = builder.buildNPCDialogueMessages('Thane', 'A gruff bartender', 'conversation', 3);
+      const messages = builder.buildNPCDialogueMessages(
+        'Thane',
+        'A gruff bartender',
+        'conversation',
+        3
+      );
       expect(messages[0].role).toBe('system');
     });
 
     it('includes NPC profile when npcContext provided', () => {
-      const messages = builder.buildNPCDialogueMessages('Thane', 'A gruff bartender who knows secrets.', 'conversation', 3);
-      const profileMsg = messages.find(m => m.content.includes('NPC PROFILE'));
+      const messages = builder.buildNPCDialogueMessages(
+        'Thane',
+        'A gruff bartender who knows secrets.',
+        'conversation',
+        3
+      );
+      const profileMsg = messages.find((m) => m.content.includes('NPC PROFILE'));
       expect(profileMsg).toBeDefined();
       expect(profileMsg.content).toContain('Thane');
       expect(profileMsg.content).toContain('gruff bartender');
@@ -387,27 +410,27 @@ describe('PromptBuilder', () => {
 
     it('omits NPC profile when npcContext is empty', () => {
       const messages = builder.buildNPCDialogueMessages('Thane', '', 'conversation', 3);
-      const profileMsg = messages.find(m => m.content?.includes('NPC PROFILE'));
+      const profileMsg = messages.find((m) => m.content?.includes('NPC PROFILE'));
       expect(profileMsg).toBeUndefined();
     });
 
     it('includes NPC name and maxOptions in user message', () => {
       const messages = builder.buildNPCDialogueMessages('Elara', 'An elven mage', 'test', 4);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('4 dialogue options');
       expect(userMsg.content).toContain('"Elara"');
     });
 
     it('includes dialogueOptions JSON format', () => {
       const messages = builder.buildNPCDialogueMessages('NPC', 'context', 'test', 3);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"dialogueOptions"');
     });
 
     it('truncates long npcContext', () => {
       const longContext = 'a'.repeat(MAX_CONTEXT_TOKENS * 4 + 100);
       const messages = builder.buildNPCDialogueMessages('NPC', longContext, 'test', 3);
-      const profileMsg = messages.find(m => m.content.includes('NPC PROFILE'));
+      const profileMsg = messages.find((m) => m.content.includes('NPC PROFILE'));
       expect(profileMsg.content).toContain('[... content truncated ...]');
     });
   });
@@ -423,7 +446,7 @@ describe('PromptBuilder', () => {
 
     it('includes silence prompt in user message', () => {
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('silent for a while');
       expect(userMsg.content).toContain('re-engage the players');
     });
@@ -436,21 +459,21 @@ describe('PromptBuilder', () => {
         summary: 'The dungeon level.'
       });
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('Current Chapter Information');
       expect(userMsg.content).toContain('Chapter 3');
     });
 
     it('omits chapter info when no chapter context', () => {
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).not.toContain('Current Chapter Information');
     });
 
     it('includes previous transcription when set', () => {
       builder.setPreviousTranscription('The party discussed their plan.');
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('Recent conversation context');
       expect(userMsg.content).toContain('The party discussed their plan.');
     });
@@ -459,7 +482,7 @@ describe('PromptBuilder', () => {
       const fullText = 'A'.repeat(200) + 'B'.repeat(300);
       builder.setPreviousTranscription(fullText);
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       // slice(-300) should keep only the last 300 chars (all B's)
       expect(userMsg.content).not.toContain('A'.repeat(10));
       expect(userMsg.content).toContain('B'.repeat(100));
@@ -467,26 +490,26 @@ describe('PromptBuilder', () => {
 
     it('omits previous transcription when not set', () => {
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).not.toContain('Recent conversation context');
     });
 
     it('uses RAG context when provided', () => {
       const messages = builder.buildAutonomousSuggestionMessages('query', 'RAG silence context');
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg.content).toContain('RAG silence context');
     });
 
     it('falls back to adventure context when no RAG context', () => {
       builder.setAdventureContext('Fallback context for silence');
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const contextMsg = messages.find(m => m.content.includes('ADVENTURE CONTEXT'));
+      const contextMsg = messages.find((m) => m.content.includes('ADVENTURE CONTEXT'));
       expect(contextMsg.content).toContain('Fallback context for silence');
     });
 
     it('includes JSON response format', () => {
       const messages = builder.buildAutonomousSuggestionMessages('query');
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"suggestions"');
       expect(userMsg.content).toContain('"pageReference"');
     });
@@ -568,9 +591,7 @@ describe('PromptBuilder', () => {
       builder.setChapterContext({
         chapterName: 'Chapter 1',
         subsections: ['Intro', 'Battle'],
-        pageReferences: [
-          { pageId: 'p1', pageName: 'Page One', journalName: 'Adventure' }
-        ],
+        pageReferences: [{ pageId: 'p1', pageName: 'Page One', journalName: 'Adventure' }],
         summary: 'Heroes arrive.'
       });
       const formatted = builder.formatChapterContext();
@@ -622,14 +643,14 @@ describe('PromptBuilder', () => {
       builder.setNPCProfiles(sampleProfiles);
       // Internal state stored - verify via buildAnalysisMessages
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      const npcMsg = messages.find((m) => m.content.includes('ACTIVE NPC PROFILES'));
       expect(npcMsg).toBeDefined();
     });
 
     it('buildAnalysisMessages includes NPC profiles system message when profiles are set', () => {
       builder.setNPCProfiles(sampleProfiles);
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      const npcMsg = messages.find((m) => m.content.includes('ACTIVE NPC PROFILES'));
       expect(npcMsg).toBeDefined();
       expect(npcMsg.role).toBe('system');
     });
@@ -637,14 +658,14 @@ describe('PromptBuilder', () => {
     it('buildAnalysisMessages does NOT include NPC message when profiles are empty', () => {
       builder.setNPCProfiles([]);
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const npcMsg = messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'));
+      const npcMsg = messages.find((m) => m.content?.includes('ACTIVE NPC PROFILES'));
       expect(npcMsg).toBeUndefined();
     });
 
     it('NPC message format includes name, role, personality, motivation, chapterLocation', () => {
       builder.setNPCProfiles(sampleProfiles);
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      const npcMsg = messages.find((m) => m.content.includes('ACTIVE NPC PROFILES'));
       expect(npcMsg.content).toContain('**Garrick**');
       expect(npcMsg.content).toContain('merchant');
       expect(npcMsg.content).toContain('Jovial facade hiding deep anxiety');
@@ -655,7 +676,7 @@ describe('PromptBuilder', () => {
     it('NPC message includes session notes when present', () => {
       builder.setNPCProfiles(sampleProfiles);
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      const npcMsg = messages.find((m) => m.content.includes('ACTIVE NPC PROFILES'));
       expect(npcMsg.content).toContain('Session notes:');
       expect(npcMsg.content).toContain('Players attempted to deceive him');
       expect(npcMsg.content).toContain('He revealed guild connection');
@@ -664,7 +685,7 @@ describe('PromptBuilder', () => {
     it('NPC message does not include session notes line when notes are empty', () => {
       builder.setNPCProfiles([sampleProfiles[1]]); // Selene has no session notes
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const npcMsg = messages.find(m => m.content.includes('ACTIVE NPC PROFILES'));
+      const npcMsg = messages.find((m) => m.content.includes('ACTIVE NPC PROFILES'));
       expect(npcMsg.content).toContain('**Selene**');
       expect(npcMsg.content).not.toContain('Session notes:');
     });
@@ -673,7 +694,7 @@ describe('PromptBuilder', () => {
       builder.setNPCProfiles(sampleProfiles);
       builder.setNPCProfiles(null);
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const npcMsg = messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'));
+      const npcMsg = messages.find((m) => m.content?.includes('ACTIVE NPC PROFILES'));
       expect(npcMsg).toBeUndefined();
     });
   });
@@ -685,14 +706,14 @@ describe('PromptBuilder', () => {
     it('setNextChapterLookahead stores text', () => {
       builder.setNextChapterLookahead('The party will discover the hidden temple.');
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const lookaheadMsg = messages.find(m => m.content.includes('UPCOMING CONTENT'));
+      const lookaheadMsg = messages.find((m) => m.content.includes('UPCOMING CONTENT'));
       expect(lookaheadMsg).toBeDefined();
     });
 
     it('buildAnalysisMessages includes lookahead system message when set', () => {
       builder.setNextChapterLookahead('Next chapter: The dragon awakens.');
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const lookaheadMsg = messages.find(m => m.content.includes('UPCOMING CONTENT'));
+      const lookaheadMsg = messages.find((m) => m.content.includes('UPCOMING CONTENT'));
       expect(lookaheadMsg).toBeDefined();
       expect(lookaheadMsg.role).toBe('system');
       expect(lookaheadMsg.content).toContain('Next chapter: The dragon awakens.');
@@ -702,7 +723,7 @@ describe('PromptBuilder', () => {
     it('buildAnalysisMessages does NOT include lookahead message when empty', () => {
       builder.setNextChapterLookahead('');
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const lookaheadMsg = messages.find(m => m.content?.includes('UPCOMING CONTENT'));
+      const lookaheadMsg = messages.find((m) => m.content?.includes('UPCOMING CONTENT'));
       expect(lookaheadMsg).toBeUndefined();
     });
 
@@ -710,7 +731,7 @@ describe('PromptBuilder', () => {
       builder.setNextChapterLookahead('Something');
       builder.setNextChapterLookahead(null);
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const lookaheadMsg = messages.find(m => m.content?.includes('UPCOMING CONTENT'));
+      const lookaheadMsg = messages.find((m) => m.content?.includes('UPCOMING CONTENT'));
       expect(lookaheadMsg).toBeUndefined();
     });
   });
@@ -721,7 +742,7 @@ describe('PromptBuilder', () => {
   describe('source field in JSON schema', () => {
     it('buildAnalysisMessages JSON schema includes source field (suggestions + offTrack)', () => {
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"source"');
       expect(userMsg.content).toContain('"chapter"');
       expect(userMsg.content).toContain('"page"');
@@ -730,13 +751,13 @@ describe('PromptBuilder', () => {
 
     it('buildAnalysisMessages JSON schema includes source field (suggestions only)', () => {
       const messages = builder.buildAnalysisMessages('test', true, false);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('"source"');
     });
 
     it('buildAnalysisMessages includes source instruction', () => {
       const messages = builder.buildAnalysisMessages('test', true, true);
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('MUST include a "source" field');
     });
   });
@@ -749,7 +770,7 @@ describe('PromptBuilder', () => {
       builder.setAdventureContext('Adventure context');
       const messages = builder.buildAnalysisMessages('test transcription', true, true);
       expect(messages.length).toBeGreaterThanOrEqual(3); // system + context + user
-      const userMsg = messages.find(m => m.role === 'user');
+      const userMsg = messages.find((m) => m.role === 'user');
       expect(userMsg.content).toContain('test transcription');
     });
   });
@@ -786,7 +807,7 @@ describe('PromptBuilder', () => {
       it('stores summary text accessible during message building', () => {
         builder.setRollingSummary('The party arrived at the tavern and met the innkeeper.');
         const messages = builder.buildAnalysisMessages('test', true, false);
-        const summaryMsg = messages.find(m => m.content?.includes('SESSION HISTORY'));
+        const summaryMsg = messages.find((m) => m.content?.includes('SESSION HISTORY'));
         expect(summaryMsg).toBeDefined();
         expect(summaryMsg.content).toContain('The party arrived at the tavern');
       });
@@ -795,7 +816,7 @@ describe('PromptBuilder', () => {
         builder.setRollingSummary('something');
         builder.setRollingSummary(null);
         const messages = builder.buildAnalysisMessages('test', true, false);
-        const summaryMsg = messages.find(m => m.content?.includes('SESSION HISTORY'));
+        const summaryMsg = messages.find((m) => m.content?.includes('SESSION HISTORY'));
         expect(summaryMsg).toBeUndefined();
       });
     });
@@ -808,17 +829,24 @@ describe('PromptBuilder', () => {
           { role: 'user', content: 'Turn 1' },
           { role: 'assistant', content: 'Response 1' }
         ]);
-        builder.setNPCProfiles([{
-          name: 'Garrick', personality: 'Jovial', motivation: 'Protect',
-          role: 'merchant', chapterLocation: 'Ch3', aliases: [], sessionNotes: []
-        }]);
+        builder.setNPCProfiles([
+          {
+            name: 'Garrick',
+            personality: 'Jovial',
+            motivation: 'Protect',
+            role: 'merchant',
+            chapterLocation: 'Ch3',
+            aliases: [],
+            sessionNotes: []
+          }
+        ]);
 
         const messages = builder.buildAnalysisMessages('test', true, false);
 
         // Find indices
-        const summaryIdx = messages.findIndex(m => m.content?.includes('SESSION HISTORY'));
-        const npcIdx = messages.findIndex(m => m.content?.includes('ACTIVE NPC PROFILES'));
-        const historyIdx = messages.findIndex(m => m.content === 'Turn 1');
+        const summaryIdx = messages.findIndex((m) => m.content?.includes('SESSION HISTORY'));
+        const npcIdx = messages.findIndex((m) => m.content?.includes('ACTIVE NPC PROFILES'));
+        const historyIdx = messages.findIndex((m) => m.content === 'Turn 1');
 
         expect(summaryIdx).toBeGreaterThan(-1);
         // Summary should come after verbatim turns and before NPC profiles
@@ -837,25 +865,32 @@ describe('PromptBuilder', () => {
           { role: 'assistant', content: 'C'.repeat(2000) }
         ]);
         builder.setRollingSummary('D'.repeat(2000));
-        builder.setNPCProfiles([{
-          name: 'Garrick', personality: 'E'.repeat(1000), motivation: 'F'.repeat(1000),
-          role: 'merchant', chapterLocation: 'Ch3', aliases: [], sessionNotes: []
-        }]);
+        builder.setNPCProfiles([
+          {
+            name: 'Garrick',
+            personality: 'E'.repeat(1000),
+            motivation: 'F'.repeat(1000),
+            role: 'merchant',
+            chapterLocation: 'Ch3',
+            aliases: [],
+            sessionNotes: []
+          }
+        ]);
         builder.setNextChapterLookahead('G'.repeat(2000));
 
         const messages = builder.buildAnalysisMessages('test', true, false);
 
         // System prompt + user request are always included
         expect(messages[0].role).toBe('system');
-        const userMsg = messages.find(m => m.role === 'user');
+        const userMsg = messages.find((m) => m.role === 'user');
         expect(userMsg).toBeDefined();
 
         // Adventure context should be present (highest variable priority)
-        const adventureMsg = messages.find(m => m.content?.includes('ADVENTURE CONTEXT'));
+        const adventureMsg = messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'));
         expect(adventureMsg).toBeDefined();
 
         // Next chapter lookahead (lowest priority) should be dropped
-        const lookaheadMsg = messages.find(m => m.content?.includes('UPCOMING CONTENT'));
+        const lookaheadMsg = messages.find((m) => m.content?.includes('UPCOMING CONTENT'));
         expect(lookaheadMsg).toBeUndefined();
       });
 
@@ -864,7 +899,7 @@ describe('PromptBuilder', () => {
         const messages = builder.buildAnalysisMessages('test', true, false);
         expect(messages[0].role).toBe('system');
         expect(messages[0].content).toContain('expert assistant');
-        const userMsg = messages.find(m => m.role === 'user');
+        const userMsg = messages.find((m) => m.role === 'user');
         expect(userMsg).toBeDefined();
       });
 
@@ -876,19 +911,26 @@ describe('PromptBuilder', () => {
           { role: 'assistant', content: 'AI responds.' }
         ]);
         builder.setRollingSummary('Brief summary of what happened.');
-        builder.setNPCProfiles([{
-          name: 'Garrick', personality: 'Jovial', motivation: 'Protect',
-          role: 'merchant', chapterLocation: 'Ch3', aliases: [], sessionNotes: []
-        }]);
+        builder.setNPCProfiles([
+          {
+            name: 'Garrick',
+            personality: 'Jovial',
+            motivation: 'Protect',
+            role: 'merchant',
+            chapterLocation: 'Ch3',
+            aliases: [],
+            sessionNotes: []
+          }
+        ]);
         builder.setNextChapterLookahead('Next chapter preview.');
 
         const messages = builder.buildAnalysisMessages('test', true, false);
 
         // All components should be present
-        expect(messages.find(m => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
-        expect(messages.find(m => m.content?.includes('SESSION HISTORY'))).toBeDefined();
-        expect(messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'))).toBeDefined();
-        expect(messages.find(m => m.content?.includes('UPCOMING CONTENT'))).toBeDefined();
+        expect(messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
+        expect(messages.find((m) => m.content?.includes('SESSION HISTORY'))).toBeDefined();
+        expect(messages.find((m) => m.content?.includes('ACTIVE NPC PROFILES'))).toBeDefined();
+        expect(messages.find((m) => m.content?.includes('UPCOMING CONTENT'))).toBeDefined();
       });
 
       it('with tight budget (4K), only system prompt + user request + adventure context remain', () => {
@@ -900,24 +942,31 @@ describe('PromptBuilder', () => {
           { role: 'assistant', content: 'Z'.repeat(4000) }
         ]);
         builder.setRollingSummary('W'.repeat(4000));
-        builder.setNPCProfiles([{
-          name: 'NPC', personality: 'V'.repeat(2000), motivation: 'U'.repeat(2000),
-          role: 'enemy', chapterLocation: 'Ch1', aliases: [], sessionNotes: []
-        }]);
+        builder.setNPCProfiles([
+          {
+            name: 'NPC',
+            personality: 'V'.repeat(2000),
+            motivation: 'U'.repeat(2000),
+            role: 'enemy',
+            chapterLocation: 'Ch1',
+            aliases: [],
+            sessionNotes: []
+          }
+        ]);
         builder.setNextChapterLookahead('T'.repeat(4000));
 
         const messages = builder.buildAnalysisMessages('test', true, false);
 
         // System prompt + user request always present
         expect(messages[0].role).toBe('system');
-        expect(messages.find(m => m.role === 'user')).toBeDefined();
+        expect(messages.find((m) => m.role === 'user')).toBeDefined();
 
         // Adventure context has highest variable priority
-        expect(messages.find(m => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
+        expect(messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
 
         // Lower priority items should be dropped
-        expect(messages.find(m => m.content?.includes('UPCOMING CONTENT'))).toBeUndefined();
-        expect(messages.find(m => m.content?.includes('ACTIVE NPC PROFILES'))).toBeUndefined();
+        expect(messages.find((m) => m.content?.includes('UPCOMING CONTENT'))).toBeUndefined();
+        expect(messages.find((m) => m.content?.includes('ACTIVE NPC PROFILES'))).toBeUndefined();
       });
 
       it('budget applies 10% safety margin (targets 10,800 when budget is 12,000)', () => {
@@ -949,7 +998,9 @@ describe('PromptBuilder', () => {
 
       it('simulated 180-cycle session with growing summary never exceeds budget', () => {
         builder.setTokenBudget(12000);
-        builder.setAdventureContext('Adventure context for the campaign setting. ' + 'X'.repeat(400));
+        builder.setAdventureContext(
+          'Adventure context for the campaign setting. ' + 'X'.repeat(400)
+        );
 
         for (let cycle = 0; cycle < 180; cycle++) {
           // Summary grows with each cycle, simulating accumulation
@@ -963,7 +1014,11 @@ describe('PromptBuilder', () => {
           }
           builder.setConversationHistory(history);
 
-          const messages = builder.buildAnalysisMessages('Current transcription text.', true, false);
+          const messages = builder.buildAnalysisMessages(
+            'Current transcription text.',
+            true,
+            false
+          );
 
           let totalTokens = 0;
           for (const msg of messages) {
@@ -997,7 +1052,7 @@ describe('PromptBuilder', () => {
         // Default budget behavior
         builder.setAdventureContext('Small context');
         const messages = builder.buildAnalysisMessages('test', true, false);
-        expect(messages.find(m => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
+        expect(messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'))).toBeDefined();
       });
     });
   });

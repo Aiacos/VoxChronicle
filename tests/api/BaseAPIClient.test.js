@@ -35,7 +35,7 @@ class TestClient extends BaseAPIClient {
       authErrorMessage: 'Test API key not configured. Please add your key.',
       AuthErrorClass: TestError,
       authErrorType: 'authentication_error',
-      rateLimiter: options.rateLimiter || createMockRateLimiter(),
+      rateLimiter: options.rateLimiter || createMockRateLimiter()
     });
   }
 }
@@ -52,14 +52,13 @@ function createMockRateLimiter() {
       isPaused: false
     }),
     reset: vi.fn(),
-    pause: vi.fn(),
+    pause: vi.fn()
   };
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────
 
 describe('BaseAPIClient', () => {
-
   // ════════════════════════════════════════════════════════════════════════
   // Constructor
   // ════════════════════════════════════════════════════════════════════════
@@ -82,7 +81,7 @@ describe('BaseAPIClient', () => {
         authErrorMessage: 'Custom error message',
         AuthErrorClass: TestError,
         authErrorType: 'custom_auth_error',
-        rateLimiter,
+        rateLimiter
       });
 
       expect(client._apiKey).toBe('test-key');
@@ -209,7 +208,9 @@ describe('BaseAPIClient', () => {
 
     it('should handle nested endpoints', () => {
       const client = new TestClient('key');
-      expect(client._buildUrl('/campaigns/1/characters')).toBe('https://test.api.com/v1/campaigns/1/characters');
+      expect(client._buildUrl('/campaigns/1/characters')).toBe(
+        'https://test.api.com/v1/campaigns/1/characters'
+      );
     });
 
     it('should handle empty endpoint', () => {

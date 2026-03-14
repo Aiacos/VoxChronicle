@@ -187,7 +187,9 @@ describe('sanitizeHtml', () => {
     });
 
     it('should remove meta tags', () => {
-      const result = sanitizeHtml('<meta http-equiv="refresh" content="0;url=evil.com"><p>Text</p>');
+      const result = sanitizeHtml(
+        '<meta http-equiv="refresh" content="0;url=evil.com"><p>Text</p>'
+      );
       expect(result).not.toContain('<meta');
       expect(result).toContain('Text');
     });
@@ -345,7 +347,8 @@ describe('sanitizeHtml', () => {
     });
 
     it('should handle multiple dangerous elements in one string', () => {
-      const input = '<script>a()</script><iframe src="x"></iframe><style>body{}</style><p>Clean</p>';
+      const input =
+        '<script>a()</script><iframe src="x"></iframe><style>body{}</style><p>Clean</p>';
       const result = sanitizeHtml(input);
       expect(result).not.toContain('<script');
       expect(result).not.toContain('<iframe');

@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GoogleChatProvider } from '../../../scripts/ai/providers/GoogleChatProvider.mjs';
 
 vi.mock('../../../scripts/utils/Logger.mjs', () => ({
-  Logger: { createChild: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })) }
+  Logger: {
+    createChild: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+  }
 }));
 
 describe('GoogleChatProvider', () => {
@@ -24,10 +26,11 @@ describe('GoogleChatProvider', () => {
     it('should send messages to Google API and return content', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          candidates: [{ content: { parts: [{ text: 'Hello from Gemini!' }] } }],
-          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 }
-        })
+        json: () =>
+          Promise.resolve({
+            candidates: [{ content: { parts: [{ text: 'Hello from Gemini!' }] } }],
+            usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 }
+          })
       });
 
       const result = await provider.chat([
@@ -43,10 +46,11 @@ describe('GoogleChatProvider', () => {
     it('should convert system message to systemInstruction', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          candidates: [{ content: { parts: [{ text: 'ok' }] } }],
-          usageMetadata: {}
-        })
+        json: () =>
+          Promise.resolve({
+            candidates: [{ content: { parts: [{ text: 'ok' }] } }],
+            usageMetadata: {}
+          })
       });
 
       await provider.chat([
@@ -63,10 +67,11 @@ describe('GoogleChatProvider', () => {
     it('should convert assistant role to model role', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          candidates: [{ content: { parts: [{ text: 'ok' }] } }],
-          usageMetadata: {}
-        })
+        json: () =>
+          Promise.resolve({
+            candidates: [{ content: { parts: [{ text: 'ok' }] } }],
+            usageMetadata: {}
+          })
       });
 
       await provider.chat([
@@ -87,17 +92,19 @@ describe('GoogleChatProvider', () => {
         json: () => Promise.resolve({ error: { message: 'Invalid key' } })
       });
 
-      await expect(provider.chat([{ role: 'user', content: 'test' }]))
-        .rejects.toThrow('Google API error 403');
+      await expect(provider.chat([{ role: 'user', content: 'test' }])).rejects.toThrow(
+        'Google API error 403'
+      );
     });
 
     it('should include API key in URL', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          candidates: [{ content: { parts: [{ text: 'ok' }] } }],
-          usageMetadata: {}
-        })
+        json: () =>
+          Promise.resolve({
+            candidates: [{ content: { parts: [{ text: 'ok' }] } }],
+            usageMetadata: {}
+          })
       });
 
       await provider.chat([{ role: 'user', content: 'test' }]);

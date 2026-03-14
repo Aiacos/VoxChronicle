@@ -25,7 +25,8 @@ describe('RulesLookupService', () => {
     {
       rule: {
         title: 'Grappling',
-        content: 'When you want to grab a creature or wrestle with it, you can use the Attack action to make a special melee attack, a grapple.',
+        content:
+          'When you want to grab a creature or wrestle with it, you can use the Attack action to make a special melee attack, a grapple.',
         category: 'combat',
         source: 'SRD',
         citation: { formatted: 'SRD - PHB p. 195' }
@@ -36,7 +37,8 @@ describe('RulesLookupService', () => {
     {
       rule: {
         title: 'Grappled Condition',
-        content: 'A grappled creature\'s speed becomes 0, and it can\'t benefit from any bonus to its speed.',
+        content:
+          "A grappled creature's speed becomes 0, and it can't benefit from any bonus to its speed.",
         category: 'condition',
         source: 'SRD',
         citation: { formatted: 'SRD - PHB p. 290' }
@@ -50,7 +52,8 @@ describe('RulesLookupService', () => {
     choices: [
       {
         message: {
-          content: 'Grappling requires an Attack action to make a special melee attack. The target must be no more than one size larger. You use Athletics vs Athletics/Acrobatics. [PHB p. 195]'
+          content:
+            'Grappling requires an Attack action to make a special melee attack. The target must be no more than one size larger. You use Athletics vs Athletics/Acrobatics. [PHB p. 195]'
         }
       }
     ],
@@ -201,13 +204,15 @@ describe('RulesLookupService', () => {
   // =========================================================================
   describe('cooldown', () => {
     it('should expire cooldown after cooldownMs', async () => {
-      const shortCooldown = new RulesLookupService(mockRulesReference, mockOpenAIClient, { cooldownMs: 50 });
+      const shortCooldown = new RulesLookupService(mockRulesReference, mockOpenAIClient, {
+        cooldownMs: 50
+      });
 
       await shortCooldown.lookup('grapple');
       expect(await shortCooldown.lookup('grapple')).toBeNull();
 
       // Wait for cooldown to expire
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       const result = await shortCooldown.lookup('grapple');
       expect(result).not.toBeNull();
@@ -257,7 +262,7 @@ describe('RulesLookupService', () => {
       await result.synthesisPromise;
 
       const callArgs = mockOpenAIClient.post.mock.calls[0][1];
-      const systemMessage = callArgs.messages.find(m => m.role === 'system');
+      const systemMessage = callArgs.messages.find((m) => m.role === 'system');
       expect(systemMessage).toBeDefined();
       expect(systemMessage.content.toLowerCase()).toContain('cite');
     });
@@ -267,7 +272,7 @@ describe('RulesLookupService', () => {
       await result.synthesisPromise;
 
       const callArgs = mockOpenAIClient.post.mock.calls[0][1];
-      const userMessage = callArgs.messages.find(m => m.role === 'user');
+      const userMessage = callArgs.messages.find((m) => m.role === 'user');
       expect(userMessage).toBeDefined();
       expect(userMessage.content).toContain('Grappling');
       expect(userMessage.content).toContain('how does grapple work');
@@ -275,34 +280,38 @@ describe('RulesLookupService', () => {
 
     it('should cap excerpt content at 1500 chars each', async () => {
       const longContent = 'x'.repeat(2000);
-      mockRulesReference.searchRules.mockResolvedValue([{
-        rule: {
-          title: 'Long Rule',
-          content: longContent,
-          category: 'combat',
-          source: 'SRD',
-          citation: { formatted: 'SRD' }
-        },
-        relevance: 0.9,
-        matchedTerms: ['long']
-      }]);
+      mockRulesReference.searchRules.mockResolvedValue([
+        {
+          rule: {
+            title: 'Long Rule',
+            content: longContent,
+            category: 'combat',
+            source: 'SRD',
+            citation: { formatted: 'SRD' }
+          },
+          relevance: 0.9,
+          matchedTerms: ['long']
+        }
+      ]);
 
       const result = await service.lookup('long rule');
       await result.synthesisPromise;
 
       const callArgs = mockOpenAIClient.post.mock.calls[0][1];
-      const userMessage = callArgs.messages.find(m => m.role === 'user');
+      const userMessage = callArgs.messages.find((m) => m.role === 'user');
       // Content should be capped, not include full 2000 chars
       expect(userMessage.content.length).toBeLessThan(2000 + 500); // some overhead for formatting
     });
 
     it('should include language instruction in system message when language is set', async () => {
-      const localizedService = new RulesLookupService(mockRulesReference, mockOpenAIClient, { language: 'it' });
+      const localizedService = new RulesLookupService(mockRulesReference, mockOpenAIClient, {
+        language: 'it'
+      });
       const result = await localizedService.lookup('how does grapple work');
       await result.synthesisPromise;
 
       const callArgs = mockOpenAIClient.post.mock.calls[0][1];
-      const systemMessage = callArgs.messages.find(m => m.role === 'system');
+      const systemMessage = callArgs.messages.find((m) => m.role === 'system');
       expect(systemMessage.content).toContain('Italian');
       localizedService.destroy();
     });
@@ -312,7 +321,7 @@ describe('RulesLookupService', () => {
       await result.synthesisPromise;
 
       const callArgs = mockOpenAIClient.post.mock.calls[0][1];
-      const systemMessage = callArgs.messages.find(m => m.role === 'system');
+      const systemMessage = callArgs.messages.find((m) => m.role === 'system');
       expect(systemMessage.content).toContain('English');
     });
 
@@ -332,16 +341,18 @@ describe('RulesLookupService', () => {
     });
 
     it('should fall back to rule.source when citation.formatted is missing', async () => {
-      mockRulesReference.searchRules.mockResolvedValue([{
-        rule: {
-          title: 'Some Rule',
-          content: 'Rule content here',
-          category: 'combat',
-          source: 'Custom Source'
-        },
-        relevance: 0.8,
-        matchedTerms: ['some']
-      }]);
+      mockRulesReference.searchRules.mockResolvedValue([
+        {
+          rule: {
+            title: 'Some Rule',
+            content: 'Rule content here',
+            category: 'combat',
+            source: 'Custom Source'
+          },
+          relevance: 0.8,
+          matchedTerms: ['some']
+        }
+      ]);
 
       const result = await service.lookup('some rule');
       const synthesis = await result.synthesisPromise;

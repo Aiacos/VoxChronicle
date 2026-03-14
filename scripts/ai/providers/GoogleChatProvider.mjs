@@ -4,7 +4,7 @@
  * Implements chat() and chatStream() using the Google Generative AI API.
  *
  * @class GoogleChatProvider
- * @extends ChatProvider
+ * @augments ChatProvider
  * @module vox-chronicle
  */
 
@@ -19,7 +19,7 @@ export class GoogleChatProvider extends ChatProvider {
 
   /**
    * @param {string} apiKey - Google API key
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {number} [options.timeout=120000] - Request timeout in ms
    */
   constructor(apiKey, options = {}) {
@@ -37,8 +37,8 @@ export class GoogleChatProvider extends ChatProvider {
   /**
    * Send a chat completion request via Google Generative AI API.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
-   * @returns {Promise<{content: string, usage: Object}>}
+   * @param {object} [options={}]
+   * @returns {Promise<{content: string, usage: object}>}
    */
   async chat(messages, options = {}) {
     this._validateOptions(options);
@@ -73,7 +73,9 @@ export class GoogleChatProvider extends ChatProvider {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Google API error ${response.status}: ${errorData.error?.message || response.statusText}`);
+        throw new Error(
+          `Google API error ${response.status}: ${errorData.error?.message || response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -97,7 +99,7 @@ export class GoogleChatProvider extends ChatProvider {
   /**
    * Send a streaming chat completion request via Google Generative AI API.
    * @param {Array<{role: string, content: string}>} messages
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @returns {AsyncGenerator<{token: string, done: boolean}>}
    */
   async *chatStream(messages, options = {}) {
@@ -142,7 +144,9 @@ export class GoogleChatProvider extends ChatProvider {
             const parsed = JSON.parse(line.slice(6));
             const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
             if (text) yield { token: text, done: false };
-          } catch { /* skip non-JSON */ }
+          } catch {
+            /* skip non-JSON */
+          }
         }
       }
     } finally {

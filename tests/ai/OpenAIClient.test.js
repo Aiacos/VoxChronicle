@@ -6,7 +6,12 @@
  * error handling, circuit breaker, rate limiting integration, and validateApiKey.
  */
 
-import { OpenAIClient, OpenAIError, OpenAIErrorType, OPENAI_BASE_URL } from '../../scripts/ai/OpenAIClient.mjs';
+import {
+  OpenAIClient,
+  OpenAIError,
+  OpenAIErrorType,
+  OPENAI_BASE_URL
+} from '../../scripts/ai/OpenAIClient.mjs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -234,11 +239,15 @@ describe('OpenAIClient', () => {
 
   describe('_buildUrl()', () => {
     it('should build URL with leading slash', () => {
-      expect(client._buildUrl('/chat/completions')).toBe('https://api.openai.com/v1/chat/completions');
+      expect(client._buildUrl('/chat/completions')).toBe(
+        'https://api.openai.com/v1/chat/completions'
+      );
     });
 
     it('should add leading slash when missing', () => {
-      expect(client._buildUrl('chat/completions')).toBe('https://api.openai.com/v1/chat/completions');
+      expect(client._buildUrl('chat/completions')).toBe(
+        'https://api.openai.com/v1/chat/completions'
+      );
     });
   });
 
@@ -327,22 +336,18 @@ describe('OpenAIClient', () => {
 
   describe('error handling', () => {
     it('should parse 401 error as authentication error', async () => {
-      fetchSpy.mockResolvedValue(mockResponse(
-        { error: { message: 'Invalid key', type: 'auth_error' } },
-        401
-      ));
+      fetchSpy.mockResolvedValue(
+        mockResponse({ error: { message: 'Invalid key', type: 'auth_error' } }, 401)
+      );
 
-      await expect(
-        client.request('/models', { useQueue: false, useRetry: false })
-      ).rejects.toThrow(/Invalid API key/);
+      await expect(client.request('/models', { useQueue: false, useRetry: false })).rejects.toThrow(
+        /Invalid API key/
+      );
     });
 
     it('should parse 429 error as rate limit error', async () => {
       expect.assertions(2);
-      fetchSpy.mockResolvedValue(mockResponse(
-        { error: { message: 'Rate limit exceeded' } },
-        429
-      ));
+      fetchSpy.mockResolvedValue(mockResponse({ error: { message: 'Rate limit exceeded' } }, 429));
 
       try {
         await client.request('/models', { useQueue: false, useRetry: false });
@@ -354,10 +359,7 @@ describe('OpenAIClient', () => {
 
     it('should parse 400 error as invalid request error', async () => {
       expect.assertions(2);
-      fetchSpy.mockResolvedValue(mockResponse(
-        { error: { message: 'Bad request' } },
-        400
-      ));
+      fetchSpy.mockResolvedValue(mockResponse({ error: { message: 'Bad request' } }, 400));
 
       try {
         await client.request('/models', { useQueue: false, useRetry: false });
@@ -369,10 +371,7 @@ describe('OpenAIClient', () => {
 
     it('should parse 500 error as API error', async () => {
       expect.assertions(2);
-      fetchSpy.mockResolvedValue(mockResponse(
-        { error: { message: 'Internal error' } },
-        500
-      ));
+      fetchSpy.mockResolvedValue(mockResponse({ error: { message: 'Internal error' } }, 500));
 
       try {
         await client.request('/models', { useQueue: false, useRetry: false });
@@ -466,11 +465,9 @@ describe('OpenAIClient', () => {
 
     it('should extract retry-after header from error response', async () => {
       expect.assertions(2);
-      fetchSpy.mockResolvedValue(mockResponse(
-        { error: { message: 'Rate limit' } },
-        429,
-        { 'retry-after': '60' }
-      ));
+      fetchSpy.mockResolvedValue(
+        mockResponse({ error: { message: 'Rate limit' } }, 429, { 'retry-after': '60' })
+      );
 
       try {
         await client.request('/models', { useQueue: false, useRetry: false });
@@ -514,14 +511,11 @@ describe('OpenAIClient', () => {
         retryMaxDelay: 10
       });
 
-      fetchSpy.mockResolvedValue(mockResponse(
-        { error: { message: 'Bad request' } },
-        400
-      ));
+      fetchSpy.mockResolvedValue(mockResponse({ error: { message: 'Bad request' } }, 400));
 
-      await expect(
-        retryClient.request('/models', { useQueue: false })
-      ).rejects.toThrow(OpenAIError);
+      await expect(retryClient.request('/models', { useQueue: false })).rejects.toThrow(
+        OpenAIError
+      );
 
       // Should only be called once (no retries)
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -537,9 +531,9 @@ describe('OpenAIClient', () => {
 
       fetchSpy.mockResolvedValue(mockResponse({}, 500));
 
-      await expect(
-        retryClient.request('/models', { useQueue: false })
-      ).rejects.toThrow(OpenAIError);
+      await expect(retryClient.request('/models', { useQueue: false })).rejects.toThrow(
+        OpenAIError
+      );
 
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
@@ -547,9 +541,9 @@ describe('OpenAIClient', () => {
     it('should skip retry when retry is disabled', async () => {
       fetchSpy.mockResolvedValue(mockResponse({}, 500));
 
-      await expect(
-        client.request('/models', { useQueue: false, useRetry: false })
-      ).rejects.toThrow(OpenAIError);
+      await expect(client.request('/models', { useQueue: false, useRetry: false })).rejects.toThrow(
+        OpenAIError
+      );
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
@@ -606,7 +600,7 @@ describe('OpenAIClient', () => {
       fetchSpy.mockImplementation(async () => {
         const id = callCount++;
         order.push(`start-${id}`);
-        await new Promise(r => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 10));
         order.push(`end-${id}`);
         return mockResponse({ id });
       });
@@ -623,9 +617,9 @@ describe('OpenAIClient', () => {
 
     it('should support priority ordering', async () => {
       // Fill queue with a blocking request
-      const blocker = new Promise(resolve => {
+      const blocker = new Promise((resolve) => {
         fetchSpy.mockImplementationOnce(async () => {
-          await new Promise(r => setTimeout(r, 50));
+          await new Promise((r) => setTimeout(r, 50));
           resolve();
           return mockResponse({ id: 'blocker' });
         });
@@ -633,23 +627,35 @@ describe('OpenAIClient', () => {
 
       const results = [];
       // Start blocker (takes 50ms)
-      const p0 = client._enqueueRequest(async () => {
-        await new Promise(r => setTimeout(r, 50));
-        results.push('normal');
-        return 'normal';
-      }, {}, 0);
+      const p0 = client._enqueueRequest(
+        async () => {
+          await new Promise((r) => setTimeout(r, 50));
+          results.push('normal');
+          return 'normal';
+        },
+        {},
+        0
+      );
 
       // Add high priority
-      const p1 = client._enqueueRequest(async () => {
-        results.push('high');
-        return 'high';
-      }, {}, 10);
+      const p1 = client._enqueueRequest(
+        async () => {
+          results.push('high');
+          return 'high';
+        },
+        {},
+        10
+      );
 
       // Add normal priority
-      const p2 = client._enqueueRequest(async () => {
-        results.push('low');
-        return 'low';
-      }, {}, 0);
+      const p2 = client._enqueueRequest(
+        async () => {
+          results.push('low');
+          return 'low';
+        },
+        {},
+        0
+      );
 
       await Promise.all([p0, p1, p2]);
 
@@ -679,9 +685,9 @@ describe('OpenAIClient', () => {
       // 4th call: should throw
 
       // Catch rejections from blocker and pending items to avoid unhandled rejection warnings
-      const blocker = smallQueueClient._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 1000))
-      ).catch(() => {});
+      const blocker = smallQueueClient
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 1000)))
+        .catch(() => {});
 
       smallQueueClient._enqueueRequest(() => Promise.resolve()).catch(() => {});
       smallQueueClient._enqueueRequest(() => Promise.resolve()).catch(() => {});
@@ -695,9 +701,9 @@ describe('OpenAIClient', () => {
 
     it('should clear queue and reject pending requests', async () => {
       // Add an in-progress request (occupies the processor)
-      const blockPromise = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 1000))
-      ).catch(() => {}); // Suppress unhandled rejection from clearing
+      const blockPromise = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 1000)))
+        .catch(() => {}); // Suppress unhandled rejection from clearing
 
       // Add a pending request
       const pendingPromise = client._enqueueRequest(() => Promise.resolve('done'));
@@ -741,22 +747,32 @@ describe('OpenAIClient', () => {
       const order = [];
       let resolveChat, resolveImage;
 
-      const chatPromise = client._enqueueRequest(async () => {
-        order.push('chat-start');
-        await new Promise(r => { resolveChat = r; });
-        order.push('chat-end');
-        return 'chat';
-      }, { queueCategory: 'chat' });
+      const chatPromise = client._enqueueRequest(
+        async () => {
+          order.push('chat-start');
+          await new Promise((r) => {
+            resolveChat = r;
+          });
+          order.push('chat-end');
+          return 'chat';
+        },
+        { queueCategory: 'chat' }
+      );
 
-      const imagePromise = client._enqueueRequest(async () => {
-        order.push('image-start');
-        await new Promise(r => { resolveImage = r; });
-        order.push('image-end');
-        return 'image';
-      }, { queueCategory: 'image' });
+      const imagePromise = client._enqueueRequest(
+        async () => {
+          order.push('image-start');
+          await new Promise((r) => {
+            resolveImage = r;
+          });
+          order.push('image-end');
+          return 'image';
+        },
+        { queueCategory: 'image' }
+      );
 
       // Both should have started (parallel across categories)
-      await new Promise(r => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 10));
       expect(order).toContain('chat-start');
       expect(order).toContain('image-start');
 
@@ -771,17 +787,23 @@ describe('OpenAIClient', () => {
     it('should process requests within same category sequentially', async () => {
       const order = [];
 
-      const p1 = client._enqueueRequest(async () => {
-        order.push('first-start');
-        await new Promise(r => setTimeout(r, 20));
-        order.push('first-end');
-        return 'first';
-      }, { queueCategory: 'chat' });
+      const p1 = client._enqueueRequest(
+        async () => {
+          order.push('first-start');
+          await new Promise((r) => setTimeout(r, 20));
+          order.push('first-end');
+          return 'first';
+        },
+        { queueCategory: 'chat' }
+      );
 
-      const p2 = client._enqueueRequest(async () => {
-        order.push('second-start');
-        return 'second';
-      }, { queueCategory: 'chat' });
+      const p2 = client._enqueueRequest(
+        async () => {
+          order.push('second-start');
+          return 'second';
+        },
+        { queueCategory: 'chat' }
+      );
 
       await Promise.all([p1, p2]);
 
@@ -792,23 +814,35 @@ describe('OpenAIClient', () => {
       const results = [];
 
       // Start a blocker in chat category
-      const blocker = client._enqueueRequest(async () => {
-        await new Promise(r => setTimeout(r, 50));
-        results.push('blocker');
-        return 'blocker';
-      }, { queueCategory: 'chat' }, 0);
+      const blocker = client._enqueueRequest(
+        async () => {
+          await new Promise((r) => setTimeout(r, 50));
+          results.push('blocker');
+          return 'blocker';
+        },
+        { queueCategory: 'chat' },
+        0
+      );
 
       // Add low priority
-      const low = client._enqueueRequest(async () => {
-        results.push('low');
-        return 'low';
-      }, { queueCategory: 'chat' }, 0);
+      const low = client._enqueueRequest(
+        async () => {
+          results.push('low');
+          return 'low';
+        },
+        { queueCategory: 'chat' },
+        0
+      );
 
       // Add high priority
-      const high = client._enqueueRequest(async () => {
-        results.push('high');
-        return 'high';
-      }, { queueCategory: 'chat' }, 10);
+      const high = client._enqueueRequest(
+        async () => {
+          results.push('high');
+          return 'high';
+        },
+        { queueCategory: 'chat' },
+        10
+      );
 
       await Promise.all([blocker, low, high]);
 
@@ -822,26 +856,23 @@ describe('OpenAIClient', () => {
       expect(client.getQueueSize('image')).toBe(0);
 
       // Block the chat category
-      const blocker = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 500)),
-        { queueCategory: 'chat' }
-      ).catch(() => {});
+      const blocker = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 500)), { queueCategory: 'chat' })
+        .catch(() => {});
 
       // Add pending requests
-      const pending1 = client._enqueueRequest(
-        () => Promise.resolve(),
-        { queueCategory: 'chat' }
-      ).catch(() => {});
+      const pending1 = client
+        ._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' })
+        .catch(() => {});
 
-      const pending2 = client._enqueueRequest(
-        () => Promise.resolve(),
-        { queueCategory: 'image' }
-      ).catch(() => {});
+      const pending2 = client
+        ._enqueueRequest(() => Promise.resolve(), { queueCategory: 'image' })
+        .catch(() => {});
 
       // chat has 1 pending (blocker is processing, not in queue), image has 0 (starts immediately if no blocker)
       // Actually, first request gets shifted out immediately to process
       // So chat queue = 1 (pending1), image queue = 0 (pending2 starts immediately)
-      await new Promise(r => setTimeout(r, 5));
+      await new Promise((r) => setTimeout(r, 5));
       expect(client.getQueueSize('chat')).toBe(1);
 
       client.clearQueue();
@@ -851,21 +882,19 @@ describe('OpenAIClient', () => {
       expect(client.getQueueSize()).toBe(0);
 
       // Block both categories
-      const chatBlocker = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 500)),
-        { queueCategory: 'chat' }
-      ).catch(() => {});
+      const chatBlocker = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 500)), { queueCategory: 'chat' })
+        .catch(() => {});
 
-      const imageBlocker = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 500)),
-        { queueCategory: 'image' }
-      ).catch(() => {});
+      const imageBlocker = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 500)), { queueCategory: 'image' })
+        .catch(() => {});
 
       // Add pending
       client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
       client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'image' }).catch(() => {});
 
-      await new Promise(r => setTimeout(r, 5));
+      await new Promise((r) => setTimeout(r, 5));
       expect(client.getQueueSize()).toBe(2); // 1 chat pending + 1 image pending
 
       client.clearQueue();
@@ -873,29 +902,25 @@ describe('OpenAIClient', () => {
 
     it('should clear only specific category when clearQueue(category) called', async () => {
       // Block both categories
-      const chatBlocker = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 500)),
-        { queueCategory: 'chat' }
-      ).catch(() => {});
+      const chatBlocker = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 500)), { queueCategory: 'chat' })
+        .catch(() => {});
 
-      const imageBlocker = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 500)),
-        { queueCategory: 'image' }
-      ).catch(() => {});
+      const imageBlocker = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 500)), { queueCategory: 'image' })
+        .catch(() => {});
 
       // Add pending to chat
-      const chatPending = client._enqueueRequest(
-        () => Promise.resolve('ok'),
-        { queueCategory: 'chat' }
-      );
+      const chatPending = client._enqueueRequest(() => Promise.resolve('ok'), {
+        queueCategory: 'chat'
+      });
 
       // Add pending to image
-      const imagePending = client._enqueueRequest(
-        () => Promise.resolve('img-ok'),
-        { queueCategory: 'image' }
-      ).catch(() => {});
+      const imagePending = client
+        ._enqueueRequest(() => Promise.resolve('img-ok'), { queueCategory: 'image' })
+        .catch(() => {});
 
-      await new Promise(r => setTimeout(r, 5));
+      await new Promise((r) => setTimeout(r, 5));
 
       // Clear only chat
       client.clearQueue('chat');
@@ -909,20 +934,18 @@ describe('OpenAIClient', () => {
     });
 
     it('should clear all categories when clearQueue() called without args', async () => {
-      const chatBlocker = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 500)),
-        { queueCategory: 'chat' }
-      ).catch(() => {});
+      const chatBlocker = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 500)), { queueCategory: 'chat' })
+        .catch(() => {});
 
-      const imageBlocker = client._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 500)),
-        { queueCategory: 'image' }
-      ).catch(() => {});
+      const imageBlocker = client
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 500)), { queueCategory: 'image' })
+        .catch(() => {});
 
       const p1 = client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' });
       const p2 = client._enqueueRequest(() => Promise.resolve(), { queueCategory: 'image' });
 
-      await new Promise(r => setTimeout(r, 5));
+      await new Promise((r) => setTimeout(r, 5));
       client.clearQueue();
 
       await expect(p1).rejects.toThrow(/cancelled/i);
@@ -939,14 +962,17 @@ describe('OpenAIClient', () => {
       smallQueueClient._rateLimiter._delay = () => Promise.resolve();
 
       // 1st: starts processing (shifted out)
-      const blocker = smallQueueClient._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 1000)),
-        { queueCategory: 'chat' }
-      ).catch(() => {});
+      const blocker = smallQueueClient
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 1000)), { queueCategory: 'chat' })
+        .catch(() => {});
 
       // 2nd and 3rd: fill the queue
-      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
-      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
+      smallQueueClient
+        ._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' })
+        .catch(() => {});
+      smallQueueClient
+        ._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' })
+        .catch(() => {});
 
       // 4th should throw
       expect(() => {
@@ -957,13 +983,19 @@ describe('OpenAIClient', () => {
     });
 
     it('should handle errors in one category without affecting others', async () => {
-      const chatResult = client._enqueueRequest(async () => {
-        throw new Error('chat-fail');
-      }, { queueCategory: 'chat' });
+      const chatResult = client._enqueueRequest(
+        async () => {
+          throw new Error('chat-fail');
+        },
+        { queueCategory: 'chat' }
+      );
 
-      const imageResult = client._enqueueRequest(async () => {
-        return 'image-ok';
-      }, { queueCategory: 'image' });
+      const imageResult = client._enqueueRequest(
+        async () => {
+          return 'image-ok';
+        },
+        { queueCategory: 'image' }
+      );
 
       await expect(chatResult).rejects.toThrow('chat-fail');
       expect(await imageResult).toBe('image-ok');
@@ -1002,7 +1034,9 @@ describe('OpenAIClient', () => {
       const enqueueSpy = vi.spyOn(client, '_enqueueRequest');
       const formData = new FormData();
 
-      await client.postFormData('/audio/transcriptions', formData, { queueCategory: 'transcription' });
+      await client.postFormData('/audio/transcriptions', formData, {
+        queueCategory: 'transcription'
+      });
 
       expect(enqueueSpy).toHaveBeenCalledWith(
         expect.any(Function),
@@ -1020,19 +1054,21 @@ describe('OpenAIClient', () => {
       smallQueueClient._rateLimiter._delay = () => Promise.resolve();
 
       // Fill chat category
-      const chatBlocker = smallQueueClient._enqueueRequest(
-        () => new Promise(r => setTimeout(r, 1000)),
-        { queueCategory: 'chat' }
-      ).catch(() => {});
-      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
-      smallQueueClient._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' }).catch(() => {});
+      const chatBlocker = smallQueueClient
+        ._enqueueRequest(() => new Promise((r) => setTimeout(r, 1000)), { queueCategory: 'chat' })
+        .catch(() => {});
+      smallQueueClient
+        ._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' })
+        .catch(() => {});
+      smallQueueClient
+        ._enqueueRequest(() => Promise.resolve(), { queueCategory: 'chat' })
+        .catch(() => {});
 
       // Image category should still accept requests (separate queue)
       expect(() => {
-        smallQueueClient._enqueueRequest(
-          () => Promise.resolve(),
-          { queueCategory: 'image' }
-        ).catch(() => {});
+        smallQueueClient
+          ._enqueueRequest(() => Promise.resolve(), { queueCategory: 'image' })
+          .catch(() => {});
       }).not.toThrow();
 
       smallQueueClient.clearQueue();
@@ -1103,10 +1139,7 @@ describe('OpenAIClient', () => {
     });
 
     it('should return false for invalid key (401)', async () => {
-      fetchSpy.mockResolvedValue(mockResponse(
-        { error: { message: 'Invalid key' } },
-        401
-      ));
+      fetchSpy.mockResolvedValue(mockResponse({ error: { message: 'Invalid key' } }, 401));
       const result = await client.validateApiKey();
       expect(result).toBe(false);
     });
@@ -1209,9 +1242,7 @@ describe('OpenAIClient', () => {
         throw new Error('Rate limiter is paused');
       };
 
-      await expect(
-        client._makeRequest('/test', {})
-      ).rejects.toThrow('Rate limiter is paused');
+      await expect(client._makeRequest('/test', {})).rejects.toThrow('Rate limiter is paused');
 
       // The outer finally block should have called clearTimeout
       expect(clearTimeoutSpy).toHaveBeenCalled();
@@ -1238,9 +1269,7 @@ describe('OpenAIClient', () => {
       const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
       fetchSpy.mockRejectedValueOnce(new Error('Something went wrong'));
 
-      await expect(
-        client._makeRequest('/test', {})
-      ).rejects.toThrow();
+      await expect(client._makeRequest('/test', {})).rejects.toThrow();
 
       // clearTimeout should be called at least twice:
       // once from inner catch and once from outer finally
@@ -1406,7 +1435,10 @@ describe('OpenAIClient', () => {
       fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
 
       const tokens = [];
-      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+      for await (const chunk of client.postStream('/chat/completions', {
+        model: 'gpt-4o-mini',
+        messages: []
+      })) {
         tokens.push(chunk);
       }
 
@@ -1417,14 +1449,14 @@ describe('OpenAIClient', () => {
 
     it('handles split chunks across reads (buffering)', async () => {
       // First read delivers an incomplete line, second read completes it
-      const chunks = [
-        'data: {"choices":[{"delta":{"conte',
-        'nt":"split"}}]}\n\ndata: [DONE]\n\n'
-      ];
+      const chunks = ['data: {"choices":[{"delta":{"conte', 'nt":"split"}}]}\n\ndata: [DONE]\n\n'];
       fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
 
       const tokens = [];
-      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+      for await (const chunk of client.postStream('/chat/completions', {
+        model: 'gpt-4o-mini',
+        messages: []
+      })) {
         tokens.push(chunk);
       }
 
@@ -1441,7 +1473,10 @@ describe('OpenAIClient', () => {
       fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
 
       const tokens = [];
-      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+      for await (const chunk of client.postStream('/chat/completions', {
+        model: 'gpt-4o-mini',
+        messages: []
+      })) {
         tokens.push(chunk);
       }
 
@@ -1459,7 +1494,10 @@ describe('OpenAIClient', () => {
       fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
 
       const tokens = [];
-      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+      for await (const chunk of client.postStream('/chat/completions', {
+        model: 'gpt-4o-mini',
+        messages: []
+      })) {
         tokens.push(chunk);
       }
 
@@ -1467,7 +1505,7 @@ describe('OpenAIClient', () => {
       expect(tokens[0].content).toBe('Hi');
       expect(tokens[0].usage).toBeNull();
       // The chunk with usage but no content should still yield (usage is non-null)
-      const usageChunk = tokens.find(t => t.usage !== null);
+      const usageChunk = tokens.find((t) => t.usage !== null);
       expect(usageChunk).toBeDefined();
       expect(usageChunk.usage).toEqual(usageData);
     });
@@ -1483,7 +1521,11 @@ describe('OpenAIClient', () => {
       const controller = new AbortController();
       controller.abort();
 
-      const iter = client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] }, { signal: controller.signal });
+      const iter = client.postStream(
+        '/chat/completions',
+        { model: 'gpt-4o-mini', messages: [] },
+        { signal: controller.signal }
+      );
       await expect(iter.next()).rejects.toThrow();
     });
 
@@ -1518,13 +1560,13 @@ describe('OpenAIClient', () => {
       const enqueueSpy = vi.spyOn(client, '_enqueueRequest');
       const retrySpy = vi.spyOn(client, '_retryWithBackoff');
 
-      const chunks = [
-        'data: {"choices":[{"delta":{"content":"test"}}]}\n\n',
-        'data: [DONE]\n\n'
-      ];
+      const chunks = ['data: {"choices":[{"delta":{"content":"test"}}]}\n\n', 'data: [DONE]\n\n'];
       fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
 
-      for await (const _chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+      for await (const _chunk of client.postStream('/chat/completions', {
+        model: 'gpt-4o-mini',
+        messages: []
+      })) {
         // consume
       }
 
@@ -1542,7 +1584,10 @@ describe('OpenAIClient', () => {
       fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
 
       const tokens = [];
-      for await (const chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+      for await (const chunk of client.postStream('/chat/completions', {
+        model: 'gpt-4o-mini',
+        messages: []
+      })) {
         if (chunk.content) tokens.push(chunk);
       }
 
@@ -1554,7 +1599,10 @@ describe('OpenAIClient', () => {
       const chunks = ['data: [DONE]\n\n'];
       fetchSpy.mockResolvedValue(mockStreamResponse(chunks));
 
-      for await (const _chunk of client.postStream('/chat/completions', { model: 'gpt-4o-mini', messages: [] })) {
+      for await (const _chunk of client.postStream('/chat/completions', {
+        model: 'gpt-4o-mini',
+        messages: []
+      })) {
         // consume
       }
 

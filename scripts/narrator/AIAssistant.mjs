@@ -25,7 +25,7 @@ const DEFAULT_MODEL = 'gpt-4o-mini';
 
 /**
  * Represents a contextual suggestion for the DM
- * @typedef {Object} Suggestion
+ * @typedef {object} Suggestion
  * @property {string} type - Type of suggestion ('narration', 'dialogue', 'action', 'reference')
  * @property {string} content - The suggestion text
  * @property {string} [pageReference] - Reference to journal page if applicable
@@ -34,7 +34,7 @@ const DEFAULT_MODEL = 'gpt-4o-mini';
 
 /**
  * Represents the result of off-track detection
- * @typedef {Object} OffTrackResult
+ * @typedef {object} OffTrackResult
  * @property {boolean} isOffTrack - Whether players are off-track
  * @property {number} severity - Severity level 0-1 (0 = on track, 1 = completely off)
  * @property {string} reason - Explanation of why they're off-track
@@ -43,7 +43,7 @@ const DEFAULT_MODEL = 'gpt-4o-mini';
 
 /**
  * Represents a detected rules question
- * @typedef {Object} RulesQuestion
+ * @typedef {object} RulesQuestion
  * @property {string} text - The question text or matched phrase
  * @property {number} confidence - Confidence score 0-1
  * @property {string} type - Question type ('mechanic', 'action', 'spell', 'condition', 'general', etc.)
@@ -53,12 +53,12 @@ const DEFAULT_MODEL = 'gpt-4o-mini';
 
 /**
  * Represents the context analysis result
- * @typedef {Object} ContextAnalysis
+ * @typedef {object} ContextAnalysis
  * @property {Suggestion[]} suggestions - Array of contextual suggestions
  * @property {OffTrackResult} offTrackStatus - Off-track detection result
  * @property {string[]} relevantPages - IDs of relevant journal pages
  * @property {string} summary - Brief summary of current situation
- * @property {Object} sceneInfo - Scene detection information
+ * @property {object} sceneInfo - Scene detection information
  * @property {string} sceneInfo.type - The current scene type
  * @property {boolean} sceneInfo.isTransition - Whether a scene transition was detected
  * @property {number} sceneInfo.timestamp - Timestamp of the analysis
@@ -67,7 +67,7 @@ const DEFAULT_MODEL = 'gpt-4o-mini';
 
 /**
  * Represents a chapter recovery option for silence scenarios
- * @typedef {Object} ChapterRecoveryOption
+ * @typedef {object} ChapterRecoveryOption
  * @property {string} id - Unique identifier for the option
  * @property {string} label - Display label for the option
  * @property {string} type - Type of option ('subsection', 'page', 'summary')
@@ -125,7 +125,7 @@ class AIAssistant {
   /**
    * Creates a new AIAssistant instance
    *
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} [options={}] - Configuration options
    * @param {import('../ai/OpenAIClient.mjs').OpenAIClient} options.openaiClient - OpenAI client instance
    * @param {string} [options.model='gpt-4o-mini'] - The model to use for suggestions
    * @param {string} [options.sensitivity='medium'] - Off-track detection sensitivity ('low', 'medium', 'high')
@@ -211,7 +211,7 @@ class AIAssistant {
 
     /**
      * Current session state tracking
-     * @type {Object}
+     * @type {object}
      * @private
      */
     this._sessionState = {
@@ -236,7 +236,7 @@ class AIAssistant {
 
     /**
      * Current chapter/scene context for focused analysis
-     * @type {Object|null}
+     * @type {object | null}
      * @private
      */
     this._chapterContext = null;
@@ -311,7 +311,7 @@ class AIAssistant {
 
     /**
      * EventBus for cache invalidation (optional)
-     * @type {Object|null}
+     * @type {object | null}
      * @private
      */
     this._eventBus = options.eventBus || null;
@@ -368,6 +368,7 @@ class AIAssistant {
   }
 
   /**
+   * @param client
    * @deprecated Use setChatProvider() instead
    */
   setOpenAIClient(client) {
@@ -600,7 +601,7 @@ class AIAssistant {
   /**
    * Sets the NPC profiles for context injection (passthrough to PromptBuilder)
    *
-   * @param {Array<Object>} profiles - Array of NPCProfile objects
+   * @param {Array<object>} profiles - Array of NPCProfile objects
    */
   setNPCProfiles(profiles) {
     this._npcProfiles = profiles || [];
@@ -624,10 +625,10 @@ class AIAssistant {
   /**
    * Sets the current chapter/scene context for focused analysis
    *
-   * @param {Object|null} chapterInfo - The chapter context information
+   * @param {object | null} chapterInfo - The chapter context information
    * @param {string} [chapterInfo.chapterName] - Name of the current chapter
    * @param {string[]} [chapterInfo.subsections] - Array of subsection names
-   * @param {Object[]} [chapterInfo.pageReferences] - Array of page reference objects
+   * @param {object[]} [chapterInfo.pageReferences] - Array of page reference objects
    * @param {string} [chapterInfo.pageReferences[].pageId] - The page ID
    * @param {string} [chapterInfo.pageReferences[].pageName] - The page name
    * @param {string} [chapterInfo.pageReferences[].journalName] - The parent journal name
@@ -641,15 +642,25 @@ class AIAssistant {
     }
 
     this._chapterContext = {
-      chapterName: this._validateString(chapterInfo.chapterName || '', 200, 'chapterContext.chapterName'),
-      subsections: this._validateArray(chapterInfo.subsections || [], 50, 'chapterContext.subsections')
-        .map(s => this._validateString(s, 200, 'chapterContext.subsection')),
-      pageReferences: this._validateArray(chapterInfo.pageReferences || [], 50, 'chapterContext.pageReferences')
-        .map(ref => ({
-          pageId: this._validateString(ref.pageId || '', 100, 'pageReference.pageId'),
-          pageName: this._validateString(ref.pageName || '', 200, 'pageReference.pageName'),
-          journalName: this._validateString(ref.journalName || '', 200, 'pageReference.journalName')
-        })),
+      chapterName: this._validateString(
+        chapterInfo.chapterName || '',
+        200,
+        'chapterContext.chapterName'
+      ),
+      subsections: this._validateArray(
+        chapterInfo.subsections || [],
+        50,
+        'chapterContext.subsections'
+      ).map((s) => this._validateString(s, 200, 'chapterContext.subsection')),
+      pageReferences: this._validateArray(
+        chapterInfo.pageReferences || [],
+        50,
+        'chapterContext.pageReferences'
+      ).map((ref) => ({
+        pageId: this._validateString(ref.pageId || '', 100, 'pageReference.pageId'),
+        pageName: this._validateString(ref.pageName || '', 200, 'pageReference.pageName'),
+        journalName: this._validateString(ref.journalName || '', 200, 'pageReference.journalName')
+      })),
       summary: this._validateString(chapterInfo.summary || '', 2000, 'chapterContext.summary')
     };
     this._promptBuilder.setChapterContext(this._chapterContext);
@@ -658,7 +669,7 @@ class AIAssistant {
   /**
    * Gets the current chapter context
    *
-   * @returns {Object|null} The chapter context or null if not set
+   * @returns {object | null} The chapter context or null if not set
    */
   getChapterContext() {
     return this._chapterContext;
@@ -670,10 +681,10 @@ class AIAssistant {
    * When players are silent or stuck, this method provides quick navigation
    * options based on the current chapter's structure.
    *
-   * @param {Object} currentChapter - The current chapter context
+   * @param {object} currentChapter - The current chapter context
    * @param {string} [currentChapter.chapterName] - Name of the current chapter
    * @param {string[]} [currentChapter.subsections] - Array of subsection names
-   * @param {Object[]} [currentChapter.pageReferences] - Array of page references
+   * @param {object[]} [currentChapter.pageReferences] - Array of page references
    * @param {string} [currentChapter.summary] - Brief summary of the chapter
    * @returns {ChapterRecoveryOption[]} Array of recovery options for UI display
    */
@@ -685,10 +696,18 @@ class AIAssistant {
       return options;
     }
 
-    const chapterName = this._validateString(currentChapter.chapterName || '', 200, 'recovery.chapterName');
+    const chapterName = this._validateString(
+      currentChapter.chapterName || '',
+      200,
+      'recovery.chapterName'
+    );
 
     // Add subsection options
-    const subsections = this._validateArray(currentChapter.subsections || [], 50, 'recovery.subsections');
+    const subsections = this._validateArray(
+      currentChapter.subsections || [],
+      50,
+      'recovery.subsections'
+    );
     for (let i = 0; i < subsections.length; i++) {
       const subsectionName = this._validateString(subsections[i] || '', 200, 'recovery.subsection');
       if (subsectionName) {
@@ -696,15 +715,17 @@ class AIAssistant {
           id: `subsection-${i}`,
           label: subsectionName,
           type: 'subsection',
-          description: chapterName
-            ? `Subsection of ${chapterName}`
-            : 'Subsection'
+          description: chapterName ? `Subsection of ${chapterName}` : 'Subsection'
         });
       }
     }
 
     // Add page reference options
-    const pageReferences = this._validateArray(currentChapter.pageReferences || [], 50, 'recovery.pageReferences');
+    const pageReferences = this._validateArray(
+      currentChapter.pageReferences || [],
+      50,
+      'recovery.pageReferences'
+    );
     for (let i = 0; i < pageReferences.length; i++) {
       const ref = pageReferences[i];
       if (!ref || typeof ref !== 'object') {
@@ -722,9 +743,7 @@ class AIAssistant {
           type: 'page',
           pageId: pageId || undefined,
           journalName: journalName || undefined,
-          description: journalName
-            ? `Page in ${journalName}`
-            : 'Page'
+          description: journalName ? `Page in ${journalName}` : 'Page'
         });
       }
     }
@@ -736,7 +755,7 @@ class AIAssistant {
         id: 'summary',
         label: chapterName || 'Chapter Summary',
         type: 'summary',
-        description: summary.length > 100 ? summary.substring(0, 100) + '...' : summary
+        description: summary.length > 100 ? `${summary.substring(0, 100)  }...` : summary
       });
     }
 
@@ -753,7 +772,7 @@ class AIAssistant {
    * Analyzes the current game context and generates suggestions
    *
    * @param {string} transcription - Recent transcribed conversation
-   * @param {Object} [options={}] - Analysis options
+   * @param {object} [options={}] - Analysis options
    * @param {boolean} [options.includeSuggestions=true] - Generate suggestions
    * @param {boolean} [options.checkOffTrack=true] - Check if off-track
    * @param {boolean} [options.detectRules=true] - Detect rules questions
@@ -778,18 +797,24 @@ class AIAssistant {
       this._sessionState.currentScene = options.sceneType;
     }
 
-    this._logger.debug(`analyzeContext() entry — transcription length: ${transcription.length}, suggestions=${includeSuggestions}, offTrack=${checkOffTrack}, rules=${detectRules}, scene=${this._sessionState.currentScene || 'unknown'}`);
+    this._logger.debug(
+      `analyzeContext() entry — transcription length: ${transcription.length}, suggestions=${includeSuggestions}, offTrack=${checkOffTrack}, rules=${detectRules}, scene=${this._sessionState.currentScene || 'unknown'}`
+    );
     const _analyzeStart = performance.now();
 
     // L1 cache lookup (key based on scene type + chapter context)
     let cacheKey = null;
     if (this._cache && !options.skipCache) {
       const sceneType = this._sessionState.currentScene || 'unknown';
-      const chapterKey = this._chapterContext?.chapterName ? CacheManager.generateCacheKey(this._chapterContext.chapterName) : 'none';
+      const chapterKey = this._chapterContext?.chapterName
+        ? CacheManager.generateCacheKey(this._chapterContext.chapterName)
+        : 'none';
       cacheKey = `narrator:suggestion:${sceneType}:${chapterKey}:${CacheManager.generateCacheKey(transcription)}`;
       const cached = this._cache.get(cacheKey);
       if (cached) {
-        this._logger.debug(`analyzeContext() L1 cache hit — ${(performance.now() - _analyzeStart).toFixed(1)}ms`);
+        this._logger.debug(
+          `analyzeContext() L1 cache hit — ${(performance.now() - _analyzeStart).toFixed(1)}ms`
+        );
         return cached;
       }
     }
@@ -808,7 +833,12 @@ class AIAssistant {
       const ragContext = await this._fetchRAGContextFor(transcription, 'analysis');
 
       this._syncPromptBuilderState();
-      const messages = this._promptBuilder.buildAnalysisMessages(transcription, includeSuggestions, checkOffTrack, ragContext);
+      const messages = this._promptBuilder.buildAnalysisMessages(
+        transcription,
+        includeSuggestions,
+        checkOffTrack,
+        ragContext
+      );
 
       // Full prompt dump for developer inspection (debug level only)
       this._logger.debug('Full prompt dump:', JSON.stringify(messages, null, 2));
@@ -826,7 +856,9 @@ class AIAssistant {
       this._sessionState.suggestionsCount++;
       this._previousTranscription = transcription;
 
-      this._logger.debug(`analyzeContext() exit — ${analysis.suggestions.length} suggestions, ${analysis.rulesQuestions.length} rules questions, ${(performance.now() - _analyzeStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `analyzeContext() exit — ${analysis.suggestions.length} suggestions, ${analysis.rulesQuestions.length} rules questions, ${(performance.now() - _analyzeStart).toFixed(1)}ms`
+      );
 
       const result = {
         ...analysis,
@@ -846,7 +878,10 @@ class AIAssistant {
 
       return result;
     } catch (error) {
-      this._logger.error(`analyzeContext() failed after ${(performance.now() - _analyzeStart).toFixed(1)}ms:`, error.message);
+      this._logger.error(
+        `analyzeContext() failed after ${(performance.now() - _analyzeStart).toFixed(1)}ms:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -865,7 +900,9 @@ class AIAssistant {
 
     // Check if we have context (either adventure context or RAG)
     if (!this._adventureContext && !this.isRAGConfigured()) {
-      this._logger.warn('No adventure context set and RAG not available, skipping off-track detection');
+      this._logger.warn(
+        'No adventure context set and RAG not available, skipping off-track detection'
+      );
       return {
         isOffTrack: false,
         severity: 0,
@@ -887,10 +924,15 @@ class AIAssistant {
 
       this._sessionState.lastOffTrackCheck = new Date();
 
-      this._logger.debug(`detectOffTrack() exit — isOffTrack=${result.isOffTrack}, severity=${result.severity}, ${(performance.now() - _offTrackStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `detectOffTrack() exit — isOffTrack=${result.isOffTrack}, severity=${result.severity}, ${(performance.now() - _offTrackStart).toFixed(1)}ms`
+      );
       return result;
     } catch (error) {
-      this._logger.error(`detectOffTrack() failed after ${(performance.now() - _offTrackStart).toFixed(1)}ms:`, error.message);
+      this._logger.error(
+        `detectOffTrack() failed after ${(performance.now() - _offTrackStart).toFixed(1)}ms:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -899,7 +941,7 @@ class AIAssistant {
    * Generates contextual suggestions for the DM
    *
    * @param {string} transcription - Recent transcribed conversation
-   * @param {Object} [options={}] - Generation options
+   * @param {object} [options={}] - Generation options
    * @param {number} [options.maxSuggestions=3] - Maximum suggestions to generate
    * @returns {Promise<Suggestion[]>} Array of suggestions
    * @throws {Error} If not configured
@@ -911,7 +953,9 @@ class AIAssistant {
 
     const maxSuggestions = options.maxSuggestions || 3;
 
-    this._logger.debug(`generateSuggestions() entry — transcription length: ${transcription.length}, maxSuggestions=${maxSuggestions}`);
+    this._logger.debug(
+      `generateSuggestions() entry — transcription length: ${transcription.length}, maxSuggestions=${maxSuggestions}`
+    );
     const _suggestStart = performance.now();
 
     try {
@@ -919,14 +963,23 @@ class AIAssistant {
       const ragContext = await this._fetchRAGContextFor(transcription, 'suggestions');
 
       this._syncPromptBuilderState();
-      const messages = this._promptBuilder.buildSuggestionMessages(transcription, maxSuggestions, ragContext);
+      const messages = this._promptBuilder.buildSuggestionMessages(
+        transcription,
+        maxSuggestions,
+        ragContext
+      );
       const response = await this._makeChatRequest(messages);
       const suggestions = this._parseSuggestionsResponse(response, maxSuggestions);
 
-      this._logger.debug(`generateSuggestions() exit — ${suggestions.length} suggestions, types=[${suggestions.map(s => s.type).join(',')}], ${(performance.now() - _suggestStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `generateSuggestions() exit — ${suggestions.length} suggestions, types=[${suggestions.map((s) => s.type).join(',')}], ${(performance.now() - _suggestStart).toFixed(1)}ms`
+      );
       return suggestions;
     } catch (error) {
-      this._logger.error(`generateSuggestions() failed after ${(performance.now() - _suggestStart).toFixed(1)}ms:`, error.message);
+      this._logger.error(
+        `generateSuggestions() failed after ${(performance.now() - _suggestStart).toFixed(1)}ms:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -936,7 +989,7 @@ class AIAssistant {
    * Builds the same messages as generateSuggestions but uses _makeChatRequestStreaming.
    *
    * @param {string} transcription - Recent transcribed conversation
-   * @param {Object} [options={}] - Generation options
+   * @param {object} [options={}] - Generation options
    * @param {number} [options.maxSuggestions=3] - Maximum suggestions
    * @param {function} [options.onToken] - Callback invoked with accumulated text on each token
    * @param {AbortSignal} [options.signal] - AbortSignal to cancel the stream
@@ -950,7 +1003,9 @@ class AIAssistant {
 
     const maxSuggestions = options.maxSuggestions || 3;
 
-    this._logger.debug(`generateSuggestionsStreaming() entry — transcription length: ${transcription.length}, maxSuggestions=${maxSuggestions}`);
+    this._logger.debug(
+      `generateSuggestionsStreaming() entry — transcription length: ${transcription.length}, maxSuggestions=${maxSuggestions}`
+    );
     const _suggestStart = performance.now();
 
     try {
@@ -958,16 +1013,25 @@ class AIAssistant {
       const ragContext = await this._fetchRAGContextFor(transcription, 'suggestions');
 
       this._syncPromptBuilderState();
-      const messages = this._promptBuilder.buildSuggestionMessages(transcription, maxSuggestions, ragContext);
+      const messages = this._promptBuilder.buildSuggestionMessages(
+        transcription,
+        maxSuggestions,
+        ragContext
+      );
       const result = await this._makeChatRequestStreaming(messages, {
         onToken: options.onToken,
         signal: options.signal
       });
 
-      this._logger.debug(`generateSuggestionsStreaming() exit — ${result.text.length} chars, ${(performance.now() - _suggestStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `generateSuggestionsStreaming() exit — ${result.text.length} chars, ${(performance.now() - _suggestStart).toFixed(1)}ms`
+      );
       return result;
     } catch (error) {
-      this._logger.error(`generateSuggestionsStreaming() failed after ${(performance.now() - _suggestStart).toFixed(1)}ms:`, error.message);
+      this._logger.error(
+        `generateSuggestionsStreaming() failed after ${(performance.now() - _suggestStart).toFixed(1)}ms:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -985,23 +1049,37 @@ class AIAssistant {
       throw new Error('AIAssistant: OpenAI client not configured');
     }
 
-    this._logger.debug(`generateNarrativeBridge() entry — situation length: ${currentSituation.length}, target length: ${targetScene.length}`);
+    this._logger.debug(
+      `generateNarrativeBridge() entry — situation length: ${currentSituation.length}, target length: ${targetScene.length}`
+    );
     const _bridgeStart = performance.now();
 
     try {
       // Retrieve RAG context if available, using both situation and target as query
-      const ragContext = await this._fetchRAGContextFor(`${currentSituation} ${targetScene}`, 'narrative bridge');
+      const ragContext = await this._fetchRAGContextFor(
+        `${currentSituation} ${targetScene}`,
+        'narrative bridge'
+      );
 
       this._syncPromptBuilderState();
-      const messages = this._promptBuilder.buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext);
+      const messages = this._promptBuilder.buildNarrativeBridgeMessages(
+        currentSituation,
+        targetScene,
+        ragContext
+      );
       const response = await this._makeChatRequest(messages);
       const content = response.content ?? '';
       const result = content.trim();
 
-      this._logger.debug(`generateNarrativeBridge() exit — result length: ${result.length}, ${(performance.now() - _bridgeStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `generateNarrativeBridge() exit — result length: ${result.length}, ${(performance.now() - _bridgeStart).toFixed(1)}ms`
+      );
       return result;
     } catch (error) {
-      this._logger.error(`generateNarrativeBridge() failed after ${(performance.now() - _bridgeStart).toFixed(1)}ms:`, error.message);
+      this._logger.error(
+        `generateNarrativeBridge() failed after ${(performance.now() - _bridgeStart).toFixed(1)}ms:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -1012,7 +1090,7 @@ class AIAssistant {
    * @param {string} npcName - The name of the NPC
    * @param {string} npcContext - NPC personality and backstory from journal
    * @param {string} transcription - Current conversation context
-   * @param {Object} [options={}] - Generation options
+   * @param {object} [options={}] - Generation options
    * @param {number} [options.maxOptions=3] - Maximum dialogue options to generate
    * @returns {Promise<string[]>} Array of dialogue strings
    * @throws {Error} If not configured or no NPC name provided
@@ -1028,19 +1106,31 @@ class AIAssistant {
 
     const maxOptions = options.maxOptions || 3;
 
-    this._logger.debug(`generateNPCDialogue() entry — npc="${npcName}", context length: ${(npcContext || '').length}, maxOptions=${maxOptions}`);
+    this._logger.debug(
+      `generateNPCDialogue() entry — npc="${npcName}", context length: ${(npcContext || '').length}, maxOptions=${maxOptions}`
+    );
     const _npcStart = performance.now();
 
     try {
       this._syncPromptBuilderState();
-      const messages = this._promptBuilder.buildNPCDialogueMessages(npcName, npcContext, transcription, maxOptions);
+      const messages = this._promptBuilder.buildNPCDialogueMessages(
+        npcName,
+        npcContext,
+        transcription,
+        maxOptions
+      );
       const response = await this._makeChatRequest(messages);
       const dialogueOptions = this._parseNPCDialogueResponse(response, maxOptions);
 
-      this._logger.debug(`generateNPCDialogue() exit — ${dialogueOptions.length} dialogue options for "${npcName}", ${(performance.now() - _npcStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `generateNPCDialogue() exit — ${dialogueOptions.length} dialogue options for "${npcName}", ${(performance.now() - _npcStart).toFixed(1)}ms`
+      );
       return dialogueOptions;
     } catch (error) {
-      this._logger.error(`generateNPCDialogue() failed for "${npcName}" after ${(performance.now() - _npcStart).toFixed(1)}ms:`, error.message);
+      this._logger.error(
+        `generateNPCDialogue() failed for "${npcName}" after ${(performance.now() - _npcStart).toFixed(1)}ms:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -1096,7 +1186,9 @@ class AIAssistant {
    * Resets the session state
    */
   resetSession() {
-    this._logger.debug('resetSession() — clearing conversation history, session state, and RAG cache');
+    this._logger.debug(
+      'resetSession() — clearing conversation history, session state, and RAG cache'
+    );
 
     // Stop silence monitoring if active
     this._silenceMonitor.stopMonitoring();
@@ -1116,7 +1208,7 @@ class AIAssistant {
   /**
    * Gets service statistics
    *
-   * @returns {Object} Statistics about the service usage
+   * @returns {object} Statistics about the service usage
    */
   getStats() {
     return {
@@ -1139,7 +1231,9 @@ class AIAssistant {
       silenceDetectorConfigured: Boolean(this._silenceMonitor.getSilenceDetector()),
       silenceMonitoringActive: this._silenceMonitor.isMonitoring,
       silenceSuggestionCount: this._silenceMonitor.silenceSuggestionCount,
-      hasAutonomousSuggestionCallback: Boolean(this._silenceMonitor.getOnAutonomousSuggestionCallback())
+      hasAutonomousSuggestionCallback: Boolean(
+        this._silenceMonitor.getOnAutonomousSuggestionCallback()
+      )
     };
   }
 
@@ -1155,7 +1249,7 @@ class AIAssistant {
    * Initializes the rolling summarizer with the given OpenAI client.
    * Called during service initialization or by the orchestrator.
    *
-   * @param {Object} openaiClient - OpenAI client with createChatCompletion
+   * @param {object} openaiClient - OpenAI client with createChatCompletion
    */
   initializeRollingSummarizer(openaiClient) {
     this._rollingSummarizer = new RollingSummarizer(openaiClient);
@@ -1212,7 +1306,7 @@ class AIAssistant {
    * resets on success, increments error count on failure.
    *
    * @param {Array<{role: string, content: string}>} messages - Chat messages
-   * @returns {Promise<Object>} The API response
+   * @returns {Promise<object>} The API response
    * @private
    */
   async _makeChatRequest(messages) {
@@ -1231,7 +1325,9 @@ class AIAssistant {
         maxTokens: 1000
       });
 
-      this._logger.debug(`_makeChatRequest() — completed in ${(performance.now() - _chatStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `_makeChatRequest() — completed in ${(performance.now() - _chatStart).toFixed(1)}ms`
+      );
 
       // Success: reset circuit breaker
       this._consecutiveErrors = 0;
@@ -1243,7 +1339,9 @@ class AIAssistant {
       this._consecutiveErrors++;
       if (this._consecutiveErrors >= this._maxConsecutiveErrors) {
         this._circuitOpen = true;
-        this._logger.warn(`Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`);
+        this._logger.warn(
+          `Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`
+        );
       }
       throw error;
     }
@@ -1272,7 +1370,9 @@ class AIAssistant {
       throw new Error('AI suggestion circuit breaker open: too many consecutive failures');
     }
 
-    this._logger.debug(`_makeChatRequestStreaming() — model=${this._model}, ${messages.length} messages`);
+    this._logger.debug(
+      `_makeChatRequestStreaming() — model=${this._model}, ${messages.length} messages`
+    );
 
     try {
       const stream = this._chatProvider.chatStream(messages, {
@@ -1305,7 +1405,9 @@ class AIAssistant {
       this._consecutiveErrors++;
       if (this._consecutiveErrors >= this._maxConsecutiveErrors) {
         this._circuitOpen = true;
-        this._logger.warn(`Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`);
+        this._logger.warn(
+          `Circuit breaker opened after ${this._consecutiveErrors} consecutive errors`
+        );
       }
       throw error;
     }
@@ -1345,7 +1447,7 @@ class AIAssistant {
   /**
    * Parses the analysis response from the API
    *
-   * @param {Object} response - The API response
+   * @param {object} response - The API response
    * @returns {ContextAnalysis} The parsed analysis
    * @private
    */
@@ -1355,38 +1457,55 @@ class AIAssistant {
     try {
       const parsed = JSON.parse(this._extractJson(content));
 
-      const validatedSuggestions = this._validateArray(
-        parsed.suggestions,
-        10,
-        'suggestions'
-      ).map(s => ({
-        type: s.type || 'narration',
-        content: this._validateString(s.content || '', 5000, 'suggestion.content'),
-        pageReference: s.pageReference
-          ? this._validateString(s.pageReference, 200, 'suggestion.pageReference')
-          : undefined,
-        confidence: this._validateNumber(s.confidence, 0, 1, 'suggestion.confidence'),
-        source: s.source ? {
-          chapter: this._validateString(s.source.chapter || '', 200, 'source.chapter'),
-          page: this._validateString(s.source.page || '', 200, 'source.page'),
-          journalName: this._validateString(s.source.journalName || '', 200, 'source.journalName')
-        } : null
-      }));
+      const validatedSuggestions = this._validateArray(parsed.suggestions, 10, 'suggestions').map(
+        (s) => ({
+          type: s.type || 'narration',
+          content: this._validateString(s.content || '', 5000, 'suggestion.content'),
+          pageReference: s.pageReference
+            ? this._validateString(s.pageReference, 200, 'suggestion.pageReference')
+            : undefined,
+          confidence: this._validateNumber(s.confidence, 0, 1, 'suggestion.confidence'),
+          source: s.source
+            ? {
+                chapter: this._validateString(s.source.chapter || '', 200, 'source.chapter'),
+                page: this._validateString(s.source.page || '', 200, 'source.page'),
+                journalName: this._validateString(
+                  s.source.journalName || '',
+                  200,
+                  'source.journalName'
+                )
+              }
+            : null
+        })
+      );
 
       const offTrackStatus = parsed.offTrackStatus
         ? {
-          isOffTrack: Boolean(parsed.offTrackStatus.isOffTrack),
-          severity: this._validateNumber(parsed.offTrackStatus.severity, 0, 1, 'offTrackStatus.severity'),
-          reason: this._validateString(parsed.offTrackStatus.reason || '', 1000, 'offTrackStatus.reason'),
-          narrativeBridge: parsed.offTrackStatus.narrativeBridge
-            ? this._validateString(parsed.offTrackStatus.narrativeBridge, 2000, 'offTrackStatus.narrativeBridge')
-            : undefined
-        }
+            isOffTrack: Boolean(parsed.offTrackStatus.isOffTrack),
+            severity: this._validateNumber(
+              parsed.offTrackStatus.severity,
+              0,
+              1,
+              'offTrackStatus.severity'
+            ),
+            reason: this._validateString(
+              parsed.offTrackStatus.reason || '',
+              1000,
+              'offTrackStatus.reason'
+            ),
+            narrativeBridge: parsed.offTrackStatus.narrativeBridge
+              ? this._validateString(
+                  parsed.offTrackStatus.narrativeBridge,
+                  2000,
+                  'offTrackStatus.narrativeBridge'
+                )
+              : undefined
+          }
         : {
-          isOffTrack: false,
-          severity: 0,
-          reason: ''
-        };
+            isOffTrack: false,
+            severity: 0,
+            reason: ''
+          };
 
       return {
         suggestions: validatedSuggestions,
@@ -1396,17 +1515,22 @@ class AIAssistant {
         rulesQuestions: []
       };
     } catch (error) {
-      this._logger.warn('Failed to parse analysis response as JSON, using fallback:', error.message);
+      this._logger.warn(
+        'Failed to parse analysis response as JSON, using fallback:',
+        error.message
+      );
 
       const sanitizedContent = this._validateString(content, 5000, 'fallback.content');
 
       return {
-        suggestions: [{
-          type: 'narration',
-          content: sanitizedContent,
-          confidence: 0.5,
-          source: null
-        }],
+        suggestions: [
+          {
+            type: 'narration',
+            content: sanitizedContent,
+            confidence: 0.5,
+            source: null
+          }
+        ],
         offTrackStatus: {
           isOffTrack: false,
           severity: 0,
@@ -1422,7 +1546,7 @@ class AIAssistant {
   /**
    * Parses the off-track response from the API
    *
-   * @param {Object} response - The API response
+   * @param {object} response - The API response
    * @returns {OffTrackResult} The parsed result
    * @private
    */
@@ -1453,7 +1577,7 @@ class AIAssistant {
   /**
    * Parses the suggestions response from the API
    *
-   * @param {Object} response - The API response
+   * @param {object} response - The API response
    * @param {number} maxSuggestions - Maximum suggestions to return
    * @returns {Suggestion[]} Array of parsed suggestions
    * @private
@@ -1464,12 +1588,9 @@ class AIAssistant {
     try {
       const parsed = JSON.parse(this._extractJson(content));
 
-      const validatedSuggestions = this._validateArray(
-        parsed.suggestions,
-        10,
-        'suggestions'
-      ).slice(0, maxSuggestions)
-        .map(s => ({
+      const validatedSuggestions = this._validateArray(parsed.suggestions, 10, 'suggestions')
+        .slice(0, maxSuggestions)
+        .map((s) => ({
           type: s.type || 'narration',
           content: this._validateString(s.content || '', 5000, 'suggestion.content'),
           pageReference: s.pageReference
@@ -1484,18 +1605,20 @@ class AIAssistant {
 
       const sanitizedContent = this._validateString(content, 5000, 'fallback.content');
 
-      return [{
-        type: 'narration',
-        content: sanitizedContent,
-        confidence: 0.3
-      }];
+      return [
+        {
+          type: 'narration',
+          content: sanitizedContent,
+          confidence: 0.3
+        }
+      ];
     }
   }
 
   /**
    * Parses the NPC dialogue response from the API
    *
-   * @param {Object} response - The API response
+   * @param {object} response - The API response
    * @param {number} maxOptions - Maximum dialogue options to return
    * @returns {string[]} Array of dialogue strings
    * @private
@@ -1506,13 +1629,10 @@ class AIAssistant {
     try {
       const parsed = JSON.parse(this._extractJson(content));
 
-      const validatedOptions = this._validateArray(
-        parsed.dialogueOptions,
-        5,
-        'dialogueOptions'
-      ).slice(0, maxOptions)
-        .map(option => this._validateString(option || '', 2000, 'dialogueOption'))
-        .filter(option => option.length > 0);
+      const validatedOptions = this._validateArray(parsed.dialogueOptions, 5, 'dialogueOptions')
+        .slice(0, maxOptions)
+        .map((option) => this._validateString(option || '', 2000, 'dialogueOption'))
+        .filter((option) => option.length > 0);
 
       return validatedOptions;
     } catch (error) {
@@ -1536,7 +1656,7 @@ class AIAssistant {
    * Detects rules questions in a transcription
    *
    * @param {string} transcription - The transcription text to analyze
-   * @returns {Object} Detection result
+   * @returns {object} Detection result
    * @private
    */
   _detectRulesQuestions(transcription) {
@@ -1551,13 +1671,17 @@ class AIAssistant {
         if (detection) {
           return {
             hasRulesQuestions: detection.isRulesQuestion,
-            questions: detection.isRulesQuestion ? [{
-              text: detection.extractedTopic || transcription.substring(0, 100),
-              confidence: detection.confidence,
-              type: detection.questionType,
-              extractedTopic: detection.extractedTopic,
-              detectedTerms: detection.detectedTerms || []
-            }] : []
+            questions: detection.isRulesQuestion
+              ? [
+                  {
+                    text: detection.extractedTopic || transcription.substring(0, 100),
+                    confidence: detection.confidence,
+                    type: detection.questionType,
+                    extractedTopic: detection.extractedTopic,
+                    detectedTerms: detection.detectedTerms || []
+                  }
+                ]
+              : []
           };
         }
       } catch (err) {
@@ -1570,14 +1694,48 @@ class AIAssistant {
 
     // Question patterns (both English and Italian)
     const questionPatterns = [
-      { regex: /(?:how does|how do|what is the rule for|what are the rules for)\s+([a-z\s]+?)(?:\s+work|\?|$)/gi, confidence: 0.9, type: 'mechanic' },
-      { regex: /(?:can i|can you|am i able to|is it possible to)\s+([a-z\s]+?)(?:\?|$)/gi, confidence: 0.7, type: 'action' },
-      { regex: /(?:what happens when|what happens if)\s+([a-z\s]+?)(?:\?|$)/gi, confidence: 0.8, type: 'mechanic' },
-      { regex: /(?:come funziona|come funzionano|qual è la regola per|quali sono le regole per)\s+([a-z\s]+?)(?:\?|$)/gi, confidence: 0.9, type: 'mechanic' },
-      { regex: /(?:posso|possiamo|è possibile|si può)\s+([a-z\s]+?)(?:\?|$)/gi, confidence: 0.7, type: 'action' },
-      { regex: /(?:cosa succede quando|cosa succede se|che succede se)\s+([a-z\s]+?)(?:\?|$)/gi, confidence: 0.8, type: 'mechanic' },
-      { regex: /(?:quanto costa|quanti slot|quante azioni)\s+([a-z\s]+?)(?:\?|$)/gi, confidence: 0.8, type: 'spell' },
-      { regex: /\b(?:regola|regole|meccanica|meccaniche|rule|rules|mechanic|mechanics)\b/gi, confidence: 0.6, type: 'general' }
+      {
+        regex:
+          /(?:how does|how do|what is the rule for|what are the rules for)\s+([a-z\s]+?)(?:\s+work|\?|$)/gi,
+        confidence: 0.9,
+        type: 'mechanic'
+      },
+      {
+        regex: /(?:can i|can you|am i able to|is it possible to)\s+([a-z\s]+?)(?:\?|$)/gi,
+        confidence: 0.7,
+        type: 'action'
+      },
+      {
+        regex: /(?:what happens when|what happens if)\s+([a-z\s]+?)(?:\?|$)/gi,
+        confidence: 0.8,
+        type: 'mechanic'
+      },
+      {
+        regex:
+          /(?:come funziona|come funzionano|qual è la regola per|quali sono le regole per)\s+([a-z\s]+?)(?:\?|$)/gi,
+        confidence: 0.9,
+        type: 'mechanic'
+      },
+      {
+        regex: /(?:posso|possiamo|è possibile|si può)\s+([a-z\s]+?)(?:\?|$)/gi,
+        confidence: 0.7,
+        type: 'action'
+      },
+      {
+        regex: /(?:cosa succede quando|cosa succede se|che succede se)\s+([a-z\s]+?)(?:\?|$)/gi,
+        confidence: 0.8,
+        type: 'mechanic'
+      },
+      {
+        regex: /(?:quanto costa|quanti slot|quante azioni)\s+([a-z\s]+?)(?:\?|$)/gi,
+        confidence: 0.8,
+        type: 'spell'
+      },
+      {
+        regex: /\b(?:regola|regole|meccanica|meccaniche|rule|rules|mechanic|mechanics)\b/gi,
+        confidence: 0.6,
+        type: 'general'
+      }
     ];
 
     // Known D&D mechanic terms
@@ -1625,7 +1783,7 @@ class AIAssistant {
         if (pattern.confidence > 0.5 || detectedTerms.length > 0) {
           questions.push({
             text: match[0],
-            confidence: Math.min(pattern.confidence + (detectedTerms.length * 0.1), 1.0),
+            confidence: Math.min(pattern.confidence + detectedTerms.length * 0.1, 1.0),
             type: category,
             extractedTopic,
             detectedTerms
@@ -1637,8 +1795,8 @@ class AIAssistant {
     // Check for mechanic terms even without explicit question patterns
     for (const [term, category] of Object.entries(mechanicTerms)) {
       if (normalizedText.includes(term) && this._hasQuestionWord(normalizedText)) {
-        const alreadyDetected = questions.some(q =>
-          q.extractedTopic && q.extractedTopic.includes(term)
+        const alreadyDetected = questions.some(
+          (q) => q.extractedTopic && q.extractedTopic.includes(term)
         );
 
         if (!alreadyDetected) {
@@ -1668,13 +1826,37 @@ class AIAssistant {
    */
   _hasQuestionWord(text) {
     const questionWords = [
-      'how', 'what', 'when', 'where', 'why', 'who', 'can', 'does', 'do', 'is', 'are',
-      'come', 'cosa', 'quando', 'dove', 'perché', 'chi', 'posso', 'può', 'puoi',
-      'è', 'sono', 'qual', 'quale', 'quanti', 'quante', 'quanto'
+      'how',
+      'what',
+      'when',
+      'where',
+      'why',
+      'who',
+      'can',
+      'does',
+      'do',
+      'is',
+      'are',
+      'come',
+      'cosa',
+      'quando',
+      'dove',
+      'perché',
+      'chi',
+      'posso',
+      'può',
+      'puoi',
+      'è',
+      'sono',
+      'qual',
+      'quale',
+      'quanti',
+      'quante',
+      'quanto'
     ];
 
     const words = text.split(/\s+/);
-    return words.some(word => questionWords.includes(word));
+    return words.some((word) => questionWords.includes(word));
   }
 
   // ---------------------------------------------------------------------------
@@ -1701,7 +1883,9 @@ class AIAssistant {
     }
 
     if (logLabel) {
-      this._logger.debug(`Using RAG context for ${logLabel} with ${ragResult.sources.length} sources`);
+      this._logger.debug(
+        `Using RAG context for ${logLabel} with ${ragResult.sources.length} sources`
+      );
     }
     return this._formatRAGContext(ragResult);
   }
@@ -1710,7 +1894,7 @@ class AIAssistant {
    * Retrieves relevant context using RAG provider
    *
    * @param {string} query - The query to retrieve context for (usually the transcription)
-   * @param {Object} [options={}] - Retrieval options
+   * @param {object} [options={}] - Retrieval options
    * @param {number} [options.maxResults] - Maximum results to retrieve
    * @returns {Promise<{context: string, sources: string[]}>} Retrieved context and sources
    * @private
@@ -1729,23 +1913,31 @@ class AIAssistant {
       // Convert RAGQueryResult to internal format
       // Use the synthesized answer as primary context (OpenAI Responses API returns
       // RAG-augmented answer text, while individual source excerpts may be empty)
-      const excerpts = ragResult.sources.map(s => s.excerpt).filter(Boolean).join('\n\n');
+      const excerpts = ragResult.sources
+        .map((s) => s.excerpt)
+        .filter(Boolean)
+        .join('\n\n');
       const context = excerpts || ragResult.answer || '';
-      const sources = ragResult.sources.map(s => s.title);
+      const sources = ragResult.sources.map((s) => s.title);
       const result = { context, sources };
 
       this._cachedRAGContext = result;
       this._consecutiveRAGFailures = 0;
-      this._logger.debug(`_getRAGContext() — ${sources.length} sources, ${context.length} chars, ${(performance.now() - _ragStart).toFixed(1)}ms`);
+      this._logger.debug(
+        `_getRAGContext() — ${sources.length} sources, ${context.length} chars, ${(performance.now() - _ragStart).toFixed(1)}ms`
+      );
 
       return result;
     } catch (error) {
-      this._logger.warn(`_getRAGContext() failed after ${(performance.now() - _ragStart).toFixed(1)}ms:`, error.message);
+      this._logger.warn(
+        `_getRAGContext() failed after ${(performance.now() - _ragStart).toFixed(1)}ms:`,
+        error.message
+      );
       this._consecutiveRAGFailures++;
       if (this._consecutiveRAGFailures === 3) {
         ui?.notifications?.warn(
           game.i18n?.localize('VOXCHRONICLE.Errors.RAGContextUnavailable') ||
-          'VoxChronicle: RAG context unavailable. Suggestions may be less accurate.'
+            'VoxChronicle: RAG context unavailable. Suggestions may be less accurate.'
         );
       }
       return { context: '', sources: [] };
@@ -1803,14 +1995,14 @@ class AIAssistant {
     if (this._chapterContext) {
       contextQuery += this._chapterContext.chapterName || '';
       if (this._chapterContext.summary) {
-        contextQuery += ' ' + this._chapterContext.summary;
+        contextQuery += ` ${  this._chapterContext.summary}`;
       }
     }
 
     if (this._previousTranscription) {
       // Use last portion of previous transcription
       const lastPortion = this._previousTranscription.slice(-500);
-      contextQuery += ' ' + lastPortion;
+      contextQuery += ` ${  lastPortion}`;
     }
 
     // If no context at all, use a generic prompt
@@ -1826,7 +2018,10 @@ class AIAssistant {
 
     // Build the messages for suggestion generation
     this._syncPromptBuilderState();
-    const messages = this._promptBuilder.buildAutonomousSuggestionMessages(contextQuery.trim(), ragContext);
+    const messages = this._promptBuilder.buildAutonomousSuggestionMessages(
+      contextQuery.trim(),
+      ragContext
+    );
 
     // Make the API request
     const response = await this._makeChatRequest(messages);
@@ -1919,7 +2114,9 @@ class AIAssistant {
     const stringValue = String(str);
 
     if (stringValue.length > maxLength) {
-      this._logger.warn(`${fieldName} exceeds max length (${stringValue.length} > ${maxLength}), truncating`);
+      this._logger.warn(
+        `${fieldName} exceeds max length (${stringValue.length} > ${maxLength}), truncating`
+      );
       return stringValue.substring(0, maxLength);
     }
 
@@ -2008,16 +2205,19 @@ class AIAssistant {
       const formattedTurns = RollingSummarizer.formatTurnsForSummary(evicted);
 
       // Fire-and-forget background summarization — does NOT block this method
-      this._rollingSummarizer?.summarize(this._rollingSummary, formattedTurns)
-        .then(result => {
+      this._rollingSummarizer
+        ?.summarize(this._rollingSummary, formattedTurns)
+        .then((result) => {
           this._rollingSummary = result.summary;
           this._summarizedTurnCount += evicted.length;
           if (result.usage && this._onSummarizationUsage) {
             this._onSummarizationUsage(result.usage);
           }
-          this._logger.debug(`Rolling summary updated (${this._summarizedTurnCount} turns summarized)`);
+          this._logger.debug(
+            `Rolling summary updated (${this._summarizedTurnCount} turns summarized)`
+          );
         })
-        .catch(err => {
+        .catch((err) => {
           this._logger.warn('Rolling summarization failed, keeping old summary:', err.message);
         });
     }

@@ -12,7 +12,7 @@
  *   destroy() → clean up dataset + assistant
  *
  * @class RAGFlowProvider
- * @extends RAGProvider
+ * @augments RAGProvider
  * @see https://ragflow.io/docs/http_api_reference
  * @module vox-chronicle
  */
@@ -74,7 +74,9 @@ export class RAGFlowProvider extends RAGProvider {
    */
   async initialize(config) {
     const startTime = Date.now();
-    this._logger.debug(`initialize() called — baseUrl="${config?.baseUrl || '(none)'}", datasetId="${config?.datasetId || '(none)'}", chatId="${config?.chatId || '(none)'}", modelName="${config?.modelName || '(default)'}"`);
+    this._logger.debug(
+      `initialize() called — baseUrl="${config?.baseUrl || '(none)'}", datasetId="${config?.datasetId || '(none)'}", chatId="${config?.chatId || '(none)'}", modelName="${config?.modelName || '(default)'}"`
+    );
 
     if (!config?.baseUrl) {
       throw new Error('RAGFlowProvider requires a baseUrl (config.baseUrl)');
@@ -125,7 +127,9 @@ export class RAGFlowProvider extends RAGProvider {
     }
 
     this.#initialized = true;
-    this._logger.debug(`initialize() complete in ${Date.now() - startTime}ms — datasetId=${this.#datasetId}, chatId=${this.#chatId}`);
+    this._logger.debug(
+      `initialize() complete in ${Date.now() - startTime}ms — datasetId=${this.#datasetId}, chatId=${this.#chatId}`
+    );
   }
 
   /**
@@ -139,7 +143,9 @@ export class RAGFlowProvider extends RAGProvider {
       return;
     }
     this.#initialized = false; // Set FIRST to prevent re-entrant calls
-    this._logger.info(`Destroying RAGFlow provider — ${this.#documentIds.size} docs, dataset=${this.#datasetId}, chat=${this.#chatId}`);
+    this._logger.info(
+      `Destroying RAGFlow provider — ${this.#documentIds.size} docs, dataset=${this.#datasetId}, chat=${this.#chatId}`
+    );
 
     // Delete chat assistant
     if (this.#chatId) {
@@ -197,7 +203,9 @@ export class RAGFlowProvider extends RAGProvider {
     let failed = 0;
 
     const totalContentSize = documents.reduce((sum, d) => sum + (d.content?.length || 0), 0);
-    this._logger.info(`Indexing ${documents.length} documents (total content: ${totalContentSize} chars)`);
+    this._logger.info(
+      `Indexing ${documents.length} documents (total content: ${totalContentSize} chars)`
+    );
 
     // Upload each document
     const uploadedDocIds = [];
@@ -220,13 +228,17 @@ export class RAGFlowProvider extends RAGProvider {
         this.#documentIds.set(doc.id, ragflowDocId);
         uploadedDocIds.push(ragflowDocId);
         indexed++;
-        this._logger.debug(`Uploaded document: "${doc.title}" (${ragflowDocId}) in ${Date.now() - docUploadStart}ms (${doc.content?.length || 0} chars)`);
+        this._logger.debug(
+          `Uploaded document: "${doc.title}" (${ragflowDocId}) in ${Date.now() - docUploadStart}ms (${doc.content?.length || 0} chars)`
+        );
       } catch (err) {
         failed++;
         this._logger.error(`Failed to upload document "${doc.title}": ${err.message}`);
       }
     }
-    this._logger.debug(`Upload phase complete in ${Date.now() - uploadStart}ms — ${uploadedDocIds.length} uploaded, ${failed} failed`);
+    this._logger.debug(
+      `Upload phase complete in ${Date.now() - uploadStart}ms — ${uploadedDocIds.length} uploaded, ${failed} failed`
+    );
 
     // Trigger parsing for all uploaded documents at once
     if (uploadedDocIds.length > 0) {
@@ -240,14 +252,18 @@ export class RAGFlowProvider extends RAGProvider {
           indexed = Math.max(0, indexed - parseResult.parseFailed);
           this._logger.warn(`${parseResult.parseFailed} documents failed parsing after upload`);
         }
-        this._logger.info(`Parsing complete for ${uploadedDocIds.length} documents in ${Date.now() - parseStart}ms`);
+        this._logger.info(
+          `Parsing complete for ${uploadedDocIds.length} documents in ${Date.now() - parseStart}ms`
+        );
       } catch (err) {
         this._logger.error(`Document parsing failed: ${err.message}`);
       }
     }
 
     onProgress?.(documents.length, documents.length, `Done: ${indexed} indexed, ${failed} failed`);
-    this._logger.info(`Indexing complete: ${indexed} indexed, ${failed} failed in ${Date.now() - startTime}ms`);
+    this._logger.info(
+      `Indexing complete: ${indexed} indexed, ${failed} failed in ${Date.now() - startTime}ms`
+    );
     return { indexed, failed };
   }
 
@@ -327,7 +343,9 @@ export class RAGFlowProvider extends RAGProvider {
       throw new Error('Question cannot be empty');
     }
 
-    this._logger.debug(`Querying RAGFlow: "${question.substring(0, 80)}..." (chatId=${this.#chatId})`);
+    this._logger.debug(
+      `Querying RAGFlow: "${question.substring(0, 80)}..." (chatId=${this.#chatId})`
+    );
 
     // Use the OpenAI-compatible chat completions endpoint
     const response = await this.#request(`/api/v1/chats_openai/${this.#chatId}/chat/completions`, {
@@ -341,7 +359,9 @@ export class RAGFlowProvider extends RAGProvider {
     });
 
     const result = this.#parseQueryResponse(response);
-    this._logger.debug(`query() complete in ${Date.now() - startTime}ms — answer=${result.answer.length} chars, ${result.sources.length} sources`);
+    this._logger.debug(
+      `query() complete in ${Date.now() - startTime}ms — answer=${result.answer.length} chars, ${result.sources.length} sources`
+    );
     return result;
   }
 
@@ -493,9 +513,7 @@ export class RAGFlowProvider extends RAGProvider {
   async #uploadDocument(doc) {
     // Build file content with metadata header
     const header = `# ${doc.title}\n`;
-    const metaLine = doc.metadata
-      ? `<!-- metadata: ${JSON.stringify(doc.metadata)} -->\n\n`
-      : '\n';
+    const metaLine = doc.metadata ? `<!-- metadata: ${JSON.stringify(doc.metadata)} -->\n\n` : '\n';
     const content = header + metaLine + doc.content;
 
     const blob = new Blob([content], { type: 'text/plain' });
@@ -504,10 +522,11 @@ export class RAGFlowProvider extends RAGProvider {
     const formData = new FormData();
     formData.append('file', blob, fileName);
 
-    const response = await this.#request(
-      `/api/v1/datasets/${this.#datasetId}/documents`,
-      { method: 'POST', body: formData, isFormData: true }
-    );
+    const response = await this.#request(`/api/v1/datasets/${this.#datasetId}/documents`, {
+      method: 'POST',
+      body: formData,
+      isFormData: true
+    });
 
     // Response data is an array of uploaded documents
     const docs = response.data;
@@ -544,17 +563,17 @@ export class RAGFlowProvider extends RAGProvider {
       );
 
       const docs = response.data?.docs || response.data || [];
-      const targetDocs = docs.filter(d => documentIds.includes(d.id));
+      const targetDocs = docs.filter((d) => documentIds.includes(d.id));
 
       const allDone = targetDocs.every(
-        d => d.run === 'DONE' || d.run === '1' || d.status === 'DONE'
+        (d) => d.run === 'DONE' || d.run === '1' || d.status === 'DONE'
       );
       const anyFailed = targetDocs.some(
-        d => d.run === 'CANCEL' || d.run === 'FAIL' || d.status === 'FAIL'
+        (d) => d.run === 'CANCEL' || d.run === 'FAIL' || d.status === 'FAIL'
       );
 
       if (anyFailed) {
-        const failedDocs = targetDocs.filter(d => d.run === 'FAIL' || d.status === 'FAIL');
+        const failedDocs = targetDocs.filter((d) => d.run === 'FAIL' || d.status === 'FAIL');
         this._logger.warn(`${failedDocs.length} documents failed parsing`);
         return { parseFailed: failedDocs.length };
       }
@@ -563,7 +582,7 @@ export class RAGFlowProvider extends RAGProvider {
         return { parseFailed: 0 };
       }
 
-      await new Promise(resolve => setTimeout(resolve, PARSE_POLL_INTERVAL_MS));
+      await new Promise((resolve) => setTimeout(resolve, PARSE_POLL_INTERVAL_MS));
     }
 
     this._logger.warn(`Parsing poll timed out after ${PARSE_POLL_TIMEOUT_MS / 1000}s`);
@@ -631,7 +650,7 @@ export class RAGFlowProvider extends RAGProvider {
     const { isFormData, ...fetchOptions } = options;
 
     const headers = {
-      'Authorization': `Bearer ${this.#apiKey}`
+      Authorization: `Bearer ${this.#apiKey}`
     };
 
     if (!isFormData && fetchOptions.body) {
@@ -660,7 +679,9 @@ export class RAGFlowProvider extends RAGProvider {
 
         // RAGFlow uses code: 0 for success
         if (json.code !== undefined && json.code !== 0) {
-          const safeMessage = String(json.message || 'Unknown error').substring(0, 200).replace(/[<>]/g, '');
+          const safeMessage = String(json.message || 'Unknown error')
+            .substring(0, 200)
+            .replace(/[<>]/g, '');
           throw new Error(`RAGFlow error (code ${json.code}): ${safeMessage}`);
         }
 

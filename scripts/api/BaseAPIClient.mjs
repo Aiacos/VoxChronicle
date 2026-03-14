@@ -85,10 +85,7 @@ class BaseAPIClient {
    */
   _buildAuthHeaders() {
     if (!this._apiKey) {
-      throw new this._AuthErrorClass(
-        this._authErrorMessage,
-        this._authErrorType
-      );
+      throw new this._AuthErrorClass(this._authErrorMessage, this._authErrorType);
     }
 
     return {

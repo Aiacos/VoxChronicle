@@ -294,7 +294,7 @@ describe('LocalWhisperService', () => {
       const result = await service.transcribe(blob, {
         speakerMap: { SPEAKER_00: 'DM' }
       });
-      const dmSegment = result.segments.find(s => s.speaker === 'DM');
+      const dmSegment = result.segments.find((s) => s.speaker === 'DM');
       expect(dmSegment).toBeDefined();
     });
 
@@ -302,7 +302,7 @@ describe('LocalWhisperService', () => {
       service.setSpeakerMap({ SPEAKER_00: 'Game Master' });
       const blob = createAudioBlob();
       const result = await service.transcribe(blob);
-      const gmSegment = result.segments.find(s => s.speaker === 'Game Master');
+      const gmSegment = result.segments.find((s) => s.speaker === 'Game Master');
       expect(gmSegment).toBeDefined();
     });
 
@@ -702,16 +702,16 @@ describe('LocalWhisperService', () => {
       const langs = LocalWhisperService.getSupportedLanguages();
       expect(Array.isArray(langs)).toBe(true);
       expect(langs.length).toBeGreaterThan(0);
-      const autoDetect = langs.find(l => l.code === '');
+      const autoDetect = langs.find((l) => l.code === '');
       expect(autoDetect).toBeDefined();
       expect(autoDetect.name).toBe('Auto-detect');
     });
 
     it('should include more languages than cloud service', () => {
       const langs = LocalWhisperService.getSupportedLanguages();
-      const ru = langs.find(l => l.code === 'ru');
+      const ru = langs.find((l) => l.code === 'ru');
       expect(ru).toBeDefined();
-      const ko = langs.find(l => l.code === 'ko');
+      const ko = langs.find((l) => l.code === 'ko');
       expect(ko).toBeDefined();
     });
   });

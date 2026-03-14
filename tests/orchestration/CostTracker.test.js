@@ -29,13 +29,13 @@ describe('CostTracker', () => {
     it('should have gpt-4o-mini pricing', () => {
       expect(CostTracker.PRICING['gpt-4o-mini']).toBeDefined();
       expect(CostTracker.PRICING['gpt-4o-mini'].input).toBeCloseTo(0.15 / 1_000_000, 12);
-      expect(CostTracker.PRICING['gpt-4o-mini'].output).toBeCloseTo(0.60 / 1_000_000, 12);
+      expect(CostTracker.PRICING['gpt-4o-mini'].output).toBeCloseTo(0.6 / 1_000_000, 12);
     });
 
     it('should have gpt-4o pricing', () => {
       expect(CostTracker.PRICING['gpt-4o']).toBeDefined();
-      expect(CostTracker.PRICING['gpt-4o'].input).toBeCloseTo(2.50 / 1_000_000, 12);
-      expect(CostTracker.PRICING['gpt-4o'].output).toBeCloseTo(10.00 / 1_000_000, 12);
+      expect(CostTracker.PRICING['gpt-4o'].input).toBeCloseTo(2.5 / 1_000_000, 12);
+      expect(CostTracker.PRICING['gpt-4o'].output).toBeCloseTo(10.0 / 1_000_000, 12);
     });
 
     it('should have gpt-4o-transcribe pricing', () => {
@@ -72,7 +72,7 @@ describe('CostTracker', () => {
       tracker.addUsage('gpt-4o', { prompt_tokens: 1_000_000, completion_tokens: 1_000_000 });
 
       // 1M input * $2.50/1M + 1M output * $10.00/1M = $12.50
-      expect(tracker.getTotalCost()).toBeCloseTo(12.50, 6);
+      expect(tracker.getTotalCost()).toBeCloseTo(12.5, 6);
     });
 
     it('should accumulate across multiple calls', () => {
@@ -170,20 +170,20 @@ describe('CostTracker', () => {
   describe('isCapExceeded()', () => {
     it('should return false when cost is below cap', () => {
       tracker.addUsage('gpt-4o-mini', { prompt_tokens: 100, completion_tokens: 50 });
-      expect(tracker.isCapExceeded(5.00)).toBe(false);
+      expect(tracker.isCapExceeded(5.0)).toBe(false);
     });
 
     it('should return true when cost equals cap', () => {
       // Force known cost
       tracker.addUsage('gpt-4o', { prompt_tokens: 1_000_000, completion_tokens: 1_000_000 });
       // Cost = $12.50
-      expect(tracker.isCapExceeded(12.50)).toBe(true);
+      expect(tracker.isCapExceeded(12.5)).toBe(true);
     });
 
     it('should return true when cost exceeds cap', () => {
       tracker.addUsage('gpt-4o', { prompt_tokens: 1_000_000, completion_tokens: 1_000_000 });
       // Cost = $12.50, cap = $5.00
-      expect(tracker.isCapExceeded(5.00)).toBe(true);
+      expect(tracker.isCapExceeded(5.0)).toBe(true);
     });
 
     it('should return false when cap is 0 (disabled)', () => {
@@ -209,7 +209,7 @@ describe('CostTracker', () => {
       tracker.addUsage('gpt-4o-mini', { prompt_tokens: 200, completion_tokens: 100 });
 
       // 200 * $0.15/1M + 100 * $0.60/1M = $0.00009
-      const expectedCost = (200 * 0.15 / 1_000_000) + (100 * 0.60 / 1_000_000);
+      const expectedCost = (200 * 0.15) / 1_000_000 + (100 * 0.6) / 1_000_000;
       expect(tracker.getTotalCost()).toBeCloseTo(expectedCost, 10);
     });
 
@@ -217,7 +217,7 @@ describe('CostTracker', () => {
       // Add enough cost to exceed a tiny cap
       tracker.addUsage('gpt-4o-mini', { prompt_tokens: 1_000_000, completion_tokens: 1_000_000 });
       // Cost = $0.75
-      expect(tracker.isCapExceeded(0.50)).toBe(true);
+      expect(tracker.isCapExceeded(0.5)).toBe(true);
     });
 
     it('should combine summarization and AI suggestion costs', () => {

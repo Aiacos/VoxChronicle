@@ -28,8 +28,8 @@ class CostTracker {
    * @type {Object<string, {input?: number, output?: number, perMinute?: number}>}
    */
   static PRICING = {
-    'gpt-4o-mini': { input: 0.15 / 1_000_000, output: 0.60 / 1_000_000 },
-    'gpt-4o': { input: 2.50 / 1_000_000, output: 10.00 / 1_000_000 },
+    'gpt-4o-mini': { input: 0.15 / 1_000_000, output: 0.6 / 1_000_000 },
+    'gpt-4o': { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
     'gpt-4o-transcribe': { perMinute: 0.006 },
     'gpt-4o-transcribe-diarize': { perMinute: 0.006 }
   };
@@ -73,7 +73,7 @@ class CostTracker {
    * Add token usage from a chat completion API response
    *
    * @param {string} model - The model name (e.g., 'gpt-4o-mini', 'gpt-4o')
-   * @param {Object} usage - The usage object from the API response
+   * @param {object} usage - The usage object from the API response
    * @param {number} [usage.prompt_tokens] - Number of input tokens
    * @param {number} [usage.completion_tokens] - Number of output tokens
    */
@@ -86,7 +86,7 @@ class CostTracker {
 
     const pricing = CostTracker.PRICING[model];
     if (pricing && pricing.input !== undefined) {
-      this._totalCost += (inputTokens * pricing.input) + (outputTokens * pricing.output);
+      this._totalCost += inputTokens * pricing.input + outputTokens * pricing.output;
     } else if (!pricing) {
       this._logger.warn(`Unknown model "${model}" — tokens tracked but cost not computed`);
     }

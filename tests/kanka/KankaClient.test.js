@@ -4,7 +4,12 @@
  * Covers: constructor, request methods, authentication headers, rate limiting (429),
  * error parsing, retry logic, timeout handling, token validation, getters/setters
  */
-import { KankaClient, KankaError, KankaErrorType, KANKA_BASE_URL } from '../../scripts/kanka/KankaClient.mjs';
+import {
+  KankaClient,
+  KankaError,
+  KankaErrorType,
+  KANKA_BASE_URL
+} from '../../scripts/kanka/KankaClient.mjs';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -338,9 +343,7 @@ describe('KankaClient', () => {
     it('should parse 401 as authentication error', async () => {
       expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
-      fetchSpy.mockResolvedValue(
-        mockResponse({ message: 'Unauthenticated' }, { status: 401 })
-      );
+      fetchSpy.mockResolvedValue(mockResponse({ message: 'Unauthenticated' }, { status: 401 }));
 
       try {
         await client.request('/campaigns');
@@ -355,9 +358,7 @@ describe('KankaClient', () => {
     it('should parse 403 as permission error', async () => {
       expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
-      fetchSpy.mockResolvedValue(
-        mockResponse({ message: 'Forbidden' }, { status: 403 })
-      );
+      fetchSpy.mockResolvedValue(mockResponse({ message: 'Forbidden' }, { status: 403 }));
 
       try {
         await client.request('/campaigns');
@@ -372,9 +373,7 @@ describe('KankaClient', () => {
     it('should parse 404 as not found error', async () => {
       expect.assertions(3);
       const client = new KankaClient(TEST_TOKEN);
-      fetchSpy.mockResolvedValue(
-        mockResponse({ message: 'Not found' }, { status: 404 })
-      );
+      fetchSpy.mockResolvedValue(mockResponse({ message: 'Not found' }, { status: 404 }));
 
       try {
         await client.request('/campaigns/999');
@@ -452,9 +451,7 @@ describe('KankaClient', () => {
     it('should parse 502 as API error', async () => {
       expect.assertions(2);
       const client = new KankaClient(TEST_TOKEN);
-      fetchSpy.mockResolvedValue(
-        mockResponse({}, { status: 502 })
-      );
+      fetchSpy.mockResolvedValue(mockResponse({}, { status: 502 }));
 
       try {
         await client.request('/campaigns');
@@ -468,9 +465,7 @@ describe('KankaClient', () => {
     it('should parse 503 as API error', async () => {
       expect.assertions(2);
       const client = new KankaClient(TEST_TOKEN);
-      fetchSpy.mockResolvedValue(
-        mockResponse({}, { status: 503 })
-      );
+      fetchSpy.mockResolvedValue(mockResponse({}, { status: 503 }));
 
       try {
         await client.request('/campaigns');
@@ -889,9 +884,12 @@ describe('KankaClient', () => {
   describe('_handleRateLimitHeaders()', () => {
     it('should log warning when remaining requests is low', () => {
       const client = new KankaClient(TEST_TOKEN);
-      const response = mockResponse({}, {
-        headers: { 'x-ratelimit-remaining': '3' }
-      });
+      const response = mockResponse(
+        {},
+        {
+          headers: { 'x-ratelimit-remaining': '3' }
+        }
+      );
 
       // Should not throw
       client._handleRateLimitHeaders(response);
@@ -900,12 +898,15 @@ describe('KankaClient', () => {
     it('should pause when remaining is 0', () => {
       const client = new KankaClient(TEST_TOKEN);
       const futureTime = Math.floor((Date.now() + 60000) / 1000);
-      const response = mockResponse({}, {
-        headers: {
-          'x-ratelimit-remaining': '0',
-          'x-ratelimit-reset': String(futureTime)
+      const response = mockResponse(
+        {},
+        {
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(futureTime)
+          }
         }
-      });
+      );
 
       const pauseSpy = vi.spyOn(client._rateLimiter, 'pause');
 
@@ -917,12 +918,15 @@ describe('KankaClient', () => {
     it('should not pause when remaining is 0 but reset time is in the past', () => {
       const client = new KankaClient(TEST_TOKEN);
       const pastTime = Math.floor((Date.now() - 60000) / 1000);
-      const response = mockResponse({}, {
-        headers: {
-          'x-ratelimit-remaining': '0',
-          'x-ratelimit-reset': String(pastTime)
+      const response = mockResponse(
+        {},
+        {
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(pastTime)
+          }
         }
-      });
+      );
 
       const pauseSpy = vi.spyOn(client._rateLimiter, 'pause');
 
@@ -941,9 +945,12 @@ describe('KankaClient', () => {
 
     it('should handle remaining of 0 without reset header', () => {
       const client = new KankaClient(TEST_TOKEN);
-      const response = mockResponse({}, {
-        headers: { 'x-ratelimit-remaining': '0' }
-      });
+      const response = mockResponse(
+        {},
+        {
+          headers: { 'x-ratelimit-remaining': '0' }
+        }
+      );
 
       expect(() => client._handleRateLimitHeaders(response)).not.toThrow();
     });
@@ -956,14 +963,17 @@ describe('KankaClient', () => {
   describe('_extractRateLimitHeaders()', () => {
     it('should extract all rate limit headers', () => {
       const client = new KankaClient(TEST_TOKEN);
-      const response = mockResponse({}, {
-        headers: {
-          'x-ratelimit-limit': '30',
-          'x-ratelimit-remaining': '25',
-          'x-ratelimit-reset': '1700000000',
-          'retry-after': '60'
+      const response = mockResponse(
+        {},
+        {
+          headers: {
+            'x-ratelimit-limit': '30',
+            'x-ratelimit-remaining': '25',
+            'x-ratelimit-reset': '1700000000',
+            'retry-after': '60'
+          }
         }
-      });
+      );
 
       const headers = client._extractRateLimitHeaders(response);
 
@@ -1067,7 +1077,7 @@ describe('KankaClient', () => {
       expect(controllersCreated.length).toBeGreaterThanOrEqual(1);
 
       // Clean up all timeout timers
-      controllersCreated.forEach(c => clearTimeout(c.timeoutId));
+      controllersCreated.forEach((c) => clearTimeout(c.timeoutId));
     });
 
     it('should not share signal between retry attempts', async () => {
@@ -1223,10 +1233,7 @@ describe('KankaClient', () => {
     it('should sanitize HTML in Kanka error messages', async () => {
       const client = new KankaClient(TEST_TOKEN);
       const xssMessage = '<img src=x onerror=alert(1)>Error occurred';
-      fetchSpy.mockResolvedValueOnce(mockResponse(
-        { message: xssMessage },
-        { status: 403 }
-      ));
+      fetchSpy.mockResolvedValueOnce(mockResponse({ message: xssMessage }, { status: 403 }));
 
       try {
         await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
@@ -1243,10 +1250,7 @@ describe('KankaClient', () => {
     it('should sanitize HTML in Kanka error field', async () => {
       const client = new KankaClient(TEST_TOKEN);
       const xssError = '<script>steal()</script>Server fault';
-      fetchSpy.mockResolvedValueOnce(mockResponse(
-        { error: xssError },
-        { status: 422 }
-      ));
+      fetchSpy.mockResolvedValueOnce(mockResponse({ error: xssError }, { status: 422 }));
 
       try {
         await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
@@ -1259,10 +1263,7 @@ describe('KankaClient', () => {
     it('should truncate very long error messages', async () => {
       const client = new KankaClient(TEST_TOKEN);
       const longMsg = 'x'.repeat(1000);
-      fetchSpy.mockResolvedValueOnce(mockResponse(
-        { message: longMsg },
-        { status: 422 }
-      ));
+      fetchSpy.mockResolvedValueOnce(mockResponse({ message: longMsg }, { status: 422 }));
 
       try {
         await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
@@ -1274,10 +1275,7 @@ describe('KankaClient', () => {
 
     it('should handle non-string error messages safely', async () => {
       const client = new KankaClient(TEST_TOKEN);
-      fetchSpy.mockResolvedValueOnce(mockResponse(
-        { message: 12345 },
-        { status: 422 }
-      ));
+      fetchSpy.mockResolvedValueOnce(mockResponse({ message: 12345 }, { status: 422 }));
 
       try {
         await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
@@ -1290,10 +1288,7 @@ describe('KankaClient', () => {
     it('should sanitize both angle brackets and quotes', async () => {
       const client = new KankaClient(TEST_TOKEN);
       const xssMessage = '"><svg onload=alert(1)>';
-      fetchSpy.mockResolvedValueOnce(mockResponse(
-        { message: xssMessage },
-        { status: 403 }
-      ));
+      fetchSpy.mockResolvedValueOnce(mockResponse({ message: xssMessage }, { status: 403 }));
 
       try {
         await client.get(`/campaigns/${TEST_CAMPAIGN_ID}/entities`);
@@ -1338,9 +1333,7 @@ describe('KankaClient', () => {
       const client = new KankaClient(TEST_TOKEN, { maxRetries: 0 });
       const pauseSpy = vi.spyOn(client._rateLimiter, 'pause');
 
-      fetchSpy.mockResolvedValue(
-        mockResponse({ message: 'Too Many Requests' }, { status: 429 })
-      );
+      fetchSpy.mockResolvedValue(mockResponse({ message: 'Too Many Requests' }, { status: 429 }));
 
       try {
         await client.request('/campaigns');

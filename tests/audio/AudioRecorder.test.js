@@ -10,8 +10,12 @@ function createMockStream() {
   const track = { kind: 'audio', stop: vi.fn(), enabled: true, readyState: 'live' };
   return {
     _tracks: [track],
-    getTracks: vi.fn(function () { return [...this._tracks]; }),
-    getAudioTracks: vi.fn(function () { return this._tracks.filter(t => t.kind === 'audio'); })
+    getTracks: vi.fn(function () {
+      return [...this._tracks];
+    }),
+    getAudioTracks: vi.fn(function () {
+      return this._tracks.filter((t) => t.kind === 'audio');
+    })
   };
 }
 
@@ -27,24 +31,48 @@ function createMockMediaRecorder() {
   const _mimeType = 'audio/webm;codecs=opus';
 
   const recorder = {
-    get state() { return _state; },
-    set state(v) { _state = v; },
-    get mimeType() { return _mimeType; },
+    get state() {
+      return _state;
+    },
+    set state(v) {
+      _state = v;
+    },
+    get mimeType() {
+      return _mimeType;
+    },
 
-    get ondataavailable() { return _ondataavailable; },
-    set ondataavailable(fn) { _ondataavailable = fn; },
-    get onstop() { return _onstop; },
-    set onstop(fn) { _onstop = fn; },
-    get onerror() { return _onerror; },
-    set onerror(fn) { _onerror = fn; },
+    get ondataavailable() {
+      return _ondataavailable;
+    },
+    set ondataavailable(fn) {
+      _ondataavailable = fn;
+    },
+    get onstop() {
+      return _onstop;
+    },
+    set onstop(fn) {
+      _onstop = fn;
+    },
+    get onerror() {
+      return _onerror;
+    },
+    set onerror(fn) {
+      _onerror = fn;
+    },
 
-    start: vi.fn(function () { _state = 'recording'; }),
+    start: vi.fn(function () {
+      _state = 'recording';
+    }),
     stop: vi.fn(function () {
       _state = 'inactive';
       if (_onstop) setTimeout(() => _onstop(), 0);
     }),
-    pause: vi.fn(function () { _state = 'paused'; }),
-    resume: vi.fn(function () { _state = 'recording'; })
+    pause: vi.fn(function () {
+      _state = 'paused';
+    }),
+    resume: vi.fn(function () {
+      _state = 'recording';
+    })
   };
 
   return recorder;
@@ -112,7 +140,7 @@ describe('AudioRecorder', () => {
     globalThis.navigator = globalThis.navigator || {};
     globalThis.navigator.mediaDevices = {
       getUserMedia: vi.fn(() => Promise.resolve(mockStream)),
-      enumerateDevices: vi.fn(() => Promise.resolve([])),
+      enumerateDevices: vi.fn(() => Promise.resolve([]))
     };
     globalThis.navigator.permissions = {
       query: vi.fn(() => Promise.resolve({ state: 'granted' }))
@@ -475,7 +503,9 @@ describe('AudioRecorder', () => {
     it('rejects if MediaRecorder.stop() throws', async () => {
       await recorder.startRecording();
       const mr = recorderInstances[0];
-      mr.stop.mockImplementation(() => { throw new Error('stop-failed'); });
+      mr.stop.mockImplementation(() => {
+        throw new Error('stop-failed');
+      });
 
       await expect(recorder.stopRecording()).rejects.toThrow('stop-failed');
     });
@@ -699,7 +729,9 @@ describe('AudioRecorder', () => {
     it('handles MediaRecorder.stop() throwing gracefully', async () => {
       await recorder.startRecording();
       const mr = recorderInstances[0];
-      mr.stop.mockImplementation(() => { throw new Error('already stopped'); });
+      mr.stop.mockImplementation(() => {
+        throw new Error('already stopped');
+      });
       expect(() => recorder.cancel()).not.toThrow();
       expect(recorder.state).toBe(RecordingState.INACTIVE);
     });
@@ -817,7 +849,7 @@ describe('AudioRecorder', () => {
       });
 
       const chunkPromise = recorder.getLatestChunk();
-      vi.advanceTimersByTime(100);  // trigger the stop
+      vi.advanceTimersByTime(100); // trigger the stop
       vi.advanceTimersByTime(5001); // trigger the timeout
       await expect(chunkPromise).rejects.toThrow('Chunk rotation timed out');
     });
@@ -843,7 +875,9 @@ describe('AudioRecorder', () => {
       const mr = recorderInstances[0];
       mr.ondataavailable({ data: new Blob(['data']) });
 
-      mr.stop.mockImplementation(() => { throw new Error('cannot stop'); });
+      mr.stop.mockImplementation(() => {
+        throw new Error('cannot stop');
+      });
 
       const chunkPromise = recorder.getLatestChunk();
       vi.advanceTimersByTime(100);
@@ -857,7 +891,9 @@ describe('AudioRecorder', () => {
       mr1.ondataavailable({ data: new Blob(['data']) });
 
       // First rotation: don't let onstop fire immediately
-      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+      mr1.stop.mockImplementation(() => {
+        mr1.state = 'inactive';
+      });
 
       const p1 = recorder.getLatestChunk();
       // Second call while first is in-flight
@@ -917,7 +953,9 @@ describe('AudioRecorder', () => {
       mr1.ondataavailable({ data: new Blob(['data']) });
 
       // Don't let old recorder stop — simulate slow onstop
-      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+      mr1.stop.mockImplementation(() => {
+        mr1.state = 'inactive';
+      });
 
       const chunkPromise = recorder.getLatestChunk();
 
@@ -938,7 +976,9 @@ describe('AudioRecorder', () => {
       mr1.ondataavailable({ data: new Blob(['data']) });
 
       // Don't complete rotation immediately
-      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+      mr1.stop.mockImplementation(() => {
+        mr1.state = 'inactive';
+      });
 
       const chunkPromise = recorder.getLatestChunk();
 
@@ -1100,7 +1140,9 @@ describe('AudioRecorder', () => {
 
     it('handles already-closed AudioContext gracefully', async () => {
       await recorder.startRecording();
-      recorder._audioContext.close.mockImplementation(() => { throw new Error('already closed'); });
+      recorder._audioContext.close.mockImplementation(() => {
+        throw new Error('already closed');
+      });
       expect(() => recorder._cleanup()).not.toThrow();
     });
 
@@ -1117,7 +1159,9 @@ describe('AudioRecorder', () => {
       mr1.ondataavailable({ data: new Blob(['data']) });
 
       // Start rotation but don't let old recorder stop
-      mr1.stop.mockImplementation(() => { mr1.state = 'inactive'; });
+      mr1.stop.mockImplementation(() => {
+        mr1.state = 'inactive';
+      });
       const chunkPromise = recorder.getLatestChunk();
 
       // Cleanup while rotation is in-flight
@@ -1161,7 +1205,9 @@ describe('AudioRecorder', () => {
     });
 
     it('handles AudioContext creation failure gracefully', async () => {
-      globalThis.AudioContext = vi.fn(() => { throw new Error('AudioContext not supported'); });
+      globalThis.AudioContext = vi.fn(() => {
+        throw new Error('AudioContext not supported');
+      });
       globalThis.window.AudioContext = globalThis.AudioContext;
 
       // Should not throw — failure is caught and logged
@@ -1457,7 +1503,7 @@ describe('AudioRecorder', () => {
 
     beforeEach(() => {
       mockEventBus = {
-        emit: vi.fn(),
+        emit: vi.fn()
       };
       ebRecorder = new AudioRecorder({ eventBus: mockEventBus });
     });
@@ -1485,7 +1531,7 @@ describe('AudioRecorder', () => {
 
       it('includes timestamp in recordingStarted payload', async () => {
         await ebRecorder.startRecording();
-        const call = mockEventBus.emit.mock.calls.find(c => c[0] === 'audio:recordingStarted');
+        const call = mockEventBus.emit.mock.calls.find((c) => c[0] === 'audio:recordingStarted');
         expect(call[1]).toHaveProperty('timestamp');
         expect(typeof call[1].timestamp).toBe('number');
       });
@@ -1570,7 +1616,9 @@ describe('AudioRecorder', () => {
 
     describe('error isolation — #emitSafe', () => {
       it('does not throw when eventBus.emit throws', async () => {
-        mockEventBus.emit.mockImplementation(() => { throw new Error('EventBus crash'); });
+        mockEventBus.emit.mockImplementation(() => {
+          throw new Error('EventBus crash');
+        });
         // Should not throw
         await expect(ebRecorder.startRecording()).resolves.not.toThrow();
       });
@@ -1578,7 +1626,9 @@ describe('AudioRecorder', () => {
       it('still calls callbacks even when eventBus.emit throws', async () => {
         const onStateChange = vi.fn();
         ebRecorder.setCallbacks({ onStateChange });
-        mockEventBus.emit.mockImplementation(() => { throw new Error('EventBus crash'); });
+        mockEventBus.emit.mockImplementation(() => {
+          throw new Error('EventBus crash');
+        });
 
         await ebRecorder.startRecording();
         expect(onStateChange).toHaveBeenCalledWith('recording');
@@ -1634,17 +1684,13 @@ describe('AudioRecorder', () => {
       });
 
       it('returns audio/mp4 when mp4/aac not supported', () => {
-        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
-          type === 'audio/mp4'
-        );
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) => type === 'audio/mp4');
         const r = new AudioRecorder();
         expect(r._detectOptimalCodec()).toBe('audio/mp4');
       });
 
       it('returns audio/wav as universal fallback', () => {
-        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
-          type === 'audio/wav'
-        );
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) => type === 'audio/wav');
         const r = new AudioRecorder();
         expect(r._detectOptimalCodec()).toBe('audio/wav');
       });
@@ -1662,8 +1708,8 @@ describe('AudioRecorder', () => {
       });
 
       it('falls back to auto-detect when preferredCodec not supported', () => {
-        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
-          type === 'audio/webm;codecs=opus'
+        globalThis.MediaRecorder.isTypeSupported = vi.fn(
+          (type) => type === 'audio/webm;codecs=opus'
         );
         const r = new AudioRecorder({ preferredCodec: 'audio/mp4;codecs=aac' });
         expect(r._detectOptimalCodec()).toBe('audio/webm;codecs=opus');
@@ -1672,9 +1718,7 @@ describe('AudioRecorder', () => {
 
     describe('codec used in startRecording', () => {
       it('uses detected codec for MediaRecorder', async () => {
-        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) =>
-          type === 'audio/mp4;codecs=aac'
-        );
+        globalThis.MediaRecorder.isTypeSupported = vi.fn((type) => type === 'audio/mp4;codecs=aac');
         const r = new AudioRecorder();
         await r.startRecording();
 
@@ -1699,16 +1743,16 @@ describe('AudioRecorder', () => {
         delete: vi.fn(),
         getAll: vi.fn(),
         getAllKeys: vi.fn(),
-        clear: vi.fn(),
+        clear: vi.fn()
       };
 
       mockDB = {
         transaction: vi.fn(() => ({
-          objectStore: vi.fn(() => mockObjectStore),
+          objectStore: vi.fn(() => mockObjectStore)
         })),
         objectStoreNames: { contains: vi.fn(() => true) },
         createObjectStore: vi.fn(() => mockObjectStore),
-        close: vi.fn(),
+        close: vi.fn()
       };
 
       // Synchronous mock — trigger onsuccess immediately via microtask
@@ -1718,7 +1762,7 @@ describe('AudioRecorder', () => {
           Promise.resolve().then(() => req.onsuccess?.({ target: req }));
           return req;
         }),
-        deleteDatabase: vi.fn(),
+        deleteDatabase: vi.fn()
       };
     });
 
@@ -1827,16 +1871,24 @@ describe('AudioRecorder', () => {
       const peerTrack = { kind: 'audio', stop: vi.fn(), enabled: true, readyState: 'live' };
       mockPeerStream = {
         _tracks: [peerTrack],
-        getTracks: vi.fn(function () { return [...this._tracks]; }),
-        getAudioTracks: vi.fn(function () { return this._tracks.filter(t => t.kind === 'audio'); })
+        getTracks: vi.fn(function () {
+          return [...this._tracks];
+        }),
+        getAudioTracks: vi.fn(function () {
+          return this._tracks.filter((t) => t.kind === 'audio');
+        })
       };
 
       // Create a mock MediaStreamDestination for mixing
       const mixedTrack = { kind: 'audio', stop: vi.fn(), enabled: true, readyState: 'live' };
       mockMixedStream = {
         _tracks: [mixedTrack],
-        getTracks: vi.fn(function () { return [...this._tracks]; }),
-        getAudioTracks: vi.fn(function () { return this._tracks.filter(t => t.kind === 'audio'); })
+        getTracks: vi.fn(function () {
+          return [...this._tracks];
+        }),
+        getAudioTracks: vi.fn(function () {
+          return this._tracks.filter((t) => t.kind === 'audio');
+        })
       };
       mockDestination = {
         stream: mockMixedStream
@@ -1946,9 +1998,11 @@ describe('AudioRecorder', () => {
       it('captures from multiple peers', () => {
         const makePeer = () => ({
           pc: {
-            getReceivers: vi.fn(() => [{
-              track: { kind: 'audio', readyState: 'live' }
-            }])
+            getReceivers: vi.fn(() => [
+              {
+                track: { kind: 'audio', readyState: 'live' }
+              }
+            ])
           }
         });
 

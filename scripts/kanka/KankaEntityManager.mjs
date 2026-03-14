@@ -284,7 +284,9 @@ class KankaEntityManager {
    */
   async update(entityType, entityId, entityData) {
     const endpoint = this._buildCampaignEndpoint(entityType, entityId);
-    this._logger.debug(`Updating ${entityType}: ${entityId}, fields=[${Object.keys(entityData || {}).join(', ')}]`);
+    this._logger.debug(
+      `Updating ${entityType}: ${entityId}, fields=[${Object.keys(entityData || {}).join(', ')}]`
+    );
     const response = await this._client.put(endpoint, entityData);
     this._logger.debug(`Updated ${entityType}/${entityId}: "${response.data?.name}"`);
     return response.data;
@@ -359,7 +361,9 @@ class KankaEntityManager {
       meta: response.meta || {},
       links: response.links || {}
     };
-    this._logger.debug(`Listed ${entityType}: ${result.data.length} entities (page ${result.meta.current_page || '?'}/${result.meta.last_page || '?'})`);
+    this._logger.debug(
+      `Listed ${entityType}: ${result.data.length} entities (page ${result.meta.current_page || '?'}/${result.meta.last_page || '?'})`
+    );
     return result;
   }
 
@@ -668,7 +672,9 @@ class KankaEntityManager {
     this._searchCache.set(cacheKey, results);
     this._cacheTimestamps.set(cacheKey, Date.now());
 
-    this._logger.debug(`searchEntities: found ${results.length} results for "${query}" (type=${entityType || 'all'})`);
+    this._logger.debug(
+      `searchEntities: found ${results.length} results for "${query}" (type=${entityType || 'all'})`
+    );
     return results;
   }
 }

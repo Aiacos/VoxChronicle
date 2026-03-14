@@ -29,7 +29,7 @@ export class EmbeddingProvider {
   /**
    * Generate an embedding vector for text.
    * @param {string} text - Text to embed
-   * @param {Object} [options={}]
+   * @param {object} [options={}]
    * @param {string} [options.model]
    * @param {AbortSignal} [options.abortSignal]
    * @returns {Promise<{embedding: number[], dimensions: number}>}
@@ -37,8 +37,8 @@ export class EmbeddingProvider {
    */
   async embed(text, options = {}) {
     throw new Error(
-      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', { method: 'embed' })
-        ?? 'Method embed must be implemented by provider subclass'
+      game?.i18n?.format?.('VOXCHRONICLE.Provider.Error.NotImplemented', { method: 'embed' }) ??
+        'Method embed must be implemented by provider subclass'
     );
   }
 
@@ -55,7 +55,7 @@ export class EmbeddingProvider {
 
   /**
    * Validate common options.
-   * @param {Object} options
+   * @param {object} options
    * @protected
    */
   _validateOptions(options) {

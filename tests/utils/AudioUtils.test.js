@@ -1,4 +1,8 @@
-import { AudioUtils, SUPPORTED_MIME_TYPES, MAX_TRANSCRIPTION_SIZE } from '../../scripts/utils/AudioUtils.mjs';
+import {
+  AudioUtils,
+  SUPPORTED_MIME_TYPES,
+  MAX_TRANSCRIPTION_SIZE
+} from '../../scripts/utils/AudioUtils.mjs';
 
 describe('AudioUtils', () => {
   // ── MediaRecorder mock ──────────────────────────────────────────────
@@ -139,8 +143,7 @@ describe('AudioUtils', () => {
       // All returned should be webm or ogg based on our mock
       for (const format of types) {
         expect(
-          format.mimeType.startsWith('audio/webm') ||
-          format.mimeType.startsWith('audio/ogg')
+          format.mimeType.startsWith('audio/webm') || format.mimeType.startsWith('audio/ogg')
         ).toBe(true);
       }
     });
@@ -318,7 +321,9 @@ describe('AudioUtils', () => {
       }));
 
       const blob = new Blob(['data'], { type: 'audio/webm' });
-      await expect(AudioUtils.blobToBase64(blob)).rejects.toThrow('Failed to convert blob to base64');
+      await expect(AudioUtils.blobToBase64(blob)).rejects.toThrow(
+        'Failed to convert blob to base64'
+      );
 
       globalThis.FileReader = origFileReader;
     });
@@ -642,11 +647,9 @@ describe('AudioUtils', () => {
       const blob = new Blob(['data'], { type: 'audio/webm' });
       const audio = AudioUtils.createAudioElement(blob);
 
-      expect(audio.addEventListener).toHaveBeenCalledWith(
-        'ended',
-        expect.any(Function),
-        { once: true }
-      );
+      expect(audio.addEventListener).toHaveBeenCalledWith('ended', expect.any(Function), {
+        once: true
+      });
     });
 
     it('should revoke object URL on ended event', () => {
@@ -654,9 +657,7 @@ describe('AudioUtils', () => {
       const audio = AudioUtils.createAudioElement(blob);
 
       // Get the ended callback
-      const endedCall = audio.addEventListener.mock.calls.find(
-        (call) => call[0] === 'ended'
-      );
+      const endedCall = audio.addEventListener.mock.calls.find((call) => call[0] === 'ended');
       const endedCallback = endedCall[1];
 
       // Invoke it

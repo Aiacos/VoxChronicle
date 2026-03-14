@@ -16,14 +16,14 @@ function createMockPack(type = 'JournalEntry', docs = [], options = {}) {
   const packId = options.id || `world.${type.toLowerCase()}-pack`;
   const packLabel = options.label || `Test ${type} Pack`;
 
-  const indexEntries = docs.map(d => ({
+  const indexEntries = docs.map((d) => ({
     _id: d.id,
     name: d.name,
     type: d.type || type
   }));
 
   // Create an iterable index with size property
-  const indexMap = new Map(indexEntries.map(e => [e._id, e]));
+  const indexMap = new Map(indexEntries.map((e) => [e._id, e]));
   const index = {
     size: indexEntries.length,
     [Symbol.iterator]: function* () {
@@ -43,7 +43,7 @@ function createMockPack(type = 'JournalEntry', docs = [], options = {}) {
       type
     },
     getIndex: vi.fn().mockResolvedValue(index),
-    getDocument: vi.fn().mockImplementation(async (id) => docs.find(d => d.id === id) || null)
+    getDocument: vi.fn().mockImplementation(async (id) => docs.find((d) => d.id === id) || null)
   };
 }
 
@@ -54,7 +54,7 @@ function createMockJournalDoc(id, name, pages = []) {
   return {
     id,
     name,
-    pages: pages.map(p => ({
+    pages: pages.map((p) => ({
       type: 'text',
       name: p.name,
       text: { content: p.content }
@@ -321,7 +321,7 @@ describe('CompendiumParser', () => {
 
       const results = parser.searchByType('Rules', 'JournalEntry');
       expect(results.length).toBeGreaterThan(0);
-      expect(results.every(r => r.entry.type === 'JournalEntry')).toBe(true);
+      expect(results.every((r) => r.entry.type === 'JournalEntry')).toBe(true);
     });
 
     it('returns empty when type does not match', async () => {
@@ -531,7 +531,10 @@ describe('CompendiumParser', () => {
       game.packs.filter = Array.prototype.filter.bind(game.packs);
       await parser.parseJournalCompendiums();
 
-      const chunks = await parser.getChunksForEmbedding(pack.collection, { chunkSize: 100, overlap: 20 });
+      const chunks = await parser.getChunksForEmbedding(pack.collection, {
+        chunkSize: 100,
+        overlap: 20
+      });
       expect(chunks.length).toBeGreaterThan(1);
       expect(chunks[0]).toHaveProperty('text');
       expect(chunks[0]).toHaveProperty('metadata');
@@ -540,7 +543,11 @@ describe('CompendiumParser', () => {
 
     it('skips entries with no content', async () => {
       // Create a doc with empty page
-      const doc = { id: 'j1', name: 'Empty', pages: [{ type: 'text', name: 'P', text: { content: '' } }] };
+      const doc = {
+        id: 'j1',
+        name: 'Empty',
+        pages: [{ type: 'text', name: 'P', text: { content: '' } }]
+      };
       const pack = createMockPack('JournalEntry', [doc]);
       game.packs = [pack];
       game.packs.filter = Array.prototype.filter.bind(game.packs);
@@ -582,7 +589,8 @@ describe('CompendiumParser', () => {
     });
 
     it('chunks long text with overlap', () => {
-      const text = 'This is sentence one. This is sentence two. This is sentence three. This is sentence four. This is sentence five.';
+      const text =
+        'This is sentence one. This is sentence two. This is sentence three. This is sentence four. This is sentence five.';
       const chunks = parser._chunkText(text, 50, 10);
       expect(chunks.length).toBeGreaterThan(1);
     });

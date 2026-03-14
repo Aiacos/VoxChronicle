@@ -286,7 +286,7 @@ class SilenceMonitor {
    * Generates an autonomous suggestion via the injected function and
    * invokes the callback if registered.
    *
-   * @param {Object} silenceEvent - The silence event from SilenceDetector
+   * @param {object} silenceEvent - The silence event from SilenceDetector
    * @param {number} silenceEvent.silenceDurationMs - Duration of silence in milliseconds
    * @param {number} silenceEvent.lastActivityTime - Timestamp of the last recorded activity
    * @param {number} silenceEvent.silenceCount - Number of silence events since start
@@ -299,7 +299,9 @@ class SilenceMonitor {
       return;
     }
 
-    this._logger.info(`Processing silence event #${silenceEvent.silenceCount} (${silenceEvent.silenceDurationMs}ms)`);
+    this._logger.info(
+      `Processing silence event #${silenceEvent.silenceCount} (${silenceEvent.silenceDurationMs}ms)`
+    );
 
     if (!this._generateSuggestionFn) {
       this._logger.warn('Cannot generate autonomous suggestion: no suggestion function configured');
@@ -319,7 +321,9 @@ class SilenceMonitor {
       this._silenceSuggestionCount++;
       this._consecutiveSuggestionFailures = 0;
 
-      this._logger.info(`Generated autonomous suggestion: type=${suggestion.type}, confidence=${suggestion.confidence}`);
+      this._logger.info(
+        `Generated autonomous suggestion: type=${suggestion.type}, confidence=${suggestion.confidence}`
+      );
 
       // Invoke callback if registered
       if (this._onAutonomousSuggestionCallback) {
@@ -341,8 +345,8 @@ class SilenceMonitor {
       this._consecutiveSuggestionFailures++;
       if (this._consecutiveSuggestionFailures === 3) {
         globalThis.ui?.notifications?.warn(
-          globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.AutonomousSuggestionFailed')
-            || 'VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.'
+          globalThis.game?.i18n?.localize('VOXCHRONICLE.Warnings.AutonomousSuggestionFailed') ||
+            'VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.'
         );
       }
     }

@@ -338,7 +338,9 @@ describe('SceneDetector', () => {
 
       it('should pick the highest confidence transition when multiple match', () => {
         // This text may match both location and combat patterns
-        const result = detector.detectSceneTransition("Entrate nella caverna e tirate l'iniziativa!");
+        const result = detector.detectSceneTransition(
+          "Entrate nella caverna e tirate l'iniziativa!"
+        );
         expect(result.detected).toBe(true);
         // Initiative has weight 1.0 which should win
         expect(result.confidence).toBeGreaterThanOrEqual(0.9);

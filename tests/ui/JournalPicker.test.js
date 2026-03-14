@@ -13,17 +13,26 @@ vi.hoisted(() => {
     class MockAppV2 {
       static DEFAULT_OPTIONS = {};
       static PARTS = {};
-      constructor() { this.rendered = false; this._element = null; }
-      render() { this.rendered = true; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      constructor() {
+        this.rendered = false;
+        this._element = null;
+      }
+      render() {
+        this.rendered = true;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -57,8 +66,18 @@ describe('JournalPicker', () => {
     globalThis.game = {
       journal: {
         contents: [
-          { id: 'j1', name: 'Lost Mine of Phandelver', folder: null, pages: { contents: [{ text: { content: 'Test content' } }] } },
-          { id: 'j2', name: 'Dragon of Icespire Peak', folder: { id: 'f1' }, pages: { contents: [] } },
+          {
+            id: 'j1',
+            name: 'Lost Mine of Phandelver',
+            folder: null,
+            pages: { contents: [{ text: { content: 'Test content' } }] }
+          },
+          {
+            id: 'j2',
+            name: 'Dragon of Icespire Peak',
+            folder: { id: 'f1' },
+            pages: { contents: [] }
+          },
           { id: 'j3', name: 'NPC Notes', folder: { id: 'f1' }, pages: { contents: [] } },
           { id: 'j4', name: 'World Lore', folder: null, pages: { contents: [] } }
         ]
@@ -77,7 +96,7 @@ describe('JournalPicker', () => {
         register: vi.fn()
       },
       i18n: {
-        localize: vi.fn(key => key),
+        localize: vi.fn((key) => key),
         format: vi.fn((key, data) => key)
       }
     };
@@ -128,8 +147,8 @@ describe('JournalPicker', () => {
       const picker = new JournalPicker();
       const context = await picker._prepareContext({});
 
-      const j1 = context.rootJournals.find(j => j.id === 'j1');
-      const j4 = context.rootJournals.find(j => j.id === 'j4');
+      const j1 = context.rootJournals.find((j) => j.id === 'j1');
+      const j4 = context.rootJournals.find((j) => j.id === 'j4');
       expect(j1.selected).toBe(true);
       expect(j1.isPrimary).toBe(true);
       expect(j4.selected).toBe(true);
@@ -154,8 +173,14 @@ describe('JournalPicker', () => {
       // Simulate save with primary=j1, supplementary=[j4]
       await picker._saveSelection('j1', ['j4']);
 
-      expect(game.settings.set).toHaveBeenCalledWith('vox-chronicle', 'activeAdventureJournalId', 'j1');
-      expect(game.settings.set).toHaveBeenCalledWith('vox-chronicle', 'supplementaryJournalIds', ['j4']);
+      expect(game.settings.set).toHaveBeenCalledWith(
+        'vox-chronicle',
+        'activeAdventureJournalId',
+        'j1'
+      );
+      expect(game.settings.set).toHaveBeenCalledWith('vox-chronicle', 'supplementaryJournalIds', [
+        'j4'
+      ]);
     });
 
     it('primary radio designation marks exactly one journal as primary', async () => {
@@ -163,7 +188,9 @@ describe('JournalPicker', () => {
       await picker._saveSelection('j2', ['j1', 'j3']);
 
       // Primary is j2, supplementary should NOT include j2
-      const supplementaryCall = game.settings.set.mock.calls.find(c => c[1] === 'supplementaryJournalIds');
+      const supplementaryCall = game.settings.set.mock.calls.find(
+        (c) => c[1] === 'supplementaryJournalIds'
+      );
       expect(supplementaryCall[2]).not.toContain('j2');
       expect(supplementaryCall[2]).toEqual(['j1', 'j3']);
     });
@@ -188,7 +215,7 @@ describe('JournalPicker', () => {
       Settings.registerSettings();
 
       const calls = game.settings.register.mock.calls;
-      const activeJournalCall = calls.find(c => c[1] === 'activeAdventureJournalId');
+      const activeJournalCall = calls.find((c) => c[1] === 'activeAdventureJournalId');
       expect(activeJournalCall).toBeDefined();
       expect(activeJournalCall[2].scope).toBe('world');
       expect(activeJournalCall[2].config).toBe(false);
@@ -201,7 +228,7 @@ describe('JournalPicker', () => {
       Settings.registerSettings();
 
       const calls = game.settings.register.mock.calls;
-      const suppJournalCall = calls.find(c => c[1] === 'supplementaryJournalIds');
+      const suppJournalCall = calls.find((c) => c[1] === 'supplementaryJournalIds');
       expect(suppJournalCall).toBeDefined();
       expect(suppJournalCall[2].scope).toBe('world');
       expect(suppJournalCall[2].config).toBe(false);

@@ -3,9 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../scripts/utils/Logger.mjs', () => ({
   Logger: {
     createChild: vi.fn(() => ({
-      debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn(),
-    })),
-  },
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn()
+    }))
+  }
 }));
 
 let lastMockClient = null;
@@ -21,16 +25,21 @@ vi.mock('../../../scripts/ai/OpenAIClient.mjs', () => {
   }
   return {
     OpenAIClient: MockOpenAIClient,
-    OpenAIError: class extends Error { constructor(m, t) { super(m); this.type = t; } },
-    OpenAIErrorType: { API_ERROR: 'api_error' },
+    OpenAIError: class extends Error {
+      constructor(m, t) {
+        super(m);
+        this.type = t;
+      }
+    },
+    OpenAIErrorType: { API_ERROR: 'api_error' }
   };
 });
 
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`),
-  },
+    format: vi.fn((key, data) => `${key} ${JSON.stringify(data)}`)
+  }
 };
 
 import { OpenAIImageProvider } from '../../../scripts/ai/providers/OpenAIImageProvider.mjs';
@@ -70,7 +79,7 @@ describe('OpenAIImageProvider', () => {
 
   describe('generateImage()', () => {
     const openAIResponse = {
-      data: [{ b64_json: 'base64encodedimagedata' }],
+      data: [{ b64_json: 'base64encodedimagedata' }]
     };
 
     it('should call client.post with /images/generations', async () => {
@@ -88,7 +97,7 @@ describe('OpenAIImageProvider', () => {
       const result = await provider.generateImage('A fantasy castle');
       expect(result).toEqual({
         data: 'base64encodedimagedata',
-        format: 'png',
+        format: 'png'
       });
     });
 
@@ -154,9 +163,9 @@ describe('OpenAIImageProvider', () => {
     });
 
     it('should validate options', async () => {
-      await expect(
-        provider.generateImage('test', { abortSignal: 'invalid' })
-      ).rejects.toThrow('abortSignal must be an instance of AbortSignal');
+      await expect(provider.generateImage('test', { abortSignal: 'invalid' })).rejects.toThrow(
+        'abortSignal must be an instance of AbortSignal'
+      );
     });
 
     it('should always send n: 1', async () => {
@@ -175,7 +184,7 @@ describe('OpenAIImageProvider', () => {
   describe('queueCategory (Story 2.3)', () => {
     it('should pass queueCategory "image" to post()', async () => {
       mockClient.post.mockResolvedValue({
-        data: [{ b64_json: 'base64data' }],
+        data: [{ b64_json: 'base64data' }]
       });
       await provider.generateImage('a hero');
       expect(mockClient.post).toHaveBeenCalledWith(

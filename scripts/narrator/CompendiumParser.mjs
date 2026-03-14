@@ -14,7 +14,7 @@ import { Logger } from '../utils/Logger.mjs';
 import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
- * @typedef {Object} ParsedCompendiumEntry
+ * @typedef {object} ParsedCompendiumEntry
  * @property {string} id - The unique entry identifier
  * @property {string} name - The entry name/title
  * @property {string} text - The extracted plain text content (HTML stripped)
@@ -24,7 +24,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
  */
 
 /**
- * @typedef {Object} ParsedCompendium
+ * @typedef {object} ParsedCompendium
  * @property {string} id - The compendium pack identifier
  * @property {string} name - The compendium pack name/title
  * @property {string} documentName - The document type this pack contains
@@ -34,7 +34,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
  */
 
 /**
- * @typedef {Object} SearchResult
+ * @typedef {object} SearchResult
  * @property {ParsedCompendiumEntry} entry - The matching entry
  * @property {string} compendium - The compendium name
  * @property {number} score - Relevance score (higher is better)
@@ -42,9 +42,9 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Represents a text chunk suitable for embedding
- * @typedef {Object} CompendiumTextChunk
+ * @typedef {object} CompendiumTextChunk
  * @property {string} text - The chunk text content
- * @property {Object} metadata - Metadata about the chunk source
+ * @property {object} metadata - Metadata about the chunk source
  * @property {string} metadata.source - Source type ('compendium')
  * @property {string} metadata.packId - The compendium pack ID
  * @property {string} metadata.packName - The compendium pack name
@@ -59,7 +59,7 @@ import { stripHtml } from '../utils/HtmlUtils.mjs';
 
 /**
  * Options for chunk extraction
- * @typedef {Object} ChunkOptions
+ * @typedef {object} ChunkOptions
  * @property {number} [chunkSize=500] - Target characters per chunk
  * @property {number} [overlap=100] - Overlap characters between chunks
  */
@@ -131,7 +131,7 @@ export class CompendiumParser {
       return [];
     }
 
-    const journalPacks = game.packs.filter(p => p.documentName === 'JournalEntry');
+    const journalPacks = game.packs.filter((p) => p.documentName === 'JournalEntry');
     this._logger.debug(`Found ${journalPacks.length} journal compendium packs`);
 
     const results = [];
@@ -152,11 +152,15 @@ export class CompendiumParser {
     const failedPacks = journalPacks.length - results.length;
     if (failedPacks > 0) {
       globalThis.ui?.notifications?.warn(
-        globalThis.game?.i18n?.format('VOXCHRONICLE.Warnings.CompendiumParseFailures', { count: failedPacks })
-          || `VoxChronicle: ${failedPacks} compendium pack(s) could not be loaded. AI context may be incomplete.`
+        globalThis.game?.i18n?.format('VOXCHRONICLE.Warnings.CompendiumParseFailures', {
+          count: failedPacks
+        }) ||
+          `VoxChronicle: ${failedPacks} compendium pack(s) could not be loaded. AI context may be incomplete.`
       );
     }
-    this._logger.debug(`parseJournalCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
+    this._logger.debug(
+      `parseJournalCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`
+    );
 
     return results;
   }
@@ -177,7 +181,7 @@ export class CompendiumParser {
     }
 
     // Include Items, RollTables, and any packs with "rules" or "regole" in the name
-    const rulesPacks = game.packs.filter(p => {
+    const rulesPacks = game.packs.filter((p) => {
       const docType = p.documentName;
       const packName = (p.metadata?.label || '').toLowerCase();
       const packId = (p.metadata?.id || p.collection || '').toLowerCase();
@@ -191,11 +195,17 @@ export class CompendiumParser {
       // Include journal packs that seem rules-related
       if (docType === 'JournalEntry') {
         const rulesKeywords = [
-          'rules', 'regole', 'manual', 'manuale',
-          'reference', 'riferimento', 'srd', 'basic'
+          'rules',
+          'regole',
+          'manual',
+          'manuale',
+          'reference',
+          'riferimento',
+          'srd',
+          'basic'
         ];
-        return rulesKeywords.some(keyword =>
-          packName.includes(keyword) || packId.includes(keyword)
+        return rulesKeywords.some(
+          (keyword) => packName.includes(keyword) || packId.includes(keyword)
         );
       }
 
@@ -222,11 +232,15 @@ export class CompendiumParser {
     const failedRulesPacks = rulesPacks.length - results.length;
     if (failedRulesPacks > 0) {
       globalThis.ui?.notifications?.warn(
-        globalThis.game?.i18n?.format('VOXCHRONICLE.Warnings.CompendiumParseFailures', { count: failedRulesPacks })
-          || `VoxChronicle: ${failedRulesPacks} compendium pack(s) could not be loaded. AI context may be incomplete.`
+        globalThis.game?.i18n?.format('VOXCHRONICLE.Warnings.CompendiumParseFailures', {
+          count: failedRulesPacks
+        }) ||
+          `VoxChronicle: ${failedRulesPacks} compendium pack(s) could not be loaded. AI context may be incomplete.`
       );
     }
-    this._logger.debug(`parseRulesCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`);
+    this._logger.debug(
+      `parseRulesCompendiums() exit — ${results.length} compendiums, ${totalEntries} entries, ${(performance.now() - _startTime).toFixed(1)}ms`
+    );
 
     return results;
   }
@@ -266,7 +280,7 @@ export class CompendiumParser {
       }
     }
 
-    return cached.entries.filter(entry => matchingEntryIds.has(entry.id));
+    return cached.entries.filter((entry) => matchingEntryIds.has(entry.id));
   }
 
   /**
@@ -280,10 +294,12 @@ export class CompendiumParser {
       return [];
     }
 
-    this._logger.debug(`search() entry — query="${query}", cached compendiums: ${this._cachedContent.size}`);
+    this._logger.debug(
+      `search() entry — query="${query}", cached compendiums: ${this._cachedContent.size}`
+    );
 
     const normalizedQuery = query.toLowerCase().trim();
-    const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
+    const queryWords = normalizedQuery.split(/\s+/).filter((w) => w.length >= 2);
 
     if (queryWords.length === 0) {
       return [];
@@ -323,7 +339,7 @@ export class CompendiumParser {
    */
   searchByType(query, documentType) {
     const allResults = this.search(query);
-    return allResults.filter(result => result.entry.type === documentType);
+    return allResults.filter((result) => result.entry.type === documentType);
   }
 
   // ---------------------------------------------------------------------------
@@ -397,7 +413,8 @@ export class CompendiumParser {
     return this._getContentForAIFromList(
       this._rulesCompendiums,
       maxLength,
-      game.i18n?.localize('VOXCHRONICLE.Compendium.RulesAndReferences') || 'RULES AND REFERENCES (COMPENDIUMS)'
+      game.i18n?.localize('VOXCHRONICLE.Compendium.RulesAndReferences') ||
+        'RULES AND REFERENCES (COMPENDIUMS)'
     );
   }
 
@@ -416,7 +433,9 @@ export class CompendiumParser {
     }
 
     const topResults = results.slice(0, maxResults);
-    const infoHeader = game.i18n?.format('VOXCHRONICLE.Compendium.TopicInfo', { topic }) || `Information about: ${topic}`;
+    const infoHeader =
+      game.i18n?.format('VOXCHRONICLE.Compendium.TopicInfo', { topic }) ||
+      `Information about: ${topic}`;
     let content = `# ${infoHeader}\n\n`;
 
     for (const result of topResults) {
@@ -444,7 +463,7 @@ export class CompendiumParser {
     if (!cached) {
       return null;
     }
-    return cached.entries.find(entry => entry.id === entryId) || null;
+    return cached.entries.find((entry) => entry.id === entryId) || null;
   }
 
   /**
@@ -469,7 +488,7 @@ export class CompendiumParser {
       return [];
     }
 
-    return Array.from(game.packs).map(pack => ({
+    return Array.from(game.packs).map((pack) => ({
       id: pack.collection || pack.metadata?.id,
       name: pack.metadata?.label || pack.title,
       type: pack.documentName
@@ -496,8 +515,8 @@ export class CompendiumParser {
     }
 
     // Remove from categorized lists
-    this._journalCompendiums = this._journalCompendiums.filter(c => c.id !== packId);
-    this._rulesCompendiums = this._rulesCompendiums.filter(c => c.id !== packId);
+    this._journalCompendiums = this._journalCompendiums.filter((c) => c.id !== packId);
+    this._rulesCompendiums = this._rulesCompendiums.filter((c) => c.id !== packId);
 
     this._logger.debug(`Cleared cache for compendium: ${packId}`);
   }
@@ -568,8 +587,8 @@ export class CompendiumParser {
     const cached = this._cachedContent.get(packId);
     if (!cached) {
       throw new Error(
-        game.i18n?.format('VOXCHRONICLE.Errors.CompendiumNotCached', { id: packId })
-          ?? `Compendium not cached: ${packId}`
+        game.i18n?.format('VOXCHRONICLE.Errors.CompendiumNotCached', { id: packId }) ??
+          `Compendium not cached: ${packId}`
       );
     }
 
@@ -617,7 +636,7 @@ export class CompendiumParser {
 
     this._logger.debug(
       `getChunksForEmbedding() exit — ${allChunks.length} chunks from "${cached.name}" ` +
-      `(${cached.entries.length} entries, chunkSize=${chunkSize}, overlap=${overlap}), ${(performance.now() - _chunkStart).toFixed(1)}ms`
+        `(${cached.entries.length} entries, chunkSize=${chunkSize}, overlap=${overlap}), ${(performance.now() - _chunkStart).toFixed(1)}ms`
     );
 
     return allChunks;
@@ -638,13 +657,15 @@ export class CompendiumParser {
         const chunks = await this.getChunksForEmbedding(packId, options);
         allChunks.push(...chunks);
         // Yield to the event loop between compendiums
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
       } catch (error) {
         this._logger.warn(`Failed to chunk compendium "${packId}":`, error);
       }
     }
 
-    this._logger.debug(`Extracted ${allChunks.length} chunks from ${this._cachedContent.size} compendiums`);
+    this._logger.debug(
+      `Extracted ${allChunks.length} chunks from ${this._cachedContent.size} compendiums`
+    );
 
     return allChunks;
   }
@@ -703,7 +724,10 @@ export class CompendiumParser {
           totalCharacters += parsedEntry.text.length;
         }
       } catch (error) {
-        this._logger.debug(`Failed to parse entry "${indexEntry.name}" in pack "${packName}"`, error);
+        this._logger.debug(
+          `Failed to parse entry "${indexEntry.name}" in pack "${packName}"`,
+          error
+        );
       }
     }
 
@@ -768,7 +792,7 @@ export class CompendiumParser {
         // Try to extract name and any description field
         text = doc.name || '';
         if (doc.system?.description?.value) {
-          text += '\n' + stripHtml(doc.system.description.value);
+          text += `\n${  stripHtml(doc.system.description.value)}`;
         }
     }
 
@@ -779,7 +803,8 @@ export class CompendiumParser {
 
     return {
       id: doc.id,
-      name: doc.name || game.i18n?.localize('VOXCHRONICLE.Compendium.UnnamedEntry') || 'Unnamed Entry',
+      name:
+        doc.name || game.i18n?.localize('VOXCHRONICLE.Compendium.UnnamedEntry') || 'Unnamed Entry',
       text: text.trim(),
       packId,
       packName,
@@ -909,13 +934,13 @@ export class CompendiumParser {
       const words = entry.text
         .toLowerCase()
         .split(/\s+/)
-        .filter(word => word.length >= 3);
+        .filter((word) => word.length >= 3);
 
       // Also add words from the entry name (2+ characters)
       const nameWords = entry.name
         .toLowerCase()
         .split(/\s+/)
-        .filter(word => word.length >= 2);
+        .filter((word) => word.length >= 2);
 
       const allWords = [...new Set([...words, ...nameWords])];
 
@@ -1096,11 +1121,13 @@ export class CompendiumParser {
 
     // If text is shorter than chunk size, return as single chunk
     if (normalizedText.length <= chunkSize) {
-      return [{
-        text: normalizedText,
-        startPos: 0,
-        endPos: normalizedText.length
-      }];
+      return [
+        {
+          text: normalizedText,
+          startPos: 0,
+          endPos: normalizedText.length
+        }
+      ];
     }
 
     const chunks = [];
@@ -1111,7 +1138,7 @@ export class CompendiumParser {
       const targetEnd = Math.min(startPos + chunkSize, normalizedText.length);
 
       // Try to find a sentence boundary near the target end
-      let actualEnd = this._findSentenceBoundary(normalizedText, startPos, targetEnd, chunkSize);
+      const actualEnd = this._findSentenceBoundary(normalizedText, startPos, targetEnd, chunkSize);
 
       // Extract the chunk text
       const chunkText = normalizedText.substring(startPos, actualEnd).trim();

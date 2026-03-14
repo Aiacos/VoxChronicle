@@ -238,13 +238,16 @@ describe('RateLimiter', () => {
 
     it('should execute functions sequentially', async () => {
       const order = [];
-      const fn1 = async () => { order.push(1); return 1; };
-      const fn2 = async () => { order.push(2); return 2; };
+      const fn1 = async () => {
+        order.push(1);
+        return 1;
+      };
+      const fn2 = async () => {
+        order.push(2);
+        return 2;
+      };
 
-      const [r1, r2] = await Promise.all([
-        limiter.throttle(fn1),
-        limiter.throttle(fn2)
-      ]);
+      const [r1, r2] = await Promise.all([limiter.throttle(fn1), limiter.throttle(fn2)]);
 
       expect(r1).toBe(1);
       expect(r2).toBe(2);
@@ -260,7 +263,9 @@ describe('RateLimiter', () => {
 
       // Fill the queue by blocking the processor
       let blockResolve;
-      const blockPromise = new Promise((resolve) => { blockResolve = resolve; });
+      const blockPromise = new Promise((resolve) => {
+        blockResolve = resolve;
+      });
       const blocking = () => blockPromise;
 
       // Queue the blocking request
@@ -309,9 +314,9 @@ describe('RateLimiter', () => {
     });
 
     it('should propagate errors from the function', async () => {
-      await expect(
-        limiter.throttle(() => Promise.reject(new Error('fn error')))
-      ).rejects.toThrow('fn error');
+      await expect(limiter.throttle(() => Promise.reject(new Error('fn error')))).rejects.toThrow(
+        'fn error'
+      );
     });
 
     it('should record request timestamp on execution', async () => {
@@ -336,7 +341,11 @@ describe('RateLimiter', () => {
     });
 
     afterEach(() => {
-      try { retryLimiter.reset(); } catch (_) { /* ignore */ }
+      try {
+        retryLimiter.reset();
+      } catch (_) {
+        /* ignore */
+      }
     });
 
     it('should return result on first success', async () => {
@@ -350,9 +359,7 @@ describe('RateLimiter', () => {
       const error429 = new Error('Too many requests');
       error429.status = 429;
 
-      const fn = vi.fn()
-        .mockRejectedValueOnce(error429)
-        .mockResolvedValue('retried-success');
+      const fn = vi.fn().mockRejectedValueOnce(error429).mockResolvedValue('retried-success');
 
       const result = await retryLimiter.executeWithRetry(fn, 3);
       expect(result).toBe('retried-success');
@@ -399,7 +406,7 @@ describe('RateLimiter', () => {
       expect(fn).toHaveBeenCalledTimes(4);
 
       // Verify exponential backoff delays from executeWithRetry: 1000, 2000, 4000
-      const retryDelays = delayCalls.filter(ms => ms === 1000 || ms === 2000 || ms === 4000);
+      const retryDelays = delayCalls.filter((ms) => ms === 1000 || ms === 2000 || ms === 4000);
       expect(retryDelays).toEqual([1000, 2000, 4000]);
     });
 
@@ -680,8 +687,8 @@ describe('RateLimiter', () => {
     it('should remove timestamps older than 1 minute', () => {
       limiter._requestTimestamps = [
         Date.now() - 120000, // 2 minutes ago
-        Date.now() - 90000,  // 1.5 minutes ago
-        Date.now() - 30000,  // 30 seconds ago
+        Date.now() - 90000, // 1.5 minutes ago
+        Date.now() - 30000, // 30 seconds ago
         Date.now()
       ];
 
@@ -691,11 +698,7 @@ describe('RateLimiter', () => {
     });
 
     it('should keep all timestamps if all are recent', () => {
-      limiter._requestTimestamps = [
-        Date.now() - 5000,
-        Date.now() - 1000,
-        Date.now()
-      ];
+      limiter._requestTimestamps = [Date.now() - 5000, Date.now() - 1000, Date.now()];
 
       limiter._cleanupOldTimestamps();
 

@@ -51,7 +51,7 @@ class AudioChunker {
    */
   _maxChunkSize = MAX_CHUNK_SIZE;
 
-  /** @type {Object|null} EventBus instance for emitting events (optional) */
+  /** @type {object | null} EventBus instance for emitting events (optional) */
   _eventBus = null;
 
   /**
@@ -59,7 +59,7 @@ class AudioChunker {
    *
    * @param {object} [options] - Configuration options
    * @param {number} [options.maxChunkSize] - Maximum size per chunk in bytes
-   * @param {Object} [options.eventBus] - EventBus instance for emitting events
+   * @param {object} [options.eventBus] - EventBus instance for emitting events
    */
   constructor(options = {}) {
     if (options.maxChunkSize) {
@@ -73,7 +73,7 @@ class AudioChunker {
    * Emit an event on the EventBus, swallowing errors to prevent bus failures
    * from breaking chunking functionality.
    * @param {string} event - Event name
-   * @param {Object} payload - Event payload
+   * @param {object} payload - Event payload
    * @private
    */
   _emitSafe(event, payload) {
@@ -120,7 +120,9 @@ class AudioChunker {
     }
 
     const sizeMB = AudioUtils.getBlobSizeMB(audioBlob);
-    this._logger.debug(`splitIfNeeded called: ${sizeMB}MB, needs chunking: ${this.needsChunking(audioBlob)}`);
+    this._logger.debug(
+      `splitIfNeeded called: ${sizeMB}MB, needs chunking: ${this.needsChunking(audioBlob)}`
+    );
 
     if (!this.needsChunking(audioBlob)) {
       this._logger.debug('Audio blob is within size limit, no chunking needed');
@@ -148,7 +150,11 @@ class AudioChunker {
     this._logger.log(
       `Splitting audio blob: ${AudioUtils.getBlobSizeMB(audioBlob)}MB into ~${numChunks} chunks`
     );
-    this._emitSafe('audio:chunkingStarted', { totalSize, estimatedChunks: numChunks, timestamp: Date.now() });
+    this._emitSafe('audio:chunkingStarted', {
+      totalSize,
+      estimatedChunks: numChunks,
+      timestamp: Date.now()
+    });
 
     const chunks = [];
     let offset = 0;
@@ -175,7 +181,11 @@ class AudioChunker {
       // Slice the blob
       const chunkBlob = audioBlob.slice(offset, offset + chunkSize, mimeType);
       chunks.push(chunkBlob);
-      this._emitSafe('audio:chunkCreated', { index: chunkIndex, size: chunkBlob.size, timestamp: Date.now() });
+      this._emitSafe('audio:chunkCreated', {
+        index: chunkIndex,
+        size: chunkBlob.size,
+        timestamp: Date.now()
+      });
 
       this._logger.debug(
         `Created chunk ${chunkIndex + 1}: ${AudioUtils.getBlobSizeMB(chunkBlob)}MB`
@@ -204,9 +214,15 @@ class AudioChunker {
     }
 
     const totalSize = recordingChunks.reduce((sum, c) => sum + c.size, 0);
-    this._logger.debug(`splitFromChunks called: ${recordingChunks.length} chunks, total ${(totalSize / 1024 / 1024).toFixed(2)}MB, mimeType: ${mimeType}`);
+    this._logger.debug(
+      `splitFromChunks called: ${recordingChunks.length} chunks, total ${(totalSize / 1024 / 1024).toFixed(2)}MB, mimeType: ${mimeType}`
+    );
     this._logger.debug(`Processing ${recordingChunks.length} recording chunks`);
-    this._emitSafe('audio:chunkingStarted', { totalSize, estimatedChunks: recordingChunks.length, timestamp: Date.now() });
+    this._emitSafe('audio:chunkingStarted', {
+      totalSize,
+      estimatedChunks: recordingChunks.length,
+      timestamp: Date.now()
+    });
 
     const resultChunks = [];
     let currentGroup = [];
@@ -245,7 +261,10 @@ class AudioChunker {
     }
 
     this._logger.log(`Grouped ${recordingChunks.length} chunks into ${resultChunks.length} blobs`);
-    this._emitSafe('audio:chunkingComplete', { chunkCount: resultChunks.length, timestamp: Date.now() });
+    this._emitSafe('audio:chunkingComplete', {
+      chunkCount: resultChunks.length,
+      timestamp: Date.now()
+    });
     return resultChunks;
   }
 
@@ -319,7 +338,9 @@ class AudioChunker {
    * @returns {Promise<Array<Blob>>} Array of overlapping audio blob chunks
    */
   async splitWithOverlap(audioBlob, overlapBytes = 0) {
-    this._logger.debug(`splitWithOverlap called: ${audioBlob?.size ? AudioUtils.getBlobSizeMB(audioBlob) + 'MB' : 'invalid'}, overlap: ${overlapBytes} bytes`);
+    this._logger.debug(
+      `splitWithOverlap called: ${audioBlob?.size ? `${AudioUtils.getBlobSizeMB(audioBlob)  }MB` : 'invalid'}, overlap: ${overlapBytes} bytes`
+    );
 
     if (!audioBlob || !(audioBlob instanceof Blob)) {
       throw new Error('Invalid audio blob provided');

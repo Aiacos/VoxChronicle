@@ -18,16 +18,23 @@ vi.hoisted(() => {
         this.rendered = false;
         this._element = null;
       }
-      render() { this.rendered = true; return this; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      render() {
+        this.rendered = true;
+        return this;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -85,7 +92,10 @@ vi.mock('../../scripts/core/VocabularyDictionary.mjs', () => ({
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { VocabularyManager } from '../../scripts/ui/VocabularyManager.mjs';
-import { VocabularyDictionary, VocabularyCategory } from '../../scripts/core/VocabularyDictionary.mjs';
+import {
+  VocabularyDictionary,
+  VocabularyCategory
+} from '../../scripts/core/VocabularyDictionary.mjs';
 
 describe('VocabularyManager', () => {
   let manager;
@@ -183,7 +193,7 @@ describe('VocabularyManager', () => {
 
     it('should include all category types', async () => {
       const ctx = await manager._prepareContext();
-      const ids = ctx.categories.map(c => c.id);
+      const ids = ctx.categories.map((c) => c.id);
       expect(ids).toContain('character_names');
       expect(ids).toContain('location_names');
       expect(ids).toContain('items');
@@ -193,7 +203,7 @@ describe('VocabularyManager', () => {
 
     it('should include category icons', async () => {
       const ctx = await manager._prepareContext();
-      ctx.categories.forEach(cat => {
+      ctx.categories.forEach((cat) => {
         expect(cat.icon).toBeDefined();
         expect(typeof cat.icon).toBe('string');
       });
@@ -247,7 +257,7 @@ describe('VocabularyManager', () => {
       });
 
       const ctx = await manager._prepareContext();
-      const charCategory = ctx.categories.find(c => c.id === 'character_names');
+      const charCategory = ctx.categories.find((c) => c.id === 'character_names');
       expect(charCategory.terms).toEqual(['Gandalf', 'Frodo']);
     });
   });
@@ -550,9 +560,15 @@ describe('VocabularyManager', () => {
         constructor(data) {
           capturedData = data;
         }
-        render() { return this; }
-        close() { return Promise.resolve(); }
-        static confirm(config) { return Promise.resolve(true); }
+        render() {
+          return this;
+        }
+        close() {
+          return Promise.resolve();
+        }
+        static confirm(config) {
+          return Promise.resolve(true);
+        }
       };
       return { getCapturedData: () => capturedData };
     }
@@ -616,10 +632,7 @@ describe('VocabularyManager', () => {
 
       await importCallback(mockHtml);
 
-      expect(mockDictionary.importDictionary).toHaveBeenCalledWith(
-        '{"items":["Sword"]}',
-        false
-      );
+      expect(mockDictionary.importDictionary).toHaveBeenCalledWith('{"items":["Sword"]}', false);
     });
 
     it('should show warning when textarea is empty', async () => {
@@ -687,10 +700,7 @@ describe('VocabularyManager', () => {
 
       await importCallback(jqueryHtml);
 
-      expect(mockDictionary.importDictionary).toHaveBeenCalledWith(
-        '{"terms":["Fireball"]}',
-        true
-      );
+      expect(mockDictionary.importDictionary).toHaveBeenCalledWith('{"terms":["Fireball"]}', true);
     });
   });
 
@@ -704,9 +714,15 @@ describe('VocabularyManager', () => {
         constructor(data) {
           capturedData = data;
         }
-        render() { return this; }
-        close() { return Promise.resolve(); }
-        static confirm(config) { return Promise.resolve(true); }
+        render() {
+          return this;
+        }
+        close() {
+          return Promise.resolve();
+        }
+        static confirm(config) {
+          return Promise.resolve(true);
+        }
       };
       return { getCapturedData: () => capturedData };
     }
@@ -849,7 +865,7 @@ describe('VocabularyManager', () => {
 
       const suggestions = manager._collectFoundrySuggestions();
 
-      expect(suggestions.character_names.filter(n => n === 'Gandalf')).toHaveLength(1);
+      expect(suggestions.character_names.filter((n) => n === 'Gandalf')).toHaveLength(1);
     });
 
     it('should sort names alphabetically', () => {
@@ -912,7 +928,9 @@ describe('VocabularyManager', () => {
 
     it('should handle errors gracefully', () => {
       game.actors = {
-        forEach: vi.fn(() => { throw new Error('actor error'); })
+        forEach: vi.fn(() => {
+          throw new Error('actor error');
+        })
       };
 
       const suggestions = manager._collectFoundrySuggestions();
@@ -933,9 +951,15 @@ describe('VocabularyManager', () => {
         constructor(data) {
           capturedData = data;
         }
-        render() { return this; }
-        close() { return Promise.resolve(); }
-        static confirm(config) { return Promise.resolve(true); }
+        render() {
+          return this;
+        }
+        close() {
+          return Promise.resolve();
+        }
+        static confirm(config) {
+          return Promise.resolve(true);
+        }
       };
       return { getCapturedData: () => capturedData };
     }
@@ -985,10 +1009,7 @@ describe('VocabularyManager', () => {
       const mockHtml = {
         querySelectorAll: vi.fn((selector) => {
           if (selector === 'input[name="character"]:checked:not(:disabled)') {
-            return [
-              { value: 'Gandalf' },
-              { value: 'Frodo' }
-            ];
+            return [{ value: 'Gandalf' }, { value: 'Frodo' }];
           }
           if (selector === 'input[name="item"]:checked:not(:disabled)') {
             return [];
@@ -1024,10 +1045,7 @@ describe('VocabularyManager', () => {
         querySelectorAll: vi.fn((selector) => {
           if (selector === 'input[name="character"]:checked:not(:disabled)') return [];
           if (selector === 'input[name="item"]:checked:not(:disabled)') {
-            return [
-              { value: 'Sword' },
-              { value: 'Shield' }
-            ];
+            return [{ value: 'Sword' }, { value: 'Shield' }];
           }
           return [];
         })
@@ -1149,9 +1167,7 @@ describe('VocabularyManager', () => {
         { checked: false, disabled: false },
         { checked: false, disabled: false }
       ];
-      const itemCheckboxes = [
-        { checked: false, disabled: false }
-      ];
+      const itemCheckboxes = [{ checked: false, disabled: false }];
       let selectAllCharsHandler = null;
       let selectAllItemsHandler = null;
 

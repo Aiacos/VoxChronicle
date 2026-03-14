@@ -12,17 +12,25 @@ vi.hoisted(() => {
     class MockAppV2 {
       static DEFAULT_OPTIONS = {};
       static PARTS = {};
-      constructor() { this.rendered = false; }
-      render() { this.rendered = true; }
-      close() { this.rendered = false; return Promise.resolve(); }
+      constructor() {
+        this.rendered = false;
+      }
+      render() {
+        this.rendered = true;
+      }
+      close() {
+        this.rendered = false;
+        return Promise.resolve();
+      }
     }
     globalThis.foundry = {
       applications: {
         api: {
           ApplicationV2: MockAppV2,
-          HandlebarsApplicationMixin: (Base) => class extends Base {
-            static PARTS = {};
-          }
+          HandlebarsApplicationMixin: (Base) =>
+            class extends Base {
+              static PARTS = {};
+            }
         }
       },
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
@@ -36,7 +44,7 @@ vi.hoisted(() => {
         register: vi.fn()
       },
       i18n: {
-        localize: vi.fn(key => key),
+        localize: vi.fn((key) => key),
         format: vi.fn((key, data) => key)
       },
       user: { isGM: true }
@@ -47,7 +55,10 @@ vi.hoisted(() => {
   }
 });
 
-import { SessionOrchestrator, SessionState } from '../../scripts/orchestration/SessionOrchestrator.mjs';
+import {
+  SessionOrchestrator,
+  SessionState
+} from '../../scripts/orchestration/SessionOrchestrator.mjs';
 
 // ---------------------------------------------------------------------------
 // Mock factories (same patterns as unit tests, but designed for workflow chains)
@@ -70,7 +81,12 @@ function createMockTranscriptionService(overrides = {}) {
     transcribe: vi.fn().mockResolvedValue({
       text: 'The wizard Gandalf arrived at the Shire with a ring of power.',
       segments: [
-        { speaker: 'SPEAKER_00', text: 'The wizard Gandalf arrived at the Shire', start: 0, end: 3 },
+        {
+          speaker: 'SPEAKER_00',
+          text: 'The wizard Gandalf arrived at the Shire',
+          start: 0,
+          end: 3
+        },
         { speaker: 'SPEAKER_01', text: 'with a ring of power.', start: 3, end: 5 }
       ],
       language: 'en'
@@ -82,15 +98,11 @@ function createMockTranscriptionService(overrides = {}) {
 function createMockEntityExtractor(overrides = {}) {
   return {
     extractAll: vi.fn().mockResolvedValue({
-      characters: [
-        { name: 'Gandalf', description: 'A powerful wizard', type: 'character' }
-      ],
+      characters: [{ name: 'Gandalf', description: 'A powerful wizard', type: 'character' }],
       locations: [
         { name: 'The Shire', description: 'A green and peaceful land', type: 'location' }
       ],
-      items: [
-        { name: 'Ring of Power', description: 'A ring of immense power', type: 'item' }
-      ],
+      items: [{ name: 'Ring of Power', description: 'A ring of immense power', type: 'item' }],
       moments: [
         { id: 'm1', title: 'Gandalf arrives', imagePrompt: 'wizard arriving at green hills' }
       ],
@@ -106,9 +118,9 @@ function createMockEntityExtractor(overrides = {}) {
 
 function createMockImageGenerationService(overrides = {}) {
   return {
-    generateBatch: vi.fn().mockResolvedValue([
-      { success: true, imageData: 'base64-image-data', momentId: 'm1' }
-    ]),
+    generateBatch: vi
+      .fn()
+      .mockResolvedValue([{ success: true, imageData: 'base64-image-data', momentId: 'm1' }]),
     ...overrides
   };
 }
@@ -272,7 +284,7 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       await orchestrator.processTranscription();
 
       // Verify the state machine transitions
-      const states = stateTransitions.map(t => t.to);
+      const states = stateTransitions.map((t) => t.to);
       expect(states).toContain(SessionState.RECORDING);
       expect(states).toContain(SessionState.PROCESSING);
       expect(states).toContain(SessionState.EXTRACTING);
@@ -432,13 +444,16 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
   describe('Live mode cross-service interactions', () => {
     it('should start all live mode services in correct order', async () => {
       const callOrder = [];
-      services.sessionAnalytics.startSession.mockImplementation(() => callOrder.push('analytics.start'));
+      services.sessionAnalytics.startSession.mockImplementation(() =>
+        callOrder.push('analytics.start')
+      );
       services.audioRecorder.startRecording.mockImplementation(() => {
         callOrder.push('recorder.start');
         return Promise.resolve();
       });
       services.aiAssistant.setOnAutonomousSuggestionCallback.mockImplementation(() =>
-        callOrder.push('ai.setCallback'));
+        callOrder.push('ai.setCallback')
+      );
       services.aiAssistant.startSilenceMonitoring.mockImplementation(() => {
         callOrder.push('ai.startSilence');
         return true;
@@ -452,7 +467,9 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       expect(callOrder).toContain('ai.startSilence');
 
       // Analytics should start before recorder
-      expect(callOrder.indexOf('analytics.start')).toBeLessThan(callOrder.indexOf('recorder.start'));
+      expect(callOrder.indexOf('analytics.start')).toBeLessThan(
+        callOrder.indexOf('recorder.start')
+      );
       // Recorder starts before AI callback wiring
       expect(callOrder.indexOf('recorder.start')).toBeLessThan(callOrder.indexOf('ai.setCallback'));
     });
@@ -620,7 +637,9 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       // Entity extraction failed, but pipeline continued
       expect(orchestrator.currentSession.entities).toBeNull();
       expect(orchestrator.currentSession.errors.length).toBeGreaterThan(0);
-      const extractionError = orchestrator.currentSession.errors.find(e => e.stage === 'extraction');
+      const extractionError = orchestrator.currentSession.errors.find(
+        (e) => e.stage === 'extraction'
+      );
       expect(extractionError).toBeTruthy();
 
       // Final state should still be COMPLETE (not ERROR)
@@ -660,7 +679,9 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       const onError = vi.fn();
       orchestrator.setCallbacks({ onError });
 
-      await expect(orchestrator.stopSession()).rejects.toThrow('MediaRecorder not in recording state');
+      await expect(orchestrator.stopSession()).rejects.toThrow(
+        'MediaRecorder not in recording state'
+      );
       expect(onError).toHaveBeenCalledWith(expect.any(Error), 'stopSession');
       expect(orchestrator.state).toBe(SessionState.ERROR);
     });
@@ -693,7 +714,7 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       expect(orchestrator.currentSession.errors.length).toBeGreaterThanOrEqual(1);
 
       // Errors from different stages should be preserved
-      const stages = orchestrator.currentSession.errors.map(e => e.stage);
+      const stages = orchestrator.currentSession.errors.map((e) => e.stage);
       expect(stages).toContain('extraction');
     });
   });
@@ -852,14 +873,16 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       const callOrder = [];
 
       // Track call order via mock implementations
-      orchestrator._transcriptionProcessor.processTranscription = vi.fn().mockImplementation(async () => {
-        callOrder.push('transcribe');
-        return {
-          text: 'Test text',
-          segments: [{ text: 'Test text', speaker: 'SPEAKER_00', start: 0, end: 1 }],
-          language: 'en'
-        };
-      });
+      orchestrator._transcriptionProcessor.processTranscription = vi
+        .fn()
+        .mockImplementation(async () => {
+          callOrder.push('transcribe');
+          return {
+            text: 'Test text',
+            segments: [{ text: 'Test text', speaker: 'SPEAKER_00', start: 0, end: 1 }],
+            language: 'en'
+          };
+        });
 
       orchestrator._entityProcessor.extractAll = vi.fn().mockImplementation(async () => {
         callOrder.push('extractEntities');
@@ -981,7 +1004,11 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
 
       // Failure during start
       services.audioRecorder.startRecording.mockRejectedValueOnce(new Error('Start fail'));
-      try { await orchestrator.startSession(); } catch { /* expected */ }
+      try {
+        await orchestrator.startSession();
+      } catch {
+        /* expected */
+      }
       expect(errors).toHaveLength(1);
       expect(errors[0]).toEqual({ message: 'Start fail', stage: 'startSession' });
     });
@@ -1005,7 +1032,7 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
       await orchestrator._liveCycle();
 
       // Should transition through LIVE_TRANSCRIBING -> LIVE_ANALYZING -> LIVE_LISTENING
-      const states = transitions.map(t => t.to);
+      const states = transitions.map((t) => t.to);
       expect(states).toContain(SessionState.LIVE_TRANSCRIBING);
       expect(states).toContain(SessionState.LIVE_ANALYZING);
       expect(states).toContain(SessionState.LIVE_LISTENING);
@@ -1227,7 +1254,9 @@ describe('Streaming & cycle-in-flight integration (06-03)', () => {
 
   it('should inject cycle-in-flight guard into SilenceMonitor', async () => {
     await orchestrator.startLiveMode({ batchDuration: 999999 });
-    expect(services.aiAssistant._silenceMonitor.setIsCycleInFlightFn).toHaveBeenCalledWith(expect.any(Function));
+    expect(services.aiAssistant._silenceMonitor.setIsCycleInFlightFn).toHaveBeenCalledWith(
+      expect.any(Function)
+    );
   });
 
   it('should fire onStreamToken and onStreamComplete callbacks', async () => {

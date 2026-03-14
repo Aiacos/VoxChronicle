@@ -35,7 +35,7 @@ class AudioRecorder {
   _state = RecordingState.INACTIVE;
 
   _audioChunks = []; // Full session storage (all chunks across rotations)
-  _liveBuffer = [];  // Current active recorder's buffer (reset on rotation)
+  _liveBuffer = []; // Current active recorder's buffer (reset on rotation)
 
   _totalActiveMs = 0;
   _lastStartTime = null;
@@ -79,7 +79,7 @@ class AudioRecorder {
   /** @type {object} */
   _options = {};
 
-  /** @type {Object|null} EventBus instance for emitting events (optional) */
+  /** @type {object | null} EventBus instance for emitting events (optional) */
   _eventBus = null;
 
   /** @type {Array} Web Audio source nodes for WebRTC peer streams */
@@ -94,7 +94,7 @@ class AudioRecorder {
    * @param {boolean} [options.echoCancellation=true] - Enable echo cancellation.
    * @param {boolean} [options.noiseSuppression=true] - Enable noise suppression.
    * @param {string} [options.deviceId] - Specific audio input device ID.
-   * @param {Object} [options.eventBus] - EventBus instance for emitting events.
+   * @param {object} [options.eventBus] - EventBus instance for emitting events.
    */
   constructor(options = {}) {
     this._eventBus = options.eventBus ?? null;
@@ -106,7 +106,7 @@ class AudioRecorder {
    * Emit an event on the EventBus, swallowing any errors to prevent
    * bus failures from breaking recording functionality.
    * @param {string} event - Event name (e.g. 'audio:recordingStarted')
-   * @param {Object} payload - Event payload
+   * @param {object} payload - Event payload
    * @private
    */
   _emitSafe(event, payload) {
@@ -136,13 +136,17 @@ class AudioRecorder {
    * Current recording state.
    * @returns {string} One of RecordingState values.
    */
-  get state() { return this._state; }
+  get state() {
+    return this._state;
+  }
 
   /**
    * Whether the recorder is actively recording.
    * @returns {boolean}
    */
-  get isRecording() { return this._state === RecordingState.RECORDING; }
+  get isRecording() {
+    return this._state === RecordingState.RECORDING;
+  }
 
   /**
    * Total active recording duration in seconds (excludes paused time).
@@ -150,9 +154,10 @@ class AudioRecorder {
    */
   get duration() {
     if (!this._lastStartTime && this._totalActiveMs === 0) return 0;
-    const current = (this._state === RecordingState.RECORDING && this._lastStartTime)
-      ? (Date.now() - this._lastStartTime)
-      : 0;
+    const current =
+      this._state === RecordingState.RECORDING && this._lastStartTime
+        ? Date.now() - this._lastStartTime
+        : 0;
     return Math.floor((this._totalActiveMs + current) / 1000);
   }
 
@@ -160,7 +165,9 @@ class AudioRecorder {
    * Register callback functions for recorder events.
    * @param {object} callbacks - Callback map (onDataAvailable, onError, onStateChange, onLevelChange).
    */
-  setCallbacks(callbacks) { this._callbacks = { ...this._callbacks, ...callbacks }; }
+  setCallbacks(callbacks) {
+    this._callbacks = { ...this._callbacks, ...callbacks };
+  }
 
   /**
    * Start recording audio from the user's microphone.
@@ -337,12 +344,7 @@ class AudioRecorder {
       this._logger.warn(`Preferred codec "${preferred}" not supported, auto-detecting`);
     }
 
-    const codecs = [
-      'audio/webm;codecs=opus',
-      'audio/mp4;codecs=aac',
-      'audio/mp4',
-      'audio/wav'
-    ];
+    const codecs = ['audio/webm;codecs=opus', 'audio/mp4;codecs=aac', 'audio/mp4', 'audio/wav'];
     for (const codec of codecs) {
       if (MediaRecorder.isTypeSupported(codec)) {
         this._logger.debug(`Auto-detected codec: ${codec}`);
@@ -440,7 +442,9 @@ class AudioRecorder {
           this._rotationResolve = null;
           oldRecorder.onstop = null;
           oldRecorder.onerror = null;
-          try { oldRecorder.stop(); } catch (e) {
+          try {
+            oldRecorder.stop();
+          } catch (e) {
             this._logger.debug('Best-effort stop during rotation timeout:', e.message);
           }
           reject(new Error('Chunk rotation timed out'));
@@ -461,7 +465,10 @@ class AudioRecorder {
           this._pendingOldRecorder = null;
           this._rotationResolve = null;
           this._logger.error('Old recorder error during rotation:', event.error);
-          this._callbackSafe('onError', event.error || new Error('MediaRecorder error during rotation'));
+          this._callbackSafe(
+            'onError',
+            event.error || new Error('MediaRecorder error during rotation')
+          );
           resolve(null);
         };
 
@@ -506,13 +513,17 @@ class AudioRecorder {
     this._abortPendingRotation();
 
     this._stopLevelMonitoring();
-    if (this._lastStartTime) this._totalActiveMs += (Date.now() - this._lastStartTime);
+    if (this._lastStartTime) this._totalActiveMs += Date.now() - this._lastStartTime;
 
     const mimeType = this._mediaRecorder?.mimeType; // capture before cleanup
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        this._emitSafe('audio:recordingStopped', { state: RecordingState.INACTIVE, error: 'timeout', timestamp: Date.now() });
+        this._emitSafe('audio:recordingStopped', {
+          state: RecordingState.INACTIVE,
+          error: 'timeout',
+          timestamp: Date.now()
+        });
         this._cleanup();
         reject(new Error('Stop recording timed out'));
       }, 5000);
@@ -522,13 +533,21 @@ class AudioRecorder {
         const fullBlob = new Blob(this._audioChunks, { type: mimeType });
         this.clearPersistedChunks();
         this._cleanup();
-        this._emitSafe('audio:recordingStopped', { state: RecordingState.INACTIVE, size: fullBlob.size, timestamp: Date.now() });
+        this._emitSafe('audio:recordingStopped', {
+          state: RecordingState.INACTIVE,
+          size: fullBlob.size,
+          timestamp: Date.now()
+        });
         resolve(fullBlob);
       };
 
       this._mediaRecorder.onerror = (event) => {
         clearTimeout(timeout);
-        this._emitSafe('audio:recordingStopped', { state: RecordingState.INACTIVE, error: event.error?.message || 'unknown', timestamp: Date.now() });
+        this._emitSafe('audio:recordingStopped', {
+          state: RecordingState.INACTIVE,
+          error: event.error?.message || 'unknown',
+          timestamp: Date.now()
+        });
         this._cleanup();
         reject(event.error || new Error('MediaRecorder error during stop'));
       };
@@ -548,7 +567,7 @@ class AudioRecorder {
    */
   pause() {
     if (this._state !== RecordingState.RECORDING) return;
-    this._totalActiveMs += (Date.now() - this._lastStartTime);
+    this._totalActiveMs += Date.now() - this._lastStartTime;
     this._lastStartTime = null;
     this._mediaRecorder.pause();
     this._state = RecordingState.PAUSED;
@@ -577,7 +596,9 @@ class AudioRecorder {
     if (this._state === RecordingState.INACTIVE) return;
     this._stopLevelMonitoring();
     this._abortPendingRotation();
-    try { this._mediaRecorder?.stop(); } catch (e) {
+    try {
+      this._mediaRecorder?.stop();
+    } catch (e) {
       this._logger.debug('MediaRecorder.stop() during cancel:', e.message);
     }
     this.clearPersistedChunks();
@@ -607,7 +628,9 @@ class AudioRecorder {
     if (this._pendingOldRecorder) {
       this._pendingOldRecorder.onstop = null;
       this._pendingOldRecorder.onerror = null;
-      try { this._pendingOldRecorder.stop(); } catch (e) {
+      try {
+        this._pendingOldRecorder.stop();
+      } catch (e) {
         this._logger.debug('Pending old recorder stop during abort:', e.message);
       }
       this._pendingOldRecorder = null;
@@ -710,16 +733,20 @@ class AudioRecorder {
     this._abortPendingRotation();
 
     if (this._mediaRecorder?.state !== 'inactive') {
-      try { this._mediaRecorder.stop(); } catch (e) {
+      try {
+        this._mediaRecorder.stop();
+      } catch (e) {
         this._logger.debug('MediaRecorder.stop() during cleanup:', e.message);
       }
     }
 
-    if (this._stream) this._stream.getTracks().forEach(t => t.stop());
+    if (this._stream) this._stream.getTracks().forEach((t) => t.stop());
 
     // Disconnect WebRTC peer source nodes
     for (const node of this._peerSourceNodes) {
-      try { node.disconnect(); } catch (e) {
+      try {
+        node.disconnect();
+      } catch (e) {
         this._logger.debug('Peer source disconnect during cleanup:', e.message);
       }
     }
@@ -727,7 +754,9 @@ class AudioRecorder {
     this._mixDestination = null;
 
     if (this._audioContext) {
-      try { this._audioContext.close(); } catch (e) {
+      try {
+        this._audioContext.close();
+      } catch (e) {
         this._logger.debug('AudioContext.close() during cleanup:', e.message);
       }
     }
@@ -760,7 +789,9 @@ class AudioRecorder {
       this._analyserNode = this._audioContext.createAnalyser();
       this._analyserNode.fftSize = 256;
       this._sourceNode.connect(this._analyserNode);
-    } catch (e) { this._logger.warn('Audio analysis setup failed:', e); }
+    } catch (e) {
+      this._logger.warn('Audio analysis setup failed:', e);
+    }
   }
 
   /**
@@ -770,9 +801,7 @@ class AudioRecorder {
    */
   _startLevelMonitoring() {
     // Pre-allocate typed array once — reused across all animation frames
-    const data = this._analyserNode
-      ? new Uint8Array(this._analyserNode.frequencyBinCount)
-      : null;
+    const data = this._analyserNode ? new Uint8Array(this._analyserNode.frequencyBinCount) : null;
     const monitor = () => {
       if (this._state === RecordingState.RECORDING && this._analyserNode && data) {
         try {

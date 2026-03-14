@@ -49,7 +49,7 @@ class PromptBuilder {
   /**
    * Creates a new PromptBuilder instance
    *
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} [options={}] - Configuration options
    * @param {string} [options.primaryLanguage='en'] - Primary language code for AI responses
    * @param {string} [options.sensitivity='medium'] - Off-track detection sensitivity ('low', 'medium', 'high')
    */
@@ -77,7 +77,7 @@ class PromptBuilder {
 
     /**
      * Current chapter/scene context for focused analysis
-     * @type {Object|null}
+     * @type {object | null}
      * @private
      */
     this._chapterContext = null;
@@ -98,7 +98,7 @@ class PromptBuilder {
 
     /**
      * NPC profiles for context injection
-     * @type {Array<Object>}
+     * @type {Array<object>}
      * @private
      */
     this._npcProfiles = [];
@@ -148,7 +148,7 @@ class PromptBuilder {
   /**
    * Sets the current chapter/scene context
    *
-   * @param {Object|null} context - The chapter context information
+   * @param {object | null} context - The chapter context information
    */
   setChapterContext(context) {
     this._chapterContext = context;
@@ -193,7 +193,7 @@ class PromptBuilder {
   /**
    * Sets the NPC profiles for context injection into analysis messages
    *
-   * @param {Array<Object>} profiles - Array of NPCProfile objects
+   * @param {Array<object>} profiles - Array of NPCProfile objects
    */
   setNPCProfiles(profiles) {
     this._npcProfiles = profiles || [];
@@ -236,7 +236,9 @@ class PromptBuilder {
     if (['low', 'medium', 'high'].includes(sensitivity)) {
       this._sensitivity = sensitivity;
     } else {
-      this._logger.warn(`Invalid sensitivity value "${sensitivity}", keeping current: "${this._sensitivity}"`);
+      this._logger.warn(
+        `Invalid sensitivity value "${sensitivity}", keeping current: "${this._sensitivity}"`
+      );
     }
   }
 
@@ -271,7 +273,9 @@ class PromptBuilder {
     };
 
     if (this._primaryLanguage && !languageNames[this._primaryLanguage]) {
-      this._logger.warn(`Unrecognized language code "${this._primaryLanguage}", falling back to English for AI responses`);
+      this._logger.warn(
+        `Unrecognized language code "${this._primaryLanguage}", falling back to English for AI responses`
+      );
     }
     const responseLang = languageNames[this._primaryLanguage] || languageNames['en'];
 
@@ -281,9 +285,10 @@ class PromptBuilder {
 
     const sensitivitySection = `\n\nOFF-TRACK SENSITIVITY: ${sensitivityGuide[this._sensitivity] || sensitivityGuide['medium']}`;
 
-    const sceneSection = this._sceneType && this._sceneType !== 'unknown'
-      ? `\n\nCURRENT SCENE TYPE: ${this._sceneType}. Adapt your suggestions to this context (e.g., tactical advice for combat, NPC interaction for social, discovery for exploration, downtime for rest).`
-      : '';
+    const sceneSection =
+      this._sceneType && this._sceneType !== 'unknown'
+        ? `\n\nCURRENT SCENE TYPE: ${this._sceneType}. Adapt your suggestions to this context (e.g., tactical advice for combat, NPC interaction for social, discovery for exploration, downtime for rest).`
+        : '';
 
     return `You are an expert assistant for Dungeon Masters (GMs) in fantasy tabletop RPGs.
 Your SOLE purpose is to help the GM during game sessions.
@@ -338,7 +343,8 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
     let requestContent = `Analyze this session transcription:\n\n"${transcription}"\n\n`;
 
     const sourceSchema = ', "source": {"chapter": "...", "page": "...", "journalName": "..."}';
-    const sourceInstruction = '\n\nIMPORTANT: Every suggestion MUST include a "source" field citing the specific chapter and page from the provided context. Use format "[Source: Chapter > Page]" inline in the suggestion text as well.';
+    const sourceInstruction =
+      '\n\nIMPORTANT: Every suggestion MUST include a "source" field citing the specific chapter and page from the provided context. Use format "[Source: Chapter > Page]" inline in the suggestion text as well.';
 
     if (includeSuggestions && checkOffTrack) {
       requestContent += `Respond in JSON format with this structure:
@@ -363,13 +369,15 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
     }
 
     // --- Calculate fixed overhead ---
-    const fixedTokens = this._estimateTokens(systemPromptContent) + this._estimateTokens(requestContent);
+    const fixedTokens =
+      this._estimateTokens(systemPromptContent) + this._estimateTokens(requestContent);
     const effectiveBudget = Math.floor(this._tokenBudget * 0.9);
     let remainingBudget = effectiveBudget - fixedTokens;
 
     // --- Build variable components in priority order (highest first) ---
     // Priority: adventure context > verbatim turns > rolling summary > NPC profiles > next chapter
-    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
+    const context =
+      ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
 
     const variableComponents = [];
 
@@ -386,7 +394,7 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
     if (historyEntries.length > 0) {
       variableComponents.push({
         key: 'verbatim-turns',
-        messages: historyEntries.map(entry => ({ ...entry }))
+        messages: historyEntries.map((entry) => ({ ...entry }))
       });
     }
 
@@ -394,13 +402,16 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
     if (this._rollingSummary) {
       variableComponents.push({
         key: 'rolling-summary',
-        message: { role: 'system', content: `SESSION HISTORY (summarized):\n${this._rollingSummary}` }
+        message: {
+          role: 'system',
+          content: `SESSION HISTORY (summarized):\n${this._rollingSummary}`
+        }
       });
     }
 
     // 4. NPC profiles
     if (this._npcProfiles.length > 0) {
-      const npcLines = this._npcProfiles.map(profile => {
+      const npcLines = this._npcProfiles.map((profile) => {
         let line = `- **${profile.name}** (${profile.role}): ${profile.personality}. Motivation: ${profile.motivation}. [${profile.chapterLocation}]`;
         if (profile.sessionNotes && profile.sessionNotes.length > 0) {
           line += `\n  Session notes: ${profile.sessionNotes.join('; ')}`;
@@ -409,7 +420,10 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
       });
       variableComponents.push({
         key: 'npc-profiles',
-        message: { role: 'system', content: `ACTIVE NPC PROFILES (mentioned in current conversation):\n${npcLines.join('\n')}\n\nUse these profiles to inform your suggestions. Reference NPCs by name with their personality and motivation.` }
+        message: {
+          role: 'system',
+          content: `ACTIVE NPC PROFILES (mentioned in current conversation):\n${npcLines.join('\n')}\n\nUse these profiles to inform your suggestions. Reference NPCs by name with their personality and motivation.`
+        }
       });
     }
 
@@ -417,7 +431,10 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
     if (this._nextChapterLookahead) {
       variableComponents.push({
         key: 'next-chapter',
-        message: { role: 'system', content: `UPCOMING CONTENT (next chapter preview - DM eyes only):\n${this._nextChapterLookahead}\n\nYou may subtly weave foreshadowing seeds from this content into your suggestions, framed as DM-only hints the DM can choose to use.` }
+        message: {
+          role: 'system',
+          content: `UPCOMING CONTENT (next chapter preview - DM eyes only):\n${this._nextChapterLookahead}\n\nYou may subtly weave foreshadowing seeds from this content into your suggestions, framed as DM-only hints the DM can choose to use.`
+        }
       });
     }
 
@@ -427,7 +444,10 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
     for (const component of variableComponents) {
       let componentTokens;
       if (component.messages) {
-        componentTokens = component.messages.reduce((sum, m) => sum + this._estimateTokens(m.content), 0);
+        componentTokens = component.messages.reduce(
+          (sum, m) => sum + this._estimateTokens(m.content),
+          0
+        );
       } else {
         componentTokens = this._estimateTokens(component.message.content);
       }
@@ -436,7 +456,9 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
         includedComponents.push(component);
         remainingBudget -= componentTokens;
       } else {
-        this._logger.debug(`Token budget: dropping ${component.key} (${componentTokens} tokens, ${remainingBudget} remaining)`);
+        this._logger.debug(
+          `Token budget: dropping ${component.key} (${componentTokens} tokens, ${remainingBudget} remaining)`
+        );
       }
     }
 
@@ -464,12 +486,11 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
    * @returns {Array<{role: string, content: string}>} The messages array
    */
   buildOffTrackMessages(transcription, ragContext) {
-    const messages = [
-      { role: 'system', content: this.buildSystemPrompt() }
-    ];
+    const messages = [{ role: 'system', content: this.buildSystemPrompt() }];
 
     // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
+    const context =
+      ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
 
     if (context) {
       messages.push({
@@ -504,12 +525,11 @@ Respond in JSON format:
    * @returns {Array<{role: string, content: string}>} The messages array
    */
   buildSuggestionMessages(transcription, maxSuggestions, ragContext) {
-    const messages = [
-      { role: 'system', content: this.buildSystemPrompt() }
-    ];
+    const messages = [{ role: 'system', content: this.buildSystemPrompt() }];
 
     // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
+    const context =
+      ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
 
     if (context) {
       messages.push({
@@ -548,12 +568,11 @@ Respond in JSON format:
    * @returns {Array<{role: string, content: string}>} The messages array
    */
   buildNarrativeBridgeMessages(currentSituation, targetScene, ragContext) {
-    const messages = [
-      { role: 'system', content: this.buildSystemPrompt() }
-    ];
+    const messages = [{ role: 'system', content: this.buildSystemPrompt() }];
 
     // Use RAG context if provided, otherwise fall back to truncated adventure context
-    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
+    const context =
+      ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
 
     if (context) {
       messages.push({
@@ -585,9 +604,7 @@ Write a brief narration (2-3 sentences) that the DM can use to gently guide the 
    * @returns {Array<{role: string, content: string}>} The messages array
    */
   buildNPCDialogueMessages(npcName, npcContext, transcription, maxOptions) {
-    const messages = [
-      { role: 'system', content: this.buildSystemPrompt() }
-    ];
+    const messages = [{ role: 'system', content: this.buildSystemPrompt() }];
 
     if (npcContext) {
       messages.push({
@@ -623,12 +640,11 @@ Respond in JSON format:
    * @returns {Array<{role: string, content: string}>} The messages array
    */
   buildAutonomousSuggestionMessages(contextQuery, ragContext) {
-    const messages = [
-      { role: 'system', content: this.buildSystemPrompt() }
-    ];
+    const messages = [{ role: 'system', content: this.buildSystemPrompt() }];
 
     // Use RAG context if provided, otherwise fall back to adventure context
-    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
+    const context =
+      ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
 
     if (context) {
       messages.push({
@@ -690,7 +706,7 @@ Respond in JSON format:
       return context;
     }
 
-    return context.substring(0, maxChars) + '\n\n[... content truncated ...]';
+    return `${context.substring(0, maxChars)  }\n\n[... content truncated ...]`;
   }
 
   /**
@@ -715,8 +731,8 @@ Respond in JSON format:
 
     if (this._chapterContext.pageReferences && this._chapterContext.pageReferences.length > 0) {
       const refs = this._chapterContext.pageReferences
-        .filter(ref => ref.pageName)
-        .map(ref => {
+        .filter((ref) => ref.pageName)
+        .map((ref) => {
           if (ref.journalName) {
             return `"${ref.pageName}" (${ref.journalName})`;
           }

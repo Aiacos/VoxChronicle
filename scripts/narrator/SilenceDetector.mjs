@@ -32,7 +32,7 @@ const MAX_THRESHOLD_MS = 120000;
 
 /**
  * Represents the data passed to the silence callback
- * @typedef {Object} SilenceEvent
+ * @typedef {object} SilenceEvent
  * @property {number} silenceDurationMs - Duration of silence in milliseconds
  * @property {number} lastActivityTime - Timestamp of the last recorded activity
  * @property {number} silenceCount - Number of silence events since start
@@ -74,7 +74,7 @@ class SilenceDetector {
   /**
    * Creates a new SilenceDetector instance
    *
-   * @param {Object} [options={}] - Configuration options
+   * @param {object} [options={}] - Configuration options
    * @param {number} [options.thresholdMs=30000] - Silence threshold in milliseconds (10000-120000)
    * @param {SilenceCallback} [options.onSilence] - Callback function invoked when silence is detected
    * @param {boolean} [options.autoRestart=true] - Whether to automatically restart timer after silence event
@@ -300,7 +300,7 @@ class SilenceDetector {
   /**
    * Gets statistics about the current monitoring session
    *
-   * @returns {Object} Session statistics
+   * @returns {object} Session statistics
    * @returns {boolean} returns.isEnabled - Whether monitoring is active
    * @returns {number} returns.thresholdMs - Current threshold in milliseconds
    * @returns {number} returns.silenceCount - Number of silence events detected
@@ -390,7 +390,9 @@ class SilenceDetector {
     this._silenceCount++;
     this._isProcessingSilence = true;
 
-    this._logger.info(`Silence detected after ${silenceDurationMs}ms (event #${this._silenceCount})`);
+    this._logger.info(
+      `Silence detected after ${silenceDurationMs}ms (event #${this._silenceCount})`
+    );
 
     // Invoke callback if registered
     if (this._onSilenceCallback) {
@@ -402,7 +404,9 @@ class SilenceDetector {
         };
         const result = this._onSilenceCallback(event);
         if (result && typeof result.catch === 'function') {
-          result.catch(err => this._logger.error('Error in async silence callback:', err.message));
+          result.catch((err) =>
+            this._logger.error('Error in async silence callback:', err.message)
+          );
         }
       } catch (error) {
         this._logger.error('Error in silence callback:', error.message);
@@ -451,9 +455,4 @@ class SilenceDetector {
   }
 }
 
-export {
-  SilenceDetector,
-  DEFAULT_THRESHOLD_MS,
-  MIN_THRESHOLD_MS,
-  MAX_THRESHOLD_MS
-};
+export { SilenceDetector, DEFAULT_THRESHOLD_MS, MIN_THRESHOLD_MS, MAX_THRESHOLD_MS };

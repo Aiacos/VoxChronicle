@@ -94,7 +94,7 @@ class NarrativeExporter {
 
   /**
    * ChatProvider for AI-enhanced summaries (preferred)
-   * @type {Object|null}
+   * @type {object | null}
    * @private
    */
   _chatProvider = null;
@@ -115,7 +115,7 @@ class NarrativeExporter {
    * @param {string} [options.defaultFormat='full'] - Default chronicle format
    * @param {string} [options.openAIApiKey] - OpenAI API key for AI-enhanced summaries
    * @param {OpenAIClient} [options.openAIClient] - Existing OpenAI client instance (fallback)
-   * @param {Object} [options.chatProvider] - ChatProvider instance (preferred over openAIClient)
+   * @param {object} [options.chatProvider] - ChatProvider instance (preferred over openAIClient)
    */
   constructor(options = {}) {
     this._campaignName = options.campaignName || '';
@@ -289,7 +289,9 @@ class NarrativeExporter {
       summary = `${summary.substring(0, maxLength - 3)}...`;
     }
 
-    this._logger.debug(`generateSummary: produced ${summary.length} chars from ${segments.length} segments`);
+    this._logger.debug(
+      `generateSummary: produced ${summary.length} chars from ${segments.length} segments`
+    );
     return summary;
   }
 
@@ -383,7 +385,7 @@ class NarrativeExporter {
       this._logger.error('AI summary generation failed:', error.message);
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.AISummaryFailed') ||
-        'VoxChronicle: AI summary failed. Using basic summary instead.'
+          'VoxChronicle: AI summary failed. Using basic summary instead.'
       );
 
       // Fall back to basic summary on error
@@ -491,7 +493,9 @@ class NarrativeExporter {
    * @returns {KankaJournalData} Data ready for KankaService.createJournal()
    */
   export(sessionData, options = {}) {
-    this._logger.debug(`export: title="${sessionData?.title}", format=${options.format || this._defaultFormat}, style=${options.style || this._defaultStyle}`);
+    this._logger.debug(
+      `export: title="${sessionData?.title}", format=${options.format || this._defaultFormat}, style=${options.style || this._defaultStyle}`
+    );
     const chronicle = this.formatChronicle(sessionData, options);
 
     this._logger.debug(`export: produced entry of ${chronicle.entry?.length || 0} chars`);
@@ -562,7 +566,9 @@ class NarrativeExporter {
       return '';
     }
 
-    this._logger.debug(`formatTranscript: ${segments.length} segments, timestamps=${options.includeTimestamps ?? false}, groupBySpeaker=${options.groupBySpeaker ?? true}`);
+    this._logger.debug(
+      `formatTranscript: ${segments.length} segments, timestamps=${options.includeTimestamps ?? false}, groupBySpeaker=${options.groupBySpeaker ?? true}`
+    );
     const includeTimestamps = options.includeTimestamps ?? false;
     const groupBySpeaker = options.groupBySpeaker ?? true;
 

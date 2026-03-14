@@ -82,7 +82,11 @@ class TranscriptionFactory {
    * });
    */
   static async create(config) {
-    this._logger.debug('create called', { mode: config?.mode, hasProvider: Boolean(config?.provider), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
+    this._logger.debug('create called', {
+      mode: config?.mode,
+      hasProvider: Boolean(config?.provider),
+      hasBackendUrl: Boolean(config?.whisperBackendUrl)
+    });
     const t0 = Date.now();
 
     if (!config || typeof config !== 'object') {
@@ -114,7 +118,9 @@ class TranscriptionFactory {
         break;
     }
 
-    this._logger.debug(`create completed in ${Date.now() - t0}ms, service: ${service.constructor.name}`);
+    this._logger.debug(
+      `create completed in ${Date.now() - t0}ms, service: ${service.constructor.name}`
+    );
     return service;
   }
 
@@ -234,7 +240,9 @@ class TranscriptionFactory {
     try {
       const localService = new LocalWhisperService(backendUrl);
       const result = await localService.healthCheck(options);
-      this._logger.debug(`checkLocalBackend completed in ${Date.now() - t0}ms`, { healthy: result });
+      this._logger.debug(`checkLocalBackend completed in ${Date.now() - t0}ms`, {
+        healthy: result
+      });
       return result;
     } catch (error) {
       this._logger.debug(`Backend check failed after ${Date.now() - t0}ms: ${error.message}`);
@@ -258,7 +266,11 @@ class TranscriptionFactory {
    * // Returns 'auto' since both are available
    */
   static getRecommendedMode(config) {
-    this._logger.debug('getRecommendedMode called', { hasApiKey: Boolean(config?.openaiApiKey), hasProvider: Boolean(config?.provider), hasBackendUrl: Boolean(config?.whisperBackendUrl) });
+    this._logger.debug('getRecommendedMode called', {
+      hasApiKey: Boolean(config?.openaiApiKey),
+      hasProvider: Boolean(config?.provider),
+      hasBackendUrl: Boolean(config?.whisperBackendUrl)
+    });
     const hasApiKey = Boolean(config.openaiApiKey);
     const hasBackendUrl = Boolean(config.whisperBackendUrl);
 

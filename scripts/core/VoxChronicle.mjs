@@ -40,7 +40,10 @@ import { OpenAIImageProvider } from '../ai/providers/OpenAIImageProvider.mjs';
 import { OpenAIEmbeddingProvider } from '../ai/providers/OpenAIEmbeddingProvider.mjs';
 import { ProviderRegistry } from '../ai/providers/ProviderRegistry.mjs';
 // Cache L2 decorators and shared EventBus (Story 2.3)
-import { CachingChatDecorator, CachingEmbeddingDecorator } from '../ai/providers/CachingProviderDecorator.mjs';
+import {
+  CachingChatDecorator,
+  CachingEmbeddingDecorator
+} from '../ai/providers/CachingProviderDecorator.mjs';
 import { CacheManager } from '../utils/CacheManager.mjs';
 import { eventBus } from './EventBus.mjs';
 
@@ -189,7 +192,9 @@ class VoxChronicle {
   async reinitialize() {
     // Defer reinitialization if a session is active to prevent data loss
     if (this.sessionOrchestrator?.isSessionActive) {
-      logger.warn('Reinitialize deferred — a recording session is active. Changes will apply after the session ends.');
+      logger.warn(
+        'Reinitialize deferred — a recording session is active. Changes will apply after the session ends.'
+      );
       this._reinitializePending = true;
       return;
     }
@@ -225,11 +230,11 @@ class VoxChronicle {
         const key = setting.key.split('.')[1];
         if (aiSettings.includes(key) || this._reinitializePending) {
           logger.info(`Setting '${key}' updated, reinitializing services...`);
-          this.reinitialize().catch(err => {
+          this.reinitialize().catch((err) => {
             logger.error(`Reinitialization after '${key}' change failed:`, err);
             ui.notifications?.warn(
-              game.i18n?.localize('VOXCHRONICLE.Errors.ReinitializeFailed')
-                || 'VoxChronicle: Service reinitialization failed after settings change. Check console.'
+              game.i18n?.localize('VOXCHRONICLE.Errors.ReinitializeFailed') ||
+                'VoxChronicle: Service reinitialization failed after settings change. Check console.'
             );
           });
         }
@@ -246,7 +251,7 @@ class VoxChronicle {
    */
   async initialize() {
     logger.info('Initializing VoxChronicle services...');
-    
+
     // Register settings monitor on first init
     if (!VoxChronicle._hooksRegistered) {
       this._registerHooks();
@@ -263,7 +268,7 @@ class VoxChronicle {
       const googleApiKey = this._getSetting('googleApiKey')?.trim();
       const kankaApiToken = this._getSetting('kankaApiToken')?.trim();
       const kankaCampaignId = this._getSetting('kankaCampaignId')?.trim();
-      
+
       const registry = ProviderRegistry.getInstance();
 
       if (openaiApiKey) {
@@ -279,7 +284,10 @@ class VoxChronicle {
 
         // Wrap cacheable providers with L2 decorators (Story 2.3)
         const cachedChatProvider = new CachingChatDecorator(chatProvider, this._l2Cache);
-        const cachedEmbeddingProvider = new CachingEmbeddingDecorator(embeddingProvider, this._l2Cache);
+        const cachedEmbeddingProvider = new CachingEmbeddingDecorator(
+          embeddingProvider,
+          this._l2Cache
+        );
 
         // Register providers — chat and embedding use cached decorators
         registry.register('openai-chat', cachedChatProvider, { default: true });
@@ -303,7 +311,9 @@ class VoxChronicle {
       if (googleApiKey) {
         const { GoogleChatProvider } = await import('../ai/providers/GoogleChatProvider.mjs');
         const googleChat = new GoogleChatProvider(googleApiKey);
-        registry.register('google-chat', googleChat, { default: !openaiApiKey && !anthropicApiKey });
+        registry.register('google-chat', googleChat, {
+          default: !openaiApiKey && !anthropicApiKey
+        });
         logger.info('Google provider registered');
       }
 
@@ -340,7 +350,9 @@ class VoxChronicle {
 
       // Initialize other OpenAI services (if API key configured)
       if (openaiApiKey) {
-        this.imageGenerationService = new ImageGenerationService(registry.getProvider('generateImage'));
+        this.imageGenerationService = new ImageGenerationService(
+          registry.getProvider('generateImage')
+        );
         this.entityExtractor = new EntityExtractor(registry.getProvider('chat'));
         // Create L1 cache for narrator suggestions (Story 2.3)
         this._l1SuggestionsCache = new CacheManager({ name: 'l1-suggestions', maxSize: 50 });
@@ -392,7 +404,7 @@ class VoxChronicle {
         onSessionEnd: () => {
           if (this._reinitializePending) {
             logger.info('Session ended — applying deferred reinitialize');
-            this.reinitialize().catch(err => {
+            this.reinitialize().catch((err) => {
               logger.error('Deferred reinitialization failed:', err);
             });
           }
@@ -419,14 +431,22 @@ class VoxChronicle {
       if (this._getSetting('rulesDetection') !== false) {
         // Create L1 cache for rules lookup (Story 2.3)
         this._l1RulesCache = new CacheManager({ name: 'l1-rules', maxSize: 50 });
-        this.rulesReference = new RulesReference({ language: aiResponseLanguage, cache: this._l1RulesCache, eventBus });
+        this.rulesReference = new RulesReference({
+          language: aiResponseLanguage,
+          cache: this._l1RulesCache,
+          eventBus
+        });
 
         // Create lookup service if we have an OpenAI client for AI synthesis
         if (openaiApiKey) {
           this.rulesLookupService = new RulesLookupService(
             this.rulesReference,
             new OpenAIClient(openaiApiKey),
-            { cooldownMs: 5 * 60 * 1000, language: aiResponseLanguage, chatProvider: registry.getProvider('chat') }
+            {
+              cooldownMs: 5 * 60 * 1000,
+              language: aiResponseLanguage,
+              chatProvider: registry.getProvider('chat')
+            }
           );
         }
 
@@ -456,7 +476,7 @@ class VoxChronicle {
       // Final status check
       this.isInitialized = true;
       logger.info('VoxChronicle services stabilized');
-      
+
       // Notify UI to refresh badges (v13 ApplicationV2 API)
       const panel = foundry.applications?.instances?.get('vox-chronicle-main-panel');
       if (panel?.rendered) panel.render();
@@ -486,7 +506,7 @@ class VoxChronicle {
    * Get the ChatProvider for a specific task, respecting per-task settings.
    * Falls back to the default registry provider if 'default' or unavailable.
    * @param {string} task - Task key ('suggestions', 'rules', 'extraction')
-   * @returns {Object} ChatProvider instance
+   * @returns {object} ChatProvider instance
    */
   getProviderForTask(task) {
     const settingMap = {
@@ -609,11 +629,19 @@ class VoxChronicle {
         // Persist dataset + chat IDs for reuse across sessions
         if (this.ragProvider.getDatasetId) {
           const dsId = this.ragProvider.getDatasetId();
-          if (dsId) Settings.set('ragflowDatasetId', dsId).catch(e => logger.warn('Failed to persist RAGFlow dataset ID:', e.message));
+          if (dsId) {
+Settings.set('ragflowDatasetId', dsId).catch((e) =>
+              logger.warn('Failed to persist RAGFlow dataset ID:', e.message)
+            );
+}
         }
         if (this.ragProvider.getChatId) {
           const chatId = this.ragProvider.getChatId();
-          if (chatId) Settings.set('ragflowChatId', chatId).catch(e => logger.warn('Failed to persist RAGFlow chat ID:', e.message));
+          if (chatId) {
+Settings.set('ragflowChatId', chatId).catch((e) =>
+              logger.warn('Failed to persist RAGFlow chat ID:', e.message)
+            );
+}
         }
       } else {
         // OpenAI File Search provider requires OpenAI API key
@@ -632,7 +660,11 @@ class VoxChronicle {
         // Persist vector store ID for reuse across sessions
         if (this.ragProvider.getVectorStoreId) {
           const vsId = this.ragProvider.getVectorStoreId();
-          if (vsId) Settings.setRAGVectorStoreId(vsId).catch(e => logger.warn('Failed to persist RAG vector store ID:', e.message));
+          if (vsId) {
+Settings.setRAGVectorStoreId(vsId).catch((e) =>
+              logger.warn('Failed to persist RAG vector store ID:', e.message)
+            );
+}
         }
       }
 
@@ -664,7 +696,7 @@ class VoxChronicle {
       this.ragProvider = null;
       ui?.notifications?.warn(
         game.i18n?.localize('VOXCHRONICLE.Errors.RAGInitFailed') ||
-        'VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.'
+          'VoxChronicle: RAG initialization failed. AI suggestions will work without campaign context.'
       );
       // Don't throw - RAG is optional functionality
     }

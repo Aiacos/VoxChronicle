@@ -82,7 +82,9 @@ describe('RAGProvider', () => {
 
       it('should throw with options argument', async () => {
         await expect(
-          provider.indexDocuments([{ id: '1', title: 'Test', content: 'text' }], { onProgress: vi.fn() })
+          provider.indexDocuments([{ id: '1', title: 'Test', content: 'text' }], {
+            onProgress: vi.fn()
+          })
         ).rejects.toThrow('RAGProvider.indexDocuments() must be implemented by subclass');
       });
     });
@@ -111,9 +113,9 @@ describe('RAGProvider', () => {
       });
 
       it('should throw with options argument', async () => {
-        await expect(
-          provider.query('What happened?', { maxResults: 3 })
-        ).rejects.toThrow('RAGProvider.query() must be implemented by subclass');
+        await expect(provider.query('What happened?', { maxResults: 3 })).rejects.toThrow(
+          'RAGProvider.query() must be implemented by subclass'
+        );
       });
     });
 
@@ -135,13 +137,27 @@ describe('RAGProvider', () => {
           super();
           this.ready = false;
         }
-        async initialize() { this.ready = true; }
-        async destroy() { this.ready = false; }
-        async indexDocuments(docs) { return { indexed: docs.length, failed: 0 }; }
-        async removeDocument() { return true; }
-        async clearIndex() { /* no-op */ }
-        async query(q) { return { answer: `Answer to: ${q}`, sources: [] }; }
-        async getStatus() { return { ready: this.ready, documentCount: 0, providerName: 'Full' }; }
+        async initialize() {
+          this.ready = true;
+        }
+        async destroy() {
+          this.ready = false;
+        }
+        async indexDocuments(docs) {
+          return { indexed: docs.length, failed: 0 };
+        }
+        async removeDocument() {
+          return true;
+        }
+        async clearIndex() {
+          /* no-op */
+        }
+        async query(q) {
+          return { answer: `Answer to: ${q}`, sources: [] };
+        }
+        async getStatus() {
+          return { ready: this.ready, documentCount: 0, providerName: 'Full' };
+        }
       }
 
       const provider = new FullProvider();
@@ -159,9 +175,7 @@ describe('RAGProvider', () => {
       expect(statusAfter.providerName).toBe('Full');
 
       // Indexing
-      const result = await provider.indexDocuments([
-        { id: '1', title: 'Doc', content: 'Content' }
-      ]);
+      const result = await provider.indexDocuments([{ id: '1', title: 'Doc', content: 'Content' }]);
       expect(result).toEqual({ indexed: 1, failed: 0 });
 
       // Query

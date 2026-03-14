@@ -7,20 +7,23 @@ vi.mock('../../../scripts/utils/Logger.mjs', () => ({
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
-    })),
-  },
+      error: vi.fn()
+    }))
+  }
 }));
 
 // Mock game object
 globalThis.game = {
   i18n: {
     localize: vi.fn((key) => key),
-    format: vi.fn((key, data) => key),
-  },
+    format: vi.fn((key, data) => key)
+  }
 };
 
-import { CachingChatDecorator, CachingEmbeddingDecorator } from '../../../scripts/ai/providers/CachingProviderDecorator.mjs';
+import {
+  CachingChatDecorator,
+  CachingEmbeddingDecorator
+} from '../../../scripts/ai/providers/CachingProviderDecorator.mjs';
 import { CacheManager } from '../../../scripts/utils/CacheManager.mjs';
 
 // ─── Helpers ───────────────────────────────────────────
@@ -35,7 +38,7 @@ function createMockChatProvider() {
     }),
     _validateOptions: vi.fn(),
     _logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    constructor: { capabilities: ['chat', 'chatStream'], name: 'MockChatProvider' },
+    constructor: { capabilities: ['chat', 'chatStream'], name: 'MockChatProvider' }
   };
 }
 
@@ -45,7 +48,7 @@ function createMockEmbeddingProvider() {
     _validateText: vi.fn(),
     _validateOptions: vi.fn(),
     _logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    constructor: { capabilities: ['embed'], name: 'MockEmbeddingProvider' },
+    constructor: { capabilities: ['embed'], name: 'MockEmbeddingProvider' }
   };
 }
 

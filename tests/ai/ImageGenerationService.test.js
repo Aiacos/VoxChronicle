@@ -262,9 +262,7 @@ describe('ImageGenerationService', () => {
 
     it('should handle provider error', async () => {
       mockProvider.generateImage.mockRejectedValueOnce(new Error('API error'));
-      await expect(
-        service.generatePortrait('character', 'A warrior')
-      ).rejects.toThrow('API error');
+      await expect(service.generatePortrait('character', 'A warrior')).rejects.toThrow('API error');
     });
 
     it('should normalize unknown entity type', async () => {
@@ -376,9 +374,7 @@ describe('ImageGenerationService', () => {
 
     it('should call onProgress callback', async () => {
       const onProgress = vi.fn();
-      const requests = [
-        { entityType: 'character', description: 'A warrior' }
-      ];
+      const requests = [{ entityType: 'character', description: 'A warrior' }];
       await service.generateBatch(requests, onProgress);
       expect(onProgress).toHaveBeenCalled();
 
@@ -424,16 +420,16 @@ describe('ImageGenerationService', () => {
 
     it('should throw on HTTP error', async () => {
       fetchSpy.mockResolvedValueOnce(mockFetchResponse('', 404));
-      await expect(
-        service.downloadImage('https://example.com/missing.png')
-      ).rejects.toThrow('Failed to download');
+      await expect(service.downloadImage('https://example.com/missing.png')).rejects.toThrow(
+        'Failed to download'
+      );
     });
 
     it('should throw on network error', async () => {
       fetchSpy.mockRejectedValueOnce(new Error('network'));
-      await expect(
-        service.downloadImage('https://example.com/image.png')
-      ).rejects.toThrow('Failed to download');
+      await expect(service.downloadImage('https://example.com/image.png')).rejects.toThrow(
+        'Failed to download'
+      );
     });
   });
 
@@ -496,7 +492,9 @@ describe('ImageGenerationService', () => {
     });
 
     it('should return empty gallery if settings not available', async () => {
-      game.settings.get.mockImplementationOnce(() => { throw new Error('not registered'); });
+      game.settings.get.mockImplementationOnce(() => {
+        throw new Error('not registered');
+      });
       const gallery = await service.loadGallery();
       expect(gallery).toEqual([]);
     });
@@ -790,14 +788,14 @@ describe('ImageGenerationService', () => {
       const types = ImageGenerationService.getEntityTypes();
       expect(Array.isArray(types)).toBe(true);
       expect(types).toHaveLength(4);
-      const character = types.find(t => t.id === EntityType.CHARACTER);
+      const character = types.find((t) => t.id === EntityType.CHARACTER);
       expect(character).toBeDefined();
       expect(character.defaultSize).toBe(ImageSize.SQUARE);
     });
 
     it('should include descriptions in all sizes', () => {
       const sizes = ImageGenerationService.getAvailableSizes();
-      sizes.forEach(s => {
+      sizes.forEach((s) => {
         expect(s.description).toBeDefined();
         expect(s.aspectRatio).toBeDefined();
       });
@@ -805,7 +803,7 @@ describe('ImageGenerationService', () => {
 
     it('should include descriptions in all qualities', () => {
       const qualities = ImageGenerationService.getAvailableQualities();
-      qualities.forEach(q => {
+      qualities.forEach((q) => {
         expect(q.description).toBeDefined();
         expect(q.costMultiplier).toBeDefined();
       });

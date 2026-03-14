@@ -141,14 +141,20 @@ describe('RulesReference', () => {
         getDocument: vi.fn().mockImplementation((id) => {
           const docs = {
             rule1: {
-              name: 'Combat', type: 'rules',
+              name: 'Combat',
+              type: 'rules',
               pages: [{ type: 'text', text: { content: '<p>Combat rules for melee</p>' } }],
-              system: {}, flags: {}
+              system: {},
+              flags: {}
             },
             rule2: {
-              name: 'Spells', type: 'rules',
-              pages: [{ type: 'text', text: { content: '<p>Casting spells and concentration</p>' } }],
-              system: {}, flags: {}
+              name: 'Spells',
+              type: 'rules',
+              pages: [
+                { type: 'text', text: { content: '<p>Casting spells and concentration</p>' } }
+              ],
+              system: {},
+              flags: {}
             }
           };
           return Promise.resolve(docs[id] || null);
@@ -205,19 +211,31 @@ describe('RulesReference', () => {
         getDocument: vi.fn().mockImplementation((id) => {
           const docs = {
             rule1: {
-              name: 'Combat Basics', type: 'rules',
-              pages: [{ type: 'text', text: { content: '<p>Melee and ranged attacks in combat</p>' } }],
-              system: {}, flags: {}
+              name: 'Combat Basics',
+              type: 'rules',
+              pages: [
+                { type: 'text', text: { content: '<p>Melee and ranged attacks in combat</p>' } }
+              ],
+              system: {},
+              flags: {}
             },
             rule2: {
-              name: 'Spell Casting', type: 'rules',
-              pages: [{ type: 'text', text: { content: '<p>How to cast spells and concentration</p>' } }],
-              system: {}, flags: {}
+              name: 'Spell Casting',
+              type: 'rules',
+              pages: [
+                { type: 'text', text: { content: '<p>How to cast spells and concentration</p>' } }
+              ],
+              system: {},
+              flags: {}
             },
             rule3: {
-              name: 'Conditions', type: 'rules',
-              pages: [{ type: 'text', text: { content: '<p>Stunned, paralyzed, and blinded</p>' } }],
-              system: {}, flags: {}
+              name: 'Conditions',
+              type: 'rules',
+              pages: [
+                { type: 'text', text: { content: '<p>Stunned, paralyzed, and blinded</p>' } }
+              ],
+              system: {},
+              flags: {}
             }
           };
           return Promise.resolve(docs[id] || null);
@@ -266,17 +284,21 @@ describe('RulesReference', () => {
   // =========================================================================
   describe('getRuleById', () => {
     beforeEach(async () => {
-      game.packs = [{
-        collection: 'test.rules',
-        documentName: 'JournalEntry',
-        metadata: { label: 'Test Rules' },
-        getIndex: vi.fn().mockResolvedValue([{ _id: 'r1', name: 'TestRule' }]),
-        getDocument: vi.fn().mockResolvedValue({
-          name: 'TestRule', type: 'rules',
-          pages: [{ type: 'text', text: { content: 'Test content' } }],
-          system: {}, flags: {}
-        })
-      }];
+      game.packs = [
+        {
+          collection: 'test.rules',
+          documentName: 'JournalEntry',
+          metadata: { label: 'Test Rules' },
+          getIndex: vi.fn().mockResolvedValue([{ _id: 'r1', name: 'TestRule' }]),
+          getDocument: vi.fn().mockResolvedValue({
+            name: 'TestRule',
+            type: 'rules',
+            pages: [{ type: 'text', text: { content: 'Test content' } }],
+            system: {},
+            flags: {}
+          })
+        }
+      ];
       await rules.loadRules();
     });
 
@@ -308,17 +330,21 @@ describe('RulesReference', () => {
     });
 
     it('should return recently accessed rules', async () => {
-      game.packs = [{
-        collection: 'test.rules',
-        documentName: 'JournalEntry',
-        metadata: { label: 'Test' },
-        getIndex: vi.fn().mockResolvedValue([{ _id: 'r1', name: 'Rule1' }]),
-        getDocument: vi.fn().mockResolvedValue({
-          name: 'Rule1', type: 'rules',
-          pages: [{ type: 'text', text: { content: 'Content' } }],
-          system: {}, flags: {}
-        })
-      }];
+      game.packs = [
+        {
+          collection: 'test.rules',
+          documentName: 'JournalEntry',
+          metadata: { label: 'Test' },
+          getIndex: vi.fn().mockResolvedValue([{ _id: 'r1', name: 'Rule1' }]),
+          getDocument: vi.fn().mockResolvedValue({
+            name: 'Rule1',
+            type: 'rules',
+            pages: [{ type: 'text', text: { content: 'Content' } }],
+            system: {},
+            flags: {}
+          })
+        }
+      ];
       await rules.loadRules();
       await rules.getRuleById('test.rules.r1');
       expect(rules.getRecentRules().length).toBe(1);
@@ -353,22 +379,34 @@ describe('RulesReference', () => {
     });
 
     it('should return distinct categories after loading', async () => {
-      game.packs = [{
-        collection: 'test.mixed',
-        documentName: 'Item',
-        metadata: { label: 'Mixed' },
-        getIndex: vi.fn().mockResolvedValue([
-          { _id: 'i1', name: 'Sword' },
-          { _id: 'i2', name: 'Shield' }
-        ]),
-        getDocument: vi.fn().mockImplementation((id) => {
-          const docs = {
-            i1: { name: 'Sword', type: 'weapon', system: { description: { value: 'A sharp blade' } }, flags: {} },
-            i2: { name: 'Shield', type: 'armor', system: { description: { value: 'A sturdy shield' } }, flags: {} }
-          };
-          return Promise.resolve(docs[id] || null);
-        })
-      }];
+      game.packs = [
+        {
+          collection: 'test.mixed',
+          documentName: 'Item',
+          metadata: { label: 'Mixed' },
+          getIndex: vi.fn().mockResolvedValue([
+            { _id: 'i1', name: 'Sword' },
+            { _id: 'i2', name: 'Shield' }
+          ]),
+          getDocument: vi.fn().mockImplementation((id) => {
+            const docs = {
+              i1: {
+                name: 'Sword',
+                type: 'weapon',
+                system: { description: { value: 'A sharp blade' } },
+                flags: {}
+              },
+              i2: {
+                name: 'Shield',
+                type: 'armor',
+                system: { description: { value: 'A sturdy shield' } },
+                flags: {}
+              }
+            };
+            return Promise.resolve(docs[id] || null);
+          })
+        }
+      ];
       await rules.loadRules();
       const categories = rules.getCategories();
       expect(categories).toContain('weapon');
@@ -389,22 +427,34 @@ describe('RulesReference', () => {
     });
 
     it('should filter rules by category', async () => {
-      game.packs = [{
-        collection: 'test.items',
-        documentName: 'Item',
-        metadata: { label: 'Items' },
-        getIndex: vi.fn().mockResolvedValue([
-          { _id: 'i1', name: 'Sword' },
-          { _id: 'i2', name: 'Potion' }
-        ]),
-        getDocument: vi.fn().mockImplementation((id) => {
-          const docs = {
-            i1: { name: 'Sword', type: 'weapon', system: { description: { value: 'A blade' } }, flags: {} },
-            i2: { name: 'Potion', type: 'consumable', system: { description: { value: 'Heals' } }, flags: {} }
-          };
-          return Promise.resolve(docs[id] || null);
-        })
-      }];
+      game.packs = [
+        {
+          collection: 'test.items',
+          documentName: 'Item',
+          metadata: { label: 'Items' },
+          getIndex: vi.fn().mockResolvedValue([
+            { _id: 'i1', name: 'Sword' },
+            { _id: 'i2', name: 'Potion' }
+          ]),
+          getDocument: vi.fn().mockImplementation((id) => {
+            const docs = {
+              i1: {
+                name: 'Sword',
+                type: 'weapon',
+                system: { description: { value: 'A blade' } },
+                flags: {}
+              },
+              i2: {
+                name: 'Potion',
+                type: 'consumable',
+                system: { description: { value: 'Heals' } },
+                flags: {}
+              }
+            };
+            return Promise.resolve(docs[id] || null);
+          })
+        }
+      ];
       await rules.loadRules();
       const weapons = rules.getRulesByCategory('weapon');
       expect(weapons.length).toBe(1);
@@ -578,7 +628,9 @@ describe('RulesReference', () => {
       });
 
       it('should not exceed 1.0 confidence', () => {
-        const result = rules.detectRulesQuestion('how does grappling work? what are the rules for advantage?');
+        const result = rules.detectRulesQuestion(
+          'how does grappling work? what are the rules for advantage?'
+        );
         expect(result.confidence).toBeLessThanOrEqual(1.0);
       });
 
@@ -744,9 +796,29 @@ describe('RulesReference', () => {
         ]),
         getDocument: vi.fn().mockImplementation((id) => {
           const docs = {
-            spell1: { name: 'Fireball', type: 'spell', system: { description: { value: 'A bright streak' }, school: 'evocation', source: 'PHB pg. 241' } },
-            spell2: { name: 'Fire Bolt', type: 'spell', system: { description: { value: 'A cantrip' }, school: 'evocation', source: 'PHB' } },
-            spell3: { name: 'Shield', type: 'spell', system: { description: { value: 'A barrier' }, school: 'abjuration', source: 'PHB pg. 275' } }
+            spell1: {
+              name: 'Fireball',
+              type: 'spell',
+              system: {
+                description: { value: 'A bright streak' },
+                school: 'evocation',
+                source: 'PHB pg. 241'
+              }
+            },
+            spell2: {
+              name: 'Fire Bolt',
+              type: 'spell',
+              system: { description: { value: 'A cantrip' }, school: 'evocation', source: 'PHB' }
+            },
+            spell3: {
+              name: 'Shield',
+              type: 'spell',
+              system: {
+                description: { value: 'A barrier' },
+                school: 'abjuration',
+                source: 'PHB pg. 275'
+              }
+            }
           };
           return Promise.resolve(docs[id] || null);
         })
@@ -789,7 +861,7 @@ describe('RulesReference', () => {
 
     it('should give starts-with match high relevance', async () => {
       const results = await rules.searchCompendiums('fire');
-      const fireball = results.find(r => r.rule.title === 'Fireball');
+      const fireball = results.find((r) => r.rule.title === 'Fireball');
       expect(fireball.relevance).toBe(0.8); // starts with "fire"
     });
 
@@ -959,7 +1031,6 @@ describe('RulesReference', () => {
       expect(entry.category).toBe('general');
     });
   });
-
 
   // =========================================================================
   // _extractTags
@@ -1196,7 +1267,11 @@ describe('RulesReference', () => {
 
       // Manually load a rule into the internal cache
       r._rulesCache.set('test-1', {
-        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+        id: 'test-1',
+        title: 'Grappling',
+        content: 'Rules for grappling',
+        category: 'combat',
+        tags: ['combat']
       });
       r._isLoaded = true;
       r._searchIndex.set('grappling', new Set(['test-1']));
@@ -1219,7 +1294,11 @@ describe('RulesReference', () => {
       const r = new RulesReference({ cache });
 
       r._rulesCache.set('test-1', {
-        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+        id: 'test-1',
+        title: 'Grappling',
+        content: 'Rules for grappling',
+        category: 'combat',
+        tags: ['combat']
       });
       r._isLoaded = true;
       r._searchIndex.set('grappling', new Set(['test-1']));
@@ -1239,12 +1318,18 @@ describe('RulesReference', () => {
       const cache = new CacheManager({ name: 'test-l1', maxSize: 50 });
       let stateChangedCallback;
       const eventBus = {
-        on: vi.fn((event, cb) => { if (event === 'session:stateChanged') stateChangedCallback = cb; })
+        on: vi.fn((event, cb) => {
+          if (event === 'session:stateChanged') stateChangedCallback = cb;
+        })
       };
       const r = new RulesReference({ cache, eventBus });
 
       r._rulesCache.set('test-1', {
-        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+        id: 'test-1',
+        title: 'Grappling',
+        content: 'Rules for grappling',
+        category: 'combat',
+        tags: ['combat']
       });
       r._isLoaded = true;
       r._searchIndex.set('grappling', new Set(['test-1']));
@@ -1260,7 +1345,11 @@ describe('RulesReference', () => {
     it('should work without cache (backward compatible)', async () => {
       const r = new RulesReference(); // No cache
       r._rulesCache.set('test-1', {
-        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+        id: 'test-1',
+        title: 'Grappling',
+        content: 'Rules for grappling',
+        category: 'combat',
+        tags: ['combat']
       });
       r._isLoaded = true;
       r._searchIndex.set('grappling', new Set(['test-1']));
@@ -1275,7 +1364,11 @@ describe('RulesReference', () => {
       const r = new RulesReference({ cache, cacheTTL: 1000 });
 
       r._rulesCache.set('test-1', {
-        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+        id: 'test-1',
+        title: 'Grappling',
+        content: 'Rules for grappling',
+        category: 'combat',
+        tags: ['combat']
       });
       r._isLoaded = true;
       r._searchIndex.set('grappling', new Set(['test-1']));
@@ -1304,7 +1397,11 @@ describe('RulesReference', () => {
       const r = new RulesReference({ cache });
 
       r._rulesCache.set('test-1', {
-        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+        id: 'test-1',
+        title: 'Grappling',
+        content: 'Rules for grappling',
+        category: 'combat',
+        tags: ['combat']
       });
       r._isLoaded = true;
       r._searchIndex.set('grappling', new Set(['test-1']));
@@ -1330,10 +1427,18 @@ describe('RulesReference', () => {
       const r = new RulesReference({ cache });
 
       r._rulesCache.set('test-1', {
-        id: 'test-1', title: 'Grappling', content: 'Rules for grappling', category: 'combat', tags: ['combat']
+        id: 'test-1',
+        title: 'Grappling',
+        content: 'Rules for grappling',
+        category: 'combat',
+        tags: ['combat']
       });
       r._rulesCache.set('test-2', {
-        id: 'test-2', title: 'Advantage', content: 'Rules for advantage', category: 'combat', tags: ['combat']
+        id: 'test-2',
+        title: 'Advantage',
+        content: 'Rules for advantage',
+        category: 'combat',
+        tags: ['combat']
       });
       r._isLoaded = true;
       r._searchIndex.set('grappling', new Set(['test-1']));
