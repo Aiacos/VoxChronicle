@@ -28,6 +28,23 @@ vi.hoisted(() => {
       utils: { mergeObject: (a, b) => ({ ...a, ...b }) }
     };
   }
+  if (!globalThis.game) {
+    globalThis.game = {
+      settings: {
+        get: vi.fn().mockReturnValue(''),
+        set: vi.fn(),
+        register: vi.fn()
+      },
+      i18n: {
+        localize: vi.fn(key => key),
+        format: vi.fn((key, data) => key)
+      },
+      user: { isGM: true }
+    };
+  }
+  if (!globalThis.ui) {
+    globalThis.ui = { notifications: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } };
+  }
 });
 
 import { SessionOrchestrator, SessionState } from '../../scripts/orchestration/SessionOrchestrator.mjs';
@@ -1051,6 +1068,7 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
     });
 
     it('should warn user after 3 consecutive live cycle errors', async () => {
+      ui.notifications.warn.mockClear();
       await orchestrator.startLiveMode({ batchDuration: 999999 });
       services.audioRecorder.getLatestChunk.mockRejectedValue(new Error('Persistent error'));
 
