@@ -773,7 +773,12 @@ class AIAssistant {
     const checkOffTrack = options.checkOffTrack !== false;
     const detectRules = options.detectRules !== false;
 
-    this._logger.debug(`analyzeContext() entry — transcription length: ${transcription.length}, suggestions=${includeSuggestions}, offTrack=${checkOffTrack}, rules=${detectRules}`);
+    // Update session state with scene type from orchestrator
+    if (options.sceneType) {
+      this._sessionState.currentScene = options.sceneType;
+    }
+
+    this._logger.debug(`analyzeContext() entry — transcription length: ${transcription.length}, suggestions=${includeSuggestions}, offTrack=${checkOffTrack}, rules=${detectRules}, scene=${this._sessionState.currentScene || 'unknown'}`);
     const _analyzeStart = performance.now();
 
     // L1 cache lookup (key based on scene type + chapter context)
@@ -828,7 +833,7 @@ class AIAssistant {
         usage: response.usage || null,
         model: response.model || this._model,
         sceneInfo: {
-          type: 'unknown',
+          type: this._sessionState.currentScene || 'unknown',
           isTransition: false,
           timestamp: Date.now()
         }
@@ -1317,6 +1322,7 @@ class AIAssistant {
   _syncPromptBuilderState() {
     this._promptBuilder.setConversationHistory(this._conversationHistory);
     this._promptBuilder.setRollingSummary?.(this._rollingSummary);
+    this._promptBuilder.setSceneType?.(this._sessionState.currentScene || 'unknown');
   }
 
   /**

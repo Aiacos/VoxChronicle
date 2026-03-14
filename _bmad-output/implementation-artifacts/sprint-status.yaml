@@ -65,12 +65,12 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Assistenza AI Live Contestuale
-  epic-4: in-progress
+  epic-4: done
   4-1-avvio-sessione-live-e-ciclo-ai: done
-  4-2-suggerimenti-contestuali-da-journal-e-rag: backlog
-  4-3-rules-qa-con-compendi-foundry: backlog
-  4-4-rilevamento-tipo-scena: backlog
-  epic-4-retrospective: optional
+  4-2-suggerimenti-contestuali-da-journal-e-rag: done
+  4-3-rules-qa-con-compendi-foundry: done
+  4-4-rilevamento-tipo-scena: done
+  epic-4-retrospective: done
 
   # Epic 5: Cronaca Automatica & Pubblicazione Kanka
   epic-5: backlog

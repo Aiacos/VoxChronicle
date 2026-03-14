@@ -2,7 +2,7 @@
 
 This document provides detailed API documentation for all service classes in the VoxChronicle module.
 
-**Last updated:** 2026-03-13 (v3.1.0)
+**Last updated:** 2026-03-14 (v3.2.0 — Epic 4)
 
 ## Table of Contents
 
@@ -40,6 +40,8 @@ This document provides detailed API documentation for all service classes in the
    - [CompendiumParser](#compendiumparser)
    - [JournalParser](#journalparser)
    - [RulesReference](#rulesreference)
+   - [RulesLookupService](#ruleslookupservice)
+   - [PromptBuilder](#promptbuilder)
    - [SceneDetector](#scenedetector)
    - [SessionAnalytics](#sessionanalytics)
    - [SilenceDetector](#silencedetector)
@@ -63,8 +65,10 @@ This document provides detailed API documentation for all service classes in the
    - [DomUtils](#domutils)
    - [SensitiveDataFilter](#sensitivedatafilter)
    - [StreamController](#streamcontroller)
-10. [Type Definitions](#type-definitions)
-11. [Enumerations](#enumerations)
+10. [UI Components](#ui-components)
+    - [MainPanel](#mainpanel)
+11. [Type Definitions](#type-definitions)
+12. [Enumerations](#enumerations)
 
 ---
 
@@ -1219,6 +1223,13 @@ const assistant = new AIAssistant(chatProvider, {
 ##### `analyzeContext(context)`
 Generate suggestions and detect off-track situations in a single API call.
 
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `context.transcript` | `string` | Recent transcript text |
+| `context.sceneType` | `string` | Current scene type from orchestrator (`'combat'`\|`'social'`\|`'exploration'`\|`'rest'`\|`'unknown'`). Sets `_sessionState.currentScene` internally. |
+| `context.chapter` | `Object` | Current chapter info `{ title, summary }` |
+| `context.characters` | `string[]` | Active character names |
+
 ```javascript
 const result = await assistant.analyzeContext({
   transcript: 'recent transcript text...',
@@ -1357,6 +1368,64 @@ Look up a rule and provide an answer with citations.
 const result = await rulesRef.lookupRule('How does opportunity attack work?');
 // { answer: '...', citations: [{ source, page, excerpt }] }
 ```
+
+---
+
+### RulesLookupService
+
+Rules lookup with AI-powered synthesis via ChatProvider.
+
+**Import:**
+```javascript
+import { RulesLookupService } from './scripts/narrator/RulesLookupService.mjs';
+```
+
+#### Constructor
+
+```javascript
+const rulesLookup = new RulesLookupService(rulesReference, {
+  chatProvider: chatProviderInstance
+});
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `rulesReference` | `RulesReference` | RulesReference instance for compendium lookups |
+| `options.chatProvider` | `ChatProvider` | ChatProvider instance (preferred over openaiClient for answer synthesis) |
+
+#### Methods
+
+##### `lookupRule(question)`
+Look up a rule with AI-synthesized answer and compendium citations.
+
+```javascript
+const result = await rulesLookup.lookupRule('How does opportunity attack work?');
+// { answer: '...', citations: [{ source, page, excerpt }] }
+```
+
+---
+
+### PromptBuilder
+
+Builds structured prompts for AI suggestions with scene, chapter, and character context.
+
+**Import:**
+```javascript
+import { PromptBuilder } from './scripts/narrator/PromptBuilder.mjs';
+```
+
+#### Methods
+
+##### `setSceneType(sceneType)`
+Set the current scene type for prompt context.
+
+```javascript
+builder.setSceneType('combat');
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sceneType` | `string` | Scene type: `'combat'`\|`'social'`\|`'exploration'`\|`'rest'`\|`'unknown'` |
 
 ---
 
@@ -2039,6 +2108,79 @@ const summary = orchestrator.getSessionSummary();
 ##### `reset()`
 Reset to idle state.
 
+##### `startLiveMode(options)`
+Start a live mode session with real-time AI assistance.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `options.title` | `string` | Session title |
+| `options.journalIds` | `string[]` | Foundry journal IDs for RAG indexing |
+| `options.language` | `string` | Transcription language |
+
+```javascript
+await orchestrator.startLiveMode({
+  title: 'Session 5 - The Dark Tower',
+  journalIds: ['journal1Id', 'journal2Id'],
+  language: 'en'
+});
+```
+
+##### `stopLiveMode()`
+Stop the live mode session and clean up narrator services.
+
+```javascript
+await orchestrator.stopLiveMode();
+```
+
+##### `getCurrentSceneType()`
+Returns the current detected scene type during live mode.
+
+```javascript
+const sceneType = orchestrator.getCurrentSceneType();
+// 'combat' | 'social' | 'exploration' | 'rest' | 'unknown'
+```
+
+**Returns:** `string` — Current scene type, or `'unknown'` if not in live mode or no detection has occurred.
+
+#### EventBus Events
+
+The SessionOrchestrator emits the following events via EventBus during live mode:
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `session:liveStarted` | `{}` | Emitted when live mode starts |
+| `session:liveStopped` | `{}` | Emitted when live mode stops |
+| `ai:suggestionReceived` | `{ suggestions, offTrack }` | Emitted after AI analysis completes |
+| `ai:ragIndexingStarted` | `{ journalCount }` | Emitted before RAG indexing begins |
+| `ai:ragIndexingComplete` | `{ indexed, skipped, error? }` | Emitted after RAG indexing finishes |
+| `scene:changed` | `{ sceneType, previousType, confidence, timestamp }` | Emitted when a scene type transition is detected |
+
+```javascript
+eventBus.on('scene:changed', (data) => {
+  console.log(`Scene changed: ${data.previousType} → ${data.sceneType} (confidence: ${data.confidence})`);
+});
+
+eventBus.on('ai:suggestionReceived', (data) => {
+  console.log('AI suggestions:', data.suggestions);
+  if (data.offTrack?.detected) {
+    console.log('Players are off-track! Bridge:', data.offTrack.bridge);
+  }
+});
+```
+
+#### Private Methods (Internal)
+
+##### `_updateSceneType(text)`
+Detects scene transitions from transcript text using SceneDetector. Emits `scene:changed` event when the scene type changes.
+
+##### `_getAdaptiveBatchDuration()`
+Returns an adaptive transcription interval (5000-60000ms) based on recent speech activity. Shorter intervals during active speech, longer during silence.
+
+**Returns:** `number` — Interval in milliseconds (5000-60000)
+
+##### `_emitSafe(channel, data)`
+Fire-and-forget EventBus emission that catches and logs errors without interrupting the caller.
+
 ---
 
 ### TranscriptionProcessor
@@ -2539,6 +2681,70 @@ Replace sensitive data patterns (API keys, tokens) with masked versions.
 SensitiveDataFilter.filter('Bearer sk-abc123def456...');
 // 'Bearer sk-***...***'
 ```
+
+---
+
+## UI Components
+
+### MainPanel
+
+Unified floating panel with 6 tabs (singleton). Uses Foundry v13 ApplicationV2 + HandlebarsApplicationMixin.
+
+**Import:**
+```javascript
+import { MainPanel } from './scripts/ui/MainPanel.mjs';
+```
+
+#### Static Methods
+
+##### `getInstance()`
+Get the singleton MainPanel instance.
+
+```javascript
+const panel = MainPanel.getInstance();
+```
+
+##### `resetInstance()`
+Reset the singleton (for testing).
+
+#### Methods
+
+##### `_getSceneTypeLabel(sceneType)`
+Returns a localized label for the given scene type.
+
+```javascript
+const label = panel._getSceneTypeLabel('combat');
+// e.g. "Combat" (localized)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sceneType` | `string` | Scene type: `'combat'`\|`'social'`\|`'exploration'`\|`'rest'`\|`'unknown'` |
+
+**Returns:** `string` — Localized scene type label
+
+#### Live Mode Features
+
+In live mode, MainPanel displays a scene badge showing the current detected scene type. The badge uses color-coded CSS classes:
+
+| CSS Class | Scene Type |
+|-----------|------------|
+| `.vox-chronicle-scene-badge--combat` | Combat |
+| `.vox-chronicle-scene-badge--social` | Social |
+| `.vox-chronicle-scene-badge--exploration` | Exploration |
+| `.vox-chronicle-scene-badge--rest` | Rest |
+| `.vox-chronicle-scene-badge--unknown` | Unknown |
+
+#### EventBus Listeners
+
+MainPanel listens for the following EventBus events:
+
+| Event | Behavior |
+|-------|----------|
+| `ai:ragIndexingStarted` | Shows RAG indexing status indicator |
+| `ai:ragIndexingComplete` | Hides status indicator, shows result summary |
+| `scene:changed` | Updates the scene badge with new scene type |
+| `ai:suggestionReceived` | Displays AI suggestions in the live tab |
 
 ---
 

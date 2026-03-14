@@ -104,6 +104,7 @@ class SessionOrchestrator {
   _reindexQueue = new Set();
 
   // Live mode state
+  _currentSceneType = 'unknown';
   _liveMode = false;
   _isStopping = false;
   _consecutiveLiveCycleErrors = 0;
@@ -1131,55 +1132,63 @@ class SessionOrchestrator {
       return { indexed: 0, skipped: 0 };
     }
 
+    this._emitSafe('ai:ragIndexingStarted', { journalCount: allJournalIds.length });
+
     let totalIndexed = 0;
     let totalSkipped = 0;
 
-    for (const journalId of allJournalIds) {
-      // Get full text for hash comparison
-      const fullText = this._journalParser.getFullText(journalId) || '';
-      const currentHash = await this._computeContentHash(fullText);
+    try {
+      for (const journalId of allJournalIds) {
+        // Get full text for hash comparison
+        const fullText = this._journalParser.getFullText(journalId) || '';
+        const currentHash = await this._computeContentHash(fullText);
 
-      // Check staleness
-      if (this._contentHashes[journalId] === currentHash) {
-        this._logger.debug(`Journal ${journalId} unchanged, skipping re-index`);
-        totalSkipped++;
-        continue;
+        // Check staleness
+        if (this._contentHashes[journalId] === currentHash) {
+          this._logger.debug(`Journal ${journalId} unchanged, skipping re-index`);
+          totalSkipped++;
+          continue;
+        }
+
+        // Get chunks with 4800/1200 char boundaries (~1200/300 tokens)
+        const chunks = await this._journalParser.getChunksForEmbedding(journalId, {
+          chunkSize: 4800,
+          overlap: 1200
+        });
+
+        if (chunks.length === 0) {
+          this._logger.debug(`Journal ${journalId} has no chunks to index`);
+          totalSkipped++;
+          continue;
+        }
+
+        // Convert chunks to RAGDocuments
+        const ragDocs = chunks.map((chunk) => ({
+          id: `${journalId}-${chunk.metadata.pageId}-chunk${chunk.metadata.chunkIndex}`,
+          title: `${chunk.metadata.journalName} > ${chunk.metadata.pageName} [${chunk.metadata.chunkIndex + 1}/${chunk.metadata.totalChunks}]`,
+          content: chunk.text,
+          metadata: { ...chunk.metadata, type: 'adventure-journal' }
+        }));
+
+        // Index documents
+        const result = await this._ragProvider.indexDocuments(ragDocs, {
+          onProgress: options.onProgress
+        });
+
+        totalIndexed += result.indexed || 0;
+
+        // Store the new hash
+        this._contentHashes[journalId] = currentHash;
+        this._logger.debug(`Journal ${journalId} indexed: ${result.indexed} docs`);
       }
 
-      // Get chunks with 4800/1200 char boundaries (~1200/300 tokens)
-      const chunks = await this._journalParser.getChunksForEmbedding(journalId, {
-        chunkSize: 4800,
-        overlap: 1200
-      });
-
-      if (chunks.length === 0) {
-        this._logger.debug(`Journal ${journalId} has no chunks to index`);
-        totalSkipped++;
-        continue;
-      }
-
-      // Convert chunks to RAGDocuments
-      const ragDocs = chunks.map((chunk) => ({
-        id: `${journalId}-${chunk.metadata.pageId}-chunk${chunk.metadata.chunkIndex}`,
-        title: `${chunk.metadata.journalName} > ${chunk.metadata.pageName} [${chunk.metadata.chunkIndex + 1}/${chunk.metadata.totalChunks}]`,
-        content: chunk.text,
-        metadata: { ...chunk.metadata, type: 'adventure-journal' }
-      }));
-
-      // Index documents
-      const result = await this._ragProvider.indexDocuments(ragDocs, {
-        onProgress: options.onProgress
-      });
-
-      totalIndexed += result.indexed || 0;
-
-      // Store the new hash
-      this._contentHashes[journalId] = currentHash;
-      this._logger.debug(`Journal ${journalId} indexed: ${result.indexed} docs`);
+      this._logger.log(`RAG indexing complete: ${totalIndexed} indexed, ${totalSkipped} skipped`);
+      this._emitSafe('ai:ragIndexingComplete', { indexed: totalIndexed, skipped: totalSkipped });
+      return { indexed: totalIndexed, skipped: totalSkipped };
+    } catch (indexError) {
+      this._emitSafe('ai:ragIndexingComplete', { indexed: totalIndexed, skipped: totalSkipped, error: indexError.message });
+      throw indexError;
     }
-
-    this._logger.log(`RAG indexing complete: ${totalIndexed} indexed, ${totalSkipped} skipped`);
-    return { indexed: totalIndexed, skipped: totalSkipped };
   }
 
   /**
@@ -1607,9 +1616,7 @@ class SessionOrchestrator {
               }
             }
 
-            if (this._sceneDetector) {
-              this._sceneDetector.detectSceneTransition(result.text || '');
-            }
+            this._updateSceneType(result.text || '');
 
             // Check cost cap before AI analysis
             const costCap = this._getCostCap();
@@ -1879,7 +1886,8 @@ class SessionOrchestrator {
         analysis = await this._aiAssistant.analyzeContext(contextText, {
           includeSuggestions: true,
           checkOffTrack: true,
-          detectRules: false
+          detectRules: false,
+          sceneType: this._currentSceneType || 'unknown'
         });
 
         // Track AI suggestion token costs
@@ -2018,6 +2026,44 @@ class SessionOrchestrator {
   }
 
   /**
+   * Update scene type from transcript text using SceneDetector.
+   * Emits scene:changed event when scene type changes.
+   * @param {string} text - Transcript text to analyze
+   * @private
+   */
+  _updateSceneType(text) {
+    if (!this._sceneDetector) return;
+
+    try {
+      const transition = this._sceneDetector.detectSceneTransition(text);
+      let newSceneType = null;
+
+      if (transition?.detected && transition.sceneType) {
+        newSceneType = transition.sceneType;
+      } else {
+        // Fallback to keyword-based identification
+        const identified = this._sceneDetector.identifySceneType?.(text);
+        if (identified && identified !== 'unknown') {
+          newSceneType = identified;
+        }
+      }
+
+      if (newSceneType && newSceneType !== this._currentSceneType) {
+        const previousType = this._currentSceneType || 'unknown';
+        this._currentSceneType = newSceneType;
+        this._emitSafe('scene:changed', {
+          sceneType: newSceneType,
+          previousType,
+          confidence: transition?.confidence || 0.5,
+          timestamp: Date.now()
+        });
+      }
+    } catch (error) {
+      this._logger.warn('Scene detection error:', error.message);
+    }
+  }
+
+  /**
    * Handle silence detection
    * @private
    */
@@ -2072,6 +2118,14 @@ class SessionOrchestrator {
    */
   getCurrentChapter() {
     return this._chapterTracker?.getCurrentChapter?.() || null;
+  }
+
+  /**
+   * Get the currently detected scene type
+   * @returns {string} Scene type ('combat'|'social'|'exploration'|'rest'|'unknown')
+   */
+  getCurrentSceneType() {
+    return this._currentSceneType || 'unknown';
   }
 
   /**

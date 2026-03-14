@@ -720,6 +720,14 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-badge.active { background: var(--vox-color-success-bg-badge); color: var(--vox-color-success); border: 1px solid var(--vox-color-success-border-badge); }
 .vox-chronicle-badge.inactive { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.3); border: 1px solid var(--vox-color-border); }
 
+/* Scene type badge colors */
+.vox-chronicle-badge--scene { font-weight: 600; }
+.vox-chronicle-badge--combat { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+.vox-chronicle-badge--social { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.4); }
+.vox-chronicle-badge--exploration { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); }
+.vox-chronicle-badge--rest { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); }
+.vox-chronicle-badge--unknown { background: rgba(156, 163, 175, 0.15); color: rgba(255, 255, 255, 0.4); border: 1px solid var(--vox-color-border); }
+
 /* Journal Confirmation Banner */
 .vox-chronicle-journal-confirmation {
   display: flex;

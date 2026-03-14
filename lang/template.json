@@ -1051,7 +1051,9 @@
       "Combat": "",
       "Social": "",
       "Exploration": "",
-      "Rest": ""
+      "Rest": "",
+      "Scene": "",
+      "Unknown": ""
     },
     "RAG": {
       "Title": "",

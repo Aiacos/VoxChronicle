@@ -55,6 +55,12 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {Function|null} */
   #onTranscriptionReady = null;
 
+  /** @type {Function|null} */
+  #onRAGIndexingStarted = null;
+
+  /** @type {Function|null} */
+  #onRAGIndexingComplete = null;
+
   static DEFAULT_OPTIONS = {
     id: 'vox-chronicle-main-panel',
     classes: ['vox-chronicle', 'vox-chronicle-panel'],
@@ -196,6 +202,28 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render({ parts: ['transcriptReview'] });
       };
       eventBus.on('ai:transcriptionReady', this.#onTranscriptionReady);
+
+      this.#onRAGIndexingStarted = (data) => {
+        this.#ragCachedStatus.indexing = true;
+        this.#ragCachedStatus.progress = 0;
+        this.#ragCachedStatus.progressText = `0/${data?.journalCount || 0}`;
+        if (this.rendered) this.render();
+      };
+      eventBus.on('ai:ragIndexingStarted', this.#onRAGIndexingStarted);
+
+      this.#onRAGIndexingComplete = (data) => {
+        this.#ragCachedStatus.indexing = false;
+        this.#ragCachedStatus.progress = 0;
+        this.#ragCachedStatus.progressText = '';
+        if (!data?.error) {
+          this.#ragCachedStatus.lastIndexed = new Date().toLocaleString();
+          if (data?.indexed != null) {
+            this.#ragCachedStatus.vectorCount = data.indexed;
+          }
+        }
+        if (this.rendered) this.render();
+      };
+      eventBus.on('ai:ragIndexingComplete', this.#onRAGIndexingComplete);
     }
   }
 
@@ -204,11 +232,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   _cleanupEventBus() {
-    if (this.#eventBus && this.#onTranscriptionReady) {
-      this.#eventBus.off('ai:transcriptionReady', this.#onTranscriptionReady);
+    if (this.#eventBus) {
+      if (this.#onTranscriptionReady) this.#eventBus.off('ai:transcriptionReady', this.#onTranscriptionReady);
+      if (this.#onRAGIndexingStarted) this.#eventBus.off('ai:ragIndexingStarted', this.#onRAGIndexingStarted);
+      if (this.#onRAGIndexingComplete) this.#eventBus.off('ai:ragIndexingComplete', this.#onRAGIndexingComplete);
     }
     this.#eventBus = null;
     this.#onTranscriptionReady = null;
+    this.#onRAGIndexingStarted = null;
+    this.#onRAGIndexingComplete = null;
   }
 
   /**
@@ -448,6 +480,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       audioLevel: this._getAudioLevel(),
       transcriptionMode: game.settings?.get(MODULE_ID, 'transcriptionMode') || 'auto',
       currentChapter: this._orchestrator?.getCurrentChapter?.() || null,
+      currentSceneType: this._orchestrator?.getCurrentSceneType?.() || 'unknown',
+      sceneTypeLabel: this._getSceneTypeLabel(this._orchestrator?.getCurrentSceneType?.()),
       statusState,
       statusLabel,
       activeTab: this._activeTab,
@@ -699,6 +733,23 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   requestRender() {
     this._debouncedRender();
+  }
+
+  /**
+   * Get localized scene type label
+   * @param {string} sceneType - Scene type key
+   * @returns {string} Localized label
+   * @private
+   */
+  _getSceneTypeLabel(sceneType) {
+    const labelMap = {
+      combat: 'VOXCHRONICLE.Scene.Combat',
+      social: 'VOXCHRONICLE.Scene.Social',
+      exploration: 'VOXCHRONICLE.Scene.Exploration',
+      rest: 'VOXCHRONICLE.Scene.Rest'
+    };
+    const key = labelMap[sceneType];
+    return key ? (game.i18n?.localize(key) || sceneType) : (sceneType || 'unknown');
   }
 
   /**

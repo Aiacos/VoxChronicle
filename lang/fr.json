@@ -1051,7 +1051,9 @@
       "Combat": "[EN] Combat",
       "Social": "[EN] Social",
       "Exploration": "[EN] Exploration",
-      "Rest": "[EN] Rest"
+      "Rest": "[EN] Rest",
+      "Scene": "Scène",
+      "Unknown": "Inconnu"
     },
     "RAG": {
       "Title": "[EN] RAG Knowledge Base",

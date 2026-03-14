@@ -2,7 +2,7 @@
 
 This document describes the system architecture, components, and data flow of the VoxChronicle Foundry VTT module.
 
-**Last updated:** 2026-03-13 (v3.1.0)
+**Last updated:** 2026-03-14 (v3.2.0 — Epic 4)
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ This document describes the system architecture, components, and data flow of th
 12. [External Integrations](#external-integrations)
 13. [Security Considerations](#security-considerations)
 14. [Error Handling Strategy](#error-handling-strategy)
-15. [v3.0-3.1 Changes](#v30-31-changes-released-2026-02-19-to-2026-03-13)
+15. [v3.0-3.2 Changes](#v30-32-changes-released-2026-02-19-to-2026-03-14)
 
 ---
 
@@ -261,11 +261,12 @@ Modular RAG provider architecture (v3.0):
 
 Real-time DM assistant services for Live Mode:
 
-- **AIAssistant** — Contextual suggestions (narration, dialogue, action, reference) using `ChatProvider`, RAG context injection via `ragProvider.query()`
+- **AIAssistant** — Contextual suggestions (narration, dialogue, action, reference) using `ChatProvider`, RAG context injection via `ragProvider.query()`. Accepts `sceneType` in `analyzeContext()` options, syncs scene state to PromptBuilder via `_syncPromptBuilderState()`
+- **PromptBuilder** — Constructs system prompts for AIAssistant. `setSceneType()` adds `CURRENT SCENE TYPE` section when scene type is known
 - **ChapterTracker** — Track current chapter/scene from Foundry journal entries
 - **CompendiumParser** — Parse Foundry compendiums for rules content + text chunking for RAG
 - **JournalParser** — Parse Foundry journals for story context + text chunking for RAG
-- **RulesReference** — D&D rules Q&A with compendium citations
+- **RulesReference** — D&D rules Q&A with compendium citations. Supports `chatProvider` option (preferred over `openaiClient`) for synthesis phase, using `ChatProvider.chat()` with fallback to `OpenAIClient.post()`
 - **SceneDetector** — Detect scene type (combat, social, exploration, rest) from transcript
 - **SessionAnalytics** — Speaker participation, timeline, session statistics
 - **SilenceDetector** — Timer-based silence detection for auto-triggering AI suggestions
@@ -279,7 +280,7 @@ Real-time DM assistant services for Live Mode:
 
 ### Layer 8: Orchestration (`orchestration/`)
 
-- **SessionOrchestrator** — Dual-mode workflow coordinator (live + chronicle)
+- **SessionOrchestrator** — Dual-mode workflow coordinator (live + chronicle). Live mode includes `_updateSceneType(text)` for scene transition detection, `_getAdaptiveBatchDuration()` for speech-adaptive cycle timing (5s-60s), `_emitSafe()` for fire-and-forget EventBus emission, and `getCurrentSceneType()` public getter. Emits `session:liveStarted`, `session:liveStopped`, `ai:suggestionReceived`, `ai:ragIndexingStarted`, `ai:ragIndexingComplete`, `scene:changed` events
 - **TranscriptionProcessor** — Audio → transcript with auto-fallback (cloud/local). Emits: `ai:transcriptionStarted`, `ai:transcriptionReady`, `ai:transcriptionError`, `ai:speakersDetected`. Auto-applies saved speaker labels and registers new speakers.
 - **EntityProcessor** — Transcript → extracted entities
 - **ImageProcessor** — Entities/moments → generated images
@@ -289,7 +290,7 @@ Real-time DM assistant services for Live Mode:
 
 All components use ApplicationV2 + HandlebarsApplicationMixin (v13) with PARTS pattern:
 
-- **MainPanel** — Singleton 6-tab floating panel with PARTS: `main`, `liveMode`, `chronicleMode`, `images`, `transcript`, `entities`, `analytics`. TranscriptReview part with inline editing and speaker color coding.
+- **MainPanel** — Singleton 6-tab floating panel with PARTS: `main`, `liveMode`, `chronicleMode`, `images`, `transcript`, `entities`, `analytics`. TranscriptReview part with inline editing and speaker color coding. EventBus integration listens to `ai:transcriptionReady` (transcript updates), `ai:ragIndexingStarted`/`ai:ragIndexingComplete` (RAG status), and displays scene badge in live mode (combat=red, social=blue, exploration=green, rest=amber).
 - **TranscriptReview** — Inline transcript editor with speaker colors, segment playback, speaker remapping
 - **EntityPreview** — Review and select entities before Kanka publish
 - **SpeakerLabeling** — Map speaker IDs to player names with inline rename, opened from MainPanel with onClose callback
@@ -314,19 +315,29 @@ All components use ApplicationV2 + HandlebarsApplicationMixin (v13) with PARTS p
 
 ### Live Mode
 
-Real-time AI assistance during gameplay:
+Real-time AI assistance during gameplay with adaptive cycle timing:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    LIVE MODE CYCLE (~30s)                        │
+│              LIVE MODE CYCLE (adaptive: 5s–60s)                  │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
+│   _getAdaptiveBatchDuration()                                   │
+│   • High speech activity → shorter cycles (~5s)                 │
+│   • Low speech activity → longer cycles (~60s)                  │
+│          │                                                       │
+│          ▼                                                       │
 │   AudioRecorder.getLatestChunk()                                │
 │          │                                                       │
 │          ▼                                                       │
 │   TranscriptionService.transcribe(chunk)                        │
 │          │                                                       │
-│          ├──► SceneDetector.detectSceneTransition(text)          │
+│          ├──► _updateSceneType(text)                             │
+│          │      └─► SceneDetector.detectSceneTransition(text)   │
+│          │      └─► if transition: _emitSafe('scene:changed',   │
+│          │           { sceneType, previousType, confidence })    │
+│          │      └─► AIAssistant cache invalidation              │
+│          │                                                       │
 │          ├──► SessionAnalytics.addSegment(segments)             │
 │          ├──► ChapterTracker.update(text)                       │
 │          │                                                       │
@@ -334,15 +345,28 @@ Real-time AI assistance during gameplay:
 │   AIAssistant.analyzeContext({                                   │
 │     transcript, sceneType, chapter, ragContext                  │
 │   })                                                             │
+│   • sceneType synced to PromptBuilder via _syncPromptBuilderState() │
+│   • PromptBuilder adds CURRENT SCENE TYPE section to system prompt  │
 │          │                                                       │
 │          ▼                                                       │
-│   MainPanel.render() ◄── suggestions, off-track alerts          │
+│   _emitSafe('ai:suggestionReceived', { suggestion })            │
+│          │                                                       │
+│          ▼                                                       │
+│   MainPanel.render() ◄── suggestions, scene badge, RAG status  │
+│   • Scene badge: combat=red, social=blue,                       │
+│     exploration=green, rest=amber                                │
 │                                                                  │
-│   [Cycle repeats after audio capture of next chunk]             │
+│   [Cycle repeats with adaptive interval]                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Services used: AudioRecorder, TranscriptionService, AIAssistant, SceneDetector, ChapterTracker, SessionAnalytics, SilenceDetector, RAGProvider, RulesReference
+**EventBus events emitted during live mode:**
+- `session:liveStarted` / `session:liveStopped` — Live mode lifecycle
+- `ai:suggestionReceived` — New AI suggestion available
+- `ai:ragIndexingStarted` / `ai:ragIndexingComplete` — RAG indexing status
+- `scene:changed` — Scene type transition detected (includes `sceneType`, `previousType`, `confidence`, `timestamp`)
+
+Services used: AudioRecorder, TranscriptionService, AIAssistant, SceneDetector, ChapterTracker, SessionAnalytics, SilenceDetector, RAGProvider, RulesReference, PromptBuilder
 
 ### Chronicle Mode
 
@@ -604,9 +628,10 @@ eventBus.use((channel, data, next) => {
 
 **Key Channels:**
 - **Audio**: `audio:recordingStarted`, `audio:recordingStopped`, `audio:chunkReady`, `audio:chunkingStarted`, `audio:chunkCreated`, `audio:chunkingComplete`, `audio:error`, `audio:levelChange`
-- **AI**: `ai:transcriptionStarted`, `ai:transcriptionReady`, `ai:transcriptionError`, `ai:speakersDetected`, `ai:imageGenerated`, `ai:entityExtracted`
+- **AI**: `ai:transcriptionStarted`, `ai:transcriptionReady`, `ai:transcriptionError`, `ai:speakersDetected`, `ai:imageGenerated`, `ai:entityExtracted`, `ai:suggestionReceived`, `ai:ragIndexingStarted`, `ai:ragIndexingComplete`
 - **UI**: `ui:panelOpened`, `ui:panelClosed`, `ui:tabChanged`, `ui:speakerMapped`, `ui:entitySelected`
-- **Session**: `session:started`, `session:paused`, `session:resumed`, `session:completed`, `session:error`
+- **Session**: `session:started`, `session:paused`, `session:resumed`, `session:completed`, `session:error`, `session:liveStarted`, `session:liveStopped`
+- **Scene**: `scene:changed` (includes `sceneType`, `previousType`, `confidence`, `timestamp`)
 
 **Optional Integration:** Constructor injection with `#emitSafe()` wrapper for error-tolerant event emission:
 
@@ -828,7 +853,7 @@ Exponential backoff + jitter with sequential queue and automatic circuit breakin
 
 ---
 
-## v3.0-3.1 Changes (Released 2026-02-19 to 2026-03-13)
+## v3.0-3.2 Changes (Released 2026-02-19 to 2026-03-14)
 
 See `docs/plans/2026-02-19-v3-rewrite-plan.md` for the original plan.
 
@@ -846,6 +871,14 @@ See `docs/plans/2026-02-19-v3-rewrite-plan.md` for the original plan.
 4. **Transcription Workflow:** TranscriptionProcessor emits EventBus events, auto-applies saved speaker labels, registers new speakers.
 5. **UI Improvements:** MainPanel uses PARTS pattern, TranscriptReview component with inline editing and speaker color coding, SpeakerLabeling modal integration, StreamController for real-time responses.
 6. **Test Expansion:** 5151 tests across 69 files (40% increase from v3.0)
+
+**v3.2.0 (2026-03-14, Epic 4 — Assistenza AI Live Contestuale):**
+1. **Adaptive Live Cycle:** SessionOrchestrator `_getAdaptiveBatchDuration()` adjusts cycle interval (5s-60s) based on speech activity. High speech = shorter intervals for responsiveness; silence = longer intervals to reduce API costs.
+2. **Scene Detection Pipeline:** New `_updateSceneType(text)` in SessionOrchestrator detects scene transitions via `SceneDetector.detectSceneTransition()`, emits `scene:changed` EventBus event with `sceneType`, `previousType`, `confidence`, `timestamp`. Triggers AIAssistant cache invalidation on scene change. `getCurrentSceneType()` public getter.
+3. **Scene-Aware Prompts:** AIAssistant accepts `sceneType` in `analyzeContext()` options, syncs to PromptBuilder via `_syncPromptBuilderState()`. PromptBuilder `setSceneType()` adds `CURRENT SCENE TYPE` section to system prompt for scene-contextual AI suggestions.
+4. **RulesLookupService ChatProvider Support:** Supports `chatProvider` option (preferred over `openaiClient`) for synthesis phase. Uses `ChatProvider.chat()` with fallback to `OpenAIClient.post()`.
+5. **MainPanel EventBus Integration:** Listens to `ai:transcriptionReady` (transcript updates), `ai:ragIndexingStarted`/`ai:ragIndexingComplete` (RAG status display). Scene badge in live mode with color coding: combat=red, social=blue, exploration=green, rest=amber.
+6. **SessionOrchestrator EventBus Events:** `session:liveStarted`, `session:liveStopped`, `ai:suggestionReceived`, `ai:ragIndexingStarted`, `ai:ragIndexingComplete`, `scene:changed`. All emissions use `_emitSafe()` fire-and-forget wrapper.
 
 ---
 

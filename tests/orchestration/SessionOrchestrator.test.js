@@ -142,6 +142,8 @@ function createMockChapterTracker(overrides = {}) {
 function createMockSceneDetector(overrides = {}) {
   return {
     detectSceneTransition: vi.fn().mockReturnValue(null),
+    identifySceneType: vi.fn().mockReturnValue('unknown'),
+    getCurrentSceneType: vi.fn().mockReturnValue('unknown'),
     ...overrides
   };
 }
@@ -3317,6 +3319,114 @@ describe('RAG Indexing Pipeline', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Story 4.2: EventBus RAG lifecycle events
+// ---------------------------------------------------------------------------
+
+describe('EventBus RAG lifecycle events (Story 4.2)', () => {
+  let orchestrator;
+  let mockEventBus;
+  let mockRAGProvider;
+  let mockJournalParser;
+
+  beforeEach(() => {
+    // crypto is read-only on globalThis in jsdom, so spy on existing subtle
+    vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(
+      new Uint8Array([0x01, 0x02, 0x03, 0x04]).buffer
+    );
+
+    mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+    mockRAGProvider = {
+      indexDocuments: vi.fn().mockResolvedValue({ indexed: 2, failed: 0 }),
+      removeDocument: vi.fn(),
+      clearIndex: vi.fn(),
+      getStatus: vi.fn().mockResolvedValue({ ready: true, documentsIndexed: 2 })
+    };
+    mockJournalParser = {
+      parseJournal: vi.fn().mockReturnValue({ id: 'j1', name: 'Campaign', pages: [] }),
+      getFullText: vi.fn().mockReturnValue('The adventure begins...'),
+      getChunksForEmbedding: vi.fn().mockReturnValue([
+        { text: 'Chunk 1', metadata: { journalName: 'Campaign', pageName: 'Ch1', pageId: 'p1', chunkIndex: 0, totalChunks: 1 } }
+      ]),
+      clearAllCache: vi.fn(),
+      extractNPCProfiles: vi.fn().mockReturnValue([])
+    };
+
+    globalThis.game = {
+      ...globalThis.game,
+      settings: {
+        ...globalThis.game?.settings,
+        get: vi.fn((mod, key) => {
+          if (key === 'activeAdventureJournalId') return 'j1';
+          if (key === 'supplementaryJournalIds') return [];
+          return '';
+        }),
+        set: vi.fn(),
+        register: vi.fn()
+      }
+    };
+
+    orchestrator = new SessionOrchestrator({
+      audioRecorder: createMockAudioRecorder(),
+      eventBus: mockEventBus
+    });
+    orchestrator.setNarratorServices({
+      journalParser: mockJournalParser,
+      aiAssistant: createMockAIAssistant()
+    });
+    orchestrator.setRAGProvider(mockRAGProvider);
+  });
+
+  it('should emit ai:ragIndexingStarted before indexing begins', async () => {
+    await orchestrator._indexJournalsForRAG();
+
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'ai:ragIndexingStarted',
+      expect.objectContaining({ journalCount: 1 })
+    );
+  });
+
+  it('should emit ai:ragIndexingComplete after indexing finishes', async () => {
+    await orchestrator._indexJournalsForRAG();
+
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'ai:ragIndexingComplete',
+      expect.objectContaining({
+        indexed: expect.any(Number),
+        skipped: expect.any(Number)
+      })
+    );
+  });
+
+  it('should emit ai:ragIndexingComplete even when indexing fails', async () => {
+    mockRAGProvider.indexDocuments.mockRejectedValue(new Error('Index error'));
+
+    await orchestrator._indexJournalsForRAG().catch(() => {});
+
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'ai:ragIndexingComplete',
+      expect.objectContaining({
+        error: expect.any(String)
+      })
+    );
+  });
+
+  it('should emit ai:ragIndexingStarted with correct journal count for multiple journals', async () => {
+    globalThis.game.settings.get.mockImplementation((mod, key) => {
+      if (key === 'activeAdventureJournalId') return 'j1';
+      if (key === 'supplementaryJournalIds') return ['j2', 'j3'];
+      return '';
+    });
+
+    await orchestrator._indexJournalsForRAG();
+
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'ai:ragIndexingStarted',
+      expect.objectContaining({ journalCount: 3 })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Cycle-in-flight flag & streaming wiring (06-03)
 // ---------------------------------------------------------------------------
 
@@ -3885,5 +3995,120 @@ describe('Cycle-in-flight flag and streaming (06-03)', () => {
       expect(orchestrator._lastSpeechActivityTime).toBeTruthy();
       expect(orchestrator._lastSpeechActivityTime).toBeGreaterThan(Date.now() - 1000);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 4.4: Scene Detection wiring in live cycle
+// ---------------------------------------------------------------------------
+
+describe('Scene Detection wiring (Story 4.4)', () => {
+  let orchestrator;
+  let mockEventBus;
+  let mockSceneDetector;
+
+  beforeEach(() => {
+    mockEventBus = { emit: vi.fn(), on: vi.fn(), off: vi.fn() };
+    mockSceneDetector = {
+      detectSceneTransition: vi.fn().mockReturnValue({
+        detected: true,
+        type: 'combat',
+        sceneType: 'combat',
+        confidence: 1.0,
+        trigger: 'Roll initiative!'
+      }),
+      identifySceneType: vi.fn().mockReturnValue('combat'),
+      getCurrentSceneType: vi.fn().mockReturnValue('unknown'),
+      setCurrentSceneType: vi.fn(),
+      isConfigured: vi.fn().mockReturnValue(true)
+    };
+
+    orchestrator = new SessionOrchestrator({
+      audioRecorder: createMockAudioRecorder(),
+      eventBus: mockEventBus
+    });
+    orchestrator.setNarratorServices({
+      sceneDetector: mockSceneDetector,
+      aiAssistant: createMockAIAssistant()
+    });
+  });
+
+  it('should emit scene:changed when SceneDetector detects a transition', async () => {
+    // Simulate a scene transition detection
+    orchestrator._sceneDetector = mockSceneDetector;
+    orchestrator._updateSceneType('Test text with combat');
+
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'scene:changed',
+      expect.objectContaining({
+        sceneType: 'combat',
+        confidence: expect.any(Number),
+        timestamp: expect.any(Number)
+      })
+    );
+  });
+
+  it('should update _currentSceneType when transition detected', () => {
+    orchestrator._sceneDetector = mockSceneDetector;
+    orchestrator._updateSceneType('Roll initiative!');
+
+    expect(orchestrator._currentSceneType).toBe('combat');
+  });
+
+  it('should NOT emit scene:changed when scene type unchanged', () => {
+    orchestrator._sceneDetector = mockSceneDetector;
+    orchestrator._currentSceneType = 'combat'; // already combat
+
+    mockSceneDetector.detectSceneTransition.mockReturnValue({
+      detected: false,
+      sceneType: 'combat'
+    });
+    mockSceneDetector.identifySceneType.mockReturnValue('combat');
+
+    orchestrator._updateSceneType('Attack the goblin');
+
+    expect(mockEventBus.emit).not.toHaveBeenCalledWith(
+      'scene:changed',
+      expect.anything()
+    );
+  });
+
+  it('should handle missing SceneDetector gracefully', () => {
+    orchestrator._sceneDetector = null;
+    expect(() => orchestrator._updateSceneType('test')).not.toThrow();
+  });
+
+  it('should include previousType in scene:changed event', () => {
+    orchestrator._sceneDetector = mockSceneDetector;
+    orchestrator._currentSceneType = 'exploration';
+
+    orchestrator._updateSceneType('Roll initiative!');
+
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'scene:changed',
+      expect.objectContaining({
+        sceneType: 'combat',
+        previousType: 'exploration'
+      })
+    );
+  });
+
+  it('should fall back to identifySceneType when no transition detected', () => {
+    mockSceneDetector.detectSceneTransition.mockReturnValue({
+      detected: false,
+      sceneType: null
+    });
+    mockSceneDetector.identifySceneType.mockReturnValue('social');
+
+    orchestrator._sceneDetector = mockSceneDetector;
+    orchestrator._currentSceneType = 'exploration';
+
+    orchestrator._updateSceneType('Let me talk to the bartender');
+
+    expect(orchestrator._currentSceneType).toBe('social');
+    expect(mockEventBus.emit).toHaveBeenCalledWith(
+      'scene:changed',
+      expect.objectContaining({ sceneType: 'social' })
+    );
   });
 });

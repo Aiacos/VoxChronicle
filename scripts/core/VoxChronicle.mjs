@@ -408,7 +408,7 @@ class VoxChronicle {
           this.rulesLookupService = new RulesLookupService(
             this.rulesReference,
             new OpenAIClient(openaiApiKey),
-            { cooldownMs: 5 * 60 * 1000, language: aiResponseLanguage }
+            { cooldownMs: 5 * 60 * 1000, language: aiResponseLanguage, chatProvider: registry.getProvider('chat') }
           );
         }
 

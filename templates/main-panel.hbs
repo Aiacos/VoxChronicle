@@ -18,6 +18,11 @@
     <span class="vox-chronicle-badge {{#if kankaConfigured}}active{{else}}inactive{{/if}}" title="Kanka Integration">
       <i class="fa-solid fa-cloud-upload-alt"></i> KANKA
     </span>
+    {{#if isLiveMode}}
+    <span class="vox-chronicle-badge vox-chronicle-badge--scene vox-chronicle-badge--{{currentSceneType}}" title="{{localize 'VOXCHRONICLE.Scene.Scene'}}">
+      <i class="fa-solid fa-theater-masks"></i> {{sceneTypeLabel}}
+    </span>
+    {{/if}}
   </div>
 
   {{!-- Journal Confirmation Banner --}}

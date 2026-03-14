@@ -2071,4 +2071,57 @@ describe('AIAssistant', () => {
       expect(eventBus.on).not.toHaveBeenCalled();
     });
   });
+
+  // =========================================================================
+  // Story 4.2: RAG context caching in _getRAGContext
+  // =========================================================================
+  describe('RAG context caching (_cachedRAGContext)', () => {
+    let ragProvider;
+
+    beforeEach(() => {
+      ragProvider = createMockRAGProvider();
+      assistant.setRAGProvider(ragProvider);
+      assistant.setUseRAG(true);
+    });
+
+    it('should populate _cachedRAGContext after successful query', async () => {
+      expect(assistant.getCachedRAGContext()).toBeNull();
+
+      await assistant._getRAGContext('test query');
+
+      const cached = assistant.getCachedRAGContext();
+      expect(cached).not.toBeNull();
+      expect(cached.context).toBeTruthy();
+      expect(cached.sources).toBeInstanceOf(Array);
+    });
+
+    it('should update _cachedRAGContext on each successful query', async () => {
+      ragProvider.query.mockResolvedValueOnce({
+        sources: [{ title: 'Source A', excerpt: 'Content A' }]
+      });
+      await assistant._getRAGContext('query 1');
+      const first = assistant.getCachedRAGContext();
+      expect(first.sources).toContain('Source A');
+
+      ragProvider.query.mockResolvedValueOnce({
+        sources: [{ title: 'Source B', excerpt: 'Content B' }]
+      });
+      await assistant._getRAGContext('query 2');
+      const second = assistant.getCachedRAGContext();
+      expect(second.sources).toContain('Source B');
+    });
+
+    it('should not update cache on failed query', async () => {
+      // First successful query populates cache
+      await assistant._getRAGContext('success query');
+      const cached = assistant.getCachedRAGContext();
+      expect(cached).not.toBeNull();
+
+      // Failed query should NOT overwrite cache
+      ragProvider.query.mockRejectedValueOnce(new Error('RAG down'));
+      await assistant._getRAGContext('fail query');
+
+      expect(assistant.getCachedRAGContext()).toEqual(cached);
+    });
+  });
 });

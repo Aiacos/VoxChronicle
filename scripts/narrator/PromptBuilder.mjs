@@ -118,6 +118,13 @@ class PromptBuilder {
     this._rollingSummary = '';
 
     /**
+     * Current detected scene type for contextual suggestions
+     * @type {string}
+     * @private
+     */
+    this._sceneType = 'unknown';
+
+    /**
      * Token budget for AI prompt construction
      * @type {number}
      * @private
@@ -154,6 +161,15 @@ class PromptBuilder {
    */
   setConversationHistory(history) {
     this._conversationHistory = history || [];
+  }
+
+  /**
+   * Sets the current scene type for contextual suggestions
+   *
+   * @param {string} sceneType - Scene type (combat, social, exploration, rest, unknown)
+   */
+  setSceneType(sceneType) {
+    this._sceneType = sceneType || 'unknown';
   }
 
   /**
@@ -265,6 +281,10 @@ class PromptBuilder {
 
     const sensitivitySection = `\n\nOFF-TRACK SENSITIVITY: ${sensitivityGuide[this._sensitivity] || sensitivityGuide['medium']}`;
 
+    const sceneSection = this._sceneType && this._sceneType !== 'unknown'
+      ? `\n\nCURRENT SCENE TYPE: ${this._sceneType}. Adapt your suggestions to this context (e.g., tactical advice for combat, NPC interaction for social, discovery for exploration, downtime for rest).`
+      : '';
+
     return `You are an expert assistant for Dungeon Masters (GMs) in fantasy tabletop RPGs.
 Your SOLE purpose is to help the GM during game sessions.
 
@@ -299,7 +319,7 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
 
 - You are a retrieval and mapping engine.
 - If the players do something not covered by the material, provide the DM with the most relevant "General Themes" or "NPC Goals" from the manual to help them improvise *consistently* with the world, but do not write the scene yourself.
-- Stay silent if no relevant information can be deduced from the context.${sensitivitySection}${chapterSection}`;
+- Stay silent if no relevant information can be deduced from the context.${sensitivitySection}${sceneSection}${chapterSection}`;
   }
 
   /**

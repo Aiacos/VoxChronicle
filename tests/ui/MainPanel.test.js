@@ -2121,6 +2121,90 @@ describe('MainPanel', () => {
       });
     });
 
+    describe('EventBus RAG indexing events (Story 4.2)', () => {
+      it('should subscribe to ai:ragIndexingStarted and ai:ragIndexingComplete', () => {
+        const mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.setEventBus(mockEventBus);
+
+        const eventNames = mockEventBus.on.mock.calls.map(c => c[0]);
+        expect(eventNames).toContain('ai:ragIndexingStarted');
+        expect(eventNames).toContain('ai:ragIndexingComplete');
+      });
+
+      it('should handle ai:ragIndexingStarted without crashing and register handler', () => {
+        const mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const renderSpy = vi.spyOn(panel, 'render').mockImplementation(() => {});
+        Object.defineProperty(panel, 'rendered', { get: () => true });
+        panel.setEventBus(mockEventBus);
+
+        const call = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:ragIndexingStarted');
+        expect(call).toBeDefined();
+
+        // Handler should execute without error and trigger render
+        call[1]({ journalCount: 3 });
+        expect(renderSpy).toHaveBeenCalled();
+      });
+
+      it('should handle ai:ragIndexingComplete and trigger render with updated state', () => {
+        const mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const renderSpy = vi.spyOn(panel, 'render').mockImplementation(() => {});
+        Object.defineProperty(panel, 'rendered', { get: () => true });
+        panel.setEventBus(mockEventBus);
+
+        // Start indexing
+        const startCall = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:ragIndexingStarted');
+        startCall[1]({ journalCount: 2 });
+        renderSpy.mockClear();
+
+        // Complete indexing
+        const completeCall = mockEventBus.on.mock.calls.find(c => c[0] === 'ai:ragIndexingComplete');
+        completeCall[1]({ indexed: 5, skipped: 1 });
+
+        // Should trigger render on completion
+        expect(renderSpy).toHaveBeenCalled();
+      });
+
+      it('should unsubscribe RAG events on cleanup', async () => {
+        const mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.setEventBus(mockEventBus);
+
+        await panel.close();
+
+        const offEventNames = mockEventBus.off.mock.calls.map(c => c[0]);
+        expect(offEventNames).toContain('ai:ragIndexingStarted');
+        expect(offEventNames).toContain('ai:ragIndexingComplete');
+      });
+    });
+
+    describe('scene type label helper (Story 4.4)', () => {
+      it('should return localized label for known scene types', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        expect(panel._getSceneTypeLabel('combat')).toBe('VOXCHRONICLE.Scene.Combat');
+        expect(panel._getSceneTypeLabel('social')).toBe('VOXCHRONICLE.Scene.Social');
+        expect(panel._getSceneTypeLabel('exploration')).toBe('VOXCHRONICLE.Scene.Exploration');
+        expect(panel._getSceneTypeLabel('rest')).toBe('VOXCHRONICLE.Scene.Rest');
+      });
+
+      it('should return raw scene type for unknown types', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        expect(panel._getSceneTypeLabel('custom')).toBe('custom');
+      });
+
+      it('should return "unknown" for null/undefined input', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        expect(panel._getSceneTypeLabel(null)).toBe('unknown');
+        expect(panel._getSceneTypeLabel(undefined)).toBe('unknown');
+      });
+    });
+
     describe('inline edit flow (Task 4)', () => {
       it('should store transcript data via setTranscriptData', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);

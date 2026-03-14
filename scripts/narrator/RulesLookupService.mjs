@@ -41,14 +41,16 @@ export class RulesLookupService {
   /**
    * Creates a new RulesLookupService instance
    * @param {import('./RulesReference.mjs').RulesReference} rulesReference - Rules search service
-   * @param {import('../ai/OpenAIClient.mjs').OpenAIClient} openaiClient - OpenAI API client
+   * @param {import('../ai/OpenAIClient.mjs').OpenAIClient} openaiClient - OpenAI API client (fallback)
    * @param {Object} [options={}] - Configuration options
    * @param {number} [options.cooldownMs=300000] - Cooldown duration in ms (default 5 minutes)
+   * @param {Object} [options.chatProvider] - ChatProvider instance (preferred over openaiClient)
    * @param {Object} [options.logger] - Optional logger instance
    */
   constructor(rulesReference, openaiClient, options = {}) {
     this._rulesReference = rulesReference;
     this._openaiClient = openaiClient;
+    this._chatProvider = options.chatProvider || null;
     this._cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS;
     this._language = options.language || 'en';
     this._logger = options.logger || Logger.createChild('RulesLookupService');
@@ -121,7 +123,8 @@ export class RulesLookupService {
   }
 
   /**
-   * Synthesizes a concise answer from compendium results using gpt-4o
+   * Synthesizes a concise answer from compendium results using gpt-4o.
+   * Uses ChatProvider when available, falls back to OpenAIClient.
    *
    * @param {string} question - The original question
    * @param {Array} compendiumResults - Compendium search results
@@ -156,16 +159,31 @@ export class RulesLookupService {
       }
     ];
 
-    const response = await this._openaiClient.post('/chat/completions', {
-      model: 'gpt-4o',
-      messages,
-      temperature: 0.2,
-      max_tokens: 300
-    }, { signal });
+    let answer;
+    let usage;
 
-    const answer = response?.choices?.[0]?.message?.content;
+    if (this._chatProvider) {
+      const response = await this._chatProvider.chat(messages, {
+        model: 'gpt-4o',
+        temperature: 0.2,
+        maxTokens: 300,
+        abortSignal: signal
+      });
+      answer = response?.content;
+      usage = response?.usage || null;
+    } else {
+      const response = await this._openaiClient.post('/chat/completions', {
+        model: 'gpt-4o',
+        messages,
+        temperature: 0.2,
+        max_tokens: 300
+      }, { signal });
+      answer = response?.choices?.[0]?.message?.content;
+      usage = response?.usage || null;
+    }
+
     if (!answer) {
-      throw new Error('OpenAI returned an empty or filtered response for rules synthesis');
+      throw new Error('AI returned an empty or filtered response for rules synthesis');
     }
 
     // Extract citations from compendium results
@@ -176,7 +194,7 @@ export class RulesLookupService {
     return {
       answer,
       citations,
-      usage: response.usage || null
+      usage
     };
   }
 

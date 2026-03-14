@@ -1051,7 +1051,9 @@
       "Combat": "Kampf",
       "Social": "Sozial",
       "Exploration": "Erkundung",
-      "Rest": "Rast"
+      "Rest": "Rast",
+      "Scene": "Szene",
+      "Unknown": "Unbekannt"
     },
     "RAG": {
       "Title": "RAG-Wissensbasis",

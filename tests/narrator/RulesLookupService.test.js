@@ -387,6 +387,78 @@ describe('RulesLookupService', () => {
   });
 
   // =========================================================================
+  // Story 4.3: ChatProvider migration for synthesis
+  // =========================================================================
+  describe('ChatProvider migration (Story 4.3)', () => {
+    it('should use chatProvider.chat() when chatProvider is provided', async () => {
+      const mockChatProvider = {
+        chat: vi.fn().mockResolvedValue({
+          content: 'Grappling answer from ChatProvider. [PHB p. 195]',
+          usage: { prompt_tokens: 100, completion_tokens: 50 }
+        })
+      };
+      const providerService = new RulesLookupService(mockRulesReference, mockOpenAIClient, {
+        chatProvider: mockChatProvider
+      });
+
+      const result = await providerService.lookup('how does grapple work');
+      const synthesis = await result.synthesisPromise;
+
+      expect(mockChatProvider.chat).toHaveBeenCalled();
+      expect(mockOpenAIClient.post).not.toHaveBeenCalled();
+      expect(synthesis.answer).toContain('ChatProvider');
+      providerService.destroy();
+    });
+
+    it('should fall back to openaiClient when chatProvider is not provided', async () => {
+      const result = await service.lookup('how does grapple work');
+      await result.synthesisPromise;
+
+      expect(mockOpenAIClient.post).toHaveBeenCalled();
+    });
+
+    it('should reject synthesisPromise when chatProvider.chat() throws', async () => {
+      const mockChatProvider = {
+        chat: vi.fn().mockRejectedValue(new Error('ChatProvider synthesis failed'))
+      };
+      const providerService = new RulesLookupService(mockRulesReference, mockOpenAIClient, {
+        chatProvider: mockChatProvider
+      });
+
+      const result = await providerService.lookup('how does grapple work');
+      await expect(result.synthesisPromise).rejects.toThrow('ChatProvider synthesis failed');
+      providerService.destroy();
+    });
+
+    it('should pass correct options to chatProvider.chat()', async () => {
+      const mockChatProvider = {
+        chat: vi.fn().mockResolvedValue({
+          content: 'Answer',
+          usage: {}
+        })
+      };
+      const providerService = new RulesLookupService(mockRulesReference, mockOpenAIClient, {
+        chatProvider: mockChatProvider
+      });
+
+      const result = await providerService.lookup('how does grapple work');
+      await result.synthesisPromise;
+
+      expect(mockChatProvider.chat).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ role: 'system' }),
+          expect.objectContaining({ role: 'user' })
+        ]),
+        expect.objectContaining({
+          model: 'gpt-4o',
+          temperature: 0.2,
+          maxTokens: 300
+        })
+      );
+      providerService.destroy();
+    });
+  });
+
   // destroy()
   // =========================================================================
   describe('destroy', () => {

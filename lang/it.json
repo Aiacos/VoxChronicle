@@ -1051,7 +1051,9 @@
       "Combat": "Combattimento",
       "Social": "Sociale",
       "Exploration": "Esplorazione",
-      "Rest": "Riposo"
+      "Rest": "Riposo",
+      "Scene": "Scena",
+      "Unknown": "Sconosciuto"
     },
     "RAG": {
       "Title": "Base di Conoscenze RAG",

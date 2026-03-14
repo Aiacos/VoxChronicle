@@ -1051,7 +1051,9 @@
       "Combat": "Combat",
       "Social": "Social",
       "Exploration": "Exploration",
-      "Rest": "Rest"
+      "Rest": "Rest",
+      "Scene": "Scene",
+      "Unknown": "Unknown"
     },
     "RAG": {
       "Title": "RAG Knowledge Base",
