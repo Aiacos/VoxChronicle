@@ -584,37 +584,35 @@ const mapped = transcriptionService._mapSpeakersToNames(result, speakerMap);
 
 ## Build & Release
 
-### Build the package
+### CI/CD (Automated)
+
+Releases are automated via GitHub Actions (`.github/workflows/release.yml`):
+
+| Branch | Trigger | Release Tag | Type |
+|--------|---------|-------------|------|
+| `master` | push | `vX.Y.Z` | Stable (latest) |
+| `develop` | push | `vX.Y.Z-rc.N` | Pre-release (RC) |
+
+**Workflow:**
+1. Tests run first (gate — failure blocks release)
+2. Version read from `module.json`
+3. For `develop`: RC number auto-incremented from existing releases
+4. ZIP built with correct download URL
+5. GitHub Release created with ZIP + standalone `module.json`
+
+**To release a new version:**
+1. Update `module.json` version field
+2. Push to `master` (stable) or `develop` (RC)
+3. CI/CD handles build, ZIP, and GitHub Release automatically
+
+### Manual Build (local)
 
 ```bash
 bash build.sh      # Linux/macOS
 build.bat           # Windows
 ```
 
-The build script auto-detects module ID, version, and GitHub URL from `module.json`. It creates a clean ZIP in `releases/{id}-v{version}.zip` with the download URL already set in the packaged module.json.
-
-### Publish a new release
-
-1. **Update `module.json`** - change these two fields:
-   - `"version"`: bump to the new version (e.g. `"X.Y.Z"`)
-   - `"download"`: update to match: `https://github.com/Aiacos/VoxChronicle/releases/download/vX.Y.Z/vox-chronicle-vX.Y.Z.zip`
-
-2. **Build the package**:
-   ```bash
-   bash build.sh
-   ```
-
-3. **Commit and push**:
-   ```bash
-   git add module.json
-   git commit -m "Bump version to X.Y.Z"
-   git push
-   ```
-
-4. **Create GitHub release** (uploads both module.json manifest AND ZIP):
-   ```bash
-   gh release create vX.Y.Z releases/vox-chronicle-vX.Y.Z.zip module.json --title "vX.Y.Z - Description" --latest
-   ```
+The build script auto-detects module ID, version, and GitHub URL from `module.json`. It creates a clean ZIP in `releases/{id}-v{version}.zip`.
 
 > **Why `module.json` is uploaded separately**: Foundry VTT downloads the standalone `module.json` first (via the manifest URL) to discover the module version and its download URL. The ZIP also contains a `module.json` but that's only used after installation.
 
