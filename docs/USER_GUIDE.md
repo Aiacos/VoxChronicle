@@ -157,7 +157,7 @@ Configure how VoxChronicle captures audio:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | **Transcription Language** | Specify language for better accuracy | Auto-detect |
-| **Image Quality** | Medium ($0.04/image) or High ($0.08/image) | Medium |
+| **Image Quality** | Medium ($0.02/image) or High ($0.04/image) | Medium |
 | **Max Images Per Session** | Limit AI images to control costs | 3 |
 | **Auto-Extract Entities** | Automatically extract entities | Enabled |
 | **Confirm Entity Creation** | Review before creating in Kanka | Enabled |
@@ -378,8 +378,8 @@ VoxChronicle uses paid API services:
 | Service | Cost | Example |
 |---------|------|---------|
 | **Transcription** | $0.006/minute | 3-hour session = $1.08 |
-| **Image (Medium)** | $0.04/image | 5 images = $0.20 |
-| **Image (High)** | $0.08/image | 5 images = $0.40 |
+| **Image (Medium)** | $0.02/image | 5 images = $0.10 |
+| **Image (High)** | $0.04/image | 5 images = $0.20 |
 
 **Example session:**
 - 3-hour session transcription: $1.08
@@ -491,7 +491,7 @@ A: No. OpenAI doesn't have a free tier. You'll need to add a payment method and 
 
 **Q: Does VoxChronicle work offline?**
 
-A: No. VoxChronicle requires internet connectivity for AI processing and Kanka publishing.
+A: Partially. Transcription can run locally via a self-hosted Whisper backend (see docs/WHISPER_SETUP.md). However, AI suggestions, image generation, and Kanka publishing require internet connectivity.
 
 ### Recording
 

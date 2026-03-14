@@ -2,7 +2,7 @@
 
 This document describes the system architecture, components, and data flow of the VoxChronicle Foundry VTT module.
 
-**Last updated:** 2026-03-14 (v3.2.0 — Epic 4)
+**Last updated:** 2026-03-15 (v4.0.3 — file counts and version refs need update for Epics 4-7)
 
 ## Table of Contents
 

@@ -2,7 +2,7 @@
 
 This document provides detailed API documentation for all service classes in the VoxChronicle module.
 
-**Last updated:** 2026-03-14 (v3.2.0 — Epic 4)
+**Last updated:** 2026-03-15 (v4.0.3 — missing services: AnthropicChatProvider, GoogleChatProvider, RulesLookupService, CostTracker, JournalPicker, NPCProfileExtractor)
 
 ## Table of Contents
 

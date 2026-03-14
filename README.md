@@ -1,9 +1,8 @@
 # VoxChronicle
 
-![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v12--v13-informational)
+![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v13-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
-![Tests](https://img.shields.io/github/workflow/status/Aiacos/VoxChronicle/Test%20Suite)
+![Version](https://img.shields.io/badge/version-4.0.3-blue)
 
 AI-powered session transcription, real-time DM assistant, and Kanka chronicle publisher for [Foundry VTT](https://foundryvtt.com/).
 
@@ -42,7 +41,7 @@ AI-powered session transcription, real-time DM assistant, and Kanka chronicle pu
 
 ## Requirements
 
-- **Foundry VTT** v12 or v13
+- **Foundry VTT** v13
 - **OpenAI API Key** - Required for cloud transcription, image generation, and live AI features (optional if using offline transcription - see [Whisper Setup](docs/WHISPER_SETUP.md))
 - **Kanka Account** - Required for publishing chronicles (free tier supported)
 - **Modern Browser** with microphone access support

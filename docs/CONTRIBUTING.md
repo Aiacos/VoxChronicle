@@ -112,7 +112,7 @@ Before you begin, ensure you have the following installed:
 - **Node.js** (v18 or higher)
 - **npm** (comes with Node.js)
 - **Git**
-- **Foundry VTT** (v11 or v12 for testing)
+- **Foundry VTT** (v13 for testing)
 - **Code Editor** (VS Code recommended)
 
 #### Initial Setup

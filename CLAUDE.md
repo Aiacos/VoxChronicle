@@ -25,7 +25,7 @@ Core capabilities:
 - **UI Framework**: Foundry VTT ApplicationV2 + HandlebarsApplicationMixin
 - **Templates**: Handlebars (.hbs)
 - **Styling**: CSS with `.vox-chronicle` namespace
-- **Testing**: Vitest with jsdom environment (5223+ tests across 71+ files)
+- **Testing**: Vitest with jsdom environment (5169+ unit tests across 70+ files, 54 integration tests)
 - **External APIs**: OpenAI (transcription, images, chat, embeddings), Kanka (campaign management)
 - **RAG**: Modular provider system — OpenAI File Search (default) or self-hosted RAGFlow
 
@@ -39,7 +39,10 @@ VoxChronicle/
 │   ├── constants.mjs              # MODULE_ID constant (dependency-free leaf module)
 │   ├── core/
 │   │   ├── VoxChronicle.mjs       # Main singleton - service orchestration
-│   │   ├── Settings.mjs           # Foundry settings registration
+│   │   ├── Settings.mjs           # Foundry settings registration (58 settings)
+│   │   ├── EventBus.mjs           # Pub/sub system with typed channels
+│   │   ├── SessionStateMachine.mjs # Formal state transitions
+│   │   ├── ResilienceRegistry.mjs # Circuit breaker registry
 │   │   └── VocabularyDictionary.mjs # Custom vocabulary for transcription accuracy
 │   ├── audio/
 │   │   ├── AudioRecorder.mjs      # MediaRecorder wrapper, WebRTC/mic capture, level metering, Safari codec fallback, crash recovery (IndexedDB), EventBus integration
@@ -52,6 +55,7 @@ VoxChronicle/
 │   │   ├── WhisperBackend.mjs        # HTTP client for whisper.cpp server
 │   │   ├── ImageGenerationService.mjs # gpt-image-1 image generation
 │   │   ├── EntityExtractor.mjs    # Extract NPCs/locations/items from text
+│   │   ├── StreamController.mjs   # SSE stream handling for AI responses
 │   │   └── providers/             # AI Provider abstraction layer (Epic 2)
 │   │       ├── ChatProvider.mjs          # Abstract chat interface
 │   │       ├── TranscriptionProvider.mjs # Abstract transcription interface
@@ -61,6 +65,8 @@ VoxChronicle/
 │   │       ├── OpenAITranscriptionProvider.mjs # OpenAI transcription
 │   │       ├── OpenAIImageProvider.mjs   # OpenAI gpt-image-1
 │   │       ├── OpenAIEmbeddingProvider.mjs # OpenAI embeddings
+│   │       ├── AnthropicChatProvider.mjs  # Anthropic Claude chat implementation
+│   │       ├── GoogleChatProvider.mjs    # Google Gemini chat implementation
 │   │       ├── ProviderRegistry.mjs      # Service locator for providers
 │   │       └── CachingProviderDecorator.mjs # L2 cache decorator
 │   ├── rag/                        # Modular RAG provider system (v3.0)
@@ -76,7 +82,12 @@ VoxChronicle/
 │   │   ├── RulesReference.mjs      # D&D rules Q&A with compendium citations
 │   │   ├── SceneDetector.mjs       # Scene type detection (combat, social, exploration, rest)
 │   │   ├── SessionAnalytics.mjs    # Speaker participation, timeline, session stats
-│   │   └── SilenceDetector.mjs     # Timer-based silence detection for auto-suggestions
+│   │   ├── SilenceDetector.mjs     # Timer-based silence detection for auto-suggestions
+│   │   ├── SilenceMonitor.mjs     # Monitoring companion for silence detection
+│   │   ├── NPCProfileExtractor.mjs # Character profile extraction from journals
+│   │   ├── PromptBuilder.mjs      # Dynamic prompt construction for AI
+│   │   ├── RulesLookupService.mjs # Two-phase hybrid rules lookup
+│   │   └── RollingSummarizer.mjs  # Session summarization for context window
 │   ├── kanka/
 │   │   ├── KankaClient.mjs        # Base API client with rate limiting
 │   │   ├── KankaService.mjs       # CRUD for journals, characters, locations, items
@@ -87,7 +98,10 @@ VoxChronicle/
 │   │   ├── TranscriptionProcessor.mjs # Audio transcription workflow
 │   │   ├── EntityProcessor.mjs     # Entity extraction workflow
 │   │   ├── ImageProcessor.mjs      # Image generation workflow
-│   │   └── KankaPublisher.mjs      # Kanka publishing workflow
+│   │   ├── KankaPublisher.mjs      # Kanka publishing workflow
+│   │   └── CostTracker.mjs        # API cost estimation and tracking
+│   ├── api/
+│   │   └── BaseAPIClient.mjs      # Abstract base for all API clients
 │   ├── data/
 │   │   └── dnd-vocabulary.mjs     # D&D vocabulary dictionary
 │   ├── ui/
@@ -95,7 +109,8 @@ VoxChronicle/
 │   │   ├── SpeakerLabeling.mjs    # Map speaker IDs to player names (inline rename, onClose callback)
 │   │   ├── EntityPreview.mjs      # Review entities before Kanka publish
 │   │   ├── RelationshipGraph.mjs  # Visualize entity relationships
-│   │   └── VocabularyManager.mjs  # Custom vocabulary management UI
+│   │   ├── VocabularyManager.mjs  # Custom vocabulary management UI
+│   │   └── JournalPicker.mjs     # Journal selection for live mode RAG
 │   └── utils/
 │       ├── Logger.mjs             # Module-prefixed logging utility
 │       ├── RateLimiter.mjs        # Request throttling with queue
@@ -118,7 +133,7 @@ VoxChronicle/
 │   └── parts/
 │       └── transcript-review.hbs  # PART: Transcript review with inline editing
 ├── lang/
-│   ├── en.json                    # English (775 keys)
+│   ├── en.json                    # English (1102 keys)
 │   ├── it.json                    # Italian
 │   ├── de.json                    # German
 │   ├── es.json                    # Spanish
