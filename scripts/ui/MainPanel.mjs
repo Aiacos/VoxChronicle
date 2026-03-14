@@ -450,8 +450,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       let cap = '5.00';
       try {
         cap = String(game?.settings?.get(MODULE_ID, 'sessionCostCap') || 5);
-      } catch (e) {
-        /* default */
+      } catch {
+        // Setting unavailable — use default cap display value
       }
       costCapWarning =
         game.i18n?.format('VOXCHRONICLE.Live.CostCapReached', { cap: `$${cap}` }) ||
@@ -1539,8 +1539,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Store the completed suggestion in the orchestrator's suggestions array
     // so it persists across re-renders
-    if (this._orchestrator?._lastAISuggestions) {
-      this._orchestrator._lastAISuggestions.push({
+    if (this._orchestrator?.appendSuggestion) {
+      this._orchestrator.appendSuggestion({
         type: data.type || 'narration',
         content: data.text || ''
       });

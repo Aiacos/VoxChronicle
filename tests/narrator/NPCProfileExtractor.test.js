@@ -135,7 +135,7 @@ describe('NPCProfileExtractor', () => {
       expect(profiles.size).toBe(0);
     });
 
-    it('should return empty Map on malformed JSON response', async () => {
+    it('should throw on malformed JSON response', async () => {
       const badClient = createMockClient({
         choices: [
           {
@@ -146,10 +146,7 @@ describe('NPCProfileExtractor', () => {
         ]
       });
       const ext = new NPCProfileExtractor(badClient);
-      const profiles = await ext.extractProfiles('Some adventure text');
-
-      expect(profiles).toBeInstanceOf(Map);
-      expect(profiles.size).toBe(0);
+      await expect(ext.extractProfiles('Some adventure text')).rejects.toThrow();
     });
 
     it('should initialize sessionNotes as empty array for each profile', async () => {

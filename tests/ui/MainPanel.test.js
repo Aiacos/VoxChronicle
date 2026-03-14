@@ -1750,15 +1750,14 @@ describe('MainPanel', () => {
       expect(panel._streamingActiveType).toBeNull();
     });
 
-    it('_handleStreamComplete should store completed suggestion in orchestrator', () => {
+    it('_handleStreamComplete should store completed suggestion in orchestrator via appendSuggestion', () => {
       const panel = MainPanel.getInstance(mockOrchestrator);
       panel._activeStreamingCard = document.createElement('div');
       panel._finalizeStreamingCard = vi.fn();
-      panel._orchestrator._lastAISuggestions = [];
+      panel._orchestrator.appendSuggestion = vi.fn();
 
       panel._handleStreamComplete({ text: 'suggestion text', type: 'dialogue' });
-      expect(panel._orchestrator._lastAISuggestions).toHaveLength(1);
-      expect(panel._orchestrator._lastAISuggestions[0]).toEqual({
+      expect(panel._orchestrator.appendSuggestion).toHaveBeenCalledWith({
         type: 'dialogue',
         content: 'suggestion text'
       });

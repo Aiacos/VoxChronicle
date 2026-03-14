@@ -169,8 +169,7 @@ Example output:
       return this._profiles;
     } catch (error) {
       this._logger.error('Failed to extract NPC profiles:', error.message);
-      this._profiles = new Map();
-      return this._profiles;
+      throw error;
     }
   }
 

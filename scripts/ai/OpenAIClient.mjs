@@ -914,6 +914,8 @@ class OpenAIClient extends BaseAPIClient {
     });
 
     clearTimeout(controller.timeoutId);
+    // Reset timeout for stream duration — prevents hung SSE streams from blocking forever
+    controller.timeoutId = setTimeout(() => controller.abort(), this._timeout);
 
     if (!response.ok) {
       const error = await this._parseErrorResponse(response);
@@ -954,6 +956,7 @@ class OpenAIClient extends BaseAPIClient {
         }
       }
     } finally {
+      clearTimeout(controller.timeoutId);
       reader.releaseLock();
       // Clean up fallback abort listeners to prevent memory leaks
       listenerCleanup?.abort();

@@ -253,6 +253,10 @@ class EntityProcessor {
     } catch (error) {
       const fetchMs = Date.now() - fetchStart;
       this._logger.warn(`Failed to fetch existing entities after ${fetchMs}ms:`, error.message);
+      ui?.notifications?.warn(
+        game.i18n?.localize('VOXCHRONICLE.Warnings.DeduplicationSkipped') ||
+          'VoxChronicle: Could not check for existing Kanka entities. Duplicates may be created.'
+      );
     }
 
     return names;

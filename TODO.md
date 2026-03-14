@@ -18,17 +18,17 @@ Security scan, code review, predictive analysis, silent failure hunt.
 
 - [x] `SessionOrchestrator.mjs:521` — `extractAll()` not wrapped in try/catch; API error crashed entire session instead of continuing with transcription-only results
 - [x] `SessionOrchestrator.mjs:732` — `setServices()` reinitializes processors while a session is active; swaps `_transcriptionProcessor` mid-use
-- [ ] `MainPanel.mjs:1542` — UI mutates orchestrator's `_lastAISuggestions` directly; push can fail silently if array nulled during teardown
-- [ ] `OpenAIClient.mjs:916` — Stream timeout cleared on header receipt; hung SSE stream has no deadline, blocks `_runAIAnalysis` forever
+- [x] `MainPanel.mjs:1542` — UI mutates orchestrator's `_lastAISuggestions` directly; push can fail silently if array nulled during teardown
+- [x] `OpenAIClient.mjs:916` — Stream timeout cleared on header receipt; hung SSE stream has no deadline, blocks `_runAIAnalysis` forever
 - [ ] `MainPanel.mjs:593` — `synthesisPromise` nulled on re-render; rules card synthesis silently lost during tab switch
 - [x] `main.mjs:229` — `game.settings.get()` in journal hook handler without try/catch; throws during module teardown
 
 ### HIGH — From Silent Failure Hunt
 
-- [ ] `NPCProfileExtractor.mjs:170` — `extractProfiles()` returns empty Map on failure; caller cannot distinguish "no NPCs" from "extraction crashed"
-- [ ] `EntityProcessor.mjs:253` — `getExistingKankaEntities()` swallows fetch errors and returns `[]`; causes duplicate entity creation
+- [x] `NPCProfileExtractor.mjs:170` — `extractProfiles()` returns empty Map on failure; caller cannot distinguish "no NPCs" from "extraction crashed"
+- [x] `EntityProcessor.mjs:253` — `getExistingKankaEntities()` swallows fetch errors and returns `[]`; now notifies user that deduplication was skipped
 - [ ] `ImageProcessor.mjs:148` — `generateImages()` returns `[]` on catastrophic failure; caller cannot distinguish "no images needed" from "API crashed"
-- [ ] `SessionOrchestrator.mjs:1377` — `_enrichSessionWithJournalContext()` swallows errors; publishing proceeds without entity validation, hallucinated entities reach Kanka
+- [x] `SessionOrchestrator.mjs:1377` — `_enrichSessionWithJournalContext()` swallows errors; now records to session errors array for publishing awareness
 
 ### HIGH — From Predictive Analysis
 

@@ -1386,7 +1386,11 @@ class SessionOrchestrator {
       this._logger.debug(`Journal enrichment completed in ${enrichMs}ms`);
     } catch (error) {
       this._logger.warn(`Failed to enrich session with journal context: ${error.message}`);
-      // Non-fatal: publishing will proceed without journal validation
+      this._currentSession?.errors?.push({
+        stage: 'enrichment',
+        error: `Journal validation skipped: ${error.message}`,
+        timestamp: Date.now()
+      });
     }
   }
 
@@ -2230,6 +2234,17 @@ class SessionOrchestrator {
    */
   getAISuggestions() {
     return this._lastAISuggestions;
+  }
+
+  /**
+   * Append a suggestion to the current suggestions array (safe public API)
+   * @param {object} suggestion - { type: string, content: string }
+   */
+  appendSuggestion(suggestion) {
+    if (!this._lastAISuggestions) {
+      this._lastAISuggestions = [];
+    }
+    this._lastAISuggestions.push(suggestion);
   }
 
   /**
