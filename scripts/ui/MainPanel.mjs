@@ -594,8 +594,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       const savedCards = this._rulesCards;
       this._rulesCards = [];
       for (const { data } of savedCards) {
-        // Re-create card from data; skip synthesis since it already resolved/rejected
-        this._handleRulesCard({ ...data, synthesisPromise: null });
+        // Re-create card from data; mark synthesis as unavailable if it was in-flight
+        const hadPendingSynthesis = data.synthesisPromise != null;
+        this._handleRulesCard({
+          ...data,
+          synthesisPromise: null,
+          synthesisUnavailable: hadPendingSynthesis
+        });
       }
     }
 

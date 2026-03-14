@@ -397,23 +397,22 @@ describe('ImageProcessor', () => {
     });
 
     describe('error handling', () => {
-      it('should return empty array when generateBatch fails', async () => {
+      it('should throw when generateBatch fails', async () => {
         const failingService = createMockImageGenerationService({
           generateBatch: vi.fn().mockRejectedValue(new Error('Generation failed'))
         });
 
         const p = new ImageProcessor({ imageGenerationService: failingService });
-        const result = await p.generateImages(createSampleMoments(1), {});
-        expect(result).toEqual([]);
+        await expect(p.generateImages(createSampleMoments(1), {})).rejects.toThrow('Generation failed');
       });
 
-      it('should not throw when generateBatch fails', async () => {
+      it('should propagate error to caller when generateBatch fails', async () => {
         const failingService = createMockImageGenerationService({
           generateBatch: vi.fn().mockRejectedValue(new Error('Generation failed'))
         });
 
         const p = new ImageProcessor({ imageGenerationService: failingService });
-        await expect(p.generateImages(createSampleMoments(1), {})).resolves.toEqual([]);
+        await expect(p.generateImages(createSampleMoments(1), {})).rejects.toThrow();
       });
 
       it('should report error progress when generateBatch fails', async () => {
@@ -423,7 +422,7 @@ describe('ImageProcessor', () => {
 
         const p = new ImageProcessor({ imageGenerationService: failingService });
         const onProgress = vi.fn();
-        await p.generateImages(createSampleMoments(1), {}, { onProgress });
+        await p.generateImages(createSampleMoments(1), {}, { onProgress }).catch(() => {});
 
         expect(onProgress).toHaveBeenCalledWith(0, expect.stringContaining('API quota exceeded'));
       });
@@ -434,7 +433,7 @@ describe('ImageProcessor', () => {
         });
 
         const p = new ImageProcessor({ imageGenerationService: failingService });
-        await p.generateImages(createSampleMoments(1), {});
+        await p.generateImages(createSampleMoments(1), {}).catch(() => {});
         expect(ui.notifications.warn).toHaveBeenCalledTimes(1);
         expect(ui.notifications.warn).toHaveBeenCalledWith(
           expect.stringContaining('VOXCHRONICLE.Errors.ImageGenerationBatchFailed')

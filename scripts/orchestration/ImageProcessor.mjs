@@ -153,7 +153,7 @@ class ImageProcessor {
         game.i18n?.localize('VOXCHRONICLE.Errors.ImageGenerationBatchFailed') ||
           'VoxChronicle: Image generation failed. Chronicle will be published without images.'
       );
-      return [];
+      throw error;
     }
   }
 

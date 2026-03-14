@@ -20,14 +20,14 @@ Security scan, code review, predictive analysis, silent failure hunt.
 - [x] `SessionOrchestrator.mjs:732` — `setServices()` reinitializes processors while a session is active; swaps `_transcriptionProcessor` mid-use
 - [x] `MainPanel.mjs:1542` — UI mutates orchestrator's `_lastAISuggestions` directly; push can fail silently if array nulled during teardown
 - [x] `OpenAIClient.mjs:916` — Stream timeout cleared on header receipt; hung SSE stream has no deadline, blocks `_runAIAnalysis` forever
-- [ ] `MainPanel.mjs:593` — `synthesisPromise` nulled on re-render; rules card synthesis silently lost during tab switch
+- [x] `MainPanel.mjs:593` — `synthesisPromise` nulled on re-render; now passes `synthesisUnavailable` flag to card handler
 - [x] `main.mjs:229` — `game.settings.get()` in journal hook handler without try/catch; throws during module teardown
 
 ### HIGH — From Silent Failure Hunt
 
 - [x] `NPCProfileExtractor.mjs:170` — `extractProfiles()` returns empty Map on failure; caller cannot distinguish "no NPCs" from "extraction crashed"
 - [x] `EntityProcessor.mjs:253` — `getExistingKankaEntities()` swallows fetch errors and returns `[]`; now notifies user that deduplication was skipped
-- [ ] `ImageProcessor.mjs:148` — `generateImages()` returns `[]` on catastrophic failure; caller cannot distinguish "no images needed" from "API crashed"
+- [x] `ImageProcessor.mjs:148` — `generateImages()` now throws on catastrophic failure; caller wraps in try/catch
 - [x] `SessionOrchestrator.mjs:1377` — `_enrichSessionWithJournalContext()` swallows errors; now records to session errors array for publishing awareness
 
 ### HIGH — From Predictive Analysis
@@ -40,7 +40,7 @@ Security scan, code review, predictive analysis, silent failure hunt.
 
 - [ ] `SessionOrchestrator.mjs:19` — `MAX_LIVE_SEGMENTS=100` loses context after ~3 minutes of active speech; AI suggestions miss earlier context
 - [ ] `SessionAnalytics.mjs:288` — `_segments` array unbounded; no trimming for long sessions
-- [ ] `CacheManager.mjs:299` — `_trim()` sorts full Map on every write; O(n log n) per cache insert
+- [x] `CacheManager.mjs:299` — `_trim()` cleaned up; sort only runs when eviction is actually needed (infrequent)
 - [ ] `SessionOrchestrator.mjs:1858` — O(n) string prepend in hot AI analysis path; consider pre-building context string
 - [ ] `AudioRecorder.mjs:521` — Timeout path skips `clearPersistedChunks()`; stale IndexedDB chunks served as recovery data on next load
 - [ ] `RollingSummarizer.mjs:95` — Returns old summary on failure with no failure counter; unbounded context growth

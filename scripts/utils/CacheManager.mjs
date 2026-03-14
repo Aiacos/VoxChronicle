@@ -291,21 +291,22 @@ export class CacheManager {
    * @private
    */
   _trim() {
-    if (this._cache.size <= this._maxSize) {
+    const removeCount = this._cache.size - this._maxSize;
+    if (removeCount <= 0) {
       return;
     }
 
     // Remove least recently used entries (LRU)
-    const entries = Array.from(this._cache.entries()).sort(
+    // Sorting only happens when cache exceeds maxSize, which is infrequent
+    const entries = [...this._cache.entries()].sort(
       (a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt
     );
 
-    const toRemove = entries.slice(0, this._cache.size - this._maxSize);
-    for (const [key] of toRemove) {
-      this._cache.delete(key);
+    for (let i = 0; i < removeCount; i++) {
+      this._cache.delete(entries[i][0]);
     }
 
-    this._logger.info(`Trimmed ${toRemove.length} old cache entries`);
+    this._logger.info(`Trimmed ${removeCount} old cache entries`);
   }
 
   /**

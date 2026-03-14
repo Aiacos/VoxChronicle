@@ -638,15 +638,21 @@ class SessionOrchestrator {
     this._updateState(SessionState.GENERATING_IMAGES);
 
     const imageStart = Date.now();
-    const results = await this._imageProcessor.generateImages(
-      this._currentSession.moments || [],
-      this._currentSession.entities || {},
-      {
-        maxImagesPerSession: this._options.maxImagesPerSession,
-        imageQuality: this._options.imageQuality,
-        onProgress: (progress, message) => this._reportProgress('images', progress, message)
-      }
-    );
+    let results;
+    try {
+      results = await this._imageProcessor.generateImages(
+        this._currentSession.moments || [],
+        this._currentSession.entities || {},
+        {
+          maxImagesPerSession: this._options.maxImagesPerSession,
+          imageQuality: this._options.imageQuality,
+          onProgress: (progress, message) => this._reportProgress('images', progress, message)
+        }
+      );
+    } catch (imageError) {
+      this._logger.error('Image generation threw:', imageError.message);
+      results = null;
+    }
 
     if (results && results.length > 0) {
       this._currentSession.images = results;
