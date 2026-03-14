@@ -87,13 +87,13 @@ development_status:
   epic-6-retrospective: done
 
   # Epic 7: Multi-Provider AI & Selezione Per-Task
-  epic-7: backlog
-  7-1-provider-anthropic-e-google: backlog
-  7-2-selezione-modello-per-task-e-status-provider: backlog
-  epic-7-retrospective: optional
+  epic-7: done
+  7-1-provider-anthropic-e-google: done
+  7-2-selezione-modello-per-task-e-status-provider: done
+  epic-7-retrospective: done
 
   # Epic 8: Analytics Sessione & Accessibilita' Completa
-  epic-8: backlog
-  8-1-dashboard-analytics-sessione: backlog
-  8-2-navigazione-tastiera-e-accessibilita-wcag-aaa: backlog
-  epic-8-retrospective: optional
+  epic-8: done
+  8-1-dashboard-analytics-sessione: done
+  8-2-navigazione-tastiera-e-accessibilita-wcag-aaa: done
+  epic-8-retrospective: done

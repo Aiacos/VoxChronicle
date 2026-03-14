@@ -2305,4 +2305,27 @@ describe('VoxChronicle', () => {
       expect(mockCacheManagerInstance.clear).toHaveBeenCalled();
     });
   });
+
+  // =========================================================================
+  // Story 7.2: Per-task provider selection
+  // =========================================================================
+  describe('getProviderForTask (Story 7.2)', () => {
+    it('should return default chat provider when task setting is "default"', async () => {
+      configureSettings(fullSettings({ aiProviderSuggestions: 'default' }));
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      const provider = instance.getProviderForTask('suggestions');
+      expect(provider).toBeDefined();
+    });
+
+    it('should return default when per-task setting not configured', async () => {
+      configureSettings(fullSettings());
+      const instance = VoxChronicle.getInstance();
+      await instance.initialize();
+
+      const provider = instance.getProviderForTask('rules');
+      expect(provider).toBeDefined();
+    });
+  });
 });

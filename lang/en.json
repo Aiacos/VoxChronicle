@@ -6,6 +6,10 @@
     "Settings": {
       "OpenAIKey": "OpenAI API Key",
       "OpenAIKeyHint": "Your OpenAI API key for transcription and image generation. Get one at platform.openai.com",
+      "AnthropicKey": "Anthropic API Key",
+      "AnthropicKeyHint": "Your Anthropic API key for Claude models (optional)",
+      "GoogleKey": "Google API Key",
+      "GoogleKeyHint": "Your Google API key for Gemini models (optional)",
       "KankaToken": "Kanka API Token",
       "KankaTokenHint": "Your Kanka personal access token. Generate at app.kanka.io/settings/api",
       "KankaCampaign": "Kanka Campaign ID",

@@ -174,7 +174,7 @@
   {{!-- Tab Content Panes --}}
   <div class="vox-chronicle-panel__content">
     <div class="vox-chronicle-tab-pane" data-tab-pane="live" {{#unless (eq activeTab 'live')}}hidden{{/unless}}>
-      <div class="vox-chronicle-suggestions-container">
+      <div class="vox-chronicle-suggestions-container" aria-live="polite" role="log">
         {{#if suggestions.length}}
         {{#each suggestions}}
         <div class="vox-chronicle-suggestion" data-suggestion-index="{{@index}}">

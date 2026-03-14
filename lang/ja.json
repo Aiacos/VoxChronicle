@@ -6,6 +6,10 @@
     "Settings": {
       "OpenAIKey": "[EN] OpenAI API Key",
       "OpenAIKeyHint": "[EN] Your OpenAI API key for transcription and image generation. Get one at platform.openai.com",
+      "AnthropicKey": "Anthropic APIキー",
+      "AnthropicKeyHint": "Claudeモデル用のAnthropic APIキー（オプション）",
+      "GoogleKey": "Google APIキー",
+      "GoogleKeyHint": "Geminiモデル用のGoogle APIキー（オプション）",
       "KankaToken": "[EN] Kanka API Token",
       "KankaTokenHint": "[EN] Your Kanka personal access token. Generate at app.kanka.io/settings/api",
       "KankaCampaign": "[EN] Kanka Campaign ID",

@@ -49,6 +49,59 @@ class Settings {
       }
     });
 
+    // Anthropic API Key (client-side, per user)
+    game.settings.register(MODULE_ID, 'anthropicApiKey', {
+      name: 'VOXCHRONICLE.Settings.AnthropicKey',
+      hint: 'VOXCHRONICLE.Settings.AnthropicKeyHint',
+      scope: 'client',
+      config: true,
+      type: String,
+      default: '',
+      onChange: () => Settings._onApiKeyChange('anthropic')
+    });
+
+    // Google API Key (client-side, per user)
+    game.settings.register(MODULE_ID, 'googleApiKey', {
+      name: 'VOXCHRONICLE.Settings.GoogleKey',
+      hint: 'VOXCHRONICLE.Settings.GoogleKeyHint',
+      scope: 'client',
+      config: true,
+      type: String,
+      default: '',
+      onChange: () => Settings._onApiKeyChange('google')
+    });
+
+    // Per-task AI provider selection (Story 7.2)
+    game.settings.register(MODULE_ID, 'aiProviderSuggestions', {
+      name: 'VOXCHRONICLE.Settings.AIProviderSuggestions',
+      hint: 'VOXCHRONICLE.Settings.AIProviderSuggestionsHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'default',
+      choices: { default: 'Default', 'openai-chat': 'OpenAI', 'anthropic-chat': 'Anthropic Claude', 'google-chat': 'Google Gemini' }
+    });
+
+    game.settings.register(MODULE_ID, 'aiProviderRules', {
+      name: 'VOXCHRONICLE.Settings.AIProviderRules',
+      hint: 'VOXCHRONICLE.Settings.AIProviderRulesHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'default',
+      choices: { default: 'Default', 'openai-chat': 'OpenAI', 'anthropic-chat': 'Anthropic Claude', 'google-chat': 'Google Gemini' }
+    });
+
+    game.settings.register(MODULE_ID, 'aiProviderExtraction', {
+      name: 'VOXCHRONICLE.Settings.AIProviderExtraction',
+      hint: 'VOXCHRONICLE.Settings.AIProviderExtractionHint',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'default',
+      choices: { default: 'Default', 'openai-chat': 'OpenAI', 'anthropic-chat': 'Anthropic Claude', 'google-chat': 'Google Gemini' }
+    });
+
     // Kanka API Token (world-wide, shared across all users)
     // Typically the GM's token for campaign management
     // kankaApiToken is world-scope — the updateSetting hook in VoxChronicle._registerHooks()

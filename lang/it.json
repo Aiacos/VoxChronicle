@@ -6,6 +6,10 @@
     "Settings": {
       "OpenAIKey": "Chiave API OpenAI",
       "OpenAIKeyHint": "La tua chiave API OpenAI per trascrizione e generazione immagini. Ottienila su platform.openai.com",
+      "AnthropicKey": "Chiave API Anthropic",
+      "AnthropicKeyHint": "La tua chiave API Anthropic per i modelli Claude (opzionale)",
+      "GoogleKey": "Chiave API Google",
+      "GoogleKeyHint": "La tua chiave API Google per i modelli Gemini (opzionale)",
       "KankaToken": "Token API Kanka",
       "KankaTokenHint": "Il tuo token di accesso personale Kanka. Generalo su app.kanka.io/settings/api",
       "KankaCampaign": "ID Campagna Kanka",

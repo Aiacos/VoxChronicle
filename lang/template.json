@@ -6,6 +6,10 @@
     "Settings": {
       "OpenAIKey": "",
       "OpenAIKeyHint": "",
+      "AnthropicKey": "",
+      "AnthropicKeyHint": "",
+      "GoogleKey": "",
+      "GoogleKeyHint": "",
       "KankaToken": "",
       "KankaTokenHint": "",
       "KankaCampaign": "",

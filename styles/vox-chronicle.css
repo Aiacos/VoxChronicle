@@ -1645,8 +1645,18 @@ button.vox-chronicle-btn--danger:hover:not(:disabled) {
   50% { opacity: 0; }
 }
 
+/* Accessibility: Focus ring for all interactive elements */
+.vox-chronicle button:focus-visible,
+.vox-chronicle input:focus-visible,
+.vox-chronicle select:focus-visible,
+.vox-chronicle [tabindex]:focus-visible {
+  outline: 2px solid var(--vox-color-accent, #a855f7);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .vox-chronicle-stream--active::after {
+  .vox-chronicle-stream--active::after,
+  .vox-chronicle-badge--recording {
     animation: none;
     opacity: 1;
   }

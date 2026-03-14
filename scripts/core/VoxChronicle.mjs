@@ -259,6 +259,8 @@ class VoxChronicle {
 
       // Get and TRIM API keys from settings
       const openaiApiKey = this._getSetting('openaiApiKey')?.trim();
+      const anthropicApiKey = this._getSetting('anthropicApiKey')?.trim();
+      const googleApiKey = this._getSetting('googleApiKey')?.trim();
       const kankaApiToken = this._getSetting('kankaApiToken')?.trim();
       const kankaCampaignId = this._getSetting('kankaCampaignId')?.trim();
       
@@ -287,6 +289,22 @@ class VoxChronicle {
         logger.info('OpenAI providers registered (with L2 cache)');
       } else {
         logger.warn('OpenAI API key is empty or not configured');
+      }
+
+      // Register Anthropic provider (Story 7.1)
+      if (anthropicApiKey) {
+        const { AnthropicChatProvider } = await import('../ai/providers/AnthropicChatProvider.mjs');
+        const anthropicChat = new AnthropicChatProvider(anthropicApiKey);
+        registry.register('anthropic-chat', anthropicChat, { default: !openaiApiKey });
+        logger.info('Anthropic provider registered');
+      }
+
+      // Register Google provider (Story 7.1)
+      if (googleApiKey) {
+        const { GoogleChatProvider } = await import('../ai/providers/GoogleChatProvider.mjs');
+        const googleChat = new GoogleChatProvider(googleApiKey);
+        registry.register('google-chat', googleChat, { default: !openaiApiKey && !anthropicApiKey });
+        logger.info('Google provider registered');
       }
 
       const audioSettings = {
@@ -461,6 +479,30 @@ class VoxChronicle {
       logger.warn(`Failed to read setting '${key}': ${error.message}`);
       return null;
     }
+  }
+
+  /**
+   * Get the ChatProvider for a specific task, respecting per-task settings.
+   * Falls back to the default registry provider if 'default' or unavailable.
+   * @param {string} task - Task key ('suggestions', 'rules', 'extraction')
+   * @returns {Object} ChatProvider instance
+   */
+  getProviderForTask(task) {
+    const settingMap = {
+      suggestions: 'aiProviderSuggestions',
+      rules: 'aiProviderRules',
+      extraction: 'aiProviderExtraction'
+    };
+    const registry = ProviderRegistry.getInstance();
+    const settingKey = settingMap[task];
+    if (settingKey) {
+      const providerName = this._getSetting(settingKey);
+      if (providerName && providerName !== 'default') {
+        const provider = registry.getProviderByName(providerName);
+        if (provider) return provider;
+      }
+    }
+    return registry.getProvider('chat');
   }
 
   /**
