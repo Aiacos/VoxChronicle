@@ -73,10 +73,10 @@ development_status:
   epic-4-retrospective: done
 
   # Epic 5: Cronaca Automatica & Pubblicazione Kanka
-  epic-5: backlog
-  5-1-estrazione-entita-e-revisione: backlog
-  5-2-generazione-immagini-e-cronaca-narrativa: backlog
-  5-3-pubblicazione-su-kanka: backlog
+  epic-5: in-progress
+  5-1-estrazione-entita-e-revisione: done
+  5-2-generazione-immagini-e-cronaca-narrativa: done
+  5-3-pubblicazione-su-kanka: done
   epic-5-retrospective: optional
 
   # Epic 6: Pannello Unificato & Esperienza Adattiva

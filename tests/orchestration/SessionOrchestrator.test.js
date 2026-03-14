@@ -4112,3 +4112,184 @@ describe('Scene Detection wiring (Story 4.4)', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Story 5.1: EntityPreview callback wiring in chronicle workflow
+// ---------------------------------------------------------------------------
+
+describe('EntityPreview callback wiring (Story 5.1)', () => {
+  let orchestrator;
+
+  beforeEach(() => {
+    orchestrator = new SessionOrchestrator({
+      audioRecorder: createMockAudioRecorder()
+    });
+    orchestrator._entityProcessor = {
+      extractAll: vi.fn().mockResolvedValue({
+        characters: [{ name: 'Eldrin', description: 'A mage' }],
+        locations: [{ name: 'Tower', description: 'Ancient tower' }],
+        items: [],
+        totalCount: 2,
+        summary: 'Eldrin at the Tower'
+      }),
+      extractRelationships: vi.fn().mockResolvedValue([])
+    };
+    orchestrator._currentSession = {
+      transcript: { text: 'Eldrin entered the Tower of Zephyr.' },
+      entities: null,
+      relationships: null,
+      moments: null,
+      errors: []
+    };
+  });
+
+  it('should call onEntityPreview callback after entity extraction when confirmEntityCreation=true', async () => {
+    const onEntityPreview = vi.fn();
+    orchestrator.setCallbacks({ onEntityPreview });
+    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+
+    await orchestrator._extractEntities();
+
+    expect(onEntityPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entities: expect.objectContaining({ totalCount: 2 }),
+        relationships: expect.any(Array)
+      })
+    );
+  });
+
+  it('should NOT call onEntityPreview when confirmEntityCreation=false', async () => {
+    const onEntityPreview = vi.fn();
+    orchestrator.setCallbacks({ onEntityPreview });
+    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: false, autoExtractEntities: true };
+
+    await orchestrator._extractEntities();
+
+    expect(onEntityPreview).not.toHaveBeenCalled();
+  });
+
+  it('should NOT call onEntityPreview when no entities extracted', async () => {
+    orchestrator._entityProcessor.extractAll.mockResolvedValue({
+      characters: [], locations: [], items: [], totalCount: 0
+    });
+    const onEntityPreview = vi.fn();
+    orchestrator.setCallbacks({ onEntityPreview });
+    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+
+    await orchestrator._extractEntities();
+
+    expect(onEntityPreview).not.toHaveBeenCalled();
+  });
+
+  it('should NOT call onEntityPreview when callback not registered', async () => {
+    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+
+    // Should not throw even without callback
+    await expect(orchestrator._extractEntities()).resolves.not.toThrow();
+  });
+
+  it('should include moments in onEntityPreview payload', async () => {
+    orchestrator._entityProcessor.extractAll.mockResolvedValue({
+      characters: [{ name: 'Eldrin' }],
+      locations: [],
+      items: [],
+      totalCount: 1,
+      moments: [{ title: 'Battle', dramaScore: 8 }]
+    });
+    const onEntityPreview = vi.fn();
+    orchestrator.setCallbacks({ onEntityPreview });
+    orchestrator._options = { ...orchestrator._options, confirmEntityCreation: true, autoExtractEntities: true };
+
+    await orchestrator._extractEntities();
+
+    expect(onEntityPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        moments: expect.any(Array)
+      })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 5.3: Publish confirmation callback + resume on failure
+// ---------------------------------------------------------------------------
+
+describe('Kanka publish confirmation (Story 5.3)', () => {
+  let orchestrator;
+  let mockKankaPublisher;
+
+  beforeEach(() => {
+    mockKankaPublisher = {
+      publishSession: vi.fn().mockResolvedValue({
+        journal: { id: 'j1', name: 'Chronicle' },
+        characters: [],
+        locations: [],
+        items: [],
+        images: [],
+        errors: []
+      })
+    };
+
+    orchestrator = new SessionOrchestrator({
+      audioRecorder: createMockAudioRecorder()
+    });
+    orchestrator._kankaPublisher = mockKankaPublisher;
+    orchestrator._currentSession = {
+      title: 'Session 1',
+      transcript: { text: 'Test transcript', segments: [] },
+      entities: { characters: [{ name: 'Eldrin' }], locations: [], items: [], totalCount: 1 },
+      images: [{ id: 'img1' }],
+      errors: []
+    };
+  });
+
+  it('should call onPublishConfirmation before publishing', async () => {
+    const onPublishConfirmation = vi.fn().mockResolvedValue(true);
+    orchestrator.setCallbacks({ onPublishConfirmation });
+
+    await orchestrator.publishToKanka();
+
+    expect(onPublishConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityCount: expect.any(Number),
+        imageCount: expect.any(Number)
+      })
+    );
+    expect(mockKankaPublisher.publishSession).toHaveBeenCalled();
+  });
+
+  it('should abort publishing when confirmation returns false', async () => {
+    const onPublishConfirmation = vi.fn().mockResolvedValue(false);
+    orchestrator.setCallbacks({ onPublishConfirmation });
+
+    const result = await orchestrator.publishToKanka();
+
+    expect(onPublishConfirmation).toHaveBeenCalled();
+    expect(mockKankaPublisher.publishSession).not.toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
+
+  it('should proceed without confirmation when callback not registered', async () => {
+    await orchestrator.publishToKanka();
+
+    expect(mockKankaPublisher.publishSession).toHaveBeenCalled();
+  });
+
+  it('should pass resumeFromResults to publishSession on retry', async () => {
+    const previousResults = {
+      journal: { id: 'j1', name: 'Chronicle' },
+      characters: [],
+      errors: [{ entity: 'loc1', error: 'timeout' }]
+    };
+    orchestrator._currentSession.kankaResults = previousResults;
+
+    await orchestrator.publishToKanka({ resume: true });
+
+    expect(mockKankaPublisher.publishSession).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        resumeFromResults: previousResults
+      })
+    );
+  });
+});

@@ -548,6 +548,17 @@ class SessionOrchestrator {
       this._logger.warn('Skipping relationship extraction due to partial entity extraction failure');
     }
 
+    // Show entity preview dialog if confirmation required and entities found
+    if (this._options.confirmEntityCreation &&
+        (extractionResult.totalCount || 0) > 0 &&
+        this._callbacks.onEntityPreview) {
+      this._callbacks.onEntityPreview({
+        entities: { ...this._currentSession.entities, totalCount: extractionResult.totalCount },
+        relationships: this._currentSession.relationships || [],
+        moments: this._currentSession.moments || []
+      });
+    }
+
     return extractionResult;
   }
 
@@ -651,11 +662,27 @@ class SessionOrchestrator {
       throw new Error('Kanka service not configured.');
     }
 
+    // User confirmation before publishing (NFR11)
+    if (this._callbacks.onPublishConfirmation) {
+      const confirmed = await this._callbacks.onPublishConfirmation({
+        entityCount: this._currentSession.entities?.totalCount || 0,
+        imageCount: this._currentSession.images?.length || 0,
+        hasChronicle: !!this._currentSession.transcript
+      });
+      if (!confirmed) {
+        this._logger.log('Publishing cancelled by user');
+        return null;
+      }
+    }
+
     this._logger.log('Publishing to Kanka...');
     this._updateState(SessionState.PUBLISHING);
 
     // Enrich session with Foundry journal context for entity validation
     await this._enrichSessionWithJournalContext();
+
+    // Resume from previous partial results if retrying (NFR35)
+    const resumeFromResults = options.resume ? (this._currentSession.kankaResults || null) : undefined;
 
     const publishStart = Date.now();
     try {
@@ -663,6 +690,7 @@ class SessionOrchestrator {
         createEntities: options.createEntities ?? true,
         uploadImages: options.uploadImages ?? true,
         createChronicle: options.createChronicle ?? true,
+        resumeFromResults,
         onProgress: (progress, message) => this._reportProgress('publishing', progress, message)
       });
 
