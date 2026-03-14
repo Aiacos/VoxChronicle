@@ -18,6 +18,9 @@ coverage/
 # Transient session files
 fix-todos/
 
+# BMad Method framework (dev tool, not project code)
+_bmad/
+
 # Dependencies
 node_modules/
 package-lock.json
