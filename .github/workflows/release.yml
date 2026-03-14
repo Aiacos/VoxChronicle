@@ -33,29 +33,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version from module.json
-        id: version
-        run: |
-          VERSION=$(jq -r '.version' module.json)
-          MODULE_ID=$(jq -r '.id' module.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "module_id=$MODULE_ID" >> $GITHUB_OUTPUT
-          echo "Module: $MODULE_ID v$VERSION"
-
-      - name: Determine release tag
+      - name: Extract version and determine tag
         id: tag
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          BASE_VERSION=$(jq -r '.version' module.json)
+          MODULE_ID=$(jq -r '.id' module.json)
           BRANCH="${{ github.ref_name }}"
 
           if [ "$BRANCH" = "master" ]; then
+            # Stable release: auto-bump patch if tag exists
+            VERSION="$BASE_VERSION"
+            while gh release view "v${VERSION}" >/dev/null 2>&1; do
+              # Increment patch: X.Y.Z → X.Y.(Z+1)
+              MAJOR=$(echo "$VERSION" | cut -d. -f1)
+              MINOR=$(echo "$VERSION" | cut -d. -f2)
+              PATCH=$(echo "$VERSION" | cut -d. -f3)
+              PATCH=$((PATCH + 1))
+              VERSION="${MAJOR}.${MINOR}.${PATCH}"
+              echo "Tag v${BASE_VERSION} exists, bumped to v${VERSION}"
+            done
             TAG="v${VERSION}"
             PRERELEASE="false"
-            TITLE="v${VERSION}"
           else
-            # develop branch: find highest existing RC number and increment
+            # develop: auto-increment RC number
+            VERSION="$BASE_VERSION"
             RC_NUM=1
-            # List existing releases matching this version's RC pattern
             EXISTING=$(gh release list --limit 100 --json tagName -q '.[].tagName' 2>/dev/null | grep "^v${VERSION}-rc\." | sort -V | tail -1 || true)
             if [ -n "$EXISTING" ]; then
               LAST_RC=$(echo "$EXISTING" | grep -o '[0-9]*$')
@@ -63,93 +65,63 @@ jobs:
             fi
             TAG="v${VERSION}-rc.${RC_NUM}"
             PRERELEASE="true"
-            TITLE="v${VERSION}-rc.${RC_NUM}"
           fi
 
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "module_id=$MODULE_ID" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
-          echo "title=$TITLE" >> $GITHUB_OUTPUT
-          echo "Release: $TAG (prerelease=$PRERELEASE)"
+          echo "Release: $TAG (base=$BASE_VERSION, final=$VERSION)"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check if release already exists
-        id: check
+      - name: Update module.json for this release
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Release $TAG already exists, skipping"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update module.json download URL for this release
-        if: steps.check.outputs.exists == 'false'
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          MODULE_ID="${{ steps.version.outputs.module_id }}"
+          VERSION="${{ steps.tag.outputs.version }}"
+          MODULE_ID="${{ steps.tag.outputs.module_id }}"
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${MODULE_ID}-${TAG}.zip"
 
-          # Update download URL in module.json (for the ZIP copy)
-          jq --arg url "$DOWNLOAD_URL" '.download = $url' module.json > module.json.tmp
+          # Update version and download URL in module.json
+          jq --arg ver "$VERSION" --arg url "$DOWNLOAD_URL" \
+            '.version = $ver | .download = $url' module.json > module.json.tmp
           mv module.json.tmp module.json
 
-          echo "Download URL: $DOWNLOAD_URL"
+          echo "Version: $VERSION"
+          echo "Download: $DOWNLOAD_URL"
 
       - name: Build ZIP package
-        if: steps.check.outputs.exists == 'false'
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          MODULE_ID="${{ steps.version.outputs.module_id }}"
+          MODULE_ID="${{ steps.tag.outputs.module_id }}"
           OUTPUT="${MODULE_ID}-${TAG}.zip"
 
           mkdir -p releases
-
-          # Create temp staging dir
           STAGING=$(mktemp -d)
           trap "rm -rf '$STAGING'" EXIT
 
-          # Copy module files (same logic as build.sh)
-          cp module.json README.md LICENSE CHANGELOG.md "$STAGING/" 2>/dev/null || true
-          cp module.json "$STAGING/"
-
+          # Copy module files
+          for file in module.json README.md LICENSE CHANGELOG.md; do
+            [ -f "$file" ] && cp "$file" "$STAGING/"
+          done
           for dir in scripts lang styles templates assets packs icons images fonts; do
             [ -d "$dir" ] && cp -r "$dir" "$STAGING/"
           done
 
-          # Create ZIP
           (cd "$STAGING" && zip -r -q "$GITHUB_WORKSPACE/releases/$OUTPUT" .)
 
           echo "Built: releases/$OUTPUT ($(du -h "releases/$OUTPUT" | cut -f1))"
           echo "zip_file=releases/$OUTPUT" >> $GITHUB_ENV
-          echo "zip_name=$OUTPUT" >> $GITHUB_ENV
 
       - name: Create GitHub Release
-        if: steps.check.outputs.exists == 'false'
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          TITLE="${{ steps.tag.outputs.title }}"
           PRERELEASE="${{ steps.tag.outputs.prerelease }}"
 
-          RELEASE_ARGS=(
-            "$TAG"
-            "${{ env.zip_file }}"
-            "module.json"
-            --title "$TITLE"
-            --generate-notes
-          )
+          ARGS=("$TAG" "${{ env.zip_file }}" "module.json" --title "$TAG" --generate-notes)
+          [ "$PRERELEASE" = "true" ] && ARGS+=(--prerelease) || ARGS+=(--latest)
 
-          if [ "$PRERELEASE" = "true" ]; then
-            RELEASE_ARGS+=(--prerelease)
-          else
-            RELEASE_ARGS+=(--latest)
-          fi
-
-          gh release create "${RELEASE_ARGS[@]}"
-
+          gh release create "${ARGS[@]}"
           echo "✅ Released: $TAG"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
