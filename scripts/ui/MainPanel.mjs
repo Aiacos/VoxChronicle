@@ -117,8 +117,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._debouncedRender = debounce(() => this.render(), 150);
     try {
       this.#collapsed = game?.settings?.get(MODULE_ID, 'panelCollapsed') ?? false;
-    } catch {
-      /* */
+    } catch (error) {
+      this._logger.debug('Failed to read panelCollapsed setting:', error.message);
     }
 
     // Streaming state (persists across re-renders)
@@ -513,7 +513,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       statusLabel,
       activeTab: this._activeTab,
       suggestions,
-      images: images,
+      images,
       imageCount: images.length,
       segments: session?.transcript?.segments || [],
       hasTranscript: !!session?.transcript,
@@ -1604,11 +1604,14 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       container.appendChild(card);
 
       // Auto-dismiss after 10 seconds with fade animation
-      const timeout = setTimeout(() => {
+      let timeoutRef;
+      timeoutRef = setTimeout(() => {
+        const idx = this._rulesDismissTimeouts.indexOf(timeoutRef);
+        if (idx !== -1) this._rulesDismissTimeouts.splice(idx, 1);
         card.classList.add('vox-chronicle-suggestion--dismissing');
         setTimeout(() => card.remove(), 300);
       }, 10000);
-      this._rulesDismissTimeouts.push(timeout);
+      this._rulesDismissTimeouts.push(timeoutRef);
       return;
     }
 
@@ -1730,8 +1733,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#collapsed = !this.#collapsed;
     try {
       game?.settings?.set(MODULE_ID, 'panelCollapsed', this.#collapsed);
-    } catch {
-      /* */
+    } catch (error) {
+      this._logger.debug('Failed to persist panelCollapsed setting:', error.message);
     }
     this.element?.classList.toggle('vox-chronicle-panel--collapsed', this.#collapsed);
   }
@@ -1765,7 +1768,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       <div class="vox-chronicle-suggestion__content">
         <span class="vox-chronicle-suggestion__spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> ${escapeHtml(game.i18n?.localize('VOXCHRONICLE.Live.AIThinking') || 'AI thinking...')}</span>
       </div>
-      ${source ? `<span class="vox-chronicle-suggestion__source">${source}</span>` : ''}
+      ${source ? `<span class="vox-chronicle-suggestion__source">${escapeHtml(source)}</span>` : ''}
     `;
 
     container.appendChild(card);
@@ -1773,11 +1776,6 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (wasAtBottom) {
       container.scrollTop = container.scrollHeight;
     }
-
-    // Store streaming state for recovery on re-render
-    this._streamingCard = card;
-    this._streamingText = '';
-    this._streamingType = type;
 
     return card;
   }
@@ -1799,7 +1797,6 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       content.appendChild(document.createTextNode(token));
     }
 
-    this._streamingText = (this._streamingText || '') + token;
   }
 
   /**
@@ -1827,11 +1824,6 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     card.classList.remove('vox-chronicle-suggestion--streaming');
-
-    // Clear streaming state
-    this._streamingCard = null;
-    this._streamingText = '';
-    this._streamingType = null;
   }
 
   /**

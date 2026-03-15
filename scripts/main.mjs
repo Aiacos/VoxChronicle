@@ -238,8 +238,8 @@ function invalidateJournalCache(journalEntry) {
         }, 5000);
       }
     }
-  } catch {
-    // Non-fatal: journal cache invalidation during teardown or before init
+  } catch (error) {
+    Logger.createChild('main').debug('Journal cache invalidation skipped:', error.message);
   }
 }
 

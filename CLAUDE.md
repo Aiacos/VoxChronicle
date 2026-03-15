@@ -25,7 +25,7 @@ Core capabilities:
 - **UI Framework**: Foundry VTT ApplicationV2 + HandlebarsApplicationMixin
 - **Templates**: Handlebars (.hbs)
 - **Styling**: CSS with `.vox-chronicle` namespace
-- **Testing**: Vitest with jsdom environment (5169+ unit tests across 70+ files, 54 integration tests)
+- **Testing**: Vitest with jsdom environment (5035 unit tests across 67 files, 54 integration tests)
 - **External APIs**: OpenAI (transcription, images, chat, embeddings), Kanka (campaign management)
 - **RAG**: Modular provider system — OpenAI File Search (default) or self-hosted RAGFlow
 
@@ -115,7 +115,8 @@ VoxChronicle/
 │       ├── SensitiveDataFilter.mjs # Filter API keys from logs
 │       ├── HtmlUtils.mjs          # HTML sanitization and formatting
 │       ├── CacheManager.mjs       # Generic cache with TTL and invalidation
-│       └── DomUtils.mjs           # DOM manipulation helpers
+│       ├── DomUtils.mjs           # DOM manipulation helpers
+│       └── SpeakerUtils.mjs      # Speaker ID/label utilities (extracted from UI layer)
 ├── styles/
 │   └── vox-chronicle.css          # All module styles with .vox-chronicle prefix
 ├── templates/
@@ -139,7 +140,7 @@ VoxChronicle/
 │   ├── pt.json                    # Portuguese
 │   └── template.json             # Translation template
 ├── tests/
-│   └── ...                        # 71+ test files, 5223+ tests
+│   └── ...                        # 67 test files, 5035 tests
 ├── docs/
 │   ├── ARCHITECTURE.md            # System design documentation
 │   ├── API_REFERENCE.md           # Service class documentation
@@ -741,7 +742,7 @@ Run tests with:
 
 ```bash
 npm install      # Install dependencies
-npm test         # Run all 5223+ tests across 71+ files
+npm test         # Run all 5035 tests across 67 files
 npm run test:ui  # Run with Vitest UI
 ```
 

@@ -27,7 +27,8 @@ export async function addKnownSpeakers(speakerIds) {
 
     if (newSpeakers.length > 0) {
       knownSpeakers.push(...newSpeakers);
-      await Settings.set('knownSpeakers', knownSpeakers);
+      const capped = knownSpeakers.length > 200 ? knownSpeakers.slice(-200) : knownSpeakers;
+      await Settings.set('knownSpeakers', capped);
       logger.debug(`Added ${newSpeakers.length} known speakers`);
     }
   } catch (error) {

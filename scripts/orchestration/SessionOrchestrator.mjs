@@ -881,7 +881,7 @@ class SessionOrchestrator {
     this._isStopping = false;
     this._liveTranscript = [];
     this._silenceStartTime = null;
-    this._lastAISuggestions = null;
+    this._lastAISuggestions = [];
     this._lastOffTrackStatus = null;
 
     if (this._aiAssistant) {
@@ -932,11 +932,11 @@ class SessionOrchestrator {
     this._liveMode = true;
     this._liveBatchDuration = batchDuration;
     this._adaptiveChunkingEnabled =
-      game?.settings?.get?.('vox-chronicle', 'adaptiveChunkingEnabled') ?? true;
+      game?.settings?.get?.(MODULE_ID, 'adaptiveChunkingEnabled') ?? true;
     this._lastSpeechActivityTime = null;
     this._liveTranscript = [];
     this._silenceStartTime = null;
-    this._lastAISuggestions = null;
+    this._lastAISuggestions = [];
     this._lastOffTrackStatus = null;
     this._aiAnalysisErrorNotified = false;
     this._consecutiveLiveCycleErrors = 0;
@@ -1064,7 +1064,7 @@ class SessionOrchestrator {
       let journalId = null;
       try {
         journalId =
-          globalThis.game?.settings?.get('vox-chronicle', 'activeAdventureJournalId') || null;
+          globalThis.game?.settings?.get(MODULE_ID, 'activeAdventureJournalId') || null;
         if (journalId) {
           this._logger.log(`Using user-selected journal from settings: ${journalId}`);
         }
@@ -1782,6 +1782,9 @@ class SessionOrchestrator {
             error: error.message,
             timestamp: Date.now()
           });
+          if (this._currentSession.errors.length > 100) {
+            this._currentSession.errors = this._currentSession.errors.slice(-100);
+          }
         }
         if (this._callbacks.onError) {
           this._callbacks.onError(error, 'live_cycle');
@@ -1980,7 +1983,7 @@ class SessionOrchestrator {
           // Parse the streamed text into structured suggestion format
           const type = this._detectSuggestionType(streamResult.text);
           const suggestion = {
-            type: type,
+            type,
             content: streamResult.text
           };
 
@@ -2248,7 +2251,7 @@ class SessionOrchestrator {
    * @returns {object|null} Latest AI suggestions
    */
   getAISuggestions() {
-    return this._lastAISuggestions;
+    return this._lastAISuggestions || [];
   }
 
   /**
@@ -2260,6 +2263,9 @@ class SessionOrchestrator {
       this._lastAISuggestions = [];
     }
     this._lastAISuggestions.push(suggestion);
+    if (this._lastAISuggestions.length > 50) {
+      this._lastAISuggestions = this._lastAISuggestions.slice(-50);
+    }
   }
 
   /**

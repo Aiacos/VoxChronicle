@@ -857,7 +857,7 @@ describe('SessionOrchestrator — Cross-Service Integration', () => {
 
       expect(orchestrator._liveTranscript).toHaveLength(0);
       expect(orchestrator._silenceStartTime).toBeNull();
-      expect(orchestrator._lastAISuggestions).toBeNull();
+      expect(orchestrator._lastAISuggestions).toEqual([]);
       expect(orchestrator._liveMode).toBe(false);
       expect(orchestrator._isStopping).toBe(false);
       expect(orchestrator._liveCycleTimer).toBeNull();

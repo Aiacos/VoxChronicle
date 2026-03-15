@@ -1840,7 +1840,7 @@ describe('SessionOrchestrator', () => {
       expect(orchestrator.currentSession).toBeNull();
       expect(orchestrator.isLiveMode).toBe(false);
       expect(orchestrator._liveTranscript).toEqual([]);
-      expect(orchestrator._lastAISuggestions).toBeNull();
+      expect(orchestrator._lastAISuggestions).toEqual([]);
       expect(orchestrator._lastOffTrackStatus).toBeNull();
       expect(orchestrator._silenceStartTime).toBeNull();
       expect(orchestrator._liveCycleTimer).toBeNull();

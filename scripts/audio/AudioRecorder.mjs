@@ -320,8 +320,8 @@ class AudioRecorder {
       this._logger.debug(`Mixed ${peerTracks.length} peer track(s) with microphone`);
       return this._mixDestination.stream;
     } catch (error) {
-      this._logger.warn('Stream mixing failed, falling back to mic only:', error);
-      ui?.notifications?.warn(
+      this._logger.error('Stream mixing failed, falling back to mic only:', error);
+      ui?.notifications?.error(
         game.i18n?.localize('VOXCHRONICLE.Warnings.WebRTCMixingFailed') ||
           'VoxChronicle: Could not capture peer audio. Recording microphone only.'
       );
@@ -374,10 +374,11 @@ class AudioRecorder {
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
         this._audioChunks.push(e.data);
-        // Prevent unbounded growth on long sessions (>500 chunks ≈ ~80 min at 10s timeslice)
-        // Older chunks are persisted to IndexedDB via _persistChunk, so they're recoverable
-        if (this._audioChunks.length > 500) {
-          this._audioChunks = this._audioChunks.slice(-500);
+        // Cap at 5000 chunks (~13 hours at 10s timeslice) to prevent unbounded growth
+        // while preserving enough for stopRecording() to assemble full session audio.
+        // Chunks are also persisted to IndexedDB for crash recovery.
+        if (this._audioChunks.length > 5000) {
+          this._audioChunks = this._audioChunks.slice(-5000);
         }
         this._liveBuffer.push(e.data);
         this._persistChunk(e.data, this._persistChunkIndex++);

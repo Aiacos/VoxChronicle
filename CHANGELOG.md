@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.0.3] - 2026-03-15
 
 ### Fixed
+- **OpenAIClient** — SSE parse error counter now resets per-stream; previously permanently silenced logging after 3 errors across all streams
+- **SessionOrchestrator** — `appendSuggestion()` now capped at 50 entries; streaming path previously grew without bound over long sessions
+- **SessionOrchestrator** — `getAISuggestions()` now returns `[]` instead of `null` after reset, honoring its "safe public API" contract
+- **SessionOrchestrator** — `_currentSession.errors` capped at 100 entries to prevent unbounded growth during API failures
+- **SessionOrchestrator** — Hardcoded `'vox-chronicle'` strings replaced with `MODULE_ID` constant (CLAUDE.md compliance)
+- **SessionOrchestrator** — `_lastAISuggestions` now consistently initialized to `[]` in both `reset()` and `startLiveMode()`
+- **AudioRecorder** — `_audioChunks` cap increased from 500 to 5000 (~13 hours); previous cap silently truncated chronicle audio past ~80 minutes
+- **AudioRecorder** — Mixed stream fallback now uses `error` severity instead of `warn` since user explicitly requested mixed mode
+- **MainPanel** — Removed dead streaming state variables (`_streamingCard`, `_streamingText`, `_streamingType`) that duplicated active tracking
+- **MainPanel** — `source` param in `_createStreamingCard` now wrapped in `escapeHtml()` for defense-in-depth
+- **MainPanel** — Empty catch blocks in panel collapsed settings read/write now log at debug level
+- **MainPanel** — `_rulesDismissTimeouts` stale IDs now self-remove after firing, preventing array growth
+- **main.mjs** — Empty catch in journal cache invalidation now logs at debug level instead of silently swallowing
+- **SpeakerUtils** — `knownSpeakers` setting now capped at 200 entries to prevent unbounded growth across sessions
 - **SessionOrchestrator** — Critical: `_currentCyclePromise` race condition during live mode shutdown; IIFE's finally block nulled the field before `stopLiveMode`'s `Promise.race` could observe it, causing premature termination of in-flight API calls
 - **SessionOrchestrator** — Entity extraction `extractAll()` now wrapped in try/catch; API errors no longer crash the entire session workflow
 - **SessionOrchestrator** — `setServices()` now guards processor rebuild when a session is active, preventing mid-use processor swaps

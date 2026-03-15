@@ -1,6 +1,50 @@
 # TODO - VoxChronicle
 
-Aggiornato il 2026-03-15 (v4.0.3 session audit).
+Updated 2026-03-15 (v4.0.3 session 2: review + predictive analysis).
+
+## V4.0.3 SESSION 2 — 2026-03-15
+
+Code review (3 agents), security delta scan, predictive analysis.
+
+### HIGH — Fixed This Session
+
+- [x] `OpenAIClient.mjs:907` — SSE parse error counter never resets between streams; permanently silences logging after 3 errors across all streams
+- [x] `SessionOrchestrator.mjs:2258` — `appendSuggestion` unbounded growth on streaming path; no cap applied (now capped at 50)
+- [x] `SessionOrchestrator.mjs:2250` — `getAISuggestions()` returns null after reset, breaking "safe public API" contract (now returns `[]`)
+- [x] `MainPanel.mjs:1768` — `source` param in `_createStreamingCard` not wrapped in `escapeHtml()` (security scan finding)
+- [x] `AudioRecorder.mjs:379` — `_audioChunks` capped at 500 silently truncated chronicle audio past ~80 min; increased to 5000 (~13 hours)
+- [x] `SessionOrchestrator.mjs:1780` — `_currentSession.errors` unbounded growth during API failures (now capped at 100)
+
+### MEDIUM — Fixed This Session
+
+- [x] `main.mjs:241` — Empty `catch {}` swallowed all errors in journal cache invalidation + RAG re-index (now logs)
+- [x] `MainPanel.mjs:120,1733` — Empty `catch { /* */ }` blocks with zero logging on settings read/write (now logs)
+- [x] `SpeakerUtils.mjs:25` — `knownSpeakers` setting grows without bound across sessions (now capped at 200)
+- [x] `AudioRecorder.mjs:325` — Mixed stream fallback uses `warn` severity; should be `error` since user explicitly requested mixed mode
+- [x] `MainPanel.mjs:1607` — `_rulesDismissTimeouts` stale ID accumulation; fired IDs now self-remove
+
+### HIGH — Open (Predictive Analysis, Architectural)
+
+- [ ] `SessionOrchestrator.mjs:1703` — `_fullTranscriptText` grows without bound; 3-hour session = ~160KB text → entity extraction may hit context window limits
+- [ ] `AudioRecorder.mjs:264` — WebRTC private API `_peerConnections` will break on Foundry v14 (private property rename)
+- [ ] `CostTracker.mjs:30` — Hardcoded pricing will go stale within 6-12 months; missing Anthropic/Google provider pricing
+- [ ] `SessionOrchestrator.mjs:1727` — Cost cap only covers AI suggestions, not transcription; transcription continues past user-configured cap
+- [ ] `AIAssistant.mjs:2198` — Fire-and-forget summarization can lose turns during rapid speech if eviction outpaces summarization
+- [ ] `SessionOrchestrator.mjs` — 2218 LOC, 24 catch blocks; candidate for decomposition into RecordingOrchestrator/ProcessingOrchestrator/LiveModeOrchestrator
+- [ ] `AIAssistant.mjs` — 2027 LOC; god object, known since v3.0.4 audit
+
+### MEDIUM — Open (Predictive Analysis)
+
+- [ ] `SessionAnalytics.mjs:384` — `getTimeline()` is O(n × buckets) at 10,000-segment scale; should be cached with dirty-flag
+- [ ] `KankaEntityManager.mjs:70` — `_searchCache` is a bare Map with no eviction; should use CacheManager
+- [ ] `SessionOrchestrator.mjs:1330` — `reindexJournal` recursive async drain; should be iterative for large journal sets
+- [ ] Session state non-persistent: page reload loses current session state
+
+### LOW — Acceptable Risk (Security)
+
+- [ ] `esbuild/vite/vitest` chain — 7 moderate vulnerabilities, requires vitest v4 upgrade (breaking, dev-only)
+- [ ] `templates/main-panel.hbs:286` — Triple-brace `{{{chronicleDraft}}}` for rendered HTML (sanitized upstream)
+- [ ] `GoogleChatProvider.mjs:64` — Google API key in URL query param (Google's required pattern)
 
 ## V4.0.3 SESSION AUDIT — 2026-03-15
 

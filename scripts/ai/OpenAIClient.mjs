@@ -904,6 +904,7 @@ class OpenAIClient extends BaseAPIClient {
       stream_options: { include_usage: true }
     });
 
+    this._sseParseErrors = 0;
     this._logger.debug(`postStream: POST ${endpoint}`);
 
     const response = await fetch(url, {
