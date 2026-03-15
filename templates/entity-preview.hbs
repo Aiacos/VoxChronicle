@@ -36,7 +36,7 @@
 
   {{!-- Results section (shown after entity creation) --}}
   {{#if hasResults}}
-  <div class="vox-chronicle-entity-preview-results {{#if isError}}error{{else}}success{{/if}}">
+  <div class="vox-chronicle-entity-preview-results {{#if isError}}vox-chronicle-error{{else}}vox-chronicle-success{{/if}}">
     <div class="vox-chronicle-results-summary">
       {{#if createdCount}}
       <div class="vox-chronicle-created-count">
@@ -80,7 +80,7 @@
         </div>
         <div class="vox-chronicle-section-content">
           {{#each characters}}
-          <div class="vox-chronicle-entity-row {{#if selected}}selected{{/if}}">
+          <div class="vox-chronicle-entity-row {{#if selected}}vox-chronicle-selected{{/if}}">
             <div class="vox-chronicle-entity-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
@@ -140,7 +140,7 @@
         </div>
         <div class="vox-chronicle-section-content">
           {{#each locations}}
-          <div class="vox-chronicle-entity-row {{#if selected}}selected{{/if}}">
+          <div class="vox-chronicle-entity-row {{#if selected}}vox-chronicle-selected{{/if}}">
             <div class="vox-chronicle-entity-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
@@ -200,7 +200,7 @@
         </div>
         <div class="vox-chronicle-section-content">
           {{#each items}}
-          <div class="vox-chronicle-entity-row {{#if selected}}selected{{/if}}">
+          <div class="vox-chronicle-entity-row {{#if selected}}vox-chronicle-selected{{/if}}">
             <div class="vox-chronicle-entity-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
@@ -270,7 +270,7 @@
             <p>{{i18n.relationshipsDescription}}</p>
           </div>
           {{#each relationships}}
-          <div class="vox-chronicle-relationship-row {{#if selected}}selected{{/if}}">
+          <div class="vox-chronicle-relationship-row {{#if selected}}vox-chronicle-selected{{/if}}">
             <div class="vox-chronicle-relationship-select">
               <input type="checkbox"
                      data-entity-key="{{key}}"
@@ -352,7 +352,7 @@
 
     {{!-- Creating mode (no buttons, just progress) --}}
     {{#if isCreating}}
-    <div class="vox-chronicle-form-actions creating">
+    <div class="vox-chronicle-form-actions vox-chronicle-creating">
       <span class="vox-chronicle-creating-message">{{i18n.creating}}</span>
     </div>
     {{/if}}

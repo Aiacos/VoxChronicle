@@ -105,7 +105,7 @@
 
 {{!-- Partial template for recursive folder rendering --}}
 {{#*inline "folderNode"}}
-<li class="vox-chronicle-folder-item {{#if this.expanded}}expanded{{/if}}">
+<li class="vox-chronicle-folder-item {{#if this.expanded}}vox-chronicle-expanded{{/if}}">
   <div class="vox-chronicle-folder-header">
     {{#if this.hasChildren}}
     <button type="button"
@@ -134,7 +134,7 @@
   {{#if this.hasChildren}}
   <div class="vox-chronicle-folder-children {{#unless this.expanded}}vox-chronicle-hidden{{/unless}}">
     {{#if this.folders}}
-    <ul class="vox-chronicle-folder-tree nested">
+    <ul class="vox-chronicle-folder-tree vox-chronicle-nested">
       {{#each this.folders}}
         {{> folderNode}}
       {{/each}}
@@ -142,7 +142,7 @@
     {{/if}}
 
     {{#if this.journals}}
-    <ul class="vox-chronicle-journal-list nested">
+    <ul class="vox-chronicle-journal-list vox-chronicle-nested">
       {{#each this.journals}}
         <li class="vox-chronicle-journal-item">
           <label class="vox-chronicle-journal-label">

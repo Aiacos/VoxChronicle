@@ -118,12 +118,12 @@ Security scan, code review, predictive analysis, and test suite validation.
 
 ### LOW — CSS Namespace (carried forward from v3.2.5)
 
-- [ ] `speaker-labeling.hbs` — 21 CSS classes without `vox-chronicle-` prefix
-- [ ] `entity-preview.hbs` — 57 CSS classes without `vox-chronicle-` prefix
-- [ ] `relationship-graph.hbs` — 24 CSS classes without `vox-chronicle-` prefix
-- [ ] `vocabulary-manager.hbs` — 33 CSS classes without `vox-chronicle-` prefix
-- [ ] `analytics-tab.hbs` — 48 CSS classes without `vox-chronicle-` prefix
-- [ ] `journal-picker.hbs` — 31 CSS classes without `vox-chronicle-` prefix
+- [x] `speaker-labeling.hbs` — CSS classes prefixed with `vox-chronicle-`
+- [x] `entity-preview.hbs` — CSS classes prefixed with `vox-chronicle-`
+- [x] `relationship-graph.hbs` — Already fully prefixed (verified)
+- [x] `vocabulary-manager.hbs` — CSS classes prefixed with `vox-chronicle-`
+- [x] `analytics-tab.hbs` — Already fully prefixed (verified)
+- [x] `journal-picker.hbs` — CSS classes prefixed with `vox-chronicle-`
 
 ### LOW — Performance (carried forward)
 
@@ -137,7 +137,7 @@ Security scan, code review, predictive analysis, and test suite validation.
 
 ### HIGH — CSS Namespace (214 un-prefixed classes across 6 templates)
 
-- [ ] CSS namespace: 214 un-prefixed classes across 6 templates (see v4.0.3 section for current list)
+- [x] CSS namespace: all templates now use `vox-chronicle-` prefix (12 classes renamed across 4 templates, 2 already clean)
 
 ### MEDIUM — Security & Error Handling
 

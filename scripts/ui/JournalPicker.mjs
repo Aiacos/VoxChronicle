@@ -299,7 +299,7 @@ class JournalPicker extends HandlebarsApplicationMixin(ApplicationV2) {
     const folderItem = target.closest('.vox-chronicle-folder-item');
     if (!folderItem) return;
 
-    folderItem.classList.toggle('expanded');
+    folderItem.classList.toggle('vox-chronicle-expanded');
     const children = folderItem.querySelector('.vox-chronicle-folder-children');
     if (children) children.classList.toggle('vox-chronicle-hidden');
 
