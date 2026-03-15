@@ -76,9 +76,9 @@ Security scan, code review, predictive analysis, silent failure hunt.
 ### HIGH — Architecture (from review agents)
 
 - [x] `TranscriptionProcessor.mjs:16` — Layer violation fixed: extracted addKnownSpeakers/applyLabelsToSegments to `utils/SpeakerUtils.mjs`
-- [ ] `ResilienceRegistry.mjs` — Dead infrastructure, kept for future wiring (has tests)
-- [ ] `SessionStateMachine.mjs` — Dead infrastructure, kept for future wiring (has tests)
-- [ ] `StreamController.mjs` — Dead code, kept for future streaming refactor
+- [x] `ResilienceRegistry.mjs` — Removed: dead infrastructure never imported in production code
+- [x] `SessionStateMachine.mjs` — Removed: dead infrastructure never imported in production code
+- [x] `StreamController.mjs` — Removed: dead code never imported (recoverable from git history)
 
 ### MEDIUM — Error Handling
 
@@ -109,7 +109,7 @@ Security scan, code review, predictive analysis, and test suite validation.
 
 - [ ] `SessionOrchestrator.mjs` — 2218 LOC, 24 catch blocks; candidate for decomposition
 - [ ] `AIAssistant.mjs` — 2027 LOC; god object, known since v3.0.4 audit
-- [ ] `MainPanel.mjs` — 1758 LOC; `_rulesCards`, `_rulesDismissTimeouts`, `_lastAISuggestions` arrays grow unbounded during long sessions
+- [x] `MainPanel.mjs` — `_rulesCards` capped at 50; `_lastAISuggestions` managed via `appendSuggestion()` on orchestrator; `_rulesDismissTimeouts` cleared on close/reset
 
 ### MEDIUM — Existing (carried forward)
 
@@ -170,7 +170,7 @@ Audit con scan automatico: stub detection, CSS namespace, i18n, architectural de
 
 ### MEDIUM — Architectural Debt & Minor Issues
 
-- [ ] `AIAssistant.mjs` — God Object ridotto da 2076 a 1601 righe tramite estrazione SilenceMonitor e PromptBuilder, candidato per ulteriore decomposizione (suggestion, dialogue, scene analysis)
+- [x] `AIAssistant.mjs` — (duplicate of entry above, already tracked)
 - [x] `main-panel.hbs` — Classe `danger` rinominata a `vox-chronicle-btn--danger` (v3.2.5)
 - [x] `main.mjs` — Timer debounce cleanup via `closeSettingsConfig` hook (v3.2.5)
 - [ ] Session state non persistente: ricaricare la pagina perde lo stato della sessione corrente

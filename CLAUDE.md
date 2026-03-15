@@ -41,8 +41,6 @@ VoxChronicle/
 │   │   ├── VoxChronicle.mjs       # Main singleton - service orchestration
 │   │   ├── Settings.mjs           # Foundry settings registration (58 settings)
 │   │   ├── EventBus.mjs           # Pub/sub system with typed channels
-│   │   ├── SessionStateMachine.mjs # Formal state transitions
-│   │   ├── ResilienceRegistry.mjs # Circuit breaker registry
 │   │   └── VocabularyDictionary.mjs # Custom vocabulary for transcription accuracy
 │   ├── audio/
 │   │   ├── AudioRecorder.mjs      # MediaRecorder wrapper, WebRTC/mic capture, level metering, Safari codec fallback, crash recovery (IndexedDB), EventBus integration
@@ -55,7 +53,6 @@ VoxChronicle/
 │   │   ├── WhisperBackend.mjs        # HTTP client for whisper.cpp server
 │   │   ├── ImageGenerationService.mjs # gpt-image-1 image generation
 │   │   ├── EntityExtractor.mjs    # Extract NPCs/locations/items from text
-│   │   ├── StreamController.mjs   # SSE stream handling for AI responses
 │   │   └── providers/             # AI Provider abstraction layer (Epic 2)
 │   │       ├── ChatProvider.mjs          # Abstract chat interface
 │   │       ├── TranscriptionProvider.mjs # Abstract transcription interface

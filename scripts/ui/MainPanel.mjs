@@ -1633,6 +1633,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     container.appendChild(card);
 
     this._rulesCards.push({ data });
+    // Prevent unbounded growth — keep last 50 rules cards
+    if (this._rulesCards.length > 50) {
+      this._rulesCards = this._rulesCards.slice(-50);
+    }
 
     // Two-phase update: when synthesis resolves, update card in-place
     if (data.synthesisPromise) {
