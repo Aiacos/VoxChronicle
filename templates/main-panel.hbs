@@ -7,9 +7,9 @@
   </div>
   {{/unless}}
 
-  {{!-- Status Badges --}}
+  {{!-- Status Badges with LED states (Story 6.1 AC2) --}}
   <div class="vox-chronicle-panel__badges">
-    <span class="vox-chronicle-badge {{#if isConfigured}}active{{else}}inactive{{/if}}" title="OpenAI API">
+    <span class="vox-chronicle-badge {{#if isConfigured}}active{{else}}inactive{{/if}} vox-chronicle-badge--{{badgeState}}" title="OpenAI API">
       <i class="fa-solid fa-robot"></i> AI
     </span>
     <span class="vox-chronicle-badge {{#if hasRAG}}active{{else}}inactive{{/if}}" title="RAG Knowledge Base">
@@ -100,6 +100,11 @@
       <div class="vox-chronicle-panel__level-bar" style="width: {{audioLevel}}%"></div>
     </div>
     {{/if}}
+    {{#if isLiveMode}}
+    <div class="vox-chronicle-panel__cycle-progress">
+      <div class="vox-chronicle-panel__cycle-progress-bar" style="width: {{progressPercent}}%"></div>
+    </div>
+    {{/if}}
 
     {{#if statusMessage}}
     <div class="vox-chronicle-panel__status-msg">
@@ -164,7 +169,7 @@
   {{!-- Tab Navigation (context-aware per Story 6.2) --}}
   <nav class="vox-chronicle-panel__tabs" {{#if isFirstLaunch}}hidden{{/if}}>
     {{#if (includes visibleTabs 'live')}}
-    <button class="vox-chronicle-tab {{#if (eq activeTab 'live')}}vox-chronicle-tab--active{{/if}}" data-tab="live">{{localize "VOXCHRONICLE.Panel.TabLive"}}</button>
+    <button class="vox-chronicle-tab {{#if (eq activeTab 'live')}}vox-chronicle-tab--active{{/if}} {{#if suggestionCount}}vox-chronicle-tab--has-badge{{/if}}" data-tab="live" data-badge="{{suggestionCount}}">{{localize "VOXCHRONICLE.Panel.TabLive"}}</button>
     {{/if}}
     {{#if (includes visibleTabs 'chronicle')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'chronicle')}}vox-chronicle-tab--active{{/if}}" data-tab="chronicle">{{localize "VOXCHRONICLE.Panel.TabChronicle"}}</button>
@@ -176,7 +181,7 @@
     <button class="vox-chronicle-tab {{#if (eq activeTab 'transcript')}}vox-chronicle-tab--active{{/if}}" data-tab="transcript">{{localize "VOXCHRONICLE.Panel.TabTranscript"}}</button>
     {{/if}}
     {{#if (includes visibleTabs 'entities')}}
-    <button class="vox-chronicle-tab {{#if (eq activeTab 'entities')}}vox-chronicle-tab--active{{/if}}" data-tab="entities">{{localize "VOXCHRONICLE.Panel.TabEntities"}}</button>
+    <button class="vox-chronicle-tab {{#if (eq activeTab 'entities')}}vox-chronicle-tab--active{{/if}} {{#if entityCount}}vox-chronicle-tab--has-badge{{/if}}" data-tab="entities" data-badge="{{entityCount}}">{{localize "VOXCHRONICLE.Panel.TabEntities"}}</button>
     {{/if}}
     {{#if (includes visibleTabs 'analytics')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'analytics')}}vox-chronicle-tab--active{{/if}}" data-tab="analytics">{{localize "VOXCHRONICLE.Panel.TabAnalytics"}}</button>

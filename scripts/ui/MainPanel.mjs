@@ -149,12 +149,30 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const t of this._rulesDismissTimeouts || []) clearTimeout(t);
             this._rulesDismissTimeouts = [];
           }
-          this._debouncedRender();
+          // Partial rendering (Story 6.2 AC5): skip full re-render for live state transitions
+          // that only change status badge/LED — DOM-direct update via rAF loop handles these
+          const isLiveTransition =
+            newState === 'live_listening' ||
+            newState === 'live_transcribing' ||
+            newState === 'live_analyzing';
+          if (isLiveTransition && this.element) {
+            this._updateLiveStatusDOM(newState);
+          } else {
+            this._debouncedRender();
+          }
         },
         onProgress: (data) => {
           this.#statusMessage = data.message;
           this.#progressPercent = data.progress;
-          this._debouncedRender();
+          // DOM-direct update for progress bar (Story 6.2 AC5)
+          const progressBar = this.element?.querySelector(
+            '.vox-chronicle-panel__cycle-progress-bar'
+          );
+          if (progressBar) {
+            progressBar.style.width = `${data.progress}%`;
+          } else {
+            this._debouncedRender();
+          }
         },
         onStreamToken: (data) => this._handleStreamToken(data),
         onStreamComplete: (data) => this._handleStreamComplete(data),
@@ -179,11 +197,36 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       // Re-register callbacks on the new orchestrator
       if (orchestrator.setCallbacks) {
         orchestrator.setCallbacks({
-          onStateChange: () => MainPanel.#instance._debouncedRender(),
+          onStateChange: (newState) => {
+            const inst = MainPanel.#instance;
+            if (newState === 'idle') {
+              inst._rulesCards = [];
+              inst._pendingRulesCards = [];
+              for (const t of inst._rulesDismissTimeouts || []) clearTimeout(t);
+              inst._rulesDismissTimeouts = [];
+            }
+            const isLiveTransition =
+              newState === 'live_listening' ||
+              newState === 'live_transcribing' ||
+              newState === 'live_analyzing';
+            if (isLiveTransition && inst.element) {
+              inst._updateLiveStatusDOM(newState);
+            } else {
+              inst._debouncedRender();
+            }
+          },
           onProgress: (data) => {
-            MainPanel.#instance.#statusMessage = data.message;
-            MainPanel.#instance.#progressPercent = data.progress;
-            MainPanel.#instance._debouncedRender();
+            const inst = MainPanel.#instance;
+            inst.#statusMessage = data.message;
+            inst.#progressPercent = data.progress;
+            const progressBar = inst.element?.querySelector(
+              '.vox-chronicle-panel__cycle-progress-bar'
+            );
+            if (progressBar) {
+              progressBar.style.width = `${data.progress}%`;
+            } else {
+              inst._debouncedRender();
+            }
           },
           onStreamToken: (data) => MainPanel.#instance._handleStreamToken(data),
           onStreamComplete: (data) => MainPanel.#instance._handleStreamComplete(data),
@@ -546,8 +589,30 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       ragProgressText: ragData.progressText,
       ragVectorCount: ragData.vectorCount,
       ragStorageUsage: ragData.storageUsage,
-      ragLastIndexed: ragData.lastIndexed
+      ragLastIndexed: ragData.lastIndexed,
+      // LED badge state (Story 6.1 AC2)
+      badgeState: this._getBadgeState(),
+      // Tab badge counts (Story 6.2 AC4)
+      suggestionCount: suggestions.length
     };
+  }
+
+  /**
+   * Get LED badge state based on current orchestrator state
+   * @returns {string} 'recording' | 'streaming' | 'idle'
+   * @private
+   */
+  _getBadgeState() {
+    const state = this._orchestrator?.state;
+    if (state === 'live_analyzing') return 'streaming';
+    if (
+      state === 'recording' ||
+      state === 'live_listening' ||
+      state === 'live_transcribing'
+    ) {
+      return 'recording';
+    }
+    return 'idle';
   }
 
   /**
@@ -1329,6 +1394,39 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (this.#realtimeRafId !== null) {
       cancelAnimationFrame(this.#realtimeRafId);
       this.#realtimeRafId = null;
+    }
+  }
+
+  /**
+   * DOM-direct update for live status transitions (Story 6.2 AC5).
+   * Avoids full re-render when only the status badge and LED state change.
+   * @param {string} newState - The new orchestrator state
+   * @private
+   */
+  _updateLiveStatusDOM(newState) {
+    if (!this.element) return;
+
+    // Update status badge text
+    const statusMap = {
+      live_listening: 'live',
+      live_transcribing: 'analyzing',
+      live_analyzing: 'analyzing'
+    };
+    const statusState = statusMap[newState] || 'idle';
+    const badge = this.element.querySelector('.vox-chronicle-status-badge');
+    if (badge) {
+      badge.className = `vox-chronicle-status-badge vox-chronicle-status-badge--${statusState}`;
+      const label =
+        game.i18n?.localize(`VOXCHRONICLE.Live.Status.${statusState}`) || statusState;
+      badge.textContent = label;
+    }
+
+    // Update LED badge state (recording vs streaming)
+    const badgeState = newState === 'live_analyzing' ? 'streaming' : 'recording';
+    const aiBadge = this.element.querySelector('.vox-chronicle-panel__badges .vox-chronicle-badge');
+    if (aiBadge) {
+      aiBadge.classList.remove('vox-chronicle-badge--recording', 'vox-chronicle-badge--streaming', 'vox-chronicle-badge--idle');
+      aiBadge.classList.add(`vox-chronicle-badge--${badgeState}`);
     }
   }
 

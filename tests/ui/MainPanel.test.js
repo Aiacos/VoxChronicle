@@ -2400,6 +2400,84 @@ describe('MainPanel', () => {
       });
     });
 
+    describe('live cycle progress and badge states (Story 6.1)', () => {
+      it('should include progressPercent in context', async () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context).toHaveProperty('progressPercent');
+      });
+
+      it('should include badgeState in context based on orchestrator state', async () => {
+        mockOrchestrator.state = 'live_transcribing';
+        mockOrchestrator.isLiveMode = true;
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context.badgeState).toBe('recording');
+      });
+
+      it('should set badgeState to streaming during live_analyzing', async () => {
+        mockOrchestrator.state = 'live_analyzing';
+        mockOrchestrator.isLiveMode = true;
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context.badgeState).toBe('streaming');
+      });
+
+      it('should set badgeState to idle when not recording', async () => {
+        mockOrchestrator.state = 'idle';
+        mockOrchestrator.isLiveMode = false;
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context.badgeState).toBe('idle');
+      });
+    });
+
+    describe('tab badge counts (Story 6.2 AC4)', () => {
+      it('should include suggestionCount in context', async () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context).toHaveProperty('suggestionCount');
+      });
+
+      it('should include entityCount in context', async () => {
+        MainPanel.resetInstance();
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        const context = await panel._prepareContext({});
+        expect(context).toHaveProperty('entityCount');
+      });
+    });
+
+    describe('partial rendering (Story 6.2 AC5)', () => {
+      it('should have _updateLiveStatusDOM method', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        expect(typeof panel._updateLiveStatusDOM).toBe('function');
+      });
+
+      it('should not full-render on live state transitions when element exists', () => {
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel.element = document.createElement('div');
+        const renderSpy = vi.spyOn(panel, 'render');
+        const domSpy = vi.spyOn(panel, '_updateLiveStatusDOM');
+        // Simulate onStateChange with live transition
+        const callbacks = {};
+        mockOrchestrator.setCallbacks.mockImplementation((cb) => Object.assign(callbacks, cb));
+        // Re-construct to capture callbacks
+        MainPanel.resetInstance();
+        const panel2 = MainPanel.getInstance(mockOrchestrator);
+        panel2.element = document.createElement('div');
+        const renderSpy2 = vi.spyOn(panel2, 'render');
+        const domSpy2 = vi.spyOn(panel2, '_updateLiveStatusDOM');
+        callbacks.onStateChange?.('live_transcribing');
+        expect(domSpy2).toHaveBeenCalledWith('live_transcribing');
+        expect(renderSpy2).not.toHaveBeenCalled();
+      });
+    });
+
     describe('inline edit flow (Task 4)', () => {
       it('should store transcript data via setTranscriptData', () => {
         const panel = MainPanel.getInstance(mockOrchestrator);

@@ -1004,6 +1004,18 @@ form .form-group .vox-chronicle-validate-button {
   border-radius: var(--vox-radius-xs);
 }
 
+/* Live Cycle Progress Bar — 2px thin bar under header (Story 6.1 AC4) */
+.vox-chronicle-panel__cycle-progress {
+  height: 2px;
+  background: var(--vox-color-border);
+  overflow: hidden;
+}
+.vox-chronicle-panel__cycle-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--vox-color-info), var(--vox-color-success));
+  transition: width 0.3s ease;
+}
+
 /* Record Button — highlighted for visibility */
 .vox-chronicle-panel__controls button[data-action="toggle-recording"] {
   color: var(--vox-color-error);
@@ -1035,10 +1047,31 @@ form .form-group .vox-chronicle-validate-button {
   border-bottom: 2px solid transparent;
   white-space: nowrap;
 }
+.vox-chronicle-tab {
+  position: relative;
+}
 .vox-chronicle-tab:hover { opacity: 0.8; }
 .vox-chronicle-tab--active {
   opacity: 1;
   border-bottom-color: currentColor;
+}
+
+/* Tab Badge Counts (Story 6.2 AC4) */
+.vox-chronicle-tab--has-badge::after {
+  content: attr(data-badge);
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--vox-color-info);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
 }
 
 /* Tab Content */
