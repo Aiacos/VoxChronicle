@@ -1,3 +1,6 @@
+{{#if isLiveMode}}
+{{!-- Hidden during live mode — transcript builds in real-time --}}
+{{else}}
 <div class="vox-chronicle-transcript-review">
   {{#if hasTranscriptSegments}}
   <div class="vox-chronicle-transcript-review__header">
@@ -28,3 +31,4 @@
   </p>
   {{/if}}
 </div>
+{{/if}}

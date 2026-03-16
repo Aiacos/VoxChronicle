@@ -115,6 +115,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._activeTab = 'live';
     this._logger = Logger.createChild('MainPanel');
     this._debouncedRender = debounce(() => this.render(), 150);
+
+    // Register Handlebars 'includes' helper for tab filtering (Story 6.2 AC2)
+    if (typeof Handlebars !== 'undefined' && !Handlebars.helpers?.includes) {
+      Handlebars.registerHelper('includes', function (array, value) {
+        return Array.isArray(array) && array.includes(value);
+      });
+    }
     try {
       this.#collapsed = game?.settings?.get(MODULE_ID, 'panelCollapsed') ?? false;
     } catch (error) {
@@ -754,6 +761,13 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       return;
     }
 
+    // Block switching to tabs not visible in current mode (Story 6.2 AC2)
+    const visible = this._getVisibleTabs(!!this._orchestrator?.isLiveMode);
+    if (!visible.includes(tabName)) {
+      this._logger.debug(`Tab ${tabName} not visible in current mode, ignoring`);
+      return;
+    }
+
     this._activeTab = tabName;
     this._logger.debug(`Switched to tab: ${tabName}`);
 
@@ -913,13 +927,22 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       return;
     }
 
+    const state = this._orchestrator.state;
+    const isLiveMode = this._orchestrator.isLiveMode;
+    const isRecActive = this._isRecordingActive();
+    this._logger.log('Toggle recording', { state, isLiveMode, isRecordingActive: isRecActive });
+
     try {
-      if (this._isRecordingActive()) {
+      if (isRecActive) {
         // Stop recording - use live mode stop if in live mode, otherwise regular stop
-        if (this._orchestrator.isLiveMode) {
+        if (isLiveMode) {
           await this._orchestrator.stopLiveMode();
         } else {
           await this._orchestrator.stopSession({ processImmediately: false });
+        }
+        // Auto-transition to chronicle tab after stopping (Story 6.2 AC3)
+        if (this._activeTab === 'live') {
+          this._activeTab = 'chronicle';
         }
         ui?.notifications?.info(
           game.i18n?.format('VOXCHRONICLE.Notifications.RecordingStopped', {

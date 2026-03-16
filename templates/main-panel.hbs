@@ -161,14 +161,26 @@
   </div>
   {{/if}}
 
-  {{!-- 6 Tab Navigation --}}
+  {{!-- Tab Navigation (context-aware per Story 6.2) --}}
   <nav class="vox-chronicle-panel__tabs" {{#if isFirstLaunch}}hidden{{/if}}>
+    {{#if (includes visibleTabs 'live')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'live')}}vox-chronicle-tab--active{{/if}}" data-tab="live">{{localize "VOXCHRONICLE.Panel.TabLive"}}</button>
+    {{/if}}
+    {{#if (includes visibleTabs 'chronicle')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'chronicle')}}vox-chronicle-tab--active{{/if}}" data-tab="chronicle">{{localize "VOXCHRONICLE.Panel.TabChronicle"}}</button>
+    {{/if}}
+    {{#if (includes visibleTabs 'images')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'images')}}vox-chronicle-tab--active{{/if}}" data-tab="images">{{localize "VOXCHRONICLE.Panel.TabImages"}}</button>
+    {{/if}}
+    {{#if (includes visibleTabs 'transcript')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'transcript')}}vox-chronicle-tab--active{{/if}}" data-tab="transcript">{{localize "VOXCHRONICLE.Panel.TabTranscript"}}</button>
+    {{/if}}
+    {{#if (includes visibleTabs 'entities')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'entities')}}vox-chronicle-tab--active{{/if}}" data-tab="entities">{{localize "VOXCHRONICLE.Panel.TabEntities"}}</button>
+    {{/if}}
+    {{#if (includes visibleTabs 'analytics')}}
     <button class="vox-chronicle-tab {{#if (eq activeTab 'analytics')}}vox-chronicle-tab--active{{/if}}" data-tab="analytics">{{localize "VOXCHRONICLE.Panel.TabAnalytics"}}</button>
+    {{/if}}
   </nav>
 
   {{!-- Tab Content Panes --}}

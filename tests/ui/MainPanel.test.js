@@ -665,6 +665,32 @@ describe('MainPanel', () => {
 
       expect(mockOrchestrator.stopLiveMode).toHaveBeenCalled();
     });
+
+    it('should switch to chronicle tab after stopping live mode', async () => {
+      mockOrchestrator.state = 'live_listening';
+      mockOrchestrator.isLiveMode = true;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      panel._activeTab = 'live';
+      mockOrchestrator.stopLiveMode.mockImplementation(async () => {
+        mockOrchestrator.state = 'idle';
+        mockOrchestrator.isLiveMode = false;
+        mockOrchestrator.currentSession = { transcript: { text: 'test' } };
+      });
+      await panel._handleToggleRecording();
+      expect(panel._activeTab).toBe('chronicle');
+    });
+
+    it('should log state info when stopping live mode', async () => {
+      mockOrchestrator.state = 'live_listening';
+      mockOrchestrator.isLiveMode = true;
+      const panel = MainPanel.getInstance(mockOrchestrator);
+      const logSpy = vi.spyOn(panel._logger, 'log');
+      await panel._handleToggleRecording();
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Toggle recording'),
+        expect.objectContaining({ state: 'live_listening', isLiveMode: true })
+      );
+    });
   });
 
   // ─── _handleTogglePause ─────────────────────────────────────────
@@ -2342,6 +2368,26 @@ describe('MainPanel', () => {
         const context = await panel._prepareContext({});
         expect(context.visibleTabs).toBeInstanceOf(Array);
         expect(context.visibleTabs.length).toBeGreaterThan(0);
+      });
+
+      it('should not switch to a tab not in visibleTabs', () => {
+        mockOrchestrator.isLiveMode = true;
+        mockOrchestrator.state = 'live_listening';
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel._activeTab = 'live';
+        // 'chronicle' is not in live mode visibleTabs
+        panel.switchTab('chronicle');
+        expect(panel._activeTab).toBe('live');
+      });
+
+      it('should allow switching to a tab in visibleTabs', () => {
+        mockOrchestrator.isLiveMode = true;
+        mockOrchestrator.state = 'live_listening';
+        const panel = MainPanel.getInstance(mockOrchestrator);
+        panel._activeTab = 'live';
+        // 'transcript' IS in live mode visibleTabs
+        panel.switchTab('transcript');
+        expect(panel._activeTab).toBe('transcript');
       });
     });
 
