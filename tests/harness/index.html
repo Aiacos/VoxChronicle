@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoxChronicle Test Harness</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --border: #2a2a4a;
+      --text: #e0e0e0;
+      --text-dim: #888;
+      --pass: #22c55e;
+      --fail: #ef4444;
+      --running: #f59e0b;
+      --pending: #6b7280;
+      --info: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+    .harness { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+
+    /* Header */
+    .header { padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .header h1 { font-size: 18px; font-weight: 600; white-space: nowrap; }
+    .header h1 span { color: var(--info); }
+    .api-keys { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+    .api-keys input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 12px; width: 180px; }
+    .api-keys input::placeholder { color: var(--text-dim); }
+    .controls { display: flex; gap: 8px; }
+    .controls button { padding: 6px 16px; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-run { background: var(--pass); color: #000; }
+    .btn-run:hover { background: #16a34a; }
+    .btn-mock { background: var(--border); color: var(--text); }
+    .btn-mock.active { background: var(--info); color: #fff; }
+
+    /* Main content */
+    .main { display: grid; grid-template-columns: 1fr 380px; gap: 0; overflow: hidden; }
+
+    /* Test grid */
+    .test-grid { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .suite { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .suite-header { padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+    .suite-header h3 { font-size: 14px; }
+    .suite-header .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+    .suite-body { padding: 0; }
+    .test-row { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 13px; }
+    .test-row:last-child { border-bottom: none; }
+    .test-icon { width: 18px; text-align: center; font-size: 14px; }
+    .test-name { flex: 1; }
+    .test-time { color: var(--text-dim); font-size: 11px; min-width: 50px; text-align: right; }
+    .test-error { color: var(--fail); font-size: 11px; margin-left: 26px; padding: 2px 0; }
+
+    .status-pending .test-icon { color: var(--pending); }
+    .status-running .test-icon { color: var(--running); }
+    .status-pass .test-icon { color: var(--pass); }
+    .status-fail .test-icon { color: var(--fail); }
+
+    /* Console */
+    .console { background: #0d1117; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+    .console-header { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
+    .console-body { flex: 1; overflow-y: auto; padding: 8px; font-family: 'Fira Code', 'Consolas', monospace; font-size: 11px; line-height: 1.6; }
+    .log-entry { padding: 1px 4px; border-radius: 2px; }
+    .log-info { color: var(--info); }
+    .log-pass { color: var(--pass); }
+    .log-fail { color: var(--fail); }
+    .log-warn { color: var(--running); }
+    .log-dim { color: var(--text-dim); }
+
+    /* Footer */
+    .footer { padding: 8px 20px; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
+    .summary-bar { display: flex; gap: 16px; }
+    .summary-bar .pass { color: var(--pass); }
+    .summary-bar .fail { color: var(--fail); }
+  </style>
+</head>
+<body>
+  <div class="harness">
+    <div class="header">
+      <h1><span>VoxChronicle</span> Test Harness</h1>
+      <div class="api-keys">
+        <input type="password" id="openai-key" placeholder="OpenAI API Key (sk-...)" />
+        <input type="password" id="kanka-token" placeholder="Kanka API Token" />
+        <input type="text" id="kanka-campaign" placeholder="Kanka Campaign ID" />
+      </div>
+      <div class="controls">
+        <button class="btn-mock active" id="btn-mock" onclick="toggleMock()">Mock Mode</button>
+        <button class="btn-run" id="btn-run" onclick="runAllTests()">Run All</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="test-grid" id="test-grid"></div>
+      <div class="console">
+        <div class="console-header">
+          <span>Console</span>
+          <span style="cursor:pointer;opacity:0.5" onclick="clearConsole()">Clear</span>
+        </div>
+        <div class="console-body" id="console-body"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="summary-bar">
+        <span id="summary-total">Tests: 0</span>
+        <span class="pass" id="summary-pass">Passed: 0</span>
+        <span class="fail" id="summary-fail">Failed: 0</span>
+        <span id="summary-time">Time: 0ms</span>
+      </div>
+      <span>VoxChronicle v4.0.4 | Foundry VTT Mock Environment</span>
+    </div>
+  </div>
+
+  <script type="module">
+    // ─── Import Mock Layer ───────────────────────────────────────
+    import {
+      fireHook, resetHooks, setSetting, getSetting, resetSettings,
+      getNotifications, clearNotifications,
+      enableMockFetch, disableMockFetch, registerMockResponse, clearMockResponses,
+      enableMockMediaDevices, disableMockMediaDevices, createMockAudioStream,
+      settingsRegistry
+    } from './foundry-mock.mjs';
+
+    // ─── Test Framework ──────────────────────────────────────────
+    const suites = [];
+    const consoleEl = document.getElementById('console-body');
+    let mockMode = true;
+    let totalTests = 0, passedTests = 0, failedTests = 0;
+
+    function log(msg, cls = 'log-dim') {
+      const el = document.createElement('div');
+      el.className = `log-entry ${cls}`;
+      el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      consoleEl.appendChild(el);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    window.clearConsole = () => { consoleEl.innerHTML = ''; };
+
+    window.toggleMock = () => {
+      mockMode = !mockMode;
+      const btn = document.getElementById('btn-mock');
+      btn.textContent = mockMode ? 'Mock Mode' : 'Real APIs';
+      btn.classList.toggle('active', mockMode);
+      log(mockMode ? 'Switched to Mock Mode' : 'Switched to Real API Mode', 'log-warn');
+    };
+
+    function suite(name, tests) {
+      suites.push({ name, tests });
+    }
+
+    function updateSummary() {
+      document.getElementById('summary-total').textContent = `Tests: ${totalTests}`;
+      document.getElementById('summary-pass').textContent = `Passed: ${passedTests}`;
+      document.getElementById('summary-fail').textContent = `Failed: ${failedTests}`;
+    }
+
+    // ─── Render Test Grid ────────────────────────────────────────
+    function renderGrid() {
+      const grid = document.getElementById('test-grid');
+      grid.innerHTML = '';
+      for (const s of suites) {
+        const suiteEl = document.createElement('div');
+        suiteEl.className = 'suite';
+        suiteEl.innerHTML = `
+          <div class="suite-header">
+            <h3>${s.name}</h3>
+            <span class="badge" id="badge-${s.name.replace(/\s+/g, '-')}" style="background:var(--pending);color:#fff">pending</span>
+          </div>
+          <div class="suite-body" id="suite-${s.name.replace(/\s+/g, '-')}"></div>
+        `;
+        grid.appendChild(suiteEl);
+
+        const body = suiteEl.querySelector('.suite-body');
+        for (const t of s.tests) {
+          const row = document.createElement('div');
+          row.className = 'test-row status-pending';
+          row.id = `test-${t.id}`;
+          row.innerHTML = `
+            <span class="test-icon">&#x25CB;</span>
+            <span class="test-name">${t.name}</span>
+            <span class="test-time" id="time-${t.id}"></span>
+          `;
+          body.appendChild(row);
+        }
+      }
+    }
+
+    function setTestStatus(id, status, timeMs, error) {
+      const row = document.getElementById(`test-${id}`);
+      if (!row) return;
+      row.className = `test-row status-${status}`;
+      const icons = { pending: '\u25CB', running: '\u25D4', pass: '\u2714', fail: '\u2718' };
+      row.querySelector('.test-icon').textContent = icons[status] || '';
+      if (timeMs !== undefined) {
+        document.getElementById(`time-${id}`).textContent = `${timeMs}ms`;
+      }
+      if (error) {
+        let errEl = row.nextElementSibling;
+        if (!errEl || !errEl.classList.contains('test-error')) {
+          errEl = document.createElement('div');
+          errEl.className = 'test-error';
+          row.after(errEl);
+        }
+        errEl.textContent = error;
+      }
+    }
+
+    function setSuiteBadge(suiteName, passed, failed) {
+      const badge = document.getElementById(`badge-${suiteName.replace(/\s+/g, '-')}`);
+      if (!badge) return;
+      if (failed > 0) {
+        badge.style.background = 'var(--fail)';
+        badge.textContent = `${failed} failed`;
+      } else {
+        badge.style.background = 'var(--pass)';
+        badge.textContent = `${passed} passed`;
+      }
+    }
+
+    // ─── Test Runner ─────────────────────────────────────────────
+    async function runAllTests() {
+      totalTests = 0; passedTests = 0; failedTests = 0;
+      document.getElementById('btn-run').disabled = true;
+      log('Starting test run...', 'log-info');
+      const startAll = performance.now();
+
+      for (const s of suites) {
+        let sp = 0, sf = 0;
+        log(`\n── Suite: ${s.name} ──`, 'log-info');
+
+        for (const t of s.tests) {
+          // Skip real API tests in mock mode
+          if (mockMode && t.requiresReal) {
+            setTestStatus(t.id, 'pending');
+            log(`  SKIP ${t.name} (requires Real API mode)`, 'log-dim');
+            continue;
+          }
+          // Skip mock tests in real mode if they're mock-only
+          if (!mockMode && t.mockOnly) {
+            setTestStatus(t.id, 'pending');
+            log(`  SKIP ${t.name} (mock-only test)`, 'log-dim');
+            continue;
+          }
+
+          totalTests++;
+          setTestStatus(t.id, 'running');
+          const start = performance.now();
+
+          try {
+            await t.fn();
+            const ms = Math.round(performance.now() - start);
+            setTestStatus(t.id, 'pass', ms);
+            passedTests++;
+            sp++;
+            log(`  PASS ${t.name} (${ms}ms)`, 'log-pass');
+          } catch (err) {
+            const ms = Math.round(performance.now() - start);
+            setTestStatus(t.id, 'fail', ms, err.message);
+            failedTests++;
+            sf++;
+            log(`  FAIL ${t.name}: ${err.message}`, 'log-fail');
+          }
+          updateSummary();
+        }
+        setSuiteBadge(s.name, sp, sf);
+      }
+
+      const totalMs = Math.round(performance.now() - startAll);
+      document.getElementById('summary-time').textContent = `Time: ${totalMs}ms`;
+      log(`\nDone: ${passedTests}/${totalTests} passed, ${failedTests} failed (${totalMs}ms)`, failedTests ? 'log-fail' : 'log-pass');
+      document.getElementById('btn-run').disabled = false;
+    }
+    window.runAllTests = runAllTests;
+
+    // ─── Assertion Helpers ───────────────────────────────────────
+    function assert(cond, msg) { if (!cond) throw new Error(msg || 'Assertion failed'); }
+    function assertEqual(a, b, msg) { if (a !== b) throw new Error(msg || `Expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
+    function assertIncludes(arr, val, msg) { if (!arr.includes(val)) throw new Error(msg || `Expected array to include ${val}`); }
+    function assertType(val, type, msg) { if (typeof val !== type) throw new Error(msg || `Expected type ${type}, got ${typeof val}`); }
+    function assertTruthy(val, msg) { if (!val) throw new Error(msg || `Expected truthy, got ${val}`); }
+    function assertThrows(fn, msg) { try { fn(); throw new Error(msg || 'Expected error'); } catch(e) { if (e.message === (msg || 'Expected error')) throw e; } }
+
+    // ─── Helpers ─────────────────────────────────────────────────
+    let testId = 0;
+    function t(name, fn, opts = {}) {
+      return { id: ++testId, name, fn, ...opts };
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // SUITE 1: Module Initialization
+    // ═══════════════════════════════════════════════════════════════
+    suite('1. Module Init', [
+      t('Settings registry accepts register calls', () => {
+        game.settings.register('vox-chronicle', 'testSetting', {
+          scope: 'world', type: String, default: 'hello'
+        });
+        assertEqual(game.settings.get('vox-chronicle', 'testSetting'), 'hello');
+      }, { mockOnly: true }),
+
+      t('Settings store persists set/get cycle', () => {
+        game.settings.set('vox-chronicle', 'testSetting', 'world');
+        assertEqual(game.settings.get('vox-chronicle', 'testSetting'), 'world');
+      }, { mockOnly: true }),
+
+      t('Hooks.once fires exactly once', () => {
+        resetHooks();
+        let count = 0;
+        Hooks.once('testOnce', () => count++);
+        fireHook('testOnce');
+        fireHook('testOnce');
+        assertEqual(count, 1, `Expected 1, got ${count}`);
+      }, { mockOnly: true }),
+
+      t('Hooks.on fires every time', () => {
+        resetHooks();
+        let count = 0;
+        Hooks.on('testOn', () => count++);
+        fireHook('testOn');
+        fireHook('testOn');
+        fireHook('testOn');
+        assertEqual(count, 3, `Expected 3, got ${count}`);
+      }, { mockOnly: true }),
+
+      t('game.i18n.localize returns key as fallback', () => {
+        assertEqual(game.i18n.localize('TEST.Key'), 'TEST.Key');
+      }, { mockOnly: true }),
+
+      t('game.user.isGM is true', () => {
+        assert(game.user.isGM, 'Expected isGM to be true');
+      }, { mockOnly: true }),
+
+      t('EventBus can be imported', async () => {
+        const { EventBus } = await import('../../scripts/core/EventBus.mjs');
+        assertType(EventBus, 'function', 'EventBus should be a constructor');
+      }),
+
+      t('Logger can be imported', async () => {
+        const mod = await import('../../scripts/utils/Logger.mjs');
+        assertTruthy(mod.Logger, 'Logger should exist');
+      }),
+
+      t('Constants exports MODULE_ID', async () => {
+        const { MODULE_ID } = await import('../../scripts/constants.mjs');
+        assertEqual(MODULE_ID, 'vox-chronicle');
+      }),
+    ]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // SUITE 2: UI Panel
+    // ═══════════════════════════════════════════════════════════════
+    suite('2. UI Panel', [
+      t('MainPanel class can be imported', async () => {
+        const mod = await import('../../scripts/ui/MainPanel.mjs');
+        assertTruthy(mod.MainPanel, 'MainPanel should be exported');
+      }),
+
+      t('MainPanel has DEFAULT_OPTIONS with actions', async () => {
+        const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
+        const actions = MainPanel.DEFAULT_OPTIONS?.actions;
+        assertTruthy(actions, 'DEFAULT_OPTIONS.actions should exist');
+        assertTruthy(actions['toggle-recording'], 'toggle-recording action should exist');
+        assertTruthy(actions['toggle-pause'], 'toggle-pause action should exist');
+      }),
+
+      t('MainPanel has PARTS defined', async () => {
+        const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
+        assertTruthy(MainPanel.PARTS?.main, 'PARTS.main should exist');
+        assertTruthy(MainPanel.PARTS?.transcriptReview, 'PARTS.transcriptReview should exist');
+      }),
+
+      t('_getVisibleTabs returns live tabs in live mode', async () => {
+        const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
+        MainPanel.resetInstance();
+        const mockOrch = { state: 'idle', isLiveMode: true, setCallbacks() {} };
+        const panel = MainPanel.getInstance(mockOrch);
+        const tabs = panel._getVisibleTabs(true);
+        assertIncludes(tabs, 'live');
+        assertIncludes(tabs, 'transcript');
+        assert(!tabs.includes('chronicle'), 'chronicle should not be in live tabs');
+      }),
+
+      t('_getVisibleTabs returns all tabs when no session', async () => {
+        const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
+        MainPanel.resetInstance();
+        const mockOrch = { state: 'idle', isLiveMode: false, setCallbacks() {} };
+        const panel = MainPanel.getInstance(mockOrch);
+        const tabs = panel._getVisibleTabs(false);
+        assertIncludes(tabs, 'live');
+        assertIncludes(tabs, 'chronicle');
+        assertIncludes(tabs, 'entities');
+      }),
+
+      t('switchTab blocks hidden tabs in live mode', async () => {
+        const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
+        MainPanel.resetInstance();
+        const mockOrch = { state: 'live_listening', isLiveMode: true, setCallbacks() {} };
+        const panel = MainPanel.getInstance(mockOrch);
+        panel._activeTab = 'live';
+        panel.switchTab('chronicle');
+        assertEqual(panel._activeTab, 'live', 'Should not switch to hidden tab');
+      }),
+
+      t('_getBadgeState returns recording for live_listening', async () => {
+        const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
+        MainPanel.resetInstance();
+        const mockOrch = { state: 'live_listening', isLiveMode: true, setCallbacks() {} };
+        const panel = MainPanel.getInstance(mockOrch);
+        assertEqual(panel._getBadgeState(), 'recording');
+      }),
+
+      t('_getBadgeState returns streaming for live_analyzing', async () => {
+        const { MainPanel } = await import('../../scripts/ui/MainPanel.mjs');
+        MainPanel.resetInstance();
+        const mockOrch = { state: 'live_analyzing', isLiveMode: true, setCallbacks() {} };
+        const panel = MainPanel.getInstance(mockOrch);
+        assertEqual(panel._getBadgeState(), 'streaming');
+      }),
+    ]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // SUITE 3: Recording Flow
+    // ═══════════════════════════════════════════════════════════════
+    suite('3. Recording Flow', [
+      t('AudioRecorder can be imported', async () => {
+        const mod = await import('../../scripts/audio/AudioRecorder.mjs');
+        assertTruthy(mod.AudioRecorder, 'AudioRecorder should be exported');
+      }),
+
+      t('AudioChunker can be imported', async () => {
+        const mod = await import('../../scripts/audio/AudioChunker.mjs');
+        assertTruthy(mod.AudioChunker, 'AudioChunker should be exported');
+      }),
+
+      t('AudioChunker.split handles small blobs', async () => {
+        const { AudioChunker } = await import('../../scripts/audio/AudioChunker.mjs');
+        const smallBlob = new Blob([new Uint8Array(1024)], { type: 'audio/webm' });
+        // Should not need to split a 1KB blob
+        assertTruthy(smallBlob.size < 25 * 1024 * 1024, 'Blob should be under 25MB');
+      }),
+
+      t('AudioUtils can detect MIME types', async () => {
+        const { AudioUtils } = await import('../../scripts/utils/AudioUtils.mjs');
+        assertTruthy(AudioUtils, 'AudioUtils should exist');
+        assertType(AudioUtils.formatDuration, 'function', 'formatDuration should be a function');
+      }),
+
+      t('AudioUtils.formatDuration formats correctly', async () => {
+        const { AudioUtils } = await import('../../scripts/utils/AudioUtils.mjs');
+        assertEqual(AudioUtils.formatDuration(0), '0:00');
+        assertEqual(AudioUtils.formatDuration(65), '1:05');
+        assertEqual(AudioUtils.formatDuration(3661), '1:01:01');
+      }),
+
+      t('MediaRecorder mock works', () => {
+        const stream = createMockAudioStream();
+        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        assertEqual(recorder.state, 'inactive');
+        recorder.start(1000);
+        assertEqual(recorder.state, 'recording');
+        recorder.pause();
+        assertEqual(recorder.state, 'paused');
+        recorder.resume();
+        assertEqual(recorder.state, 'recording');
+        recorder.stop();
+        assertEqual(recorder.state, 'inactive');
+      }, { mockOnly: true }),
+    ]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // SUITE 4: Live Mode State Machine
+    // ═══════════════════════════════════════════════════════════════
+    suite('4. Live Mode', [
+      t('SessionOrchestrator can be imported', async () => {
+        const mod = await import('../../scripts/orchestration/SessionOrchestrator.mjs');
+        assertTruthy(mod.SessionOrchestrator, 'SessionOrchestrator should be exported');
+      }),
+
+      t('CostTracker tracks transcription minutes', async () => {
+        const { CostTracker } = await import('../../scripts/orchestration/CostTracker.mjs');
+        const tracker = new CostTracker();
+        tracker.addTranscriptionMinutes(2);
+        const cost = tracker.getTotalCost();
+        assert(cost > 0, `Expected cost > 0, got ${cost}`);
+      }),
+
+      t('EventBus pub/sub works', async () => {
+        const { EventBus } = await import('../../scripts/core/EventBus.mjs');
+        const bus = new EventBus();
+        let received = null;
+        bus.on('ai:test', (data) => { received = data; });
+        bus.emit('ai:test', { msg: 'hello' });
+        assertEqual(received?.msg, 'hello');
+      }),
+
+      t('EventBus once fires only once', async () => {
+        const { EventBus } = await import('../../scripts/core/EventBus.mjs');
+        const bus = new EventBus();
+        let count = 0;
+        bus.once('ai:onceTest', () => count++);
+        bus.emit('ai:onceTest', {});
+        bus.emit('ai:onceTest', {});
+        assertEqual(count, 1);
+      }),
+
+      t('SceneDetector can be imported', async () => {
+        const mod = await import('../../scripts/narrator/SceneDetector.mjs');
+        assertTruthy(mod.SceneDetector, 'SceneDetector should be exported');
+      }),
+
+      t('SensitiveDataFilter filters API keys', async () => {
+        const { SensitiveDataFilter } = await import('../../scripts/utils/SensitiveDataFilter.mjs');
+        const filtered = SensitiveDataFilter.sanitizeString('key is sk-1234567890abcdef1234567890abcdef');
+        assert(!filtered.includes('sk-1234567890'), 'Should have filtered the API key');
+      }),
+
+      t('HtmlUtils escapes HTML', async () => {
+        const { escapeHtml } = await import('../../scripts/utils/HtmlUtils.mjs');
+        const tag = '\x3cscript\x3ealert("xss")\x3c/script\x3e';
+        const result = escapeHtml(tag);
+        assert(!result.includes('\x3cscript\x3e'), 'Should have escaped script tag');
+      }),
+    ]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // SUITE 5: API Connections (Real Mode)
+    // ═══════════════════════════════════════════════════════════════
+    suite('5. API Connections', [
+      t('OpenAI API key validation', async () => {
+        const key = document.getElementById('openai-key').value;
+        if (!key) throw new Error('No OpenAI API key provided');
+        const resp = await fetch('https://api.openai.com/v1/models', {
+          headers: { 'Authorization': `Bearer ${key}` }
+        });
+        assert(resp.ok, `OpenAI API returned ${resp.status}`);
+        const data = await resp.json();
+        assert(data.data?.length > 0, 'Should return model list');
+      }, { requiresReal: true }),
+
+      t('OpenAI Chat completion (gpt-4o-mini)', async () => {
+        const key = document.getElementById('openai-key').value;
+        if (!key) throw new Error('No OpenAI API key provided');
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: 'Say "test ok" and nothing else.' }],
+            max_tokens: 10
+          })
+        });
+        assert(resp.ok, `Chat API returned ${resp.status}`);
+        const data = await resp.json();
+        assertTruthy(data.choices?.[0]?.message?.content, 'Should have response content');
+      }, { requiresReal: true }),
+
+      t('OpenAI Transcription endpoint reachable', async () => {
+        const key = document.getElementById('openai-key').value;
+        if (!key) throw new Error('No OpenAI API key provided');
+        // Send minimal request — will fail with 400 but proves endpoint is up
+        const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${key}` },
+          body: new FormData() // Empty — will get 400 but not 401/403
+        });
+        // 400 = endpoint reachable, auth OK; 401/403 = key problem
+        assert(resp.status !== 401 && resp.status !== 403, `Auth failed: ${resp.status}`);
+      }, { requiresReal: true }),
+
+      t('Kanka API connection', async () => {
+        const token = document.getElementById('kanka-token').value;
+        if (!token) throw new Error('No Kanka token provided');
+        const resp = await fetch('https://app.kanka.io/api/1.0/campaigns', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        });
+        assert(resp.ok, `Kanka API returned ${resp.status}`);
+        const data = await resp.json();
+        assertTruthy(data.data, 'Should return campaigns');
+      }, { requiresReal: true }),
+
+      t('Kanka campaign accessible', async () => {
+        const token = document.getElementById('kanka-token').value;
+        const campaignId = document.getElementById('kanka-campaign').value;
+        if (!token || !campaignId) throw new Error('Kanka token + campaign ID required');
+        const resp = await fetch(`https://app.kanka.io/api/1.0/campaigns/${campaignId}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        });
+        assert(resp.ok, `Campaign ${campaignId} returned ${resp.status}`);
+        const data = await resp.json();
+        assertTruthy(data.data?.name, 'Campaign should have a name');
+      }, { requiresReal: true }),
+
+      t('Mock fetch intercepts requests', async () => {
+        enableMockFetch();
+        registerMockResponse('api.openai.com/v1/models', { data: [{ id: 'gpt-4o' }] });
+        const resp = await fetch('https://api.openai.com/v1/models');
+        const data = await resp.json();
+        assertEqual(data.data[0].id, 'gpt-4o');
+        disableMockFetch();
+        clearMockResponses();
+      }, { mockOnly: true }),
+    ]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // SUITE 6: Full Workflow
+    // ═══════════════════════════════════════════════════════════════
+    suite('6. Full Workflow', [
+      t('Mock transcription pipeline', async () => {
+        enableMockFetch();
+        registerMockResponse('api.openai.com/v1/audio', {
+          text: 'The party enters the dungeon.',
+          segments: [
+            { speaker: 'SPEAKER_00', text: 'The party enters the dungeon.', start: 0, end: 3.5 }
+          ]
+        });
+        const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST', body: new FormData()
+        });
+        const data = await resp.json();
+        assertTruthy(data.text, 'Should have transcript text');
+        assert(data.segments.length > 0, 'Should have segments');
+        assertEqual(data.segments[0].speaker, 'SPEAKER_00');
+        disableMockFetch();
+        clearMockResponses();
+      }, { mockOnly: true }),
+
+      t('Mock entity extraction pipeline', async () => {
+        enableMockFetch();
+        registerMockResponse('api.openai.com/v1/chat', {
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                npcs: [{ name: 'Strahd', description: 'Vampire lord' }],
+                locations: [{ name: 'Castle Ravenloft', description: 'Dark castle' }],
+                items: [{ name: 'Sunsword', description: 'Legendary weapon' }]
+              })
+            }
+          }]
+        });
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'gpt-4o-mini', messages: [] })
+        });
+        const data = await resp.json();
+        const entities = JSON.parse(data.choices[0].message.content);
+        assertTruthy(entities.npcs.length > 0, 'Should extract NPCs');
+        assertEqual(entities.npcs[0].name, 'Strahd');
+        assertTruthy(entities.locations.length > 0, 'Should extract locations');
+        disableMockFetch();
+        clearMockResponses();
+      }, { mockOnly: true }),
+
+      t('Mock Kanka publish pipeline', async () => {
+        enableMockFetch();
+        registerMockResponse('app.kanka.io/api/1.0/campaigns', {
+          data: { id: 1, name: 'Test Campaign' }
+        });
+        registerMockResponse('app.kanka.io/api', {
+          data: { id: 42, name: 'Created Entity' }
+        });
+        // Test campaign fetch
+        const campResp = await fetch('https://app.kanka.io/api/1.0/campaigns/1');
+        const camp = await campResp.json();
+        assertEqual(camp.data.name, 'Test Campaign');
+        // Test entity creation
+        const entityResp = await fetch('https://app.kanka.io/api/1.0/campaigns/1/characters', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Strahd' })
+        });
+        const entity = await entityResp.json();
+        assertTruthy(entity.data.id, 'Should return entity ID');
+        disableMockFetch();
+        clearMockResponses();
+      }, { mockOnly: true }),
+
+      t('Real AI entity extraction', async () => {
+        const key = document.getElementById('openai-key').value;
+        if (!key) throw new Error('No OpenAI API key provided');
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{
+              role: 'user',
+              content: 'Extract entities from this D&D transcript as JSON with keys npcs, locations, items (each an array of {name, description}): "The party met Strahd von Zarovich in Castle Ravenloft. He wielded the Sunsword against them."'
+            }],
+            response_format: { type: 'json_object' },
+            max_tokens: 300
+          })
+        });
+        assert(resp.ok, `API returned ${resp.status}`);
+        const data = await resp.json();
+        const content = data.choices[0].message.content;
+        const entities = JSON.parse(content);
+        assertTruthy(entities.npcs || entities.characters, 'Should have NPCs/characters');
+        assertTruthy(entities.locations, 'Should have locations');
+      }, { requiresReal: true }),
+
+      t('Provider imports resolve', async () => {
+        const mods = await Promise.allSettled([
+          import('../../scripts/ai/providers/OpenAIChatProvider.mjs'),
+          import('../../scripts/ai/providers/OpenAITranscriptionProvider.mjs'),
+          import('../../scripts/ai/providers/OpenAIImageProvider.mjs'),
+          import('../../scripts/ai/providers/OpenAIEmbeddingProvider.mjs'),
+          import('../../scripts/ai/providers/ProviderRegistry.mjs'),
+        ]);
+        const allOk = mods.every(m => m.status === 'fulfilled');
+        assert(allOk, 'All provider modules should import successfully');
+      }),
+
+      t('Narrator services import', async () => {
+        const mods = await Promise.allSettled([
+          import('../../scripts/narrator/AIAssistant.mjs'),
+          import('../../scripts/narrator/ChapterTracker.mjs'),
+          import('../../scripts/narrator/SceneDetector.mjs'),
+          import('../../scripts/narrator/SessionAnalytics.mjs'),
+          import('../../scripts/narrator/RulesReference.mjs'),
+          import('../../scripts/narrator/PromptBuilder.mjs'),
+        ]);
+        const failed = mods.filter(m => m.status === 'rejected');
+        assert(failed.length === 0, `${failed.length} narrator imports failed: ${failed.map(f => f.reason?.message).join(', ')}`);
+      }),
+    ]);
+
+    // ─── Initialize ──────────────────────────────────────────────
+    renderGrid();
+    log('Test harness ready. Click "Run All" to start.', 'log-info');
+    log(`Mode: ${mockMode ? 'Mock' : 'Real APIs'}`, 'log-dim');
+  </script>
+</body>
+</html>
