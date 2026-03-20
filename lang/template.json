@@ -753,6 +753,10 @@
       "Page": "",
       "ChapterSummary": ""
     },
+    "SuggestionCard": {
+      "OffTrackBadge": "VOXCHRONICLE.SuggestionCard.OffTrackBadge",
+      "DismissRecovery": "VOXCHRONICLE.SuggestionCard.DismissRecovery"
+    },
     "Scene": {
       "Combat": "",
       "Social": "",

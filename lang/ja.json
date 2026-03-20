@@ -741,7 +741,7 @@
       "RuleAnswerCopied": "Answer copied to clipboard",
       "Searching": "[EN] Searching rules...",
       "NoAnswer": "[EN] No relevant rules found",
-      "AskPlaceholder": "ルールについて質問...",
+      "AskPlaceholder": "何でも質問してください...",
       "Refining": "精緻化中...",
       "Unavailable": "ルール検索が利用できません",
       "AutoDetected": "自動"
@@ -752,6 +752,10 @@
       "PageIn": "[EN] Page in {journal}",
       "Page": "[EN] Page",
       "ChapterSummary": "[EN] Chapter Summary"
+    },
+    "SuggestionCard": {
+      "OffTrackBadge": "ルート外",
+      "DismissRecovery": "閉じる"
     },
     "Scene": {
       "Combat": "[EN] Combat",

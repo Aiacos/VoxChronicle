@@ -1322,6 +1322,35 @@ form .form-group .vox-chronicle-validate-button {
   margin-left: var(--vox-space-xs);
 }
 
+/* Recovery card — amber tint for off-track detection (Phase 8 SUG-06) */
+.vox-chronicle-recovery-card {
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.vox-chronicle-badge--offtrack {
+  background: #f59e0b;
+  color: #1a1a1a;
+}
+
+.vox-chronicle-recovery-dismiss {
+  display: block;
+  margin-top: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  opacity: 0.7;
+  cursor: pointer;
+  background: none;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 3px;
+  color: inherit;
+}
+
+.vox-chronicle-recovery-dismiss:hover {
+  opacity: 1;
+  background: rgba(245, 158, 11, 0.15);
+}
+
 /* Rules Input — persistent at panel bottom */
 .vox-chronicle-rules-input {
   padding: 4px 8px;

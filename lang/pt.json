@@ -741,7 +741,7 @@
       "RuleAnswerCopied": "Answer copied to clipboard",
       "Searching": "[EN] Searching rules...",
       "NoAnswer": "[EN] No relevant rules found",
-      "AskPlaceholder": "Faca uma pergunta sobre regras...",
+      "AskPlaceholder": "Pergunte qualquer coisa...",
       "Refining": "Refinando...",
       "Unavailable": "Pesquisa de regras indisponivel",
       "AutoDetected": "auto"
@@ -752,6 +752,10 @@
       "PageIn": "[EN] Page in {journal}",
       "Page": "[EN] Page",
       "ChapterSummary": "[EN] Chapter Summary"
+    },
+    "SuggestionCard": {
+      "OffTrackBadge": "Fora do Caminho",
+      "DismissRecovery": "Ignorar"
     },
     "Scene": {
       "Combat": "[EN] Combat",

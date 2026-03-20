@@ -2016,6 +2016,227 @@ describe('MainPanel', () => {
     });
   });
 
+  // ─── Intent detection routing — _isRulesQuery() (Phase 8, Plan 03) ───────────
+
+  describe('_isRulesQuery()', () => {
+    let panel;
+    beforeEach(() => {
+      panel = MainPanel.getInstance(mockOrchestrator);
+    });
+
+    it('returns true for "how does grapple work"', () => {
+      expect(panel._isRulesQuery('how does grapple work')).toBe(true);
+    });
+
+    it('returns true for "what is the DC for concentration"', () => {
+      expect(panel._isRulesQuery('what is the DC for concentration')).toBe(true);
+    });
+
+    it('returns true for "what is the rule for flanking"', () => {
+      expect(panel._isRulesQuery('what is the rule for flanking')).toBe(true);
+    });
+
+    it('returns true for "what saving throw do I need"', () => {
+      expect(panel._isRulesQuery('what saving throw do I need')).toBe(true);
+    });
+
+    it('returns true for "modifier for strength check"', () => {
+      expect(panel._isRulesQuery('modifier for strength check')).toBe(true);
+    });
+
+    it('returns true for "how does the spell slot mechanic work"', () => {
+      expect(panel._isRulesQuery('how does the spell slot mechanic work')).toBe(true);
+    });
+
+    it('returns false for "what should I do with this NPC?"', () => {
+      expect(panel._isRulesQuery('what should I do with this NPC?')).toBe(false);
+    });
+
+    it('returns false for "tell me about the next chapter"', () => {
+      expect(panel._isRulesQuery('tell me about the next chapter')).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(panel._isRulesQuery('')).toBe(false);
+    });
+  });
+
+  // ─── Input routing — rules vs general query dispatch ─────────────────────────
+
+  describe('input routing (intent detection)', () => {
+    function makePanel() {
+      const orch = {
+        ...mockOrchestrator,
+        handleManualRulesQuery: vi.fn(),
+        handleGeneralQuery: vi.fn()
+      };
+      MainPanel.resetInstance();
+      const panel = MainPanel.getInstance(orch);
+      return { panel, orch };
+    }
+
+    function fireEnter(panel, query) {
+      const signal = new AbortController().signal;
+      const input = document.createElement('input');
+      input.className = 'vox-chronicle-rules-input__field';
+      input.value = query;
+
+      // Replicate the wiring from _onRender using _isRulesQuery routing
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+          const q = e.target.value.trim();
+          e.target.value = '';
+          panel._rulesInputValue = '';
+          if (panel._isRulesQuery(q)) {
+            if (!panel._orchestrator?.handleManualRulesQuery) return;
+            panel._orchestrator.handleManualRulesQuery(q);
+          } else {
+            if (!panel._orchestrator?.handleGeneralQuery) return;
+            panel._orchestrator.handleGeneralQuery(q);
+          }
+        }
+      }, { signal });
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      return input;
+    }
+
+    it('routes "how does grapple work" to handleManualRulesQuery', () => {
+      const { panel, orch } = makePanel();
+      fireEnter(panel, 'how does grapple work');
+      expect(orch.handleManualRulesQuery).toHaveBeenCalledWith('how does grapple work');
+      expect(orch.handleGeneralQuery).not.toHaveBeenCalled();
+    });
+
+    it('routes "what should I do?" to handleGeneralQuery', () => {
+      const { panel, orch } = makePanel();
+      fireEnter(panel, 'what should I do?');
+      expect(orch.handleGeneralQuery).toHaveBeenCalledWith('what should I do?');
+      expect(orch.handleManualRulesQuery).not.toHaveBeenCalled();
+    });
+
+    it('gracefully handles missing handleGeneralQuery (logs warn, returns)', () => {
+      const { panel, orch } = makePanel();
+      delete orch.handleGeneralQuery;
+      panel._logger = { warn: vi.fn(), debug: vi.fn(), info: vi.fn(), error: vi.fn() };
+      // Should not throw
+      expect(() => fireEnter(panel, 'what should I do?')).not.toThrow();
+      expect(orch.handleManualRulesQuery).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── Recovery card rendering (Phase 8 SUG-06) ───────────────────────────────
+
+  describe('_handleRecoveryCard()', () => {
+    let panel;
+    let container;
+
+    beforeEach(() => {
+      MainPanel.resetInstance();
+      panel = MainPanel.getInstance(mockOrchestrator);
+      container = document.createElement('div');
+      container.className = 'vox-chronicle-suggestions-list';
+      panel.element = document.createElement('div');
+      panel.element.querySelector = (sel) => {
+        if (sel === '.vox-chronicle-suggestions-list') return container;
+        return null;
+      };
+      panel._recoveryCards = [];
+    });
+
+    it('creates card element with vox-chronicle-recovery-card class', () => {
+      panel._handleRecoveryCard({
+        reason: 'Off path',
+        recoveryHook: 'The quest is north',
+        severity: 'moderate'
+      });
+      const card = container.querySelector('.vox-chronicle-recovery-card');
+      expect(card).not.toBeNull();
+    });
+
+    it('card has vox-chronicle-suggestion-card class', () => {
+      panel._handleRecoveryCard({ reason: 'Off path', recoveryHook: 'Go north', severity: 'moderate' });
+      const card = container.querySelector('.vox-chronicle-suggestion-card');
+      expect(card).not.toBeNull();
+    });
+
+    it('card has offtrack badge with vox-chronicle-badge--offtrack class', () => {
+      panel._handleRecoveryCard({ reason: 'Off path', recoveryHook: 'Go north', severity: 'moderate' });
+      const badge = container.querySelector('.vox-chronicle-badge--offtrack');
+      expect(badge).not.toBeNull();
+    });
+
+    it('card has a dismiss button', () => {
+      panel._handleRecoveryCard({ reason: 'Off path', recoveryHook: 'Go north', severity: 'moderate' });
+      const btn = container.querySelector('.vox-chronicle-recovery-dismiss');
+      expect(btn).not.toBeNull();
+    });
+
+    it('pushes data to _recoveryCards array', () => {
+      panel._handleRecoveryCard({ reason: 'Off path', recoveryHook: 'Go north', severity: 'moderate' });
+      expect(panel._recoveryCards.length).toBe(1);
+    });
+
+    it('dismiss button removes card from DOM', () => {
+      panel._handleRecoveryCard({ reason: 'Off path', recoveryHook: 'Go north', severity: 'moderate' });
+      const btn = container.querySelector('.vox-chronicle-recovery-dismiss');
+      btn.click();
+      expect(container.querySelector('.vox-chronicle-recovery-card')).toBeNull();
+    });
+
+    it('dismiss button removes entry from _recoveryCards', () => {
+      panel._handleRecoveryCard({ reason: 'Off path', recoveryHook: 'Go north', severity: 'moderate' });
+      expect(panel._recoveryCards.length).toBe(1);
+      const btn = container.querySelector('.vox-chronicle-recovery-dismiss');
+      btn.click();
+      expect(panel._recoveryCards.length).toBe(0);
+    });
+
+    it('does nothing when data is null', () => {
+      expect(() => panel._handleRecoveryCard(null)).not.toThrow();
+      expect(container.children.length).toBe(0);
+    });
+  });
+
+  describe('onRecoveryCard callback registration', () => {
+    it('onRecoveryCard callback is registered with orchestrator setCallbacks (constructor path)', () => {
+      MainPanel.resetInstance();
+      const orch = { ...mockOrchestrator, setCallbacks: vi.fn() };
+      MainPanel.getInstance(orch);
+      expect(orch.setCallbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          onRecoveryCard: expect.any(Function)
+        })
+      );
+    });
+
+    it('onRecoveryCard callback is registered on orchestrator update path', () => {
+      const first = MainPanel.getInstance(mockOrchestrator);
+      const newOrch = { ...mockOrchestrator, setCallbacks: vi.fn() };
+      MainPanel.getInstance(newOrch);
+      expect(newOrch.setCallbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          onRecoveryCard: expect.any(Function)
+        })
+      );
+    });
+
+    it('_recoveryCards is cleared when state transitions to idle', () => {
+      MainPanel.resetInstance();
+      let capturedCallbacks = null;
+      const orch = {
+        ...mockOrchestrator,
+        setCallbacks: vi.fn((cbs) => { capturedCallbacks = cbs; })
+      };
+      const panel = MainPanel.getInstance(orch);
+      panel._recoveryCards = [{ data: { reason: 'test' } }];
+      expect(panel._recoveryCards.length).toBe(1);
+
+      capturedCallbacks.onStateChange('idle');
+      expect(panel._recoveryCards.length).toBe(0);
+    });
+  });
+
   // ─── Transcript Review PART (Story 3.3 Task 3) ───────────────
 
   describe('Transcript Review PART', () => {

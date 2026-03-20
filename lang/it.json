@@ -741,7 +741,7 @@
       "RuleAnswerCopied": "Risposta copiata negli appunti",
       "Searching": "Ricerca regole...",
       "NoAnswer": "Nessuna regola pertinente trovata",
-      "AskPlaceholder": "Fai una domanda sulle regole...",
+      "AskPlaceholder": "Chiedi qualsiasi cosa...",
       "Refining": "Perfezionamento...",
       "Unavailable": "Ricerca regole non disponibile",
       "AutoDetected": "auto"
@@ -752,6 +752,10 @@
       "PageIn": "Pagina in {journal}",
       "Page": "Pagina",
       "ChapterSummary": "Riepilogo Capitolo"
+    },
+    "SuggestionCard": {
+      "OffTrackBadge": "Fuori Percorso",
+      "DismissRecovery": "Ignora"
     },
     "Scene": {
       "Combat": "Combattimento",

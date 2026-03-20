@@ -741,7 +741,7 @@
       "RuleAnswerCopied": "Antwort in Zwischenablage kopiert",
       "Searching": "Regeln werden durchsucht...",
       "NoAnswer": "Keine relevanten Regeln gefunden",
-      "AskPlaceholder": "Stelle eine Regelfrage...",
+      "AskPlaceholder": "Stelle eine Frage...",
       "Refining": "Verfeinern...",
       "Unavailable": "Regelsuche nicht verfuegbar",
       "AutoDetected": "auto"
@@ -752,6 +752,10 @@
       "PageIn": "Seite in {journal}",
       "Page": "Seite",
       "ChapterSummary": "Kapitelzusammenfassung"
+    },
+    "SuggestionCard": {
+      "OffTrackBadge": "Abgekommen",
+      "DismissRecovery": "Schließen"
     },
     "Scene": {
       "Combat": "Kampf",

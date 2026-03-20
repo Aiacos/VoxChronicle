@@ -741,7 +741,7 @@
       "RuleAnswerCopied": "Answer copied to clipboard",
       "Searching": "Searching rules...",
       "NoAnswer": "No relevant rules found",
-      "AskPlaceholder": "Ask a rules question...",
+      "AskPlaceholder": "Ask anything...",
       "Refining": "Refining...",
       "Unavailable": "Rules lookup unavailable",
       "AutoDetected": "auto"
@@ -752,6 +752,10 @@
       "PageIn": "Page in {journal}",
       "Page": "Page",
       "ChapterSummary": "Chapter Summary"
+    },
+    "SuggestionCard": {
+      "OffTrackBadge": "Off Track",
+      "DismissRecovery": "Dismiss"
     },
     "Scene": {
       "Combat": "Combat",

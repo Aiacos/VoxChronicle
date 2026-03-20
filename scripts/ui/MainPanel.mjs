@@ -139,6 +139,9 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._rulesInputValue = '';
     this._rulesDismissTimeouts = [];
 
+    // Recovery card state (persists across re-renders, cleared on session end)
+    this._recoveryCards = [];
+
     // Register callbacks so UI updates immediately on state and progress changes
     if (this._orchestrator?.setCallbacks) {
       this._orchestrator.setCallbacks({
@@ -148,6 +151,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
             this._pendingRulesCards = [];
             for (const t of this._rulesDismissTimeouts || []) clearTimeout(t);
             this._rulesDismissTimeouts = [];
+            this._recoveryCards = [];
           }
           // Partial rendering (Story 6.2 AC5): skip full re-render for live state transitions
           // that only change status badge/LED — DOM-direct update via rAF loop handles these
@@ -176,7 +180,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         },
         onStreamToken: (data) => this._handleStreamToken(data),
         onStreamComplete: (data) => this._handleStreamComplete(data),
-        onRulesCard: (data) => this._handleRulesCard(data)
+        onRulesCard: (data) => this._handleRulesCard(data),
+        onRecoveryCard: (data) => this._handleRecoveryCard(data)
       });
     }
   }
@@ -204,6 +209,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
               inst._pendingRulesCards = [];
               for (const t of inst._rulesDismissTimeouts || []) clearTimeout(t);
               inst._rulesDismissTimeouts = [];
+              inst._recoveryCards = [];
             }
             const isLiveTransition =
               newState === 'live_listening' ||
@@ -230,7 +236,8 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
           },
           onStreamToken: (data) => MainPanel.#instance._handleStreamToken(data),
           onStreamComplete: (data) => MainPanel.#instance._handleStreamComplete(data),
-          onRulesCard: (data) => MainPanel.#instance._handleRulesCard(data)
+          onRulesCard: (data) => MainPanel.#instance._handleRulesCard(data),
+          onRecoveryCard: (data) => MainPanel.#instance._handleRecoveryCard(data)
         });
       }
     }
@@ -676,6 +683,15 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     }
 
+    // Recover recovery cards after DOM replacement (same pattern as rules card recovery)
+    if (this._recoveryCards?.length) {
+      const savedRecovery = [...this._recoveryCards];
+      this._recoveryCards = [];
+      for (const { data } of savedRecovery) {
+        this._handleRecoveryCard(data);
+      }
+    }
+
     // Rules input wiring — persistent input always available
     const rulesInput = this.element?.querySelector('.vox-chronicle-rules-input__field');
     if (rulesInput) {
@@ -685,13 +701,21 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         (e) => {
           if (e.key === 'Enter' && e.target.value.trim()) {
             const query = e.target.value.trim();
-            if (!this._orchestrator?.handleManualRulesQuery) {
-              this._logger.warn('Rules query submitted but orchestrator is not available');
-              return;
-            }
             e.target.value = '';
             this._rulesInputValue = '';
-            this._orchestrator.handleManualRulesQuery(query);
+            if (this._isRulesQuery(query)) {
+              if (!this._orchestrator?.handleManualRulesQuery) {
+                this._logger.warn('Rules query submitted but orchestrator is not available');
+                return;
+              }
+              this._orchestrator.handleManualRulesQuery(query);
+            } else {
+              if (!this._orchestrator?.handleGeneralQuery) {
+                this._logger.warn('General query submitted but orchestrator.handleGeneralQuery is not available');
+                return;
+              }
+              this._orchestrator.handleGeneralQuery(query);
+            }
           }
         },
         { signal }
@@ -1815,6 +1839,73 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
             refiningEl.classList.add('vox-chronicle-suggestion__synthesis-failed');
           }
         });
+    }
+  }
+
+  // ─── Intent detection routing ───────────────────────────────────
+
+  /**
+   * Detects whether a query is a D&D rules question vs. a general DM query.
+   * Rules questions use specific vocabulary (rule, DC, saving throw, etc.).
+   * General queries route to handleGeneralQuery; rules queries to handleManualRulesQuery.
+   *
+   * @param {string} query - The input text to classify
+   * @returns {boolean} True if the query is rules-focused
+   * @private
+   */
+  _isRulesQuery(query) {
+    if (!query) return false;
+    const lower = query.toLowerCase();
+    return /\b(rule|rules|dc|saving throw|how does|how do|modifier for|spell slot|mechanic|what is the|ability check|skill check)\b/.test(lower);
+  }
+
+  // ─── Recovery card rendering ────────────────────────────────────
+
+  /**
+   * Renders an off-track recovery suggestion card in the suggestions list.
+   * Card persists across re-renders via _recoveryCards state (like _rulesCards).
+   *
+   * @param {object} data - Recovery card data from onRecoveryCard callback
+   * @param {string} data.reason - Why the party is off-track
+   * @param {string} data.recoveryHook - Journal reference to bring them back
+   * @param {string} data.severity - 'moderate' or 'severe'
+   * @private
+   */
+  _handleRecoveryCard(data) {
+    if (!data) return;
+    const container = this.element?.querySelector('.vox-chronicle-suggestions-list');
+    if (!container) {
+      this._logger.debug('Recovery card queued: suggestions container not ready');
+      return;
+    }
+
+    const badgeLabel =
+      game?.i18n?.localize('VOXCHRONICLE.SuggestionCard.OffTrackBadge') || 'Off Track';
+    const dismissLabel =
+      game?.i18n?.localize('VOXCHRONICLE.SuggestionCard.DismissRecovery') || 'Dismiss';
+
+    const card = document.createElement('div');
+    card.classList.add('vox-chronicle-suggestion-card', 'vox-chronicle-recovery-card');
+
+    card.innerHTML = `
+      <div class="vox-chronicle-suggestion-badge vox-chronicle-badge--offtrack">${badgeLabel}</div>
+      <div class="vox-chronicle-suggestion-content">${data.recoveryHook || data.reason || ''}</div>
+      <button class="vox-chronicle-recovery-dismiss">${dismissLabel}</button>
+    `;
+
+    const dismissBtn = card.querySelector('.vox-chronicle-recovery-dismiss');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        card.remove();
+        this._recoveryCards = this._recoveryCards.filter(c => c.data !== data);
+      });
+    }
+
+    container.prepend(card);
+
+    this._recoveryCards.push({ data });
+    if (this._recoveryCards.length > 5) {
+      this._recoveryCards = this._recoveryCards.slice(-5);
     }
   }
 
