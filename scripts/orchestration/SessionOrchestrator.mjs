@@ -14,6 +14,7 @@ import { ImageProcessor } from './ImageProcessor.mjs';
 import { KankaPublisher } from './KankaPublisher.mjs';
 import { NPCProfileExtractor } from '../narrator/NPCProfileExtractor.mjs';
 import { CostTracker } from './CostTracker.mjs';
+import { addKnownSpeakers, applyLabelsToSegments } from '../utils/SpeakerUtils.mjs';
 
 /** Maximum segments in _liveTranscript rolling window (500 ≈ 15-20 min of speech context) */
 const MAX_LIVE_SEGMENTS = 500;
@@ -1684,6 +1685,15 @@ class SessionOrchestrator {
             // Auto-recovery: successful transcription resets health to green
             this._transcriptionConsecutiveErrors = 0;
             this._transcriptionHealth = 'healthy';
+
+            // Apply saved speaker labels from SpeakerLabeling UI (same as TranscriptionProcessor)
+            const speakerIds = [...new Set(result.segments.map((s) => s.speaker).filter(Boolean))];
+            if (speakerIds.length > 0) {
+              addKnownSpeakers(speakerIds).catch((e) =>
+                this._logger.warn('Failed to register known speakers:', e)
+              );
+            }
+            result.segments = applyLabelsToSegments(result.segments);
 
             // Offset segment timestamps based on existing transcript duration
             const offset =
