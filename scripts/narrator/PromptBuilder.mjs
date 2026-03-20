@@ -111,6 +111,13 @@ class PromptBuilder {
     this._nextChapterLookahead = '';
 
     /**
+     * Quiet speakers list for engagement guidance injection
+     * @type {Array<{name: string, percentage: number}>}
+     * @private
+     */
+    this._quietSpeakers = [];
+
+    /**
      * Rolling summary of previous conversation turns
      * @type {string}
      * @private
@@ -207,6 +214,17 @@ class PromptBuilder {
    */
   setNextChapterLookahead(text) {
     this._nextChapterLookahead = text || '';
+  }
+
+  /**
+   * Sets the list of quiet speakers for engagement guidance injection.
+   * Call with [] to clear. Only applied when 3+ active speakers are present
+   * (enforced by the orchestrator before calling this setter).
+   *
+   * @param {Array<{name: string, percentage: number}>} quietSpeakers - Speakers below 15% threshold
+   */
+  setQuietSpeakers(quietSpeakers) {
+    this._quietSpeakers = quietSpeakers || [];
   }
 
   /**
@@ -454,7 +472,21 @@ You are a **Navigator and Oracle** for the Dungeon Master. You will receive a tr
       });
     }
 
-    // 5. Next chapter lookahead (lowest priority)
+    // 5. Quiet speaker engagement guidance (after NPC profiles, before next-chapter)
+    if (this._quietSpeakers.length > 0) {
+      const names = this._quietSpeakers.map((s) => s.name).join(', ');
+      const verb = this._quietSpeakers.length === 1 ? 'has' : 'have';
+      const pronoun = this._quietSpeakers.length === 1 ? 'their character' : 'their characters';
+      variableComponents.push({
+        key: 'quiet-speakers',
+        message: {
+          role: 'system',
+          content: `PLAYER ENGAGEMENT NOTE:\n${names} ${verb} spoken less than 15% of session time. In your next suggestion, create a natural opportunity for ${pronoun} to act, react, or speak — grounded in the current scene.`
+        }
+      });
+    }
+
+    // 6. Next chapter lookahead (lowest priority)
     if (this._nextChapterLookahead) {
       variableComponents.push({
         key: 'next-chapter',
@@ -618,6 +650,38 @@ Target scene: ${targetScene}
 Write a brief narration (2-3 sentences) that the DM can use to gently guide the players back towards the target scene, maintaining narrative continuity. Don't force the transition, but create a natural connection.`
     });
 
+    return messages;
+  }
+
+  /**
+   * Builds message array for an on-demand general DM query.
+   * Uses full journal context (chapter, NPC profiles, rolling summary) but does NOT
+   * include conversation history — the question is standalone.
+   *
+   * @param {string} question - The DM's question
+   * @param {string} [ragContext] - Optional RAG-retrieved context to use instead of adventure context
+   * @returns {Array<{role: string, content: string}>} Messages array for chat completion
+   */
+  buildGeneralQueryMessages(question, ragContext) {
+    const messages = [{ role: 'system', content: this.buildSystemPrompt() }];
+
+    const context = ragContext || (this._adventureContext ? this.truncateContext(this._adventureContext) : '');
+    if (context) {
+      messages.push({ role: 'system', content: `ADVENTURE CONTEXT:\n${context}` });
+    }
+
+    if (this._npcProfiles.length > 0) {
+      const npcLines = this._npcProfiles.map((profile) => {
+        return `- **${profile.name}** (${profile.role}): ${profile.personality}. Motivation: ${profile.motivation}.`;
+      });
+      messages.push({ role: 'system', content: `ACTIVE NPCs:\n${npcLines.join('\n')}` });
+    }
+
+    if (this._rollingSummary) {
+      messages.push({ role: 'system', content: `SESSION HISTORY:\n${this._rollingSummary}` });
+    }
+
+    messages.push({ role: 'user', content: question });
     return messages;
   }
 

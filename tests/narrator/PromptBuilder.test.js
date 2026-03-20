@@ -776,6 +776,160 @@ describe('PromptBuilder', () => {
   });
 
   // =========================================================================
+  // setQuietSpeakers / engagement injection (Phase 08-01)
+  // =========================================================================
+  describe('setQuietSpeakers()', () => {
+    it('stores the quiet speakers list', () => {
+      builder.setQuietSpeakers([{ name: 'Alice', percentage: 10 }]);
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg).toBeDefined();
+    });
+
+    it('buildAnalysisMessages includes PLAYER ENGAGEMENT NOTE with speaker name when one quiet speaker set', () => {
+      builder.setQuietSpeakers([{ name: 'Alice', percentage: 10 }]);
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg).toBeDefined();
+      expect(engagementMsg.role).toBe('system');
+      expect(engagementMsg.content).toContain('Alice');
+    });
+
+    it('buildAnalysisMessages does NOT include PLAYER ENGAGEMENT NOTE when no quiet speakers', () => {
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg).toBeUndefined();
+    });
+
+    it('buildAnalysisMessages does NOT include engagement note after setQuietSpeakers([])', () => {
+      builder.setQuietSpeakers([{ name: 'Bob', percentage: 5 }]);
+      builder.setQuietSpeakers([]);
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg).toBeUndefined();
+    });
+
+    it('setQuietSpeakers with null clears the list', () => {
+      builder.setQuietSpeakers([{ name: 'Carol', percentage: 8 }]);
+      builder.setQuietSpeakers(null);
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg).toBeUndefined();
+    });
+
+    it('engagement note includes all speaker names when multiple quiet speakers set', () => {
+      builder.setQuietSpeakers([
+        { name: 'Alice', percentage: 10 },
+        { name: 'Bob', percentage: 12 }
+      ]);
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg.content).toContain('Alice');
+      expect(engagementMsg.content).toContain('Bob');
+    });
+
+    it('engagement note uses singular phrasing for one speaker', () => {
+      builder.setQuietSpeakers([{ name: 'Alice', percentage: 10 }]);
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg.content).toContain('has spoken');
+      expect(engagementMsg.content).toContain('their character');
+    });
+
+    it('engagement note uses plural phrasing for multiple speakers', () => {
+      builder.setQuietSpeakers([
+        { name: 'Alice', percentage: 10 },
+        { name: 'Bob', percentage: 12 }
+      ]);
+      const messages = builder.buildAnalysisMessages('test', true, false);
+      const engagementMsg = messages.find((m) => m.content?.includes('PLAYER ENGAGEMENT NOTE'));
+      expect(engagementMsg.content).toContain('have spoken');
+      expect(engagementMsg.content).toContain('their characters');
+    });
+  });
+
+  // =========================================================================
+  // buildGeneralQueryMessages (Phase 08-01)
+  // =========================================================================
+  describe('buildGeneralQueryMessages()', () => {
+    it('returns an array with role:system first message (buildSystemPrompt output)', () => {
+      const messages = builder.buildGeneralQueryMessages('How do I handle grapple?');
+      expect(messages[0].role).toBe('system');
+      expect(messages[0].content).toContain('expert assistant');
+    });
+
+    it('last message is role:user with the question text', () => {
+      const messages = builder.buildGeneralQueryMessages('How do I handle grapple?');
+      const last = messages[messages.length - 1];
+      expect(last.role).toBe('user');
+      expect(last.content).toBe('How do I handle grapple?');
+    });
+
+    it('includes adventure context message when setAdventureContext called', () => {
+      builder.setAdventureContext('Campaign context text here.');
+      const messages = builder.buildGeneralQueryMessages('Question?');
+      const contextMsg = messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'));
+      expect(contextMsg).toBeDefined();
+      expect(contextMsg.content).toContain('Campaign context text here.');
+    });
+
+    it('uses ragContext over adventure context when both provided', () => {
+      builder.setAdventureContext('Fallback adventure context');
+      const messages = builder.buildGeneralQueryMessages('Question?', 'RAG specific context');
+      const contextMsg = messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'));
+      expect(contextMsg).toBeDefined();
+      expect(contextMsg.content).toContain('RAG specific context');
+      expect(contextMsg.content).not.toContain('Fallback adventure context');
+    });
+
+    it('includes ACTIVE NPCs system message when NPC profiles are set', () => {
+      builder.setNPCProfiles([
+        {
+          name: 'Elara',
+          role: 'mage',
+          personality: 'Reserved',
+          motivation: 'Seek knowledge',
+          chapterLocation: 'Ch2',
+          aliases: [],
+          sessionNotes: []
+        }
+      ]);
+      const messages = builder.buildGeneralQueryMessages('Question?');
+      const npcMsg = messages.find((m) => m.content?.includes('ACTIVE NPCs'));
+      expect(npcMsg).toBeDefined();
+      expect(npcMsg.role).toBe('system');
+      expect(npcMsg.content).toContain('Elara');
+    });
+
+    it('does NOT include ACTIVE NPCs message when no NPC profiles set', () => {
+      const messages = builder.buildGeneralQueryMessages('Question?');
+      const npcMsg = messages.find((m) => m.content?.includes('ACTIVE NPCs'));
+      expect(npcMsg).toBeUndefined();
+    });
+
+    it('includes SESSION HISTORY system message when rolling summary is set', () => {
+      builder.setRollingSummary('The party fought goblins and rested.');
+      const messages = builder.buildGeneralQueryMessages('Question?');
+      const histMsg = messages.find((m) => m.content?.includes('SESSION HISTORY'));
+      expect(histMsg).toBeDefined();
+      expect(histMsg.role).toBe('system');
+      expect(histMsg.content).toContain('The party fought goblins and rested.');
+    });
+
+    it('does NOT include SESSION HISTORY message when no rolling summary', () => {
+      const messages = builder.buildGeneralQueryMessages('Question?');
+      const histMsg = messages.find((m) => m.content?.includes('SESSION HISTORY'));
+      expect(histMsg).toBeUndefined();
+    });
+
+    it('does NOT include adventure context when neither ragContext nor adventureContext set', () => {
+      const messages = builder.buildGeneralQueryMessages('Question?');
+      const contextMsg = messages.find((m) => m.content?.includes('ADVENTURE CONTEXT'));
+      expect(contextMsg).toBeUndefined();
+    });
+  });
+
+  // =========================================================================
   // getSceneTypeGuidance (Phase 08-01)
   // =========================================================================
   describe('getSceneTypeGuidance()', () => {

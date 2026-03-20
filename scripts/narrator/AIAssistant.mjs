@@ -1204,6 +1204,8 @@ class AIAssistant {
     };
     this._previousTranscription = '';
     this._cachedRAGContext = null;
+    // Clear quiet speaker state to prevent post-session leakage (Phase 8)
+    this._promptBuilder?.setQuietSpeakers([]);
   }
 
   /**
