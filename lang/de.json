@@ -1134,7 +1134,8 @@
       "Close": "Schließen"
     },
     "Error": {
-      "Message": "Fehler: {error}"
+      "Message": "Fehler: {error}",
+      "OrchestratorUnavailable": "VoxChronicle ist nicht bereit. Bitte laden Sie das Modul neu oder prüfen Sie die Browserkonsole auf Fehler."
     },
     "Compendium": {
       "UnnamedEntry": "Unbenannter Eintrag",

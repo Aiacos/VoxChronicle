@@ -1134,7 +1134,8 @@
       "Close": ""
     },
     "Error": {
-      "Message": ""
+      "Message": "",
+      "OrchestratorUnavailable": ""
     },
     "Compendium": {
       "UnnamedEntry": "",

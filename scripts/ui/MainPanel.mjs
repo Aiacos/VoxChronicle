@@ -989,6 +989,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   async _handleToggleRecording() {
     if (!this._orchestrator) {
       this._logger.error('Orchestrator not available');
+      ui?.notifications?.error(
+        game.i18n?.localize('VOXCHRONICLE.Error.OrchestratorUnavailable') ||
+          'VoxChronicle is not ready. Please reload the module or check the browser console for errors.'
+      );
       return;
     }
 

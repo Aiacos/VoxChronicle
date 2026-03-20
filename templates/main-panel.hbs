@@ -347,13 +347,11 @@
     </div>
   </div>
 
-  {{!-- Input Bar (visible in live mode only) --}}
-  {{#if isLiveMode}}
+  {{!-- Rules Input Bar (always visible — available in idle, live, and chronicle modes) --}}
   <div class="vox-chronicle-rules-input">
     <input type="text" class="vox-chronicle-rules-input__field"
       placeholder="{{localize 'VOXCHRONICLE.Rules.AskPlaceholder'}}" />
   </div>
-  {{/if}}
 
   {{!-- Cost Footer (visible during live mode) --}}
   {{#if isLiveMode}}
