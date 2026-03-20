@@ -608,11 +608,13 @@ describe('VoxChronicle', () => {
 
       await instance.initialize();
 
-      // Audio recorder always created
-      expect(mockAudioRecorder).toHaveBeenCalledWith({
-        echoCancellation: true,
-        noiseSuppression: true
-      });
+      // Audio recorder always created (eventBus now passed for event wiring)
+      expect(mockAudioRecorder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          echoCancellation: true,
+          noiseSuppression: true
+        })
+      );
 
       // Transcription factory called with provider (not raw apiKey)
       expect(mockTranscriptionFactoryCreate).toHaveBeenCalledWith({
@@ -888,10 +890,12 @@ describe('VoxChronicle', () => {
 
       await instance.initialize();
 
-      expect(mockAudioRecorder).toHaveBeenCalledWith({
-        echoCancellation: true,
-        noiseSuppression: true
-      });
+      expect(mockAudioRecorder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          echoCancellation: true,
+          noiseSuppression: true
+        })
+      );
     });
 
     it('should not create rules reference when rulesDetection is false', async () => {
@@ -2019,10 +2023,12 @@ describe('VoxChronicle', () => {
 
       await instance.initialize();
 
-      expect(mockAudioRecorder).toHaveBeenCalledWith({
-        echoCancellation: false,
-        noiseSuppression: false
-      });
+      expect(mockAudioRecorder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          echoCancellation: false,
+          noiseSuppression: false
+        })
+      );
     });
   });
 

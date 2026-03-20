@@ -169,7 +169,8 @@ class SessionOrchestrator {
     this._transcriptionProcessor = this._transcriptionService
       ? new TranscriptionProcessor({
           transcriptionService: this._transcriptionService,
-          config: this._transcriptionConfig
+          config: this._transcriptionConfig,
+          eventBus: this._eventBus
         })
       : null;
 
@@ -237,6 +238,7 @@ class SessionOrchestrator {
     if (this._callbacks.onStateChange) {
       this._callbacks.onStateChange(newState, oldState, data);
     }
+    this._emitSafe('session:stateChanged', { newState, oldState, ...data });
   }
 
   _reportProgress(stage, progress, message = '') {
@@ -778,7 +780,8 @@ class SessionOrchestrator {
     if (this._transcriptionService) {
       this._transcriptionProcessor = new TranscriptionProcessor({
         transcriptionService: this._transcriptionService,
-        config: this._transcriptionConfig
+        config: this._transcriptionConfig,
+        eventBus: this._eventBus
       });
     }
     this._logger.debug('Transcription config updated for fallback support');
@@ -1582,7 +1585,7 @@ class SessionOrchestrator {
     this._aiSuggestionsPaused = false;
     this._silenceStartTime = null;
     this._lastSpeechActivityTime = null;
-    this._lastAISuggestions = null;
+    this._lastAISuggestions = [];
     this._lastOffTrackStatus = null;
     this._consecutiveLiveCycleErrors = 0;
     this._aiAnalysisErrorNotified = false;

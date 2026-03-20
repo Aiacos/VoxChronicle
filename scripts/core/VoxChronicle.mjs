@@ -328,7 +328,8 @@ class VoxChronicle {
 
       const audioSettings = {
         echoCancellation: this._getSetting('echoCancellation') ?? true,
-        noiseSuppression: this._getSetting('noiseSuppression') ?? true
+        noiseSuppression: this._getSetting('noiseSuppression') ?? true,
+        eventBus
       };
 
       // Get transcription mode settings
