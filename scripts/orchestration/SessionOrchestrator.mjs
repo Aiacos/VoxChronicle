@@ -119,6 +119,10 @@ class SessionOrchestrator {
   _silenceThreshold = 30000;
   _lastAISuggestions = [];
   _lastOffTrackStatus = null;
+  /** Consecutive cycles where off-track at moderate/severe severity */
+  _consecutiveOffTrackCount = 0;
+  /** Cycles needed before surfacing a recovery card */
+  _offTrackCycleThreshold = 2;
   _transcriptionConfig = null;
   _transcriptionProcessor = null;
 
@@ -887,6 +891,7 @@ class SessionOrchestrator {
     this._silenceStartTime = null;
     this._lastAISuggestions = [];
     this._lastOffTrackStatus = null;
+    this._consecutiveOffTrackCount = 0;
 
     if (this._aiAssistant) {
       this._aiAssistant.stopSilenceMonitoring();
@@ -942,6 +947,7 @@ class SessionOrchestrator {
     this._silenceStartTime = null;
     this._lastAISuggestions = [];
     this._lastOffTrackStatus = null;
+    this._consecutiveOffTrackCount = 0;
     this._aiAnalysisErrorNotified = false;
     this._consecutiveLiveCycleErrors = 0;
 
@@ -1588,6 +1594,7 @@ class SessionOrchestrator {
     this._lastSpeechActivityTime = null;
     this._lastAISuggestions = [];
     this._lastOffTrackStatus = null;
+    this._consecutiveOffTrackCount = 0;
     this._consecutiveLiveCycleErrors = 0;
     this._aiAnalysisErrorNotified = false;
 
@@ -1932,6 +1939,24 @@ class SessionOrchestrator {
         this._aiAssistant.setNextChapterLookahead(lookahead);
       }
 
+      // Inject quiet speaker data into PromptBuilder for engagement weighting (SUG-07)
+      if (this._sessionAnalytics && this._aiAssistant) {
+        try {
+          const stats = this._sessionAnalytics.getSpeakerStats();
+          const activeSpeakers = stats.filter((s) => s.speakingTime > 0);
+          if (activeSpeakers.length >= 3) {
+            const quiet = activeSpeakers
+              .filter((s) => s.percentage < 15)
+              .map((s) => ({ name: s.speakerId, percentage: s.percentage }));
+            this._aiAssistant._promptBuilder.setQuietSpeakers(quiet);
+          } else {
+            this._aiAssistant._promptBuilder.setQuietSpeakers([]);
+          }
+        } catch (err) {
+          this._logger.debug('Speaker stats injection failed (non-critical):', err.message);
+        }
+      }
+
       this._logger.log(
         `Running AI analysis (context: ${contextText.length} chars, chapter: ${currentChapter?.title || 'none'})`
       );
@@ -2091,6 +2116,33 @@ class SessionOrchestrator {
           );
         } else {
           this._logger.debug('Players on track');
+        }
+      }
+
+      // Phase 8 SUG-06: structured off-track recovery card with consecutive cycle threshold
+      const offTrack = analysis?.offTrack;
+      if (offTrack) {
+        // Reset counter on scene transition regardless of off-track status
+        if (analysis?.sceneInfo?.isTransition === true) {
+          this._consecutiveOffTrackCount = 0;
+        } else if (offTrack.severity === 'moderate' || offTrack.severity === 'severe') {
+          this._consecutiveOffTrackCount++;
+          this._logger.debug(
+            `Off-track (${offTrack.severity}): consecutive count = ${this._consecutiveOffTrackCount}/${this._offTrackCycleThreshold}`
+          );
+          if (
+            this._consecutiveOffTrackCount >= this._offTrackCycleThreshold &&
+            this._callbacks.onRecoveryCard
+          ) {
+            this._callbacks.onRecoveryCard({
+              reason: offTrack.reason || '',
+              recoveryHook: offTrack.recoveryHook || '',
+              severity: offTrack.severity
+            });
+          }
+        } else {
+          // none or minor — reset counter silently
+          this._consecutiveOffTrackCount = 0;
         }
       }
 
