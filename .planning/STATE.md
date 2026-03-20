@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-20T10:58:39Z"
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-03-20T11:09:22.514Z"
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -64,6 +64,7 @@ Plan: 2 of 3
 | Phase 07 P03 | 4min | 1 tasks | 10 files |
 | Phase 08-advanced-suggestion-intelligence P01 | 5min | 2 tasks | 3 files |
 | Phase 08-advanced-suggestion-intelligence P02 | 4min | 2 tasks | 2 files |
+| Phase 08-advanced-suggestion-intelligence P03 | 6min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,9 @@ Recent decisions affecting current work:
 - [Phase 08-02]: _consecutiveOffTrackCount resets on scene transition (sceneInfo.isTransition guard) before checking severity
 - [Phase 08-02]: Quiet speaker injection skips when fewer than 3 active speakers (calls setQuietSpeakers([]) to clear stale data)
 - [Phase 08-02]: offTrack field separate from offTrackStatus — new SUG-06 structured field alongside legacy backward-compat field
+- [Phase 08-03]: _isRulesQuery uses single regex with word-boundary anchors to classify rules vs general questions
+- [Phase 08-03]: AskPlaceholder updated in all 8 lang files (value change, not key change) to keep template DRY
+- [Phase 08-03]: _recoveryCards capped at 5 (transient DM alerts) vs _rulesCards at 50 (historical)
 
 ### Pending Todos
 
@@ -158,6 +162,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T10:58:39Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-20T11:09:22.511Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None

@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Rolling Context Management** - Prevent context window rot with rolling summarization and bounded conversation history (completed 2026-03-06)
 - [x] **Phase 6: State Machine and UI Accuracy** - Ensure the panel reflects real session state with streaming display and calibrated silence detection (completed 2026-03-06)
 - [x] **Phase 7: Rules Lookup Integration** - Wire RulesReference into the live cycle as a non-blocking fire-and-forget path (completed 2026-03-20)
-- [ ] **Phase 8: Advanced Suggestion Intelligence** - Add on-demand query, scene-type adaptation, off-track detection, and speaker-aware weighting
+- [x] **Phase 8: Advanced Suggestion Intelligence** - Add on-demand query, scene-type adaptation, off-track detection, and speaker-aware weighting (completed 2026-03-20)
 
 ## Phase Details
 
@@ -140,7 +140,7 @@ Plans:
   2. Suggestion prompts visibly differ in structure between scene types: combat suggestions lead with tactical options, social suggestions lead with NPC dialogue hooks, exploration suggestions lead with environmental details
   3. When party dialogue diverges from the adventure path for 2+ consecutive cycles, the panel surfaces a recovery suggestion that references the original adventure hook
   4. When one speaker has contributed less than 15% of the session's total speaking time, the AI includes an engagement opportunity for that player in the next suggestion
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [ ] 08-01-PLAN.md — PromptBuilder extensions: getSceneTypeGuidance() + setQuietSpeakers() + buildGeneralQueryMessages()
 - [ ] 08-02-PLAN.md — SessionOrchestrator: handleGeneralQuery() + off-track consecutive counter + quiet speaker injection
@@ -160,4 +160,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Rolling Context Management | 3/3 | Complete   | 2026-03-06 |
 | 6. State Machine and UI Accuracy | 4/4 | Complete | 2026-03-06 |
 | 7. Rules Lookup Integration | 3/3 | Complete   | 2026-03-20 |
-| 8. Advanced Suggestion Intelligence | 2/3 | In Progress|  |
+| 8. Advanced Suggestion Intelligence | 3/3 | Complete   | 2026-03-20 |
