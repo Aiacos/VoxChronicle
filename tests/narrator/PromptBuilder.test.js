@@ -776,6 +776,83 @@ describe('PromptBuilder', () => {
   });
 
   // =========================================================================
+  // getSceneTypeGuidance (Phase 08-01)
+  // =========================================================================
+  describe('getSceneTypeGuidance()', () => {
+    it("'combat' returns text starting with SCENE TYPE — COMBAT: containing tactical, initiative, and environment", () => {
+      const guidance = builder.getSceneTypeGuidance('combat');
+      expect(guidance).toContain('SCENE TYPE — COMBAT');
+      expect(guidance).toMatch(/tactical/i);
+      expect(guidance).toMatch(/initiative/i);
+      expect(guidance).toMatch(/environment/i);
+    });
+
+    it("'social' returns text starting with SCENE TYPE — SOCIAL: containing NPC dialogue, persuasion, and faction", () => {
+      const guidance = builder.getSceneTypeGuidance('social');
+      expect(guidance).toContain('SCENE TYPE — SOCIAL');
+      expect(guidance).toMatch(/NPC dialogue/i);
+      expect(guidance).toMatch(/persuasion/i);
+      expect(guidance).toMatch(/faction/i);
+    });
+
+    it("'exploration' returns text starting with SCENE TYPE — EXPLORATION: containing sensory, Perception or Investigation, and lore", () => {
+      const guidance = builder.getSceneTypeGuidance('exploration');
+      expect(guidance).toContain('SCENE TYPE — EXPLORATION');
+      expect(guidance).toMatch(/sensory/i);
+      expect(guidance).toMatch(/perception|investigation/i);
+      expect(guidance).toMatch(/lore/i);
+    });
+
+    it("'rest' returns text starting with SCENE TYPE — REST: containing downtime, character, and foreshadowing", () => {
+      const guidance = builder.getSceneTypeGuidance('rest');
+      expect(guidance).toContain('SCENE TYPE — REST');
+      expect(guidance).toMatch(/downtime/i);
+      expect(guidance).toMatch(/character/i);
+      expect(guidance).toMatch(/foreshadowing/i);
+    });
+
+    it("'unknown' returns empty string", () => {
+      expect(builder.getSceneTypeGuidance('unknown')).toBe('');
+    });
+
+    it('undefined returns empty string', () => {
+      expect(builder.getSceneTypeGuidance(undefined)).toBe('');
+    });
+
+    it('null returns empty string', () => {
+      expect(builder.getSceneTypeGuidance(null)).toBe('');
+    });
+  });
+
+  // =========================================================================
+  // buildSystemPrompt — scene type guidance integration (Phase 08-01)
+  // =========================================================================
+  describe('buildSystemPrompt() — scene type guidance', () => {
+    it("with sceneType='combat', returned string includes 'SCENE TYPE — COMBAT'", () => {
+      builder.setSceneType('combat');
+      const prompt = builder.buildSystemPrompt();
+      expect(prompt).toContain('SCENE TYPE — COMBAT');
+    });
+
+    it("with sceneType='unknown', returned string does NOT include 'SCENE TYPE'", () => {
+      builder.setSceneType('unknown');
+      const prompt = builder.buildSystemPrompt();
+      expect(prompt).not.toContain('SCENE TYPE');
+    });
+
+    it("with sceneType='social', returned string includes 'SCENE TYPE — SOCIAL'", () => {
+      builder.setSceneType('social');
+      const prompt = builder.buildSystemPrompt();
+      expect(prompt).toContain('SCENE TYPE — SOCIAL');
+    });
+
+    it('with no sceneType set (default unknown), returned string does NOT include SCENE TYPE', () => {
+      const prompt = builder.buildSystemPrompt();
+      expect(prompt).not.toContain('SCENE TYPE');
+    });
+  });
+
+  // =========================================================================
   // MAX_CONTEXT_TOKENS export
   // =========================================================================
   describe('MAX_CONTEXT_TOKENS', () => {

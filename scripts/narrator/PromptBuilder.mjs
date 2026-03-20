@@ -228,6 +228,35 @@ class PromptBuilder {
   }
 
   /**
+   * Returns structured scene-type guidance for injection into the system prompt.
+   * Returns empty string for unknown/undefined scene types (no guidance = current behavior).
+   *
+   * @param {string} sceneType - 'combat', 'social', 'exploration', 'rest', or unknown
+   * @returns {string} Scene-specific guidance block, or '' if unknown
+   */
+  getSceneTypeGuidance(sceneType) {
+    const guidance = {
+      combat: `SCENE TYPE — COMBAT:
+Lead your first suggestion with tactical options for the current encounter.
+Structure: (1) Initiative-aware action for the most threatened character, (2) Enemy ability or weakness from journal if present, (3) Environmental hazard or terrain feature the DM can invoke.
+Badge: "action" type preferred.`,
+      social: `SCENE TYPE — SOCIAL:
+Lead your first suggestion with an NPC dialogue hook grounded in the journal.
+Structure: (1) Specific line the NPC might say consistent with their motivation, (2) Persuasion/deception opportunity with stakes, (3) Faction or relationship dynamic the DM can surface.
+Badge: "dialogue" type preferred.`,
+      exploration: `SCENE TYPE — EXPLORATION:
+Lead your first suggestion with an environmental detail or discovery opportunity.
+Structure: (1) Specific sensory description from the journal location, (2) Perception/Investigation trigger with hidden element, (3) Lore drop or foreshadowing seed from the next chapter.
+Badge: "narration" type preferred.`,
+      rest: `SCENE TYPE — REST:
+Lead your first suggestion with a downtime or character moment opportunity.
+Structure: (1) Character development moment (backstory hook or inter-party bond), (2) Camp event from journal if present, (3) Foreshadowing seed about upcoming danger.
+Badge: "narration" type preferred.`
+    };
+    return guidance[sceneType] || '';
+  }
+
+  /**
    * Sets the off-track detection sensitivity
    *
    * @param {string} sensitivity - 'low', 'medium', or 'high'
@@ -285,10 +314,8 @@ class PromptBuilder {
 
     const sensitivitySection = `\n\nOFF-TRACK SENSITIVITY: ${sensitivityGuide[this._sensitivity] || sensitivityGuide['medium']}`;
 
-    const sceneSection =
-      this._sceneType && this._sceneType !== 'unknown'
-        ? `\n\nCURRENT SCENE TYPE: ${this._sceneType}. Adapt your suggestions to this context (e.g., tactical advice for combat, NPC interaction for social, discovery for exploration, downtime for rest).`
-        : '';
+    const sceneGuidance = this.getSceneTypeGuidance(this._sceneType);
+    const sceneSection = sceneGuidance ? `\n\n${sceneGuidance}` : '';
 
     return `You are an expert assistant for Dungeon Masters (GMs) in fantasy tabletop RPGs.
 Your SOLE purpose is to help the GM during game sessions.
