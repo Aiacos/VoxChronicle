@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Phase 8 context gathered
-last_updated: "2026-03-20T10:30:06.951Z"
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-20T10:53:22.532Z"
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 21
-  completed_plans: 21
+  total_plans: 24
+  completed_plans: 22
 ---
 
 # Project State
@@ -19,11 +19,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** The AI must follow the adventure journal as the source of truth — knowing where the party is, what happened before, and what's coming next.
-**Current focus:** Phase 07 — rules-lookup-integration
+**Current focus:** Phase 08 — advanced-suggestion-intelligence
 
 ## Current Position
 
-Phase: 07 (rules-lookup-integration) — EXECUTING
+Phase: 08 (advanced-suggestion-intelligence) — EXECUTING
 Plan: 1 of 3
 
 ## Performance Metrics
@@ -62,6 +62,7 @@ Plan: 1 of 3
 | Phase 07 P01 | 2min | 1 tasks | 2 files |
 | Phase 07 P02 | 4min | 2 tasks | 4 files |
 | Phase 07 P03 | 4min | 1 tasks | 10 files |
+| Phase 08-advanced-suggestion-intelligence P01 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,10 @@ Recent decisions affecting current work:
 - [07-02]: AIAssistant delegates _detectRulesQuestions to RulesReference with inline fallback
 - [07-02]: Rules services passed via setNarratorServices after creation (second call pattern)
 - [Phase 07]: Rules input always visible (not gated behind isLiveMode) — available in idle, live, and chronicle modes per plan requirement
+- [Phase 08-01]: getSceneTypeGuidance uses object lookup with || '' fallback (covers null/undefined/unknown uniformly)
+- [Phase 08-01]: buildGeneralQueryMessages uses NPC name+role+personality+motivation without chapterLocation or sessionNotes (simpler format for standalone queries)
+- [Phase 08-01]: quiet-speakers engagement note uses singular/plural verb and pronoun logic based on count
+- [Phase 08-01]: AIAssistant.resetSession() uses optional chaining (_promptBuilder?.setQuietSpeakers) for safety
 
 ### Pending Todos
 
@@ -148,6 +153,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T10:30:06.948Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-advanced-suggestion-intelligence/08-CONTEXT.md
+Last session: 2026-03-20T10:53:22.529Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None
