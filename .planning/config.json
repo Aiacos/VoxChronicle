@@ -2,12 +2,17 @@
   "mode": "yolo",
   "parallelization": true,
   "commit_docs": true,
-  "model_profile": "quality",
+  "model_profile": "balanced",
   "workflow": {
     "research": true,
     "plan_check": true,
     "verifier": true,
+    "auto_advance": true,
+    "nyquist_validation": true,
     "_auto_chain_active": false
+  },
+  "git": {
+    "branching_strategy": "milestone"
   },
   "granularity": "fine"
 }

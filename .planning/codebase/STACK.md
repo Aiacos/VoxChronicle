@@ -1,169 +1,137 @@
 # Technology Stack
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-19
 
 ## Languages
 
 **Primary:**
-- **JavaScript (ES6+)** - All module code uses ES6 modules with `.mjs` extension
-  - Entry point: `scripts/main.mjs`
-  - Module uses modern features: async/await, arrow functions, destructuring, template literals
+- JavaScript ES6+ with `.mjs` extension - All production code in `scripts/`
+- Handlebars `.hbs` - UI templates in `templates/`
+- CSS3 - Module styling in `styles/`
 
-**Configuration:**
-- **JSON** - `module.json` (Foundry VTT manifest), `package.json` (Node.js), language files
+**Secondary:**
+- JSON - Lang files (`lang/*.json`), module manifest (`module.json`), package config
 
 ## Runtime
 
 **Environment:**
-- **Foundry VTT v13** - Primary runtime environment (compatibility range: 13.x)
-  - Uses Foundry VTT API for settings, hooks, UI, and game state access
-  - No Node.js runtime required for production use (browser-only module)
+- Browser (Foundry VTT's Electron wrapper or any modern browser)
+- Node.js >=18.0.0 for dev tooling only (no Node APIs in production code)
 
 **Package Manager:**
-- **npm** - Node.js package manager
-  - Lockfile: `package-lock.json` (present)
-  - Node.js requirement: ≥18.0.0 (from `package.json` engines)
+- npm
+- Lockfile: `package-lock.json` (present)
 
 ## Frameworks
 
-**Core Framework:**
-- **Foundry VTT v13 Module API** - Core framework for VTT integration
-  - ApplicationV2 + HandlebarsApplicationMixin for UI components (`scripts/ui/`)
-  - Hooks system for module lifecycle (`Hooks.once('init')`, `Hooks.once('ready')`)
-  - Settings system (`game.settings.register()`) with client/world scopes
-
-**UI Framework:**
-- **Handlebars** - Template engine for rendering UI components
-  - Templates location: `templates/` directory
-  - Main panel template: `templates/main-panel.hbs`
-  - Recorded component templates: `templates/recorder.hbs`, `templates/speaker-labeling.hbs`, etc.
-
-**Styling:**
-- **CSS3** - All styles namespaced with `.vox-chronicle` prefix
-  - Main stylesheet: `styles/vox-chronicle.css`
-  - BEM-style naming convention for component classes
-
-**Transcription Framework:**
-- **MediaRecorder API** - Browser standard for audio capture
-  - Audio chunk rotation strategy for gapless recording (`scripts/audio/AudioRecorder.mjs`)
-  - WebM format for transcription-ready output
+**Core:**
+- Foundry VTT Module API v13 - Application lifecycle, hooks, settings, i18n
+- Foundry VTT ApplicationV2 + HandlebarsApplicationMixin - UI components
+  - Entry: `scripts/main.mjs`
+  - Compatibility: `module.json` minimum: "13", verified: "13"
 
 **Testing:**
-- **Vitest** v2.0.0 - Unit and integration test runner
-  - Configuration: `vitest.config.js` and `vitest.integration.config.js`
-  - Environment: jsdom (browser simulation)
-  - Coverage provider: v8
-  - Test count: 3888+ tests across 46+ files
-  - Coverage thresholds: 90% statements/functions, 85% branches, 90% lines
+- Vitest ^2.0.0 - Test runner with jsdom environment
+  - Config: `vitest.config.js`
+  - Coverage: v8 provider, thresholds: statements 90%, branches 85%, functions 90%, lines 90%
+  - Integration config: `vitest.integration.config.js` (separate, excluded from default run)
+- jsdom ^24.0.0 - Browser API simulation for tests
 
-**Build/Dev Tools:**
-- **ESLint** 9.39.2 - Code linting with flat config format
-  - Config: `eslint.config.js`
-  - Plugins: `@eslint/js`, `eslint-plugin-jsdoc`
-  - Rules enforce: const/no-var, semicolons, JSDoc standards
-
-- **Prettier** 3.8.1 - Code formatting
-  - Config: `.prettierrc.json`
-  - Settings: 100 character line width, single quotes, 2-space indent, trailing commas disabled
-
-- **Bash build script** - `build.sh` for packaging module as ZIP
-  - Auto-detects version and module ID from `module.json`
-  - Creates release ZIP with download URL baked in
+**Build/Dev:**
+- ESLint ^9.39.2 with `@eslint/js` and `eslint-plugin-jsdoc` - Linting
+- Prettier ^3.8.1 - Code formatting
+- No bundler/transpiler - Pure ES modules loaded directly by Foundry VTT
+- `build.sh` / `build.bat` - ZIP packaging scripts for Foundry release
 
 ## Key Dependencies
 
-**No Direct npm Dependencies in Production Code**
+**Critical (devDependencies only — zero runtime npm dependencies):**
+- `vitest` ^2.0.0 - Test runner
+- `@vitest/coverage-v8` ^2.0.0 - Coverage provider
+- `@vitest/ui` ^2.0.0 - Test UI
+- `jsdom` ^24.0.0 - DOM simulation
+- `eslint` ^9.39.2 - Linting
+- `eslint-plugin-jsdoc` ^62.5.4 - JSDoc linting
+- `prettier` ^3.8.1 - Formatting
 
-The module uses fetch-based HTTP clients (no axios, no libraries). All external service communication is implemented natively:
+**Zero production npm dependencies** — All runtime code uses browser APIs and Foundry VTT APIs only. No bundled third-party libraries.
 
-**Development Dependencies (DevDependencies):**
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| @eslint/js | 9.39.2 | ESLint JavaScript rules base |
-| eslint | 9.39.2 | Code linting and validation |
-| eslint-plugin-jsdoc | 62.5.4 | JSDoc documentation validation |
-| prettier | 3.8.1 | Code formatting and consistency |
-| vitest | 2.0.0 | Test runner and assertion framework |
-| @vitest/coverage-v8 | 2.0.0 | Code coverage reporting (v8 provider) |
-| @vitest/ui | 2.0.0 | Visual test runner UI |
-| jsdom | 24.0.0 | Browser DOM simulation for tests |
-
-**No Runtime Production Dependencies** - Uses browser native APIs:
-- `fetch()` for HTTP requests (with custom retry/queue logic in `OpenAIClient` and `KankaClient`)
-- `FormData`, `Blob`, `File` for multipart uploads
-- `AbortController` for request cancellation and timeout
-- `MediaRecorder` for audio capture
-- `AudioContext` for audio analysis and level metering
-
-**Browser APIs Required:**
-- Microphone access (getUserMedia API)
-- WebRTC for Foundry VTT audio capture (optional, auto-fallback)
-- Local file storage via Foundry VTT settings system (not localStorage/IndexedDB)
+**External libraries loaded at runtime (CDN):**
+- `vis-network` - Loaded on demand for `RelationshipGraph.mjs` (`scripts/ui/RelationshipGraph.mjs`)
+  - Pattern: `if (!window.vis)` guard prevents double-load
 
 ## Configuration
 
+**Module Manifest:**
+- `module.json` — Foundry VTT manifest: version 4.0.3, id "vox-chronicle", ESModules entry, styles array (4 files in order), 7 language packs
+
+**CSS Loading Order (critical — tokens must load before main CSS):**
+```
+styles/tokens/primitives.css   → raw color/spacing/type primitives
+styles/tokens/semantic.css     → semantic roles mapped from primitives
+styles/tokens/components.css   → per-component tokens
+styles/vox-chronicle.css       → all module styles (references var(--vox-*))
+```
+
+**Test Configuration:**
+- `vitest.config.js` — Unit tests: `tests/**/*.test.{js,mjs}`, excludes `tests/integration/`
+- `vitest.integration.config.js` — Integration tests: `tests/integration/`
+- `tests/helpers/setup.js` — Global setup (game mock, Foundry globals)
+
+**Linting/Formatting:**
+- ESLint config: `eslint.config.mjs` (inferred from package.json scripts)
+- Prettier: `prettier --write 'scripts/**/*.mjs' 'tests/**/*.js'`
+
 **Environment:**
-- Configuration is fully Foundry VTT settings-based (no .env files)
-- Two scope types used:
-  - **client**: Per-user settings (API keys, preferences)
-  - **world**: Shared campaign settings (Kanka campaign ID, shared preferences)
-
-**Critical Settings (Keys in `scripts/core/Settings.mjs`):**
-- `openaiApiKey` - User's OpenAI API key (client scope, encrypted in Foundry)
-- `kankaApiToken` - World's Kanka API token (world scope)
-- `kankaCampaignId` - Target Kanka campaign numeric ID (world scope)
-- `transcriptionLanguage` - Language code for transcription (world scope)
-- `transcriptionMode` - Mode: 'api' | 'local' | 'auto' (world scope)
-- `whisperBackendUrl` - Local Whisper backend URL for offline transcription (world scope, default: http://localhost:8080)
-- `imageQuality` - Image generation quality: 'low' | 'medium' | 'high' | 'auto' (world scope)
-- `customVocabularyDictionary` - Campaign-specific terms for transcription accuracy (world scope, Object type)
-- `speakerLabels` - Mapping of speaker IDs to player names (world scope, not shown in UI)
-
-**Build Configuration:**
-- `module.json` - Foundry VTT manifest with version, compatibility, entry points
-- `package.json` - npm manifest with dev dependencies and test scripts
-- `.prettierrc.json` - Prettier formatting rules
-- `eslint.config.js` - ESLint configuration (ES2024 standards)
-- `vitest.config.js` - Unit test configuration with jsdom environment
-- `vitest.integration.config.js` - Integration test configuration
-
-**Module Manifest (`module.json`):**
-- Entry point: `scripts/main.mjs` (single ESM file, dynamic imports from there)
-- Styles: `styles/vox-chronicle.css`
-- Languages: 7 language files (en.json, it.json, de.json, es.json, fr.json, ja.json, pt.json)
-- Compatibility: Foundry v13 (minimum and verified)
+- No `.env` files — API keys stored in Foundry VTT client/world settings at runtime
+- No environment variables needed for build
+- `game.settings.get(MODULE_ID, 'openaiApiKey')` — reads at runtime from Foundry
 
 ## Platform Requirements
 
 **Development:**
-- **Node.js** ≥18.0.0 (for running tests, linting, formatting)
-- **npm** (or compatible package manager)
-- **Bash** shell (for build.sh script, Windows uses build.bat)
+- Node.js >=18.0.0
+- npm (for devDependencies: vitest, eslint, prettier, jsdom)
+- No Foundry VTT needed for unit tests (jsdom mocks browser environment)
 
-**Production (Runtime):**
-- **Web browser** with:
-  - ES2024 JavaScript support (modern browsers: Chrome 90+, Firefox 88+, Safari 15+, Edge 90+)
-  - MediaRecorder API (audio recording)
-  - Fetch API with AbortController
-  - FormData multipart upload support
-  - WebRTC (optional, for Foundry audio capture)
-- **Foundry VTT** v13 instance (self-hosted or Foundry Forge)
-- **Internet connection** - Required for OpenAI and Kanka APIs
+**Production:**
+- Foundry VTT v13 (minimum and verified)
+- No maximum version specified (only "13" range)
+- Any browser Foundry supports (Chrome, Firefox, Safari, Edge)
+- HTTPS or localhost for microphone access (browser security requirement)
 
-**API Access Required:**
-- **OpenAI API** - For GPT-4o transcription, gpt-image-1 generation, embeddings
-  - API Key from: https://platform.openai.com/api-keys
-  - Rate limits: Variable based on plan
-- **Kanka API** - For chronicle and entity publishing
-  - API Token from: https://app.kanka.io/settings/api
-  - Rate limits: 30 req/min (free), 90 req/min (premium)
+## CI/CD
 
-**Optional:**
-- **Local Whisper Backend** - whisper.cpp server at `whisperBackendUrl` for privacy-focused offline transcription
-  - Default URL: http://localhost:8080
-  - Only needed if using 'local' or 'auto' transcription mode
+**GitHub Actions workflows:**
+- `.github/workflows/release.yml` — Build & Release
+  - Trigger: push to `master` (stable) or `develop` (pre-release RC)
+  - Gate: test job must pass before release job runs
+  - Node.js version: 20.x
+  - Stable tags: `vX.Y.Z` (auto-bumps patch if tag exists)
+  - RC tags: `vX.Y.Z-rc.N` (auto-increments RC number)
+  - Artifacts: ZIP + standalone `module.json` uploaded as GitHub Release assets
+- `.github/workflows/test.yml` — Test runner (inferred from workflow directory)
+
+**Build Scripts:**
+- `bash build.sh` — Linux/macOS: creates `releases/{id}-v{version}.zip`
+- `build.bat` — Windows equivalent
+- Auto-detects module ID, version, and GitHub URL from `module.json`
+
+## NPM Scripts
+
+```bash
+npm test                    # Vitest run (unit tests only)
+npm run test:watch          # Vitest watch mode
+npm run test:ui             # Vitest with UI
+npm run test:coverage       # Vitest run with coverage report
+npm run test:integration    # Integration tests (separate config)
+npm run lint                # ESLint check
+npm run lint:fix            # ESLint auto-fix
+npm run format              # Prettier write
+npm run format:check        # Prettier check
+npm run validate            # node --check scripts/main.mjs (syntax only)
+```
 
 ---
 
-*Stack analysis: 2026-02-28*
+*Stack analysis: 2026-03-19*

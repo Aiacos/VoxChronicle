@@ -1,530 +1,503 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-19
 
 ## Test Framework
 
 **Runner:**
-- Vitest 2.0 (configured in `vitest.config.js` and `vitest.integration.config.js`)
-- Environment: jsdom (browser-like DOM for Foundry compatibility)
-- Globals: enabled (`globals: true` — no need for import { describe, it, expect, ... })
-
-**Config Locations:**
-- Unit tests: `vitest.config.js` (default, runs tests/**/*.test.{js,mjs})
-- Integration tests: `vitest.integration.config.js` (slower tests with 30s timeout)
+- Vitest 2.x
+- Unit config: `vitest.config.js`
+- Integration config: `vitest.integration.config.js`
 
 **Assertion Library:**
-- Vitest native expect() (compatible with Jest)
-- Examples: `expect(value).toBe(expected)`, `expect(fn).toThrow()`, `expect(spy).toHaveBeenCalled()`
+- Vitest built-in (`expect`)
+- Matchers: `toBe`, `toEqual`, `toHaveBeenCalledWith`, `toThrow`, `resolves`, `rejects`
 
 **Run Commands:**
 ```bash
-npm test                # Run all unit tests, exit on completion
-npm run test:watch      # Watch mode - re-run on file change
-npm run test:ui         # Interactive UI for test exploration
-npm run test:coverage   # Generate coverage reports (HTML in ./coverage)
-npm run test:integration # Run integration tests only
+npm test                   # Run all unit tests (excludes integration)
+npm run test:watch         # Watch mode
+npm run test:ui            # Vitest UI
+npm run test:coverage      # Coverage report
+npm run test:integration   # Run integration tests only
 ```
 
 ## Test File Organization
 
-**Location:**
-- Co-located with source files in parallel directory structure
-- Source: `scripts/utils/Logger.mjs` → Test: `tests/utils/Logger.test.js`
-- Source: `scripts/ai/OpenAIClient.mjs` → Test: `tests/ai/OpenAIClient.test.js`
+**Location:** Co-located mirror structure in `tests/` matching `scripts/`
 
-**Naming:**
-- Test files: `{ModuleName}.test.js` (always .js, not .mjs)
-- Tests run via Vitest, not as ES modules
+**Naming:** `PascalCase.test.js` matching source filename (e.g., `AudioRecorder.test.js`)
 
-**Directory Structure:**
+**Structure:**
 ```
 tests/
-├── helpers/              # Shared test utilities
-│   ├── setup.js         # Global beforeEach/afterEach hooks
-│   ├── foundry-mock.js  # Foundry VTT API mocks
-│   └── ...
-├── fixtures/            # Test data (audio samples, mock responses)
-│   └── audio-samples.js # Audio blob fixtures
-├── utils/               # Tests for scripts/utils/
-│   ├── Logger.test.js
-│   ├── RateLimiter.test.js
-│   └── ...
-├── ai/                  # Tests for scripts/ai/
+├── ai/
+│   ├── providers/         # provider unit tests
+│   ├── EntityExtractor.test.js
 │   ├── OpenAIClient.test.js
-│   ├── TranscriptionService.test.js
 │   └── ...
-├── core/                # Tests for scripts/core/
-├── ui/                  # Tests for scripts/ui/
-├── narrator/            # Tests for scripts/narrator/
-├── orchestration/       # Tests for scripts/orchestration/
-├── kanka/               # Tests for scripts/kanka/
-├── audio/               # Tests for scripts/audio/
-├── rag/                 # Tests for scripts/rag/
-├── integration/         # Slower integration tests
-└── static-analysis/     # Cross-module validation tests
+├── audio/
+├── core/
+├── helpers/
+│   ├── setup.js           # Global beforeEach/afterEach Foundry mocks
+│   └── foundry-mock.js    # Foundry VTT API stubs
+├── fixtures/
+│   └── audio-samples.js   # Shared test data
+├── harness/
+│   ├── foundry-mock.mjs   # Browser harness mock
+│   └── index.html         # Browser test harness
+├── integration/
+│   └── session-workflow.test.js  # 54 cross-service integration tests
+├── mocks/
+│   ├── kanka-mock.js      # Kanka API mock factory
+│   └── openai-mock.js     # OpenAI API mock factory
+├── narrator/
+├── orchestration/
+├── rag/
+├── ui/
+└── utils/
 ```
 
 ## Test Structure
 
-**Global Setup:**
-- File: `tests/helpers/setup.js`
-- Runs via `setupFiles: ['tests/helpers/setup.js']` in vitest.config.js
-- Executes `beforeEach()` and `afterEach()` before every test file
-
-**Setup Pattern (from setup.js):**
+**Suite Organization:**
 ```javascript
-beforeEach(() => {
-  setupFoundryMocks();         // game.settings, game.i18n, game.user
-  globalThis.Hooks = createMockHooks();
-  globalThis.ui = { notifications: { info: vi.fn(), ... } };
-  globalThis.Dialog = class Dialog { ... };
-  // FormData, Blob, File already available in jsdom
-});
-
-afterEach(() => {
-  clearFoundryMocks();
-  delete globalThis.Hooks;
-  delete globalThis.ui;
-  vi.restoreAllMocks();  // Clear all spies/mocks
-});
-```
-
-**Standard Test Suite Pattern:**
-```javascript
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MyClass } from '../../scripts/path/MyClass.mjs';
+import { MyClass, MY_CONSTANT } from '../../scripts/path/MyClass.mjs';
 
 describe('MyClass', () => {
   let instance;
-  let mockDependency;
 
   beforeEach(() => {
-    mockDependency = { method: vi.fn() };
-    instance = new MyClass(mockDependency);
+    // set up per-test state
+    instance = new MyClass(mockDependencies);
   });
 
-  afterEach(() => {
-    // Cleanup if needed
+  // ── 1. Constructor ─────────────────────────────────────────────────
+  describe('constructor', () => {
+    it('should create instance with defaults', () => { ... });
+    it('should accept all constructor options', () => { ... });
   });
 
+  // ── 2. Enum/Constant exports ───────────────────────────────────────
+  describe('MY_CONSTANT', () => {
+    it('should export MY_CONSTANT', () => {
+      expect(MY_CONSTANT).toBe(expectedValue);
+    });
+  });
+
+  // ── 3. Public methods ──────────────────────────────────────────────
   describe('methodName()', () => {
-    it('should do something on happy path', () => {
-      expect(instance.methodName()).toBe(expected);
-    });
-
-    it('should handle error case', () => {
-      expect(() => instance.badMethod()).toThrow('Expected error');
-    });
+    it('should do the expected thing', async () => { ... });
+    it('should throw on invalid input', async () => { ... });
   });
 });
 ```
 
-**Nesting:**
-- Use nested `describe()` blocks to organize tests by method/feature
-- Section headers: `describe('methodName()', () => { ... })`
-- Multiple test suites in one file: one top-level describe per class, nested describes per method
-
-## Test Coverage Requirements
-
-**Thresholds (from vitest.config.js):**
-```
-statements: 90%
-branches: 85%
-functions: 90%
-lines: 90%
-```
-
-**Excluded from Coverage:**
-- `scripts/data/**` — vocabulary dictionaries (data files)
-- `scripts/constants.mjs` — single export, trivial
-- `scripts/main.mjs` — Foundry hooks registration, hard to test
-
-**View Coverage:**
-```bash
-npm run test:coverage    # Generate HTML report in ./coverage
-# Open coverage/index.html in browser
-```
+**Setup pattern:** Global Foundry mocks run in `tests/helpers/setup.js` via `setupFiles` vitest config. Individual tests do not repeat Foundry boilerplate.
 
 ## Mocking
 
-**Framework:** Vitest `vi` object (compatible with Jest mocks)
+**Framework:** Vitest `vi`
 
-**Mock Patterns:**
-
-### 1. Module Mocking with vi.mock()
+**Module-level mocks (for Foundry dependencies):**
 ```javascript
-// Mock Logger module
-vi.mock('../../scripts/utils/Logger.mjs', () => ({
-  Logger: {
-    createChild: vi.fn(() => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
-    }))
-  }
-}));
-
-// In tests, Logger is now the mock:
-import { Logger } from '../../scripts/utils/Logger.mjs';
-Logger.createChild('Test');  // Calls vi.fn()
+// In tests/helpers/setup.js — runs before every test file
+globalThis.game = { settings: { get: vi.fn(), set: vi.fn(), register: vi.fn() }, ... };
+globalThis.Hooks = createMockHooks();
+globalThis.ui = { notifications: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } };
 ```
 
-### 2. Hoisted Mock Values (for mocks that persist across afterEach)
+**Service mocks — inline factory pattern (preferred):**
 ```javascript
-const mockFunctions = vi.hoisted(() => ({
-  isValidBlob: vi.fn().mockReturnValue(true),
-  getSize: vi.fn().mockReturnValue(1024)
-}));
+function createMockChatProvider(responseOverride = null) {
+  return { chat: vi.fn().mockResolvedValue(responseOverride || defaultResponse) };
+}
 
-vi.mock('../../scripts/utils/AudioUtils.mjs', () => ({
-  AudioUtils: mockFunctions
-}));
+function createMockAudioRecorder(overrides = {}) {
+  return {
+    startRecording: vi.fn().mockResolvedValue(),
+    stopRecording: vi.fn().mockResolvedValue(new Blob(['audio'], { type: 'audio/webm' })),
+    cancel: vi.fn(),
+    ...overrides
+  };
+}
 ```
 
-### 3. Fetch Mocking (API calls)
+**fetch mocking:**
 ```javascript
-let fetchSpy;
-
-beforeEach(() => {
-  // Helper function for mock responses
-  function mockResponse(body, status = 200, headers = {}) {
-    return {
-      ok: status >= 200 && status < 300,
-      status,
-      headers: new Headers(headers),
-      json: vi.fn().mockResolvedValue(body),
-      text: vi.fn().mockResolvedValue(JSON.stringify(body))
-    };
-  }
-
-  fetchSpy = vi.fn().mockResolvedValue(mockResponse({ data: 'ok' }));
-  globalThis.fetch = fetchSpy;
+vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+  ok: true,
+  status: 200,
+  json: vi.fn().mockResolvedValue({ data: [...] })
 });
-
-// In test:
-await client.request('/endpoint');
-expect(fetchSpy).toHaveBeenCalledWith('https://api.openai.com/v1/endpoint', expect.any(Object));
 ```
 
-### 4. Console Spying
+**Console suppression (common pattern):**
 ```javascript
 beforeEach(() => {
-  vi.spyOn(console, 'log').mockImplementation(() => {});
-  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'debug').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
-```
-
-### 5. Spy on Instance Methods
-```javascript
-const instance = new MyClass();
-const spy = vi.spyOn(instance, 'methodName').mockReturnValue('mocked');
-instance.methodName();
-expect(spy).toHaveBeenCalled();
-```
-
-### 6. Foundry VTT API Mocks
-```javascript
-// Use helper in tests/helpers/foundry-mock.js
-import { createMockSettings, createMockI18n, createMockUser } from '../helpers/foundry-mock.js';
-
-const mockSettings = createMockSettings({
-  'vox-chronicle.openaiApiKey': 'sk-test-123',
-  'vox-chronicle.enabled': true
-});
-
-// Access: mockSettings.get('vox-chronicle', 'openaiApiKey') → 'sk-test-123'
 ```
 
 **What to Mock:**
-- External APIs (fetch, OpenAI, Kanka)
-- Third-party libraries (AudioChunker, VocabularyDictionary)
-- Expensive operations (real database calls, long timers)
-- Foundry VTT globals (game.settings, ui.notifications)
-- Logger (to verify logging without console noise)
+- External fetch calls (OpenAI, Kanka APIs)
+- Foundry globals (`game`, `ui`, `Hooks`)
+- Audio/MediaRecorder APIs
+- File system / IndexedDB
 
 **What NOT to Mock:**
-- Core utilities (CacheManager, RateLimiter, HtmlUtils — test them directly)
-- Error classes (test real throw/catch behavior)
-- The class being tested (test the real implementation)
+- The class under test
+- Pure utility functions (HtmlUtils, AudioUtils — test with real implementations)
+- Internal business logic
 
 ## Fixtures and Factories
 
-**Audio Fixtures (tests/fixtures/audio-samples.js):**
+**Shared audio test data:** `tests/fixtures/audio-samples.js`
+
+**Mock factories:** `tests/mocks/openai-mock.js`, `tests/mocks/kanka-mock.js`
+
+**Test data pattern — inline per-test:**
 ```javascript
-import { createMockAudioBlob, createMockAudioFile, AUDIO_SIZES } from '../fixtures/audio-samples.js';
-
-// Create test audio blobs
-const smallBlob = createMockAudioBlob(AUDIO_SIZES.SMALL);  // 1 KB
-const largeBlob = createMockAudioBlob(AUDIO_SIZES.OVERSIZED);  // 26 MB (exceeds limit)
-const webmBlob = createRealisticWebMBlob(1024);  // WebM with EBML header
-
-// Create File objects
-const file = createMockAudioFile(1024, 'session.webm', 'audio/webm');
+const mockBlob = new Blob(['audio-data'], { type: 'audio/webm' });
+const mockTranscript = { text: 'Test text', segments: [{ speaker: 'SPEAKER_00', text: 'Hello' }] };
 ```
 
-**Audio Size Constants:**
-- TINY: 512 bytes
-- SMALL: 1 KB
-- MEDIUM: 50 KB
-- LARGE: 1 MB
-- VERY_LARGE: 10 MB
-- NEAR_LIMIT: 24 MB (just under 25MB API limit)
-- OVERSIZED: 26 MB (requires chunking)
-- HUGE: 50 MB (multiple chunks)
+**Location:** Test helpers in `tests/helpers/`, shared mock factories in `tests/mocks/`
 
-**Settings Fixture:**
-```javascript
-import { createMockSettings } from '../helpers/foundry-mock.js';
+## Coverage
 
-const settings = createMockSettings({
-  'vox-chronicle.openaiApiKey': 'sk-test-key',
-  'vox-chronicle.kankaCampaignId': '123'
-});
+**Requirements (enforced):**
+- Statements: 90%
+- Branches: 85%
+- Functions: 90%
+- Lines: 90%
 
-// Access: settings.get('vox-chronicle', 'openaiApiKey') → 'sk-test-key'
-// Set: settings.set('vox-chronicle', 'key', 'value')
-```
+**Coverage excludes:**
+- `scripts/data/**` (vocabulary data)
+- `scripts/constants.mjs`
+- `scripts/main.mjs`
 
-## Common Test Patterns
-
-### Testing Async Methods
-```javascript
-it('should transcribe audio', async () => {
-  const blob = createMockAudioBlob(1024);
-  const result = await service.transcribe(blob);
-  expect(result).toBeDefined();
-  expect(result.text).toContain('...');
-});
-
-it('should handle transcription timeout', async () => {
-  const blob = createMockAudioBlob(AUDIO_SIZES.OVERSIZED);
-  await expect(service.transcribe(blob)).rejects.toThrow('Timeout');
-});
-```
-
-### Testing Error Handling
-```javascript
-it('should throw on invalid API key', () => {
-  const client = new OpenAIClient('');  // Empty key
-  expect(() => client._buildAuthHeaders()).toThrow('No API key configured');
-});
-
-it('should retry on rate limit error', async () => {
-  fetchSpy
-    .mockResolvedValueOnce(mockResponse({}, 429))  // First call: rate limit
-    .mockResolvedValueOnce(mockResponse({ data: 'ok' }));  // Retry: success
-
-  const result = await client.request('/endpoint');
-  expect(result).toBeDefined();
-  expect(fetchSpy).toHaveBeenCalledTimes(2);  // Called twice (initial + retry)
-});
-```
-
-### Testing Event Handlers
-```javascript
-it('should handle button click', async () => {
-  const panel = MainPanel.getInstance();
-  const event = new MouseEvent('click');
-  const target = document.createElement('button');
-
-  await panel._onToggleRecording(event, target);
-  // Verify state changed, UI updated, etc.
-});
-```
-
-### Testing Singletons
-```javascript
-it('should return same instance', () => {
-  const instance1 = VoxChronicle.getInstance();
-  const instance2 = VoxChronicle.getInstance();
-  expect(instance1).toBe(instance2);
-});
-
-it('should reset singleton in tests', () => {
-  VoxChronicle.resetInstance();
-  const newInstance = VoxChronicle.getInstance();
-  expect(newInstance).not.toBe(oldInstance);
-});
-```
-
-### Testing Circuit Breaker
-```javascript
-it('should open circuit breaker after failures', async () => {
-  fetchSpy.mockRejectedValue(new Error('Network error'));
-
-  // First 3 calls fail
-  for (let i = 0; i < 3; i++) {
-    await expect(client.request('/endpoint')).rejects.toThrow();
-  }
-
-  // 4th call throws immediately (circuit open)
-  await expect(client.request('/endpoint')).rejects.toThrow('Circuit breaker open');
-});
-```
-
-### Testing Retry Logic
-```javascript
-it('should retry with exponential backoff', async () => {
-  fetchSpy
-    .mockRejectedValueOnce(new Error('Timeout'))  // Fail
-    .mockResolvedValueOnce(mockResponse({ data: 'ok' }));  // Succeed
-
-  const result = await client.request('/endpoint');
-  expect(result.data).toBe('ok');
-  expect(fetchSpy).toHaveBeenCalledTimes(2);  // Initial + retry
-});
-```
-
-### Testing Rate Limiting
-```javascript
-it('should throttle requests to rate limit', async () => {
-  const limiter = new RateLimiter({ requestsPerMinute: 2 });
-  const start = Date.now();
-
-  // Queue 3 requests
-  await Promise.all([
-    limiter.throttle(() => Promise.resolve('1')),
-    limiter.throttle(() => Promise.resolve('2')),
-    limiter.throttle(() => Promise.resolve('3'))
-  ]);
-
-  const elapsed = Date.now() - start;
-  // Expect ~30 seconds for 3 requests at 2 per minute
-  expect(elapsed).toBeGreaterThan(29000);
-});
-```
-
-## Vitest-Specific Features
-
-**Test Isolation:**
-- Each test runs in a clean state (beforeEach/afterEach ensure isolation)
-- `afterEach(() => vi.restoreAllMocks())` clears all mocks between tests
-
-**Spy + Mock Combination:**
-```javascript
-const spy = vi.spyOn(obj, 'method').mockImplementation(() => 'mocked');
-// spy is both a spy (can check calls) AND a mock (returns mocked value)
-```
-
-**Matching Arguments:**
-```javascript
-expect(fetchSpy).toHaveBeenCalledWith(url, expect.any(Object));
-expect(fetchSpy).toHaveBeenCalledWith(
-  expect.stringContaining('/v1/'),
-  expect.objectContaining({ method: 'POST' })
-);
-```
-
-**Timeout Control:**
-```javascript
-// In vitest.config.js
-testTimeout: 5000,      // 5 seconds per test
-hookTimeout: 10000,     // 10 seconds for beforeEach/afterEach
-
-// Override per test:
-it('slow operation', async () => { ... }, 30000);  // 30 second timeout
-```
-
-## Integration Testing
-
-**File:** `vitest.integration.config.js`
-
-**When to Use:**
-- Testing complete workflows (recording → transcription → publishing)
-- Multi-service interactions
-- Real timers and delays (use `vi.useFakeTimers()` for control)
-
-**Example Structure:**
-```javascript
-// tests/integration/vox-chronicle-full-workflow.test.js
-describe('VoxChronicle Full Workflow', () => {
-  it('should record, transcribe, extract, and publish', async () => {
-    // Setup complete module with services
-    const vc = VoxChronicle.getInstance();
-
-    // Simulate user workflow
-    await vc.startSession();
-    await vc.recordAudio(blob);
-    const transcript = await vc.processTranscription();
-    const entities = await vc.extractEntities(transcript.text);
-    await vc.publishToKanka(entities);
-
-    // Verify end state
-    expect(transcript).toBeDefined();
-    expect(entities.length).toBeGreaterThan(0);
-  });
-});
-```
-
-## Test Naming Conventions
-
-**Suite Names:**
-- Match class name: `describe('OpenAIClient', () => { ... })`
-- For features: `describe('retry logic', () => { ... })`
-
-**Test Names (it() descriptions):**
-- Start with "should": `it('should throw on invalid key')`
-- Describe expected behavior: `it('should retry up to 3 times')`
-- Include edge case context: `it('should handle 429 rate limit error')`
-- Avoid "test works" or "it runs" — be specific
-
-**Bad Examples:**
-- `it('works')` — too vague
-- `it('throws')` — missing context
-- `it('OpenAIClient retries')` — redundant (already in describe block)
-
-**Good Examples:**
-- `it('should retry with exponential backoff on network error')`
-- `it('should throw OpenAIError with RATE_LIMIT_ERROR type')`
-- `it('should ignore values outside valid log level range')`
-
-## Static Analysis Tests
-
-**File:** `tests/static-analysis/`
-
-**Purpose:** Verify cross-module patterns and conventions
-
-**Examples:**
-- All service classes use Logger child loggers
-- MODULE_ID only imported from constants.mjs
-- No console.log calls (only Logger)
-- CSS classes use vox-chronicle prefix
-
-## Debugging Tests
-
-**Enable Debug Output:**
+**View Coverage:**
 ```bash
-npm run test:watch    # Re-run tests as you edit
-# Tests output: failures and passes in terminal
+npm run test:coverage
+# Output in coverage/ directory (HTML, JSON, text)
 ```
 
-**Debug in Browser:**
-```bash
-npm run test:ui       # Open interactive UI
-# Shows test tree, can click to run individual tests
-```
+## Test Types
 
-**Log in Tests:**
+**Unit Tests (67 files, ~5035 tests):**
+- One file per source module
+- Tests exported API, constructor options, error paths, edge cases
+- Run with: `npm test`
+
+**Integration Tests (1 file, 54 tests):**
+- `tests/integration/session-workflow.test.js`
+- Tests cross-service wiring through `SessionOrchestrator`
+- Verifies state transitions, call ordering, data flow
+- Run with: `npm run test:integration`
+
+**Browser Harness:**
+- `tests/harness/index.html` — standalone browser test page for Foundry VTT live testing
+
+## Common Patterns
+
+**Async Testing:**
 ```javascript
-it('debug example', () => {
-  console.log('This will appear in test output');
-  // Or use Logger:
-  Logger.setLogLevel(LogLevel.DEBUG);
-  Logger.debug('Debug message');
+it('should resolve on success', async () => {
+  const result = await instance.doAsyncThing();
+  expect(result).toEqual(expected);
+});
+
+it('should reject on failure', async () => {
+  await expect(instance.doAsyncThing()).rejects.toThrow('expected message');
 });
 ```
 
-**Inspect Mock Calls:**
+**Error Testing:**
 ```javascript
-const spy = vi.spyOn(obj, 'method');
-obj.method('arg1', 'arg2');
-console.log(spy.mock.calls);  // [['arg1', 'arg2']]
-console.log(spy.mock.results);  // [{ type: 'return', value: ... }]
+it('should throw OpenAIError on API failure', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 429 });
+  await expect(client.request('/endpoint', {})).rejects.toThrow();
+});
+```
+
+**State verification pattern:**
+```javascript
+it('should transition to RECORDING state', async () => {
+  await orchestrator.startSession({ audioRecorder: mockRecorder });
+  expect(orchestrator.state).toBe(SessionState.RECORDING);
+});
+```
+
+**Integration test hoisted Foundry mock pattern:**
+```javascript
+vi.hoisted(() => {
+  // Set up globalThis.foundry and globalThis.game BEFORE imports
+  // Required because integration tests import modules that access game at module load time
+  globalThis.foundry = { applications: { api: { ApplicationV2: class {...}, ... } } };
+});
 ```
 
 ---
 
-*Testing analysis: 2026-02-28*
+## Dead Code Audit
+
+*Exports that exist in `scripts/` but are never imported outside their own file in production code (only in tests, or nowhere).*
+
+### Truly Dead Exports (production code never imports)
+
+**`scripts/utils/SpeakerUtils.mjs` — `getSpeakerLabel`**
+- Exported at line 44: `export function getSpeakerLabel(speakerId)`
+- `TranscriptionProcessor.mjs` imports `{ addKnownSpeakers, applyLabelsToSegments }` from this file — not `getSpeakerLabel`
+- `getSpeakerLabel` is never imported anywhere in `scripts/`
+- Note: `SpeakerLabeling.mjs` has its own static `getSpeakerLabel` method (separate, not from this file)
+- Status: **dead export** — test coverage only (no test file exists for SpeakerUtils at all)
+
+**`scripts/ai/ImageGenerationService.mjs` — `ImageModel`, `ImageSize`, `ImageQuality`, `EntityType`, `IMAGE_GENERATION_TIMEOUT_MS`, `IMAGE_URL_EXPIRY_MS`, `MAX_GALLERY_SIZE`**
+- Exported at lines 901-910
+- None of these constants/enums are imported in any other `scripts/` file
+- `ImageGenerationService` class itself IS used (in `VoxChronicle.mjs`)
+- All the accompanying enum exports are test-only
+- Status: **test-only exports** — imported in `tests/ai/ImageGenerationService.test.js` only
+
+**`scripts/ai/TranscriptionService.mjs` — `TranscriptionModel`, `TranscriptionResponseFormat`, `ChunkingStrategy`, `TRANSCRIPTION_TIMEOUT_MS`**
+- Exported at lines 865-871
+- `TranscriptionService` class is used (in `TranscriptionProcessor.mjs` and `TranscriptionFactory.mjs`)
+- The enum exports are not imported in any other `scripts/` file
+- Status: **test-only exports** — imported in `tests/ai/TranscriptionService.test.js` only
+
+**`scripts/ai/WhisperBackend.mjs` — `WhisperError`, `WhisperErrorType`, `DEFAULT_WHISPER_URL`, `DEFAULT_TIMEOUT_MS`, `HEALTH_CHECK_TIMEOUT_MS`**
+- `WhisperBackend` class is used (in `LocalWhisperService.mjs`)
+- `WhisperError` and `WhisperErrorType` ARE imported in `LocalWhisperService.mjs` (line 12)
+- `DEFAULT_WHISPER_URL`, `DEFAULT_TIMEOUT_MS`, `HEALTH_CHECK_TIMEOUT_MS` — NOT imported outside their file
+- Status: `DEFAULT_WHISPER_URL`, `DEFAULT_TIMEOUT_MS`, `HEALTH_CHECK_TIMEOUT_MS` are **test-only exports**
+
+**`scripts/ai/LocalWhisperService.mjs` — `LocalWhisperResponseFormat`, `LOCAL_TRANSCRIPTION_TIMEOUT_MS`**
+- `LocalWhisperService` class is used (in `TranscriptionFactory.mjs`, `TranscriptionProcessor.mjs`)
+- The enum and constant are not imported in any other `scripts/` file
+- Status: **test-only exports**
+
+**`scripts/narrator/SessionAnalytics.mjs` — `DEFAULT_BUCKET_SIZE`, `MAX_HISTORY_SIZE`**
+- `SessionAnalytics` class is used (in `VoxChronicle.mjs`)
+- Constants not imported outside the file in production code
+- Status: **test-only exports**
+
+**`scripts/narrator/SilenceDetector.mjs` — `DEFAULT_THRESHOLD_MS`, `MIN_THRESHOLD_MS`, `MAX_THRESHOLD_MS`**
+- `SilenceDetector` class is used (in `VoxChronicle.mjs`)
+- Constants not imported outside the file in production code
+- Status: **test-only exports**
+
+**`scripts/narrator/PromptBuilder.mjs` — `MAX_CONTEXT_TOKENS`**
+- `PromptBuilder` class is used (in `AIAssistant.mjs`)
+- `MAX_CONTEXT_TOKENS` imported in `tests/narrator/AIAssistant.test.js` and `tests/narrator/PromptBuilder.test.js`
+- Not imported in any other production `scripts/` file
+- Status: **test-only export**
+
+**`scripts/narrator/AIAssistant.mjs` — `DEFAULT_MODEL`**
+- `AIAssistant` class is used (in `VoxChronicle.mjs`)
+- `DEFAULT_MODEL` not imported outside the file in production code
+- Status: **test-only export**
+
+**`scripts/orchestration/SessionOrchestrator.mjs` — `SessionState`, `DEFAULT_SESSION_OPTIONS`**
+- `SessionOrchestrator` class is used (in `VoxChronicle.mjs`)
+- `SessionState` is used in `tests/orchestration/SessionOrchestrator.test.js` and `tests/integration/session-workflow.test.js`
+- `DEFAULT_SESSION_OPTIONS` used in test only
+- Neither imported in any production `scripts/` file
+- Status: **test-only exports**
+
+**`scripts/orchestration/ImageProcessor.mjs` — `DEFAULT_IMAGE_OPTIONS`**
+- `ImageProcessor` class is used (in `SessionOrchestrator.mjs`)
+- `DEFAULT_IMAGE_OPTIONS` not imported in production code
+- Status: **test-only export**
+
+**`scripts/narrator/SceneDetector.mjs` — `SCENE_TYPES`**
+- `SceneDetector` class is used (in `VoxChronicle.mjs`)
+- `SCENE_TYPES` not imported in any other production `scripts/` file
+- Status: **test-only export**
+
+**`scripts/kanka/NarrativeExporter.mjs` — `ChronicleFormat`, `FormattingStyle`**
+- `NarrativeExporter` class is used (in `VoxChronicle.mjs`)
+- Enum exports not imported in any other production `scripts/` file
+- Status: **test-only exports**
+
+**`scripts/kanka/KankaService.mjs` — `CharacterType`, `LocationType`, `ItemType`, `OrganisationType`, `QuestType`**
+- `KankaService` class is used (in `VoxChronicle.mjs`)
+- `KankaEntityType` IS used in `VoxChronicle.mjs`? No — only `KankaService` is imported there.
+- All KankaService enum exports are test-only (used in `tests/kanka/KankaService.test.js` only)
+- Status: **test-only exports**
+
+**`scripts/ui/EntityPreview.mjs` — `EntitySelectionState`, `PreviewMode`**
+- `EntityPreview` class is used (in `MainPanel.mjs`)
+- The enum exports are test-only
+- Status: **test-only exports**
+
+**`scripts/ui/RelationshipGraph.mjs` — `EntityType`, `GraphMode`**
+- `RelationshipGraph` is used (in `EntityPreview.mjs`)
+- Enum exports are test-only
+- Status: **test-only exports**
+
+**`scripts/ui/SpeakerLabeling.mjs` — `DEFAULT_SPEAKER_IDS`**
+- `SpeakerLabeling` class is used (in `MainPanel.mjs`)
+- `DEFAULT_SPEAKER_IDS` not imported in production code
+- Status: **test-only export**
+
+**`scripts/audio/AudioRecorder.mjs` — `RecordingState`**
+- `AudioRecorder` is used (in `VoxChronicle.mjs`)
+- `RecordingState` not imported in any production `scripts/` file
+- Status: **test-only export**
+
+**`scripts/audio/AudioChunker.mjs` — `MIN_CHUNK_SIZE`**
+- `AudioChunker` and `MAX_CHUNK_SIZE` are used in production
+- `MIN_CHUNK_SIZE` is test-only
+- Status: **test-only export**
+
+**`scripts/ai/OpenAIClient.mjs` — `OPENAI_BASE_URL`**
+- `OpenAIClient`, `OpenAIError`, `OpenAIErrorType` are used in production
+- `OPENAI_BASE_URL` is test-only
+- Status: **test-only export**
+
+**`scripts/kanka/KankaClient.mjs` — `KANKA_BASE_URL`**
+- `KankaClient`, `KankaError`, `KankaErrorType` used in production
+- `KANKA_BASE_URL` is test-only
+- Status: **test-only export**
+
+**`scripts/utils/RateLimiter.mjs` — `RateLimitPresets`**
+- `RateLimiter` is used in production
+- `RateLimitPresets` not imported in any production `scripts/` file
+- Status: **test-only export**
+
+**`scripts/utils/AudioUtils.mjs` — `SUPPORTED_MIME_TYPES`**
+- `AudioUtils` class and `MAX_TRANSCRIPTION_SIZE` are used in production
+- `SUPPORTED_MIME_TYPES` not imported outside `AudioUtils.mjs` in production
+- Status: **test-only export**
+
+**`scripts/ai/EntityExtractor.mjs` — `CharacterType`**
+- `EntityExtractor`, `ExtractedEntityType`, `RelationshipType` are used in production
+- `ENTITY_EXTRACTION_TIMEOUT_MS`, `DEFAULT_MAX_MOMENTS` are test-only
+- `CharacterType` — not imported in any production file (only test file `EntityExtractor.test.js`)
+- Status: `CharacterType`, `ENTITY_EXTRACTION_TIMEOUT_MS`, `DEFAULT_MAX_MOMENTS` are **test-only exports**
+
+**`scripts/main.mjs` — `resolveHtmlElement`, `injectValidationButton`, `VALIDATION_RESET_DELAY_MS`**
+- Explicitly exported "for testing" (comment at line 534)
+- Never imported by any other production `scripts/` file
+- Status: **intentionally test-only exports** (labeled as such in source)
+
+---
+
+## Unused Imports Audit
+
+No significant unused imports detected via static analysis. All identified imports are consumed within each file. Notable observations:
+
+- `scripts/ui/MainPanel.mjs` imports `{ stripHtml, sanitizeHtml, escapeHtml }` from `HtmlUtils` — all three are confirmed used in the file.
+- `scripts/core/VoxChronicle.mjs` imports `{ AnthropicChatProvider }` and `{ GoogleChatProvider }` — check lines 37-41 (imports `OpenAIChatProvider`, `OpenAITranscriptionProvider`, `OpenAIImageProvider`, `OpenAIEmbeddingProvider`, `ProviderRegistry` but NOT Anthropic/Google providers directly). Those providers are registered via `ProviderRegistry` and resolved dynamically, so direct import may be absent — review if `AnthropicChatProvider` and `GoogleChatProvider` are wired from `VoxChronicle.mjs`.
+
+**Potential unused import to verify:**
+- `scripts/core/VoxChronicle.mjs` does NOT import `AnthropicChatProvider` or `GoogleChatProvider` directly (confirmed from grep). Those providers are standalone modules only instantiated when the user selects them, likely through `ProviderRegistry` dynamic resolution. The providers exist but may not be reachable in the default code path.
+
+---
+
+## Method Reachability Audit
+
+### SessionOrchestrator (`scripts/orchestration/SessionOrchestrator.mjs`)
+
+Public methods and their callers:
+
+| Method | Called From (production) | Status |
+|--------|--------------------------|--------|
+| `startSession()` | `VoxChronicle.mjs` (via orchestrator) | LIVE |
+| `stopSession()` | `MainPanel.mjs` | LIVE |
+| `pauseRecording()` | `MainPanel.mjs` | LIVE |
+| `resumeRecording()` | `MainPanel.mjs` | LIVE |
+| `cancelSession()` | `MainPanel.mjs` | LIVE |
+| `processTranscription()` | `MainPanel.mjs` | LIVE |
+| `publishToKanka()` | `MainPanel.mjs` | LIVE |
+| `setCallbacks()` | `VoxChronicle.mjs`, `MainPanel.mjs` | LIVE |
+| `setServices()` | `VoxChronicle.mjs` | LIVE |
+| `setTranscriptionConfig()` | `VoxChronicle.mjs` | LIVE |
+| `setNarratorServices()` | `VoxChronicle.mjs` | LIVE |
+| `setRAGProvider()` | `VoxChronicle.mjs` | LIVE |
+| `startLiveMode()` | `MainPanel.mjs` | LIVE |
+| `stopLiveMode()` | `MainPanel.mjs` | LIVE |
+| `handleManualRulesQuery()` | `MainPanel.mjs` | LIVE |
+| `appendSuggestion()` | `MainPanel.mjs` | LIVE |
+| `generateImage()` | `MainPanel.mjs` | LIVE |
+| `getOptions()` | Not found in production scripts | POTENTIALLY DEAD |
+| `setOptions()` | Not found in production scripts | POTENTIALLY DEAD |
+| `getServicesStatus()` | `MainPanel.mjs` (via `voxChronicle.getServicesStatus()`) | LIVE (on VoxChronicle) |
+| `reset()` | `VoxChronicle.mjs` (via `sessionOrchestrator?.reset?.()`) | LIVE |
+
+Note: `getServicesStatus()` is on `VoxChronicle`, not `SessionOrchestrator` — confirmed via grep.
+
+### MainPanel (`scripts/ui/MainPanel.mjs`)
+
+Key public methods:
+
+| Method | Called From | Status |
+|--------|-------------|--------|
+| `getInstance()` | `VoxChronicle.mjs`, `main.mjs` | LIVE |
+| `resetInstance()` | Tests only | TEST-ONLY |
+| `setEventBus()` | `VoxChronicle.mjs` | LIVE |
+| `setTranscriptData()` | `VoxChronicle.mjs` or orchestrator callbacks | LIVE |
+| `getTranscriptData()` | Internal | LIVE |
+| `editSegment()` | Action handler in panel | LIVE |
+| `switchTab()` | `_onRender` action handlers | LIVE |
+| `requestRender()` | Internal | LIVE |
+
+### VoxChronicle (`scripts/core/VoxChronicle.mjs`)
+
+Key public methods:
+
+| Method | Called From | Status |
+|--------|-------------|--------|
+| `getInstance()` | `main.mjs`, UI files | LIVE |
+| `resetInstance()` | Tests only | TEST-ONLY |
+| `initialize()` | `main.mjs` (`Hooks.once('ready')`) | LIVE |
+| `reinitialize()` | Internal settings hook | LIVE |
+| `getServicesStatus()` | `MainPanel.mjs` | LIVE |
+
+### AIAssistant (`scripts/narrator/AIAssistant.mjs`)
+
+Key public methods (partial, large class):
+
+| Method | Called From | Status |
+|--------|-------------|--------|
+| `getSuggestion()` | `SessionOrchestrator.mjs` (live mode cycle) | LIVE |
+| `isConfigured()` | `SessionOrchestrator.mjs` | LIVE |
+| `setRAGProvider()` | `VoxChronicle.mjs` | LIVE |
+| `setModel()` | Settings update flow | LIVE |
+| `destroy()` | `VoxChronicle.reinitialize()` | LIVE |
+| `setSilenceDetector()` | `VoxChronicle.mjs` | LIVE |
+
+---
+
+## Test Coverage Gaps
+
+### Scripts with NO corresponding test file
+
+| Script | Notes |
+|--------|-------|
+| `scripts/constants.mjs` | Excluded from coverage config; trivial single export |
+| `scripts/data/dnd-vocabulary.mjs` | Excluded from coverage config; static data |
+| `scripts/utils/SpeakerUtils.mjs` | **Not excluded from coverage config** — missing test file is a coverage gap |
+
+### Empty test directories
+
+- `tests/services/` — directory with only `.gitkeep`, no tests
+- `tests/static-analysis/` — directory with only `.gitkeep`, no tests
+
+### Potentially orphaned test sections
+
+No orphaned test files found — every test file in `tests/` maps to an existing source file in `scripts/`. The test structure mirrors the source structure exactly.
+
+### Notable coverage considerations
+
+- `AnthropicChatProvider` and `GoogleChatProvider` are provider implementations wired through `ProviderRegistry` but their activation path from production entry points is not obvious — confirm they are reachable via the provider registry at runtime.
+- `scripts/narrator/RulesLookupService.mjs` — has a test file (`tests/narrator/RulesLookupService.test.js`) and is imported by `VoxChronicle.mjs`.
+- Integration tests cover `SessionOrchestrator` cross-service wiring but not individual service interactions for narrator services (`AIAssistant`, `SceneDetector`, etc.).
+
+---
+
+*Testing analysis: 2026-03-19*

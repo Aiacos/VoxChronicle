@@ -1,336 +1,306 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-19
 
 ## Directory Layout
 
 ```
 VoxChronicle/
-├── scripts/                   # All ES6 module code (.mjs files)
-│   ├── main.mjs               # Entry point: hook registration, scene controls
-│   ├── constants.mjs           # MODULE_ID constant (dependency-free leaf)
-│   ├── core/                  # Core singleton and settings
-│   │   ├── VoxChronicle.mjs   # Main singleton orchestrator
-│   │   ├── Settings.mjs       # Foundry settings registration + validation
-│   │   └── VocabularyDictionary.mjs  # Custom vocabulary for transcription
-│   ├── audio/                 # Audio capture and manipulation
-│   │   ├── AudioRecorder.mjs  # MediaRecorder wrapper, gapless capture
-│   │   └── AudioChunker.mjs   # Split audio files > 25MB for API
-│   ├── ai/                    # OpenAI service clients
-│   │   ├── OpenAIClient.mjs   # Base API client (retry, queue, circuit breaker)
-│   │   ├── TranscriptionService.mjs  # GPT-4o transcription with diarization
-│   │   ├── TranscriptionFactory.mjs  # Factory for cloud/local/auto modes
-│   │   ├── LocalWhisperService.mjs   # Local Whisper backend client
-│   │   ├── WhisperBackend.mjs        # HTTP wrapper for whisper.cpp
-│   │   ├── ImageGenerationService.mjs # gpt-image-1 image generation (base64)
-│   │   └── EntityExtractor.mjs       # Extract NPCs/locations/items from text
-│   ├── rag/                   # Retrieval-Augmented Generation (v3.0)
-│   │   ├── RAGProvider.mjs    # Abstract interface for RAG backends
-│   │   ├── RAGProviderFactory.mjs   # Factory for creating providers
-│   │   ├── OpenAIFileSearchProvider.mjs  # OpenAI File Search implementation
-│   │   └── RAGFlowProvider.mjs      # Self-hosted RAGFlow implementation
-│   ├── narrator/              # Real-time DM assistant (Narrator Master port)
-│   │   ├── AIAssistant.mjs    # Contextual suggestions with RAG context
-│   │   ├── ChapterTracker.mjs # Chapter/scene tracking from journals
-│   │   ├── CompendiumParser.mjs    # Parse compendiums for rules + chunking
-│   │   ├── JournalParser.mjs       # Parse journals for story context + chunking
-│   │   ├── RulesReference.mjs      # D&D rules Q&A with citations
-│   │   ├── SceneDetector.mjs       # Scene type detection (combat, social, etc)
-│   │   ├── SessionAnalytics.mjs    # Speaker participation, timeline, stats
-│   │   ├── SilenceDetector.mjs     # Timer-based silence detection
-│   │   ├── SilenceMonitor.mjs      # Companion to SilenceDetector
-│   │   └── PromptBuilder.mjs       # Prompt construction utilities
-│   ├── kanka/                 # Kanka.io integration
-│   │   ├── KankaClient.mjs    # Base API client with rate limiting
-│   │   ├── KankaService.mjs   # CRUD for journals, characters, locations, items
-│   │   ├── KankaEntityManager.mjs  # Entity lifecycle (dedup, relationship tracking)
-│   │   └── NarrativeExporter.mjs   # Format transcripts for Kanka journals
-│   ├── orchestration/         # Workflow orchestration and processing
-│   │   ├── SessionOrchestrator.mjs     # Dual-mode (live+chronicle) coordinator
-│   │   ├── TranscriptionProcessor.mjs  # Transcription workflow
-│   │   ├── EntityProcessor.mjs         # Entity extraction workflow
-│   │   ├── ImageProcessor.mjs          # Image generation workflow
-│   │   └── KankaPublisher.mjs          # Kanka publishing workflow
-│   ├── ui/                    # UI Components (ApplicationV2)
-│   │   ├── MainPanel.mjs      # 6-tab unified interface (singleton)
-│   │   ├── SpeakerLabeling.mjs # Map speaker IDs to player names
-│   │   ├── EntityPreview.mjs   # Review entities before Kanka publish
-│   │   ├── RelationshipGraph.mjs # Visualize entity relationships
-│   │   └── VocabularyManager.mjs # Manage custom vocabulary
-│   ├── api/                   # Shared API client base classes
-│   │   └── BaseAPIClient.mjs  # Auth, URL building, timeouts, rate limiting
-│   ├── data/                  # Static data
-│   │   └── dnd-vocabulary.mjs # D&D terminology dictionary
-│   ├── utils/                 # Utilities and helpers
-│   │   ├── Logger.mjs         # Module-prefixed logging with levels
-│   │   ├── RateLimiter.mjs    # Request throttling with queue
-│   │   ├── AudioUtils.mjs     # MIME detection, blob conversion
-│   │   ├── SensitiveDataFilter.mjs  # Prevent API keys in logs
-│   │   ├── HtmlUtils.mjs      # Sanitization and HTML formatting
-│   │   ├── DomUtils.mjs       # DOM manipulation helpers
-│   │   ├── CacheManager.mjs   # Generic TTL cache with invalidation
-│   │   └── ErrorNotificationHelper.mjs # User-facing error notifications
-│   └── vendor/                # Third-party code (if any)
-├── templates/                 # Handlebars UI templates (.hbs)
-│   ├── main-panel.hbs         # Unified 6-tab panel template
-│   ├── recorder.hbs           # Recording controls
-│   ├── speaker-labeling.hbs   # Speaker name mapping form
-│   ├── entity-preview.hbs     # Entity review dialog
-│   ├── relationship-graph.hbs # Relationship visualization
-│   ├── vocabulary-manager.hbs # Vocabulary management
-│   ├── analytics-tab.hbs      # Session analytics display
-│   └── journal-picker.hbs     # Journal/chapter selection
-├── styles/                    # CSS stylesheets
-│   └── vox-chronicle.css      # All module styles (namespaced .vox-chronicle)
-├── lang/                      # Localization files (JSON)
-│   ├── en.json                # English (775+ keys)
-│   ├── it.json                # Italian
-│   ├── de.json                # German
-│   ├── es.json                # Spanish
-│   ├── fr.json                # French
-│   ├── ja.json                # Japanese
-│   ├── pt.json                # Portuguese
-│   └── template.json          # Translation template for new languages
-├── tests/                     # Test files (Vitest)
-│   └── ...                    # 46+ test files, 3888+ tests
-├── docs/                      # Documentation
-│   ├── ARCHITECTURE.md        # System design
-│   ├── API_REFERENCE.md       # Service class documentation
-│   ├── USER_GUIDE.md          # End-user instructions
-│   ├── TESTING.md             # Testing guide
-│   ├── CONTRIBUTING.md        # Contributor guidelines
-│   ├── WHISPER_SETUP.md       # Local Whisper setup
-│   ├── GPT4O_TRANSCRIBE_API.md # Diarization API specifics
-│   └── plans/                 # Implementation plans
-├── module.json                # Foundry VTT manifest
-├── CLAUDE.md                  # AI development context
-├── README.md                  # Project overview
-├── CHANGELOG.md               # Version history
-└── .gitleaksignore            # Secret scanning patterns
+├── module.json                    # Foundry VTT manifest (version, entry, compatibility)
+├── CLAUDE.md                      # AI development context (read first)
+├── TODO.md                        # Known issues and open tasks (read before any work)
+├── CHANGELOG.md                   # Version history
+├── package.json                   # npm deps (vitest, eslint)
+├── vitest.config.js               # Unit test config
+├── vitest.integration.config.js   # Integration test config
+├── eslint.config.js               # ESLint flat config
+├── build.sh / build.bat           # Release build scripts
+│
+├── scripts/                       # All source code (.mjs only)
+│   ├── main.mjs                   # Entry point — Foundry hooks, scene controls, settings UI
+│   ├── constants.mjs              # MODULE_ID constant (dependency-free leaf)
+│   ├── core/                      # Module singleton, settings, EventBus
+│   ├── audio/                     # MediaRecorder wrapper, audio chunking
+│   ├── ai/                        # OpenAI clients, transcription, image, entity extraction
+│   │   └── providers/             # Abstract provider interfaces + vendor implementations
+│   ├── rag/                       # RAG provider abstraction (OpenAI File Search, RAGFlow)
+│   ├── narrator/                  # Live mode AI services (suggestions, rules, scene, analytics)
+│   ├── kanka/                     # Kanka.io API client and publishing
+│   ├── orchestration/             # Session workflow orchestration + sub-processors
+│   ├── api/                       # Shared base API client
+│   ├── data/                      # Static data (D&D vocabulary)
+│   ├── ui/                        # ApplicationV2 panels and dialogs
+│   └── utils/                     # Shared utilities (Logger, Cache, Rate limiter, etc.)
+│
+├── templates/                     # Handlebars templates
+│   └── parts/                     # PARTS sub-templates (transcript-review.hbs)
+├── styles/                        # CSS (single file + tokens/)
+├── lang/                          # i18n JSON files (8 languages)
+├── tests/                         # Test files (mirrors scripts/ structure)
+│   ├── integration/               # Integration tests (54 tests)
+│   ├── mocks/                     # Shared Foundry API mocks
+│   ├── fixtures/                  # Shared test data
+│   └── harness/                   # Browser test harness
+├── docs/                          # Documentation
+│   └── plans/                     # Implementation plans
+├── .planning/                     # GSD planning artifacts
+│   ├── codebase/                  # Auto-generated codebase maps (this file)
+│   └── phases/                    # Phase plans
+└── releases/                      # Built ZIP files (gitignored)
 ```
+
+---
 
 ## Directory Purposes
 
-**scripts/**
-- Purpose: All ES6 module source code
-- Contains: Service classes, UI, utilities, API clients
-- Key files: `main.mjs` (entry point), `constants.mjs` (MODULE_ID)
+### `scripts/core/`
+- Purpose: Module-level singletons and shared infrastructure
+- Key files:
+  - `VoxChronicle.mjs` — main singleton, service orchestration, initialize/reinitialize lifecycle
+  - `EventBus.mjs` — pub/sub with typed channels; exports `eventBus` singleton instance
+  - `Settings.mjs` — all 58+ Foundry settings registrations and validation helpers
+  - `VocabularyDictionary.mjs` — custom vocabulary for transcription accuracy
 
-**scripts/core/**
-- Purpose: Core module initialization and configuration
-- Contains: VoxChronicle singleton, Foundry settings, vocabulary
-- Key files: `VoxChronicle.mjs` (service registry), `Settings.mjs` (setting definitions + validation)
+### `scripts/audio/`
+- Purpose: Browser audio capture and processing
+- Key files:
+  - `AudioRecorder.mjs` — MediaRecorder wrapper with rotation strategy, WebRTC mixing, IndexedDB crash recovery. Accepts optional `eventBus` option but NOT passed one in production.
+  - `AudioChunker.mjs` — Splits blobs > 25MB for OpenAI file size limit
 
-**scripts/audio/**
-- Purpose: Audio capture and file manipulation
-- Contains: MediaRecorder wrapper, audio chunking for API limits
-- Key files: `AudioRecorder.mjs` (gapless capture), `AudioChunker.mjs` (splits > 25MB)
+### `scripts/ai/`
+- Purpose: AI service implementations and provider abstraction
+- Key files:
+  - `OpenAIClient.mjs` — base HTTP client with retry, queue, circuit breaker
+  - `TranscriptionService.mjs` — GPT-4o transcription with diarization
+  - `TranscriptionFactory.mjs` — creates cloud/local/auto transcription service from mode setting
+  - `EntityExtractor.mjs` — extracts NPCs/locations/items from transcript text
+  - `ImageGenerationService.mjs` — gpt-image-1 image generation (returns base64)
+  - `providers/` — see below
 
-**scripts/ai/**
-- Purpose: OpenAI and alternative AI service clients
-- Contains: Transcription, image generation, entity extraction
-- Key files: `OpenAIClient.mjs` (base client with retry/queue), `TranscriptionService.mjs` (GPT-4o diarization)
+### `scripts/ai/providers/`
+- Purpose: Vendor-neutral AI provider interface and implementations
+- Key files:
+  - `ChatProvider.mjs`, `TranscriptionProvider.mjs`, `ImageProvider.mjs`, `EmbeddingProvider.mjs` — abstract interfaces
+  - `OpenAIChatProvider.mjs`, `OpenAITranscriptionProvider.mjs`, `OpenAIImageProvider.mjs`, `OpenAIEmbeddingProvider.mjs` — OpenAI implementations
+  - `AnthropicChatProvider.mjs`, `GoogleChatProvider.mjs` — additional chat providers (dynamically imported)
+  - `ProviderRegistry.mjs` — service locator, capability-based lookup, singleton
+  - `CachingProviderDecorator.mjs` — L2 cache decorators for chat and embedding
 
-**scripts/rag/**
-- Purpose: Retrieval-augmented generation for campaign context
-- Contains: Abstract interface and two implementations
-- Key files: `RAGProvider.mjs` (interface), `OpenAIFileSearchProvider.mjs`, `RAGFlowProvider.mjs`
+### `scripts/rag/`
+- Purpose: Retrieval-Augmented Generation provider system
+- Key files:
+  - `RAGProvider.mjs` — abstract base class
+  - `OpenAIFileSearchProvider.mjs` — default: OpenAI Responses API + `file_search` tool
+  - `RAGFlowProvider.mjs` — alternative: self-hosted RAGFlow server
+  - `RAGProviderFactory.mjs` — creates providers by type string
 
-**scripts/narrator/**
-- Purpose: Real-time DM assistance services
-- Contains: Suggestions, rules lookup, analytics, scene detection
-- Key files: `AIAssistant.mjs` (suggestion engine), `ChapterTracker.mjs` (narrative position)
+### `scripts/narrator/`
+- Purpose: Real-time DM assistance services (live mode only)
+- Key files:
+  - `AIAssistant.mjs` — contextual suggestions, off-track detection, streaming support, silence monitoring wiring
+  - `RulesReference.mjs` — keyword-based rules detection, compendium search
+  - `RulesLookupService.mjs` — two-phase hybrid lookup (compendium + AI synthesis)
+  - `SceneDetector.mjs` — scene type detection from transcript text
+  - `ChapterTracker.mjs` — tracks active journal chapter from Foundry scene
+  - `SessionAnalytics.mjs` — speaker stats, timeline, session metrics
+  - `SilenceDetector.mjs` — timer-based silence detection
+  - `SilenceMonitor.mjs` — wraps SilenceDetector, guards cycle-in-flight
+  - `NPCProfileExtractor.mjs` — extracts NPC profiles from journal text
+  - `PromptBuilder.mjs` — constructs AI prompts from context
+  - `RollingSummarizer.mjs` — rolling session summarization for context window management
+  - `JournalParser.mjs` — parses Foundry journal entries (with chunking for embeddings)
+  - `CompendiumParser.mjs` — parses Foundry compendiums for rules content
 
-**scripts/kanka/**
-- Purpose: Kanka.io chronicle platform integration
-- Contains: API client, entity CRUD, entity deduplication
-- Key files: `KankaService.mjs` (high-level CRUD), `KankaClient.mjs` (API client)
+### `scripts/kanka/`
+- Purpose: Kanka.io campaign management integration
+- Key files:
+  - `KankaClient.mjs` — base API client with rate limiting (30/min free, 90/min premium)
+  - `KankaService.mjs` — CRUD operations for journals, characters, locations, items
+  - `KankaEntityManager.mjs` — entity lifecycle management, duplicate detection
+  - `NarrativeExporter.mjs` — formats transcripts as Kanka journal entries
 
-**scripts/orchestration/**
-- Purpose: High-level workflow coordination
-- Contains: Session state machine, processor pipeline
-- Key files: `SessionOrchestrator.mjs` (main coordinator), individual processors
+### `scripts/orchestration/`
+- Purpose: Session workflow coordination
+- Key files:
+  - `SessionOrchestrator.mjs` — dual-mode session state machine, live cycle timer
+  - `TranscriptionProcessor.mjs` — transcription workflow with speaker wiring (Chronicle mode only)
+  - `EntityProcessor.mjs` — entity + relationship extraction workflow
+  - `ImageProcessor.mjs` — image generation workflow
+  - `KankaPublisher.mjs` — Kanka publishing workflow
+  - `CostTracker.mjs` — API cost estimation and cap enforcement
 
-**scripts/ui/**
-- Purpose: Foundry VTT ApplicationV2 UI components
-- Contains: MainPanel + auxiliary dialogs
-- Key files: `MainPanel.mjs` (singleton, 6-tab interface)
+### `scripts/api/`
+- Key files:
+  - `BaseAPIClient.mjs` — abstract base for API clients (extended by OpenAIClient, KankaClient)
 
-**scripts/api/**
-- Purpose: Shared HTTP client base functionality
-- Contains: Authorization, URL building, timeout handling
-- Key files: `BaseAPIClient.mjs` (extended by OpenAIClient, KankaClient)
+### `scripts/ui/`
+- Purpose: Foundry VTT ApplicationV2 panels and dialogs
+- Key files:
+  - `MainPanel.mjs` — unified 6-tab floating panel (live, chronicle, images, transcript, entities, analytics). Singleton.
+  - `SpeakerLabeling.mjs` — map speaker IDs to player names
+  - `EntityPreview.mjs` — entity review before Kanka publish
+  - `RelationshipGraph.mjs` — vis-network relationship visualization
+  - `VocabularyManager.mjs` — custom vocabulary UI
+  - `JournalPicker.mjs` — journal/chapter selection for live mode context
 
-**scripts/data/**
-- Purpose: Static lookup data
-- Contains: D&D terminology dictionary
-- Key files: `dnd-vocabulary.mjs` (300+ D&D terms for transcription accuracy)
+### `scripts/utils/`
+- Purpose: Shared, dependency-free helpers
+- Key files:
+  - `Logger.mjs` — module-prefixed logger with debug mode
+  - `CacheManager.mjs` — TTL cache with prefix invalidation
+  - `RateLimiter.mjs` — request throttling queue
+  - `AudioUtils.mjs` — MIME type detection, blob conversion
+  - `HtmlUtils.mjs` — HTML sanitization and escaping
+  - `DomUtils.mjs` — DOM helpers, debounce
+  - `SpeakerUtils.mjs` — speaker ID/label utilities
+  - `SensitiveDataFilter.mjs` — filters API keys from logs
 
-**scripts/utils/**
-- Purpose: Cross-cutting utilities
-- Contains: Logging, caching, validation, DOM helpers
-- Key files: `Logger.mjs` (module-prefixed output), `RateLimiter.mjs` (throttling)
+### `templates/`
+- Purpose: Handlebars templates for all UI panels
+- Key files:
+  - `main-panel.hbs` — unified 6-tab panel template
+  - `parts/transcript-review.hbs` — PARTS sub-template for transcript tab (rendered independently)
+  - All other `.hbs` files mirror the `scripts/ui/` applications
 
-**templates/**
-- Purpose: Handlebars UI templates
-- Contains: Panel tabs, dialogs, forms
-- Key files: `main-panel.hbs` (unified interface)
+### `styles/`
+- Purpose: CSS with `.vox-chronicle` namespace
+- Key file: `styles/vox-chronicle.css` — single stylesheet for all module styles
+- `styles/tokens/` — CSS design tokens
 
-**styles/**
-- Purpose: CSS styling (all namespaced)
-- Contains: Panel, dialog, button, table styles
-- Key files: `vox-chronicle.css` (single file, .vox-chronicle namespace)
+### `lang/`
+- Purpose: Localization strings (all user-facing text)
+- Files: `en.json` (1102 keys), `it.json`, `de.json`, `es.json`, `fr.json`, `ja.json`, `pt.json`, `template.json`
+- Format: Nested JSON, top-level key `VOXCHRONICLE`
 
-**lang/**
-- Purpose: Localization strings (7 languages + template)
-- Contains: JSON translation keys
-- Format: Nested by module section (VOXCHRONICLE.Settings, VOXCHRONICLE.Errors, etc)
+### `tests/`
+- Purpose: Vitest unit and integration tests
+- Structure mirrors `scripts/` (e.g., `tests/narrator/`, `tests/orchestration/`)
+- `tests/mocks/` — shared Foundry API mocks (game, canvas, Hooks, etc.)
+- `tests/fixtures/` — shared test data
+- `tests/integration/` — 54 integration tests
+- `tests/harness/` — browser test harness for Foundry-live testing
 
-**tests/**
-- Purpose: Automated tests (Vitest)
-- Contains: 46+ test files covering all services
-- Key patterns: Mock `game` object, test happy path + error cases
+---
 
 ## Key File Locations
 
 **Entry Points:**
-- `scripts/main.mjs`: Module initialization, hook registration, scene controls
-- `scripts/core/VoxChronicle.mjs`: Service registry and lifecycle
+- `scripts/main.mjs` — Foundry hooks, scene controls, settings UI hooks
+- `scripts/constants.mjs` — MODULE_ID (import from here, never from main.mjs)
 
 **Configuration:**
-- `module.json`: Foundry manifest (version, compatibility, entry point)
-- `scripts/core/Settings.mjs`: Foundry setting registration
-- `scripts/constants.mjs`: MODULE_ID constant (shared across all files)
+- `module.json` — Foundry manifest, version, compatibility
+- `scripts/core/Settings.mjs` — all settings registration
+- `vitest.config.js` — test runner configuration
 
 **Core Logic:**
-- `scripts/orchestration/SessionOrchestrator.mjs`: Session workflow coordinator
-- `scripts/narrator/AIAssistant.mjs`: Suggestion engine (300+ lines, needs refactor)
-- `scripts/ai/OpenAIClient.mjs`: Retry/queue/circuit-breaker base client
-- `scripts/rag/RAGProvider.mjs`: Abstract interface for pluggable backends
+- `scripts/core/VoxChronicle.mjs` — service initialization and lifecycle
+- `scripts/orchestration/SessionOrchestrator.mjs` — session state machine (2355 lines)
+- `scripts/ui/MainPanel.mjs` — primary UI (1900+ lines)
+- `scripts/narrator/AIAssistant.mjs` — AI suggestion engine
 
 **Testing:**
-- `tests/core/VoxChronicle.test.mjs`: Singleton lifecycle tests
-- `tests/orchestration/SessionOrchestrator.test.mjs`: Workflow state tests
-- `tests/ai/OpenAIClient.test.mjs`: Retry/queue behavior tests
+- `tests/` directory — mirrors source structure
+- `tests/mocks/` — Foundry mock objects
+
+---
 
 ## Naming Conventions
 
 **Files:**
-- `.mjs` extension: All module files (ES6 modules)
-- `.hbs` extension: Handlebars templates
-- `.json` extension: Configuration and localization
-- `.css` extension: Stylesheets
-- `.test.mjs` suffix: Test files (Vitest pattern)
-- PascalCase: All class files (e.g., `AudioRecorder.mjs`)
-- kebab-case: Non-class utilities (e.g., `dnd-vocabulary.mjs`)
+- All source files use `.mjs` extension (ES6 modules)
+- PascalCase class names map to matching PascalCase file names: `VoxChronicle.mjs`, `MainPanel.mjs`
+- Utility files use PascalCase: `Logger.mjs`, `CacheManager.mjs`
+- Data files use kebab-case: `dnd-vocabulary.mjs`
+- Test files mirror source names: `AIAssistant.mjs` → `tests/narrator/AIAssistant.test.mjs`
 
 **Directories:**
-- lowercase: All directory names (e.g., `scripts/ui/`, `scripts/kanka/`)
-- Single-word focus: Directory names indicate subsystem (e.g., `audio`, `kanka`, `narrator`)
+- lowercase, descriptive: `core/`, `audio/`, `narrator/`, `orchestration/`, `rag/`
+- `scripts/ai/providers/` — provider implementations nested under `ai/`
 
 **Classes:**
-- PascalCase: All class names (VoxChronicle, MainPanel, AudioRecorder)
-- Descriptive: Names reflect responsibility (TranscriptionService, EntityExtractor, SilenceDetector)
+- PascalCase: `SessionOrchestrator`, `AudioRecorder`, `OpenAIChatProvider`
 
-**Methods:**
-- camelCase: All method names
-- Prefix `_` for private: `_getSetting()`, `_initializeRAGServices()`
-- Static methods on singletons: `getInstance()`, `resetInstance()`
-- Async methods: Always return Promise (use async/await)
+**Private fields/methods:**
+- `#privateField` — ES2022 private fields in ApplicationV2-derived classes
+- `_privateMethod` — underscore prefix for private-by-convention in non-ApplicationV2 classes
 
-**Constants:**
-- UPPER_SNAKE_CASE: Global constants (e.g., `MODULE_ID`, `DEFAULT_TIMEOUT_MS`)
-- camelCase: Local constants (e.g., `SESSION_STATE = {...}`)
-- Enums: Object with string values (e.g., `RecordingState = { INACTIVE, RECORDING, PAUSED }`)
-
-**Variables:**
-- camelCase: All variable names
-- Prefix `#` for private fields in classes: `#listenerController`, `#ragCachedStatus`
-- Prefix `_` for private properties in older classes: `_logger`, `_audioChunks`
-
-## Where to Add New Code
-
-**New Feature (Major System):**
-- Primary code: `scripts/[new-subsystem]/ServiceName.mjs`
-- Integration: Register in `VoxChronicle.initialize()` (scripts/core/VoxChronicle.mjs)
-- UI: Add component in `scripts/ui/` if needed, register in MainPanel actions
-- Tests: `tests/[new-subsystem]/ServiceName.test.mjs`
-- Localization: Add keys to all 8 lang files
-
-**New Component/Module (Minor Feature):**
-- Implementation: `scripts/[subsystem]/ComponentName.mjs`
-- Example: EntityPreview, VocabularyManager in scripts/ui/
-- No update to VoxChronicle needed if self-contained
-
-**Utilities (Shared Helpers):**
-- Shared utilities: `scripts/utils/UtilityName.mjs`
-- API utilities: `scripts/api/ClientName.mjs` (extends BaseAPIClient)
-- Export as named export, no default
-
-**New Workflow Processor:**
-- Location: `scripts/orchestration/NewProcessor.mjs`
-- Pattern: Constructor takes config, async process() method
-- Integration: SessionOrchestrator instantiates in constructor, calls in workflow
-- Example: TranscriptionProcessor, EntityProcessor
-
-**UI Dialog/Application:**
-- Class: `scripts/ui/DialogName.mjs` (extends HandlebarsApplicationMixin(ApplicationV2))
-- Template: `templates/dialog-name.hbs`
-- Style: Add to `styles/vox-chronicle.css` with `.vox-chronicle-dialog-name` namespace
-- Registration: Lazy-loaded in main.mjs tool handler or action callback
-
-**Settings:**
-- Registration: Add to `Settings.registerSettings()` in `scripts/core/Settings.mjs`
-- Localization: Add name + hint keys to all 8 lang files
-- Validation: Add validator if needed (e.g., Settings.validateOpenAIKey)
-- Usage: `game.settings.get(MODULE_ID, 'settingKey')`
-
-**Localization Keys:**
-- Path: `lang/[lang].json` (en.json, it.json, de.json, es.json, fr.json, ja.json, pt.json)
-- Hierarchy: VOXCHRONICLE > Section > Key (e.g., VOXCHRONICLE.Settings.OpenAIKey)
-- Template: Use `lang/template.json` to document all keys
-- Usage: `game.i18n.localize('VOXCHRONICLE.Key')` or `game.i18n.format('VOXCHRONICLE.Key', { var })`
-
-## Special Directories
-
-**tests/**
-- Purpose: Automated test suite
-- Generated: No
-- Committed: Yes
-- Framework: Vitest with jsdom environment
-- Run: `npm test`
-- Coverage: 46+ test files, 3888+ tests
-
-**node_modules/**
-- Purpose: Dependencies (not in git)
-- Generated: Yes (via npm install)
-- Committed: No
-- Ignored by: .gitignore
-
-**releases/**
-- Purpose: Built distribution ZIPs
-- Generated: Yes (by bash build.sh)
-- Committed: No
-- Contents: module.json + full codebase
-
-**docs/**
-- Purpose: Technical documentation
-- Generated: No (manual)
-- Committed: Yes
-- Key files: ARCHITECTURE.md, API_REFERENCE.md, USER_GUIDE.md
-
-**.planning/codebase/**
-- Purpose: GSD analysis documents (this directory)
-- Generated: Yes (by orchestrator)
-- Committed: No
-- Contents: ARCHITECTURE.md, STRUCTURE.md, CONVENTIONS.md, TESTING.md, STACK.md, INTEGRATIONS.md, CONCERNS.md
-
-**lang/**
-- Purpose: Localization (JSON)
-- Generated: No (manual)
-- Committed: Yes
-- Structure: VOXCHRONICLE > Section > Key
+**Event names:**
+- `channel:actionCamelCase` format: `ai:transcriptionReady`, `session:liveStarted`
+- Channels: `ai`, `audio`, `scene`, `session`, `ui`, `error`, `analytics`
 
 ---
 
-*Structure analysis: 2026-02-28*
+## Where to Add New Code
+
+**New AI Feature (chat-based):**
+- Provider interface: `scripts/ai/providers/ChatProvider.mjs` (if new capability needed)
+- Service implementation: `scripts/narrator/NewService.mjs`
+- Wire in `VoxChronicle.initialize()`: pass to orchestrator via `setNarratorServices()`
+- Tests: `tests/narrator/NewService.test.mjs`
+
+**New Foundry VTT Panel:**
+- Application class: `scripts/ui/NewPanel.mjs` (extend `HandlebarsApplicationMixin(ApplicationV2)`)
+- Template: `templates/new-panel.hbs`
+- CSS: add to `styles/vox-chronicle.css` with `.vox-chronicle-new-panel` namespace
+- i18n: add keys to all 8 `lang/*.json` files
+- Register in scene controls: `scripts/main.mjs` `getSceneControlButtons` hook
+
+**New Foundry Setting:**
+- Register in `scripts/core/Settings.mjs`
+- Add keys to all 8 `lang/*.json` files
+- Read in `VoxChronicle._getSetting(key)` or `Settings.get(key)`
+
+**New EventBus Event:**
+- Use format `channel:actionCamelCase` (only existing channels: `ai`, `audio`, `scene`, `session`, `ui`, `error`, `analytics`)
+- Emit via `eventBus.emit(name, plainObject)` or `_emitSafe(name, plainObject)`
+- Subscribe via `eventBus.on(name, callback)` and store the returned unsubscribe function
+- Clean up in `destroy()` or `close()` using the unsubscribe function
+
+**New API Provider:**
+- Implement the appropriate abstract class from `scripts/ai/providers/`
+- Register in `VoxChronicle.initialize()` via `registry.register(name, instance, { default: false })`
+- Optionally wrap with `CachingChatDecorator` if cacheable
+
+**New Orchestration Stage:**
+- Add state to `SessionState` enum in `SessionOrchestrator.mjs`
+- Add processor class in `scripts/orchestration/NewProcessor.mjs`
+- Wire into `_initializeProcessors()` and relevant workflow method
+
+**New Utility:**
+- Add to `scripts/utils/NewUtil.mjs`
+- No imports from other script layers (utilities are leaf modules)
+- Add test: `tests/utils/NewUtil.test.mjs`
+
+---
+
+## Special Directories
+
+**`.planning/`:**
+- Purpose: GSD planning artifacts — codebase maps, phase plans, research
+- Generated: Partially (codebase maps auto-generated by `/gsd:map-codebase`)
+- Committed: Yes
+
+**`releases/`:**
+- Purpose: Built ZIP files for Foundry VTT distribution
+- Generated: Yes (by `build.sh`)
+- Committed: No (gitignored)
+
+**`coverage/`:**
+- Purpose: Vitest coverage reports
+- Generated: Yes (by `npm run test:coverage`)
+- Committed: No (gitignored)
+
+**`_bmad/` and `_bmad-output/`:**
+- Purpose: BMAD methodology artifacts (stories, epics, retrospectives)
+- Generated: Partially (output files generated during sprints)
+- Committed: Yes
+
+**`tests/harness/`:**
+- Purpose: Browser-based test harness for running module tests inside live Foundry VTT
+- Generated: No
+- Committed: Yes
+
+---
+
+*Structure analysis: 2026-03-19*

@@ -1,315 +1,175 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-02-28
+**Analysis Date:** 2026-03-19
 
 ## Naming Patterns
 
 **Files:**
-- Module files: PascalCase with `.mjs` extension (e.g., `Logger.mjs`, `OpenAIClient.mjs`)
-- Test files: Match source file name + `.test.js` suffix (e.g., `Logger.test.js` for `Logger.mjs`)
-- Templates: kebab-case with `.hbs` extension (e.g., `main-panel.hbs`)
-- Stylesheets: kebab-case with `.css` extension (e.g., `vox-chronicle.css`)
-- Language files: two-letter code (e.g., `en.json`, `fr.json`)
+- Source files: `PascalCase.mjs` for classes (e.g., `AudioRecorder.mjs`, `SessionOrchestrator.mjs`)
+- Utility functions files: `PascalCase.mjs` even for non-class modules (e.g., `HtmlUtils.mjs`, `AudioUtils.mjs`)
+- Data files: `kebab-case.mjs` (e.g., `dnd-vocabulary.mjs`)
+- Entry point: `main.mjs`
+- Constants: `constants.mjs`
+- Test files: `PascalCase.test.js` mirroring source names
 
 **Classes:**
-- PascalCase for all class names (e.g., `Logger`, `OpenAIClient`, `MainPanel`, `TranscriptionService`)
-- Singleton classes use static `getInstance()` method (see `VoxChronicle`, `MainPanel`)
-- Exception classes extend `Error` (e.g., `OpenAIError` extends `Error`)
+- `PascalCase` for all classes: `OpenAIClient`, `SessionOrchestrator`, `MainPanel`
+- Abstract base classes: `PascalCase` with no special prefix (e.g., `ChatProvider`, `RAGProvider`)
 
 **Functions:**
-- camelCase for all function and method names (e.g., `setApiKey()`, `extractEntities()`)
-- Private/internal methods prefixed with underscore (e.g., `_retryWithBackoff()`, `_buildAuthHeaders()`)
-- Static methods prefixed with underscore for action handlers: `_onToggleRecording()`, `_onProcessSession()`
-- Async methods: use `async` keyword, no special naming convention
+- Public methods: `camelCase` (e.g., `startSession`, `getServicesStatus`)
+- Private methods: `_camelCase` prefix (e.g., `_initializeProcessors`, `_updateState`)
+- Private fields: `#camelCase` (ES2022 private class fields, e.g., `#instance`, `#eventBus`)
 
 **Variables:**
-- camelCase for all variable names, const by default: `const apiKey = '...'`
-- Private static fields use hash prefix and camelCase: `static #instance = null`, `#listenerController = null`
-- Constants in SCREAMING_SNAKE_CASE when exported module-level: `const OPENAI_BASE_URL = '...'`, `const DEFAULT_TIMEOUT_MS = 120000`
-- Enums use PascalCase for type name, SCREAMING_SNAKE_CASE for keys: `const LogLevel = { DEBUG: 0, INFO: 1 }`
-- Boolean variables use `is/has` prefix: `isRecording`, `hasConfig`, `_debugEnabled`, `_processingQueue`
+- `camelCase` for local variables and instance properties
+- `UPPER_SNAKE_CASE` for module-level constants (e.g., `MODULE_ID`, `MAX_CHUNK_SIZE`, `DEFAULT_THRESHOLD_MS`)
 
-**Types and Interfaces:**
-- JSDoc `@typedef` for type definitions: `@typedef {Object} Suggestion`
-- Optional properties in JSDoc: `@property {string} [pageReference]`
-- Generic types: use JSDoc `{Array<string>}`, `{Map<string, number>}`
+**Enums:**
+- Object literals with `UPPER_SNAKE_CASE` keys: `const RecordingState = { INACTIVE: 'inactive', RECORDING: 'recording' }`
+- Values are lowercase strings matching the key name (e.g., `'inactive'`, `'recording'`)
+- Enum objects are `const` at module level, exported by name
+
+**Types:**
+- JSDoc `@typedef` for complex objects (inline, not in separate type files)
+- Type annotations in JSDoc comments, not TypeScript
 
 ## Code Style
 
 **Formatting:**
-- Formatter: Prettier (configured in `.prettierrc.json`)
-- Line width: 100 characters (printWidth: 100)
-- Tab width: 2 spaces (no tabs)
-- Semicolons: required (semi: true)
-- Quotes: single quotes (singleQuote: true)
-- Trailing commas: none (trailingComma: "none")
-- Arrow parens: always (arrowParens: "always")
-- End of line: LF (endOfLine: "lf")
+- Prettier handles all formatting (no manual style enforcement)
+- No enforced quote style, semicolons, or indent width at lint level (all `'off'`)
+- Max line length: 120 chars for code, 150 for comments (warn level, not error)
 
 **Linting:**
-- Tool: ESLint 9 (flat config in `eslint.config.js`)
-- Base: `@eslint/js` recommended rules
-- JSDoc plugin: `eslint-plugin-jsdoc` for documentation validation
-- Max line length: 120 characters (code), 150 characters (comments)
-- Variable naming: allow underscore prefix (`argsIgnorePattern: '^_'`) for unused parameters
-
-**Enforced Rules:**
-- `prefer-const`: error — always use const, never let or var
-- `no-var`: error — var is forbidden
-- `no-undef`: error — all globals must be declared
-- `eqeqeq`: error (always, null: ignore) — use === except for null checks
-- `curly`: error (multi-line, consistent) — require braces for multi-line blocks
-- `brace-style`: error (1tbs, allowSingleLine) — one true brace style
-- `prefer-arrow-callback`: warn — arrow functions in callbacks
-- `prefer-template`: warn — template literals over concatenation
-- `jsdoc/require-param`, `jsdoc/require-returns`: warn — document parameters and returns
+- ESLint 9 flat config at `eslint.config.js`
+- `no-var`: error (always use `const`/`let`)
+- `prefer-const`: error
+- `eqeqeq`: error (use `===`; `null` comparison exempted)
+- `curly`: multi-line + consistent
+- `no-unused-vars`: warn (args/vars starting with `_` ignored)
+- JSDoc rules: warn level (not errors) — `check-param-names`, `require-param`, `require-returns-type`
 
 ## Import Organization
 
-**Order:**
-1. Built-in modules (Node.js - rarely used in browser modules)
-2. Third-party libraries (vitest, foundry API modules)
-3. Relative imports from sibling directories (via `../`)
-4. Relative imports from same directory (via `./`)
+**Order (by convention, not enforced):**
+1. External/framework imports (none in this codebase — everything is native)
+2. Internal imports with relative paths
 
-**Pattern:**
-```javascript
-// Standard pattern in VoxChronicle files
-import { MODULE_ID } from '../constants.mjs';        // constants first
-import { Logger } from '../utils/Logger.mjs';        // utilities
-import { OpenAIClient } from '../ai/OpenAIClient.mjs'; // services
-import { SilenceDetector } from './SilenceDetector.mjs'; // local imports
-```
+**Path style:**
+- All relative paths: `'../utils/Logger.mjs'`, `'./Constants.mjs'`
+- No path aliases or barrel index files
+- Import from `constants.mjs` directly — never re-export from `main.mjs`
 
-**Path Aliases:**
-- No path aliases configured — all imports use relative paths
-- Never import `MODULE_ID` from `main.mjs` (circular import risk) — always use `constants.mjs`
-
-**Export Style:**
-- Named exports preferred: `export { ClassName, FunctionName }`
-- Module-level exports common: `export class Logger { ... }`
-- Enums exported with class: `export { Logger, LogLevel }`
+**Import style:**
+- Named imports only: `import { Foo, Bar } from './Foo.mjs'`
+- No default imports in production code
+- Imports appear at top of file, before any code
 
 ## Error Handling
 
-**Pattern - Try/Catch:**
+**Patterns:**
+- All public async methods wrap in `try/catch`
+- Errors are logged via `this.logger.error(...)` before re-throwing or handling
+- User-facing errors shown via `ui?.notifications?.error(escapeHtml(message))`
+- Custom error classes: `OpenAIError` (with `OpenAIErrorType` enum), `KankaError` (with `KankaErrorType` enum), `WhisperError`
+- Errors propagate up unless they're recoverable (e.g., silence detection failure logs and continues)
+
+**Pattern example:**
 ```javascript
-try {
-  const result = await this.apiCall();
-  this._logger.log('Success:', result);
-  return result;
-} catch (error) {
-  this._logger.error('API call failed:', error);
-  throw error;  // Re-throw to allow caller to handle
+async methodName() {
+  try {
+    // implementation
+  } catch (error) {
+    this.logger.error('Method failed:', error);
+    throw error;  // or handle gracefully
+  }
 }
 ```
 
-**Custom Error Classes:**
-- Extend `Error` with type and status fields
-- Examples: `OpenAIError`, `KankaError`
-- Include `isRetryable` getter for retry logic
-- Extract retry-after headers and store as `retryAfter` property
-
-**Error Propagation:**
-- Errors are re-thrown after logging — not swallowed
-- Service methods throw errors, callers decide response
-- UI layer catches errors and shows notifications via `ErrorNotificationHelper`
-
-**Validation:**
-- Check for required config before operations (e.g., API keys, services initialized)
-- Throw descriptive Error with clear message: `throw new Error('Audio recorder not configured')`
-- Use guard clauses early in methods: `if (!this.isConfigured) throw ...`
-
 ## Logging
 
-**Framework:** Custom `Logger` utility in `scripts/utils/Logger.mjs`
+**Framework:** Custom `Logger` utility at `scripts/utils/Logger.mjs`
 
-**Levels (ascending severity):**
-- `Logger.DEBUG()` — only if debug mode enabled (LogLevel.DEBUG = 0)
-- `Logger.INFO()` — informational messages (LogLevel.INFO = 1)
-- `Logger.log()` — standard messages (LogLevel.LOG = 2, default)
-- `Logger.warn()` — warnings (LogLevel.WARN = 3)
-- `Logger.error()` — errors (LogLevel.ERROR = 4)
-- Set minimum level: `Logger.setLogLevel(LogLevel.DEBUG)` or via `setDebugEnabled(true)`
-
-**Child Loggers:**
-```javascript
-const logger = Logger.createChild('ClassName');
-logger.log('Message here');  // Output: "vox-chronicle:ClassName | Message here"
-```
-
-**Prefix Format:**
-- Static: `Logger.log()` → `"vox-chronicle |"`
-- Child: `Logger.createChild('Service')` → `"vox-chronicle:Service |"`
-- Levels added in brackets: `"vox-chronicle | [DEBUG]"`, `"[WARN]"`, `"[ERROR]"`
-
-**When to Log:**
-- Use child loggers in every service class: `this._logger = Logger.createChild('ClassName')`
-- Log on entry to major async operations: `this._logger.log('Starting transcription...')`
-- Log errors with full stack via `error()` method
-- Debug logs for internal state, branching, or performance: `this._logger.debug('Queue size:', this._queue.length)`
-- Never use `console.log()` directly — always use Logger
-
-**Sensitive Data:**
-- Logs are automatically filtered by `SensitiveDataFilter` — removes API keys, tokens from output
-- Do NOT log request bodies containing secrets
+**Patterns:**
+- All classes create a child logger: `this.logger = Logger.createChild('ClassName')`
+- Some files use module-level logger: `const logger = Logger.createChild('ModuleName')`
+- Private loggers: `this._logger = Logger.createChild('ClassName')` (underscore prefix when private)
+- Log levels: `debug`, `info`, `warn`, `error` — matching console methods
+- Never use `console.log` directly — always use Logger
+- Sensitive data (API keys) automatically filtered by `SensitiveDataFilter`
 
 ## Comments
 
 **When to Comment:**
-- Algorithm explanation: comment complex logic (retry backoff, rate limiting calculations)
-- Non-obvious state transitions: explain why a condition needs to hold
-- TODO/FIXME for known issues (prefix with `// TODO:` or `// FIXME:`)
-- Section headers: use `// ── Header Name ────────────────────` for grouping in files > 200 lines
+- File-level JSDoc block at top of every file: `@class`, `@module vox-chronicle`
+- Public method JSDoc: `@param`, `@returns`, `@throws` as appropriate
+- `@typedef` for complex parameter/return types
+- Inline comments for non-obvious logic
 
-**When NOT to Comment:**
-- Self-explanatory code (good naming is better than comments)
-- Obvious loops or conditionals
-- Comments should not repeat what code already says
-
-**JSDoc/TSDoc:**
-- Required for: all public methods, class constructors, exported functions
-- Optional for: private methods, local variables
-- Format: `/** ... */` (multi-line), `@param {type} name - description`, `@returns {type} description`
-- Example:
+**JSDoc style:**
 ```javascript
 /**
- * Extract entities from transcript text
- *
- * @param {string} transcriptText - The session transcript
- * @param {Object} options - Processing options
- * @param {boolean} [options.checkDuplicates=true] - Check for existing entities
- * @returns {Promise<Array>} Array of extracted entities
- * @throws {Error} If extraction fails
+ * Brief description.
+ * @param {string} param - Description
+ * @returns {Promise<object>} Description
+ * @throws {OpenAIError} When API fails
  */
-async extractEntities(transcriptText, options = {}) {
 ```
 
 ## Function Design
 
-**Size:**
-- Aim for < 50 lines per function
-- If a function exceeds 100 lines, consider breaking it into helper methods
-- Long method example: `_onRender()` in `MainPanel` (~130 lines) with clear sections
+**Size:** Methods kept focused; large classes (>500 lines) exist but individual methods stay under ~50 lines typically
 
 **Parameters:**
-- Positional: 0-2 required params (use object destructuring for more)
-- Options object pattern:
-```javascript
-async methodName(requiredParam, options = {}) {
-  const { optionA = false, optionB = 'default' } = options;
-  // Implementation
-}
-```
-- Callbacks passed in options: `{ onProgress: (current, total) => {} }`
+- Single `options = {}` object for multiple optional parameters: `async startSession(sessionOptions = {})`
+- Required dependencies passed via constructor, not method parameters
+- Services injected as constructor dependencies or via `setServices()`
 
 **Return Values:**
-- Async functions return Promises: `async methodName() { ... }`
-- Void operations still return Promise: `async cancel() { return Promise.resolve(); }`
-- Nullable returns documented: `@returns {Promise<Array|null>} or null if not found`
-- On error: throw (don't return null for errors)
-
-**Async/Await:**
-- Preferred over `.then()` for readability
-- Use sequential operations: `const a = await op1(); const b = await op2(a);`
-- Parallel operations: `const [a, b] = await Promise.all([op1(), op2()]);`
-- Circuit breaker: check state before retry: `if (this._circuitOpen) throw new Error('Circuit breaker open')`
+- Async operations return Promises
+- State-returning methods return plain objects with consistent shape
+- Boolean check methods: `isConfigured()`, `isSessionActive`, `hasTranscriptionService()`
 
 ## Module Design
 
 **Exports:**
-- Each module exports one main class (e.g., `OpenAIClient.mjs` exports `OpenAIClient`)
-- Enums and constants exported with class if closely related
-- Related error classes exported: `export { OpenAIClient, OpenAIError, OpenAIErrorType }`
-
-**Barrel Files:**
-- Not used in VoxChronicle (each import is explicit)
-- Services import from specific modules: `import { OpenAIClient } from '../ai/OpenAIClient.mjs'`
-
-**Dependencies:**
-- Services receive dependencies via constructor (dependency injection)
-- Example: `constructor(openAIClient, options = {}) { this._client = openAIClient; }`
-- Avoid circular imports by importing from `constants.mjs` for shared MODULE_ID
+- Each file has one primary class export, optionally with related constants/enums
+- Exports at bottom of file: `export { ClassName, ENUM_NAME, CONSTANT_NAME };`
+- Exception: abstract base classes use inline `export class`
+- No barrel/index files — each consumer imports directly from source
 
 **Singleton Pattern:**
-- Main classes use static `#instance` field: `static #instance = null;`
-- Access via `getInstance()`: `VoxChronicle.getInstance()`
-- Include `resetInstance()` for testing: `static resetInstance() { VoxChronicle.#instance = null; }`
+- Used for `VoxChronicle` (main singleton) and `MainPanel` (UI singleton)
+- Pattern: `static #instance = null` + `static getInstance()` + `static resetInstance()`
+- `resetInstance()` is provided for test isolation
 
-## API Client Pattern (OpenAIClient, KankaClient)
+**Dependency Injection:**
+- Services receive dependencies via constructor (not global access)
+- `VoxChronicle` singleton wires all services together at init time
+- Orchestrator accepts service objects at construction and via `setServices()`
 
-**Base Class:**
-- Extend `BaseAPIClient` (if exists) or implement standard methods
-- Constructor takes API key and options object
-- Methods: `request()`, `post()`, `postFormData()`, `setApiKey()`, `isConfigured`
+## CSS Conventions
 
-**Rate Limiting:**
-- Use `RateLimiter` utility: `this._rateLimiter = new RateLimiter(options)`
-- Queue requests: `await this._rateLimiter.executeWithRetry(fn)`
+**Namespace:** All classes prefixed with `vox-chronicle` in `styles/vox-chronicle.css`
 
-**Error Handling:**
-- Custom error class (e.g., `OpenAIError`) with type, status, details, isRetryable
-- Throw on errors, don't return error objects
+**BEM-style naming:**
+- Block: `.vox-chronicle-recorder`
+- Element: `.vox-chronicle-recorder__button`
+- Modifier: `.vox-chronicle-recorder--recording`
 
-**Retry with Exponential Backoff:**
-- Implement `_retryWithBackoff()` method
-- Formula: `delay = min(baseDelay * 2^attempt, maxDelay) + random(0, 1000)`
-- Checks `isRetryable` before retrying
+## Localization
 
-**Request History:**
-- Optional: track operation history for debugging
-- Methods: `getHistory()`, `clearHistory()`
-
-## UI Component Pattern (ApplicationV2)
-
-**Class Structure:**
+**All user-facing strings use i18n:**
 ```javascript
-class MyApp extends HandlebarsApplicationMixin(ApplicationV2) {
-  static #instance = null;
-
-  static DEFAULT_OPTIONS = { /* Foundry options */ };
-  static PARTS = { main: { template: `modules/vox-chronicle/templates/...` } };
-
-  static getInstance() { /* singleton */ }
-  static resetInstance() { /* for testing */ }
-
-  async _prepareContext(options) { /* template data */ }
-  _onRender(context, options) { /* event listeners */ }
-  async close(options) { /* cleanup */ }
-}
+game.i18n.localize('VOXCHRONICLE.Settings.OpenAIKey')
+game.i18n.format('VOXCHRONICLE.Error.Message', { error: error.message })
 ```
 
-**Event Listeners:**
-- Define in `DEFAULT_OPTIONS.actions`: `{ 'button-id': MyClass._onButtonClick }`
-- Static action methods: `static _onButtonClick(event, target) { /* this bound by Foundry */ }`
-- Use AbortController for cleanup in `_onRender()`:
-```javascript
-_onRender(context, options) {
-  this.#listenerController?.abort();
-  this.#listenerController = new AbortController();
-  element.addEventListener('change', handler, { signal: this.#listenerController.signal });
-}
-```
+**Key namespace:** `VOXCHRONICLE.*` — 8 language files in `lang/`
 
-**Cleanup:**
-- Always abort listeners: `this.#listenerController?.abort()`
-- Stop animation frames: `cancelAnimationFrame(this.#rafId)`
-- Clear timers: `clearTimeout()`, `clearInterval()`
-
-## Naming Conventions Summary
-
-| Type | Convention | Example |
-|------|-----------|---------|
-| Classes | PascalCase | `Logger`, `OpenAIClient` |
-| Public methods | camelCase | `extractEntities()`, `setApiKey()` |
-| Private methods | _camelCase | `_retryWithBackoff()`, `_buildUrl()` |
-| Event handlers | _onActionName | `_onToggleRecording()`, `_onProcessSession()` |
-| Public properties | camelCase | `this.apiKey`, `this.isInitialized` |
-| Private properties | #camelCase or _camelCase | `#instance`, `_logger`, `_requestQueue` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_CHUNK_SIZE`, `DEFAULT_TIMEOUT_MS` |
-| Booleans | is/has prefix | `isRecording`, `hasConfig`, `_debugEnabled` |
-| Enums | PascalCase type, SCREAMING_SNAKE_CASE keys | `LogLevel.DEBUG`, `SessionState.IDLE` |
+**In Handlebars:** `{{localize "VOXCHRONICLE.Button.StartRecording"}}`
 
 ---
 
-*Convention analysis: 2026-02-28*
+*Convention analysis: 2026-03-19*
