@@ -140,7 +140,11 @@ Plans:
   2. Suggestion prompts visibly differ in structure between scene types: combat suggestions lead with tactical options, social suggestions lead with NPC dialogue hooks, exploration suggestions lead with environmental details
   3. When party dialogue diverges from the adventure path for 2+ consecutive cycles, the panel surfaces a recovery suggestion that references the original adventure hook
   4. When one speaker has contributed less than 15% of the session's total speaking time, the AI includes an engagement opportunity for that player in the next suggestion
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 08-01-PLAN.md — PromptBuilder extensions: getSceneTypeGuidance() + setQuietSpeakers() + buildGeneralQueryMessages()
+- [ ] 08-02-PLAN.md — SessionOrchestrator: handleGeneralQuery() + off-track consecutive counter + quiet speaker injection
+- [ ] 08-03-PLAN.md — MainPanel UI: intent routing + recovery card rendering + CSS + localization
 
 ## Progress
 
@@ -156,4 +160,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Rolling Context Management | 3/3 | Complete   | 2026-03-06 |
 | 6. State Machine and UI Accuracy | 4/4 | Complete | 2026-03-06 |
 | 7. Rules Lookup Integration | 3/3 | Complete   | 2026-03-20 |
-| 8. Advanced Suggestion Intelligence | 0/TBD | Not started | - |
+| 8. Advanced Suggestion Intelligence | 0/3 | Planning complete | - |
