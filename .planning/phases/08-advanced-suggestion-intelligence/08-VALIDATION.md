@@ -2,8 +2,8 @@
 phase: 08
 slug: advanced-suggestion-intelligence
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-20
 ---
 
@@ -43,6 +43,7 @@ created: 2026-03-20
 | 08-02-01 | 02 | 2 | SUG-06 | unit | `npx vitest run tests/narrator/AIAssistant.test.js -t "offTrack" -x` | ✅ | ⬜ pending |
 | 08-02-02 | 02 | 2 | SUG-06 | unit | `npx vitest run tests/orchestration/SessionOrchestrator.test.js -t "offTrack" -x` | ✅ | ⬜ pending |
 | 08-03-01 | 03 | 3 | SUG-04 | unit | `npx vitest run tests/ui/MainPanel.test.js -t "general query" -x` | ✅ | ⬜ pending |
+| 08-03-02 | 03 | 3 | SUG-06 | unit | `npx vitest run tests/ui/MainPanel.test.js -t "recovery card" -x` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
