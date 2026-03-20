@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Session Reliability** - Make live mode survivable for 4 hours with clean stop mechanics and graceful degradation
 - [x] **Phase 5: Rolling Context Management** - Prevent context window rot with rolling summarization and bounded conversation history (completed 2026-03-06)
 - [x] **Phase 6: State Machine and UI Accuracy** - Ensure the panel reflects real session state with streaming display and calibrated silence detection (completed 2026-03-06)
-- [ ] **Phase 7: Rules Lookup Integration** - Wire RulesReference into the live cycle as a non-blocking fire-and-forget path
+- [x] **Phase 7: Rules Lookup Integration** - Wire RulesReference into the live cycle as a non-blocking fire-and-forget path (completed 2026-03-20)
 - [ ] **Phase 8: Advanced Suggestion Intelligence** - Add on-demand query, scene-type adaptation, off-track detection, and speaker-aware weighting
 
 ## Phase Details
@@ -125,7 +125,7 @@ Plans:
   2. Every rules answer includes a citation to the specific SRD section or compendium source (e.g., "[PHB: Grappling, p.195]") — no uncited rules answers
   3. A rules lookup failure (API error, no SRD match) does not affect suggestion generation — the suggestion cycle continues normally and the rules section shows "unavailable"
   4. DM can also type a rules question directly into the panel and receive a grounded, cited answer on demand
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [ ] 07-01-PLAN.md — RulesLookupService (compendium search + gpt-4o synthesis + cooldown)
 - [ ] 07-02-PLAN.md — SessionOrchestrator fire-and-forget wiring + VoxChronicle singleton + AIAssistant delegation
@@ -155,5 +155,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Session Reliability | 0/3 | Planning complete | - |
 | 5. Rolling Context Management | 3/3 | Complete   | 2026-03-06 |
 | 6. State Machine and UI Accuracy | 4/4 | Complete | 2026-03-06 |
-| 7. Rules Lookup Integration | 1/3 | In Progress|  |
+| 7. Rules Lookup Integration | 3/3 | Complete   | 2026-03-20 |
 | 8. Advanced Suggestion Intelligence | 0/TBD | Not started | - |
