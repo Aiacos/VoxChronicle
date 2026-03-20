@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-20T10:53:22.532Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-20T10:58:39Z"
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 08 (advanced-suggestion-intelligence) — EXECUTING
-Plan: 1 of 3
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Plan: 1 of 3
 | Phase 07 P02 | 4min | 2 tasks | 4 files |
 | Phase 07 P03 | 4min | 1 tasks | 10 files |
 | Phase 08-advanced-suggestion-intelligence P01 | 5min | 2 tasks | 3 files |
+| Phase 08-advanced-suggestion-intelligence P02 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,10 @@ Recent decisions affecting current work:
 - [Phase 08-01]: buildGeneralQueryMessages uses NPC name+role+personality+motivation without chapterLocation or sessionNotes (simpler format for standalone queries)
 - [Phase 08-01]: quiet-speakers engagement note uses singular/plural verb and pronoun logic based on count
 - [Phase 08-01]: AIAssistant.resetSession() uses optional chaining (_promptBuilder?.setQuietSpeakers) for safety
+- [Phase 08-02]: handleGeneralQuery does NOT gate on _liveMode — checks AI configuration only, works in idle/live/chronicle modes
+- [Phase 08-02]: _consecutiveOffTrackCount resets on scene transition (sceneInfo.isTransition guard) before checking severity
+- [Phase 08-02]: Quiet speaker injection skips when fewer than 3 active speakers (calls setQuietSpeakers([]) to clear stale data)
+- [Phase 08-02]: offTrack field separate from offTrackStatus — new SUG-06 structured field alongside legacy backward-compat field
 
 ### Pending Todos
 
@@ -153,6 +158,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T10:53:22.529Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-03-20T10:58:39Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
