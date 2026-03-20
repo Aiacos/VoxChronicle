@@ -37,16 +37,6 @@ export async function addKnownSpeakers(speakerIds) {
 }
 
 /**
- * Get the display label for a speaker ID
- * @param {string} speakerId - The speaker ID (e.g., "SPEAKER_00")
- * @returns {string} The label or the original ID if no label set
- */
-export function getSpeakerLabel(speakerId) {
-  const labels = Settings.getSpeakerLabels();
-  return labels[speakerId] || speakerId;
-}
-
-/**
  * Apply saved speaker labels to transcript segments
  * @param {Array} segments - Array of transcript segments with speaker property
  * @returns {Array} Segments with speaker labels applied

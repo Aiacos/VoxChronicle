@@ -735,8 +735,7 @@ form .form-group .vox-chronicle-validate-button {
 .vox-chronicle-panel--collapsed .vox-chronicle-panel__warning,
 .vox-chronicle-panel--collapsed .vox-chronicle-journal-confirmation,
 .vox-chronicle-panel--collapsed .vox-chronicle-panel__tabs,
-.vox-chronicle-panel--collapsed .vox-chronicle-tab-pane,
-.vox-chronicle-panel--collapsed .vox-chronicle-panel__footer { display: none; }
+.vox-chronicle-panel--collapsed .vox-chronicle-tab-pane { display: none; }
 
 /* LED recording pulse animation */
 @keyframes vox-led-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
