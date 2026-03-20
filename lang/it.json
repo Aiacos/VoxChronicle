@@ -65,9 +65,6 @@
       "SessionCostCapHint": "Costo API massimo per sessione live in dollari. I suggerimenti AI si fermano al superamento. Imposta a 0 per disabilitare.",
       "SpeakerLabels": "Etichette Parlanti",
       "SpeakerLabelsHint": "Associa gli ID dei parlanti ai nomi dei giocatori per la trascrizione",
-      "ConfigureSpeakers": "Configura Parlanti",
-      "SpeakerLabeling": "Etichettatura Parlanti",
-      "SpeakerLabelingHint": "Assegna nomi dei giocatori alle voci rilevate",
       "TestConnection": "Testa Connessione",
       "CampaignPlaceholder": "Seleziona una campagna...",
       "CampaignNone": "Nessuna campagna disponibile",
@@ -75,93 +72,41 @@
       "CampaignError": "Impossibile caricare le campagne",
       "VocabularyDictionary": "Dizionario Vocabolario",
       "VocabularyDictionaryHint": "Termini personalizzati per migliorare la precisione della trascrizione (gestito tramite interfaccia Vocabolario)",
-      "ApiKeyName": "Chiave API OpenAI",
-      "ApiKeyHint": "La tua chiave API OpenAI. Richiede un account con crediti (minimo $5). Ottienila da platform.openai.com/api-keys",
-      "LanguageName": "Lingua Trascrizione",
-      "MultiLanguageModeName": "Modalita Multi-Lingua",
       "MultiLanguageModeHint": "Abilita il rilevamento automatico della lingua per sessioni con conversazioni in piu lingue. Quando attivo, la trascrizione gestisce il cambio di lingua all'interno della sessione",
-      "TranscriptionBatchDurationName": "Durata Lotto Trascrizione",
       "TranscriptionBatchDurationHint": "Tempo di accumulo audio prima della trascrizione in millisecondi (5-30 secondi). Valori piu alti riducono le chiamate API e migliorano la qualita della trascrizione con segmenti piu lunghi",
-      "PanelPositionName": "Posizione Pannello",
-      "PanelPositionHint": "Posizione salvata del pannello DM",
-      "SensitivityName": "Sensibilita Rilevamento Fuori Tema",
-      "SensitivityHint": "Quanto rigorosamente rilevare quando i giocatori si allontanano dalla trama dell'avventura",
       "SensitivityLow": "Bassa - Solo grandi deviazioni",
       "SensitivityMedium": "Media - Bilanciato",
       "SensitivityHigh": "Alta - Anche piccole variazioni",
-      "SpeakerLabelsName": "Etichette Parlanti",
-      "SpeakerLabelsHintNM": "Abilita l'assegnazione di nomi personalizzati ai parlanti rilevati nella trascrizione",
-      "DebugModeName": "Modalita Debug",
       "DebugModeHint": "Abilita messaggi di debug dettagliati nella console del browser. Utile per diagnosticare problemi e monitorare il comportamento del modulo",
-      "RulesDetectionName": "Rilevamento Regole",
       "RulesDetectionHint": "Abilita il rilevamento automatico delle domande sulle regole nelle conversazioni",
-      "RulesSourceName": "Fonte Regole SRD",
       "RulesSourceHint": "Seleziona quale compendio usare per le risposte sulle regole",
       "RulesSourceAuto": "Automatico - Cerca in tutti i compendi",
-      "RulesSourceDnd5e": "D&D 5e - Solo compendi D&D 5e",
-      "ApiRetryEnabledName": "Abilita Retry Automatico",
       "ApiRetryEnabledHint": "Riprova automaticamente le richieste API fallite con backoff esponenziale",
-      "ApiRetryMaxAttemptsName": "Tentativi Massimi",
       "ApiRetryMaxAttemptsHint": "Numero massimo di tentativi di ripetizione per richieste API fallite (0-10)",
-      "ApiRetryBaseDelayName": "Ritardo Base (ms)",
       "ApiRetryBaseDelayHint": "Ritardo iniziale in millisecondi prima del primo tentativo di ripetizione",
-      "ApiRetryMaxDelayName": "Ritardo Massimo (ms)",
       "ApiRetryMaxDelayHint": "Ritardo massimo in millisecondi tra i tentativi (limite backoff esponenziale)",
-      "ApiQueueMaxSizeName": "Dimensione Massima Coda",
       "ApiQueueMaxSizeHint": "Numero massimo di richieste API in coda contemporaneamente",
       "MultiLanguageMode": "Modalita Multi-Lingua",
-      "MultiLanguageModeHintVC": "Abilita la trascrizione di piu lingue nella stessa sessione",
       "TranscriptionBatchDuration": "Intervallo Trascrizione Live",
-      "TranscriptionBatchDurationHintVC": "Frequenza di trascrizione durante la modalita live (5-30 secondi)",
       "AdaptiveChunking": "Chunking Adattivo",
       "AdaptiveChunkingHint": "Regola automaticamente l'intervallo di trascrizione in base all'attivita' vocale (piu' breve durante la conversazione, piu' lungo durante il silenzio)",
       "OffTrackSensitivity": "Sensibilita Fuori Tema",
       "OffTrackSensitivityHint": "Quanto l'IA e sensibile nel rilevare giocatori fuori tema",
-      "SensitivityLowVC": "Bassa",
-      "SensitivityMediumVC": "Media",
-      "SensitivityHighVC": "Alta",
       "RulesDetection": "Rilevamento Regole",
-      "RulesDetectionHintVC": "Rileva domande sulle regole D&D nella conversazione",
       "RulesSource": "Fonte Regole",
-      "RulesSourceHintVC": "Quale compendio di regole cercare",
-      "RulesSourceAutoVC": "Rilevamento automatico",
       "RulesSourceDnD5e": "D&D 5e SRD",
       "DebugMode": "Modalita Debug",
-      "DebugModeHintVC": "Abilita log dettagliato per la risoluzione dei problemi",
       "ApiRetryEnabled": "Retry API",
-      "ApiRetryEnabledHintVC": "Riprova automaticamente le richieste API fallite",
       "ApiRetryMaxAttempts": "Tentativi Massimi Retry",
-      "ApiRetryMaxAttemptsHintVC": "Numero massimo di tentativi di ripetizione per richieste API fallite",
       "ApiRetryBaseDelay": "Ritardo Base Retry (ms)",
-      "ApiRetryBaseDelayHintVC": "Ritardo base tra i tentativi di ripetizione",
       "ApiRetryMaxDelay": "Ritardo Massimo Retry (ms)",
-      "ApiRetryMaxDelayHintVC": "Ritardo massimo tra i tentativi di ripetizione",
       "ApiQueueMaxSize": "Dimensione Coda API",
-      "ApiQueueMaxSizeHintVC": "Numero massimo di richieste API in coda",
       "RAGEnabled": "Abilita Ricerca RAG",
       "RAGEnabledHint": "Usa la Generazione Aumentata da Recupero per migliorare le risposte AI con contesto da journal e compendi",
-      "RAGIndexOnLoad": "Indicizzazione Automatica al Caricamento",
-      "RAGIndexOnLoadHint": "Costruisci automaticamente l'indice RAG quando VoxChronicle si inizializza",
-      "RAGTopResults": "Risultati RAG Principali",
-      "RAGTopResultsHint": "Numero di chunk piu rilevanti da recuperare per il contesto AI (1-20)",
-      "RAGSimilarityThreshold": "Soglia Similarita RAG",
-      "RAGSimilarityThresholdHint": "Punteggio minimo di similarita (0-1) affinche i chunk recuperati vengano inclusi",
-      "RAGChunkSize": "Dimensione Chunk RAG",
-      "RAGChunkSizeHint": "Dimensione dei chunk di testo per l'indicizzazione (200-1000 caratteri)",
-      "RAGChunkOverlap": "Sovrapposizione Chunk RAG",
-      "RAGChunkOverlapHint": "Sovrapposizione tra chunk consecutivi (50-200 caratteri)",
       "RAGAutoIndex": "Indicizzazione automatica alle modifiche",
       "RAGAutoIndexHint": "Ricostruisci automaticamente l'indice RAG quando il contenuto del journal cambia",
-      "RAGEmbeddingModel": "Modello Embedding",
-      "RAGEmbeddingModelHint": "Modello OpenAI usato per generare gli embeddings",
-      "RAGEmbeddingModelSmall": "text-embedding-3-small (più veloce, economico)",
-      "RAGEmbeddingModelLarge": "text-embedding-3-large (qualità superiore)",
-      "RAGEmbeddingDimensions": "Dimensioni Embedding",
-      "RAGEmbeddingDimensionsHint": "Dimensioni del vettore (512/1024/1536). Più basso è più veloce, più alto è più accurato",
       "RAGMaxResults": "Risultati Massimi",
       "RAGMaxResultsHint": "Numero massimo di chunk di contesto da recuperare per query (1-20)",
-      "RAGStorageLimit": "Limite Storage (MB)",
-      "RAGStorageLimitHint": "Storage massimo IndexedDB per embeddings vettoriali (10-500 MB)",
       "RAGSilenceThreshold": "Soglia Rilevamento Silenzio",
       "RAGSilenceThresholdHint": "Tempo in millisecondi prima di attivare suggerimenti autonomi (10-120 secondi)",
       "RAGProvider": "Provider RAG",
@@ -181,9 +126,7 @@
       "SupplementaryJournals": "Diari Supplementari",
       "SupplementaryJournalsHint": "Diari aggiuntivi che forniscono contesto insieme al diario avventura principale",
       "ContextTokenBudget": "Budget Token Contesto",
-      "ContextTokenBudgetHint": "Token massimi per ciclo di suggerimenti AI. Valori bassi riducono i costi, valori alti forniscono piu contesto. Default: 12000",
-      "SummaryAgeBadge": "Contesto: {count} turni riassunti",
-      "SummaryAgeBadgeNone": "Contesto: nessun riassunto ancora"
+      "ContextTokenBudgetHint": "Token massimi per ciclo di suggerimenti AI. Valori bassi riducono i costi, valori alti forniscono piu contesto. Default: 12000"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -296,59 +239,6 @@
       "KankaValidationError": "Errore nella validazione del token API Kanka: {error}",
       "KankaValidationFailed": "Validazione Kanka fallita: {error}"
     },
-    "Recorder": {
-      "Title": "Registratore Sessione",
-      "StartRecording": "Avvia Registrazione",
-      "StopRecording": "Ferma Registrazione",
-      "PauseRecording": "Pausa Registrazione",
-      "ResumeRecording": "Riprendi Registrazione",
-      "Recording": "Registrazione in corso...",
-      "Paused": "In pausa",
-      "Stopped": "Fermato",
-      "Duration": "Durata",
-      "FileSize": "Dimensione File",
-      "Status": "Stato",
-      "Ready": "Pronto per registrare",
-      "Processing": "Elaborazione in corso...",
-      "MicrophoneAccess": "Accesso Microfono",
-      "MicrophoneAccessRequired": "L'accesso al microfono e necessario per la registrazione.",
-      "MicrophoneAccessDenied": "L'accesso al microfono e stato negato. Concedi il permesso nelle impostazioni del browser.",
-      "NoAudioSupport": "Il tuo browser non supporta la registrazione audio.",
-      "RecordingStarted": "Registrazione avviata",
-      "RecordingStopped": "Registrazione fermata",
-      "RecordingFailed": "Registrazione fallita",
-      "Segments": "Segmenti:",
-      "Speakers": "Parlanti:",
-      "CancelSession": "Annulla Sessione",
-      "TranscriptionMode": "Modalita Trascrizione",
-      "ModeAPI": "API",
-      "ModeLocal": "Locale",
-      "ModeAuto": "Auto",
-      "ModeTooltipAPI": "Utilizzo del servizio cloud OpenAI per la trascrizione",
-      "ModeTooltipLocal": "Utilizzo del backend Whisper locale per trascrizione offline",
-      "ModeTooltipAuto": "Modalita automatica (prova prima locale, poi fallback su API)",
-      "LocalBackendConnected": "Backend locale connesso",
-      "LocalBackendChecking": "Controllo backend locale...",
-      "LocalBackendUnavailable": "Backend locale non disponibile"
-    },
-    "Transcription": {
-      "Title": "Trascrizione",
-      "Transcribing": "Trascrizione audio in corso...",
-      "TranscriptionComplete": "Trascrizione completata",
-      "TranscriptionFailed": "Trascrizione fallita",
-      "NoSpeech": "Nessun parlato rilevato nella registrazione",
-      "SpeakerUnknown": "Parlante Sconosciuto",
-      "ProcessingChunk": "Elaborazione segmento {current} di {total}...",
-      "EstimatedTime": "Tempo rimanente stimato: {time}",
-      "Cost": "Costo stimato: ${cost}",
-      "Started": "Trascrizione avviata (modalità {mode})",
-      "Ready": "Trascrizione pronta ({segments} segmenti, {durationMs}ms)",
-      "Error": "Errore trascrizione: {error}",
-      "FallingBackToAPI": "Passaggio all'API di trascrizione...",
-      "FallbackComplete": "Trascrizione completata (via API fallback)",
-      "LanguageDetected": "Lingua rilevata: {language}",
-      "ChunkingStarted": "Audio richiede segmentazione: {sizeMB}MB"
-    },
     "SpeakerLabeling": {
       "Title": "Etichettatura Parlanti",
       "Description": "Assegna nomi ai parlanti rilevati nella trascrizione. Queste etichette saranno usate nella cronaca della sessione.",
@@ -456,14 +346,6 @@
       "TermCountLabel": "termini",
       "NoTermsCount": "Nessun termine"
     },
-    "EntityExtraction": {
-      "Title": "Estrazione Entita",
-      "Extracting": "Estrazione entita dalla trascrizione...",
-      "ExtractionComplete": "Estrazione entita completata",
-      "ExtractionFailed": "Estrazione entita fallita",
-      "NoEntitiesFound": "Nessuna nuova entita trovata nella trascrizione",
-      "EntitiesFound": "{count} nuove entita trovate"
-    },
     "EntityPreview": {
       "Title": "Revisione Entita Estratte",
       "Description": "Descrizione",
@@ -551,26 +433,6 @@
       "ChronicleUnknownSpeaker": "Sconosciuto",
       "ChronicleMoreSegments": "... e altri {count} segmenti",
       "ChronicleGeneratedBy": "Generato da VoxChronicle"
-    },
-    "Chronicle": {
-      "Title": "Cronaca Sessione",
-      "SessionNumber": "Sessione {number}",
-      "Date": "Data",
-      "Duration": "Durata",
-      "Participants": "Partecipanti",
-      "Summary": "Riepilogo",
-      "Transcript": "Trascrizione Completa",
-      "Highlights": "Momenti Salienti",
-      "NewEntities": "Nuove Entita",
-      "GeneratedImages": "Immagini Generate",
-      "Publish": "Pubblica Cronaca",
-      "Preview": "Anteprima Cronaca",
-      "Edit": "Modifica Cronaca",
-      "Delete": "Elimina",
-      "Discard": "Scarta",
-      "ConfirmDiscard": "Sei sicuro di voler scartare questa sessione? L'operazione non puo essere annullata.",
-      "Published": "Cronaca pubblicata con successo",
-      "DefaultTitle": "Cronaca Sessione - {date}"
     },
     "RelationshipGraph": {
       "Title": "Relazioni tra Entita",
@@ -763,8 +625,6 @@
       "FailedToOpenSettings": "VoxChronicle: Impossibile aprire le impostazioni. Controlla la console."
     },
     "Warnings": {
-      "ConfigIncomplete": "Configurazione incompleta",
-      "TranscriptionCircuitBreaker": "Trascrizione in pausa per errori ripetuti. Riprova fermando e riavviando la registrazione.",
       "AutonomousSuggestionFailed": "VoxChronicle: I suggerimenti autonomi continuano a fallire. Controlla la chiave API e la connessione.",
       "EntityExtractionFailed": "VoxChronicle: Estrazione entità fallita. La sessione continuerà senza entità.",
       "RagStateSaveFailed": "VoxChronicle: Impossibile salvare lo stato RAG — potrebbe essere necessaria la reindicizzazione alla prossima sessione.",
@@ -838,78 +698,6 @@
       "RAGIndex": "Indice Conoscenze RAG",
       "RAGSearch": "Ricerca RAG"
     },
-    "UI": {
-      "ControlTitle": "VoxChronicle",
-      "ControlHint": "Apri il registratore sessione VoxChronicle",
-      "Loading": "Caricamento...",
-      "Processing": "Elaborazione...",
-      "PleaseWait": "Attendere prego...",
-      "NoData": "Nessun dato disponibile",
-      "Confirm": "Sei sicuro?",
-      "Success": "Successo",
-      "Warning": "Attenzione",
-      "Error": "Errore",
-      "Info": "Informazione"
-    },
-    "Tooltips": {
-      "StartRecording": "Avvia la registrazione audio della sessione",
-      "StopRecording": "Ferma la registrazione corrente",
-      "OpenSettings": "Apri le impostazioni di VoxChronicle",
-      "ViewChronicle": "Visualizza la cronaca della sessione",
-      "PublishToKanka": "Pubblica questa cronaca su Kanka",
-      "ToggleRecording": "Avvia o ferma la registrazione audio (Ctrl+Shift+R per avviare, Ctrl+Shift+S per fermare)",
-      "PauseRecording": "Metti in pausa o riprendi la registrazione (Ctrl+Shift+P)",
-      "GenerateImage": "Genera un'immagine basata sul contesto attuale",
-      "ClearImages": "Cancella tutte le immagini generate",
-      "CopyText": "Copia il testo negli appunti",
-      "OpenSettingsNM": "Apri le impostazioni del modulo",
-      "ExpandRuleAnswer": "Espandi per vedere la risposta completa",
-      "CollapseRuleAnswer": "Nascondi risposta completa",
-      "DismissRuleAnswer": "Chiudi questa risposta sulle regole",
-      "CopyRuleAnswer": "Copia risposta negli appunti",
-      "RAGRebuildIndex": "Ricostruisci l'indice RAG da tutti i journal e compendi",
-      "RAGClearIndex": "Cancella l'indice RAG per liberare memoria",
-      "RAGRefreshIndex": "Aggiorna l'indice RAG con i contenuti piu recenti",
-      "RAGSearchContext": "Cerca nella tua base di conoscenze per contesto rilevante",
-      "RAGViewStats": "Visualizza statistiche indice RAG"
-    },
-    "Help": {
-      "Title": "Aiuto VoxChronicle",
-      "GettingStarted": "Per Iniziare",
-      "GettingStartedText": "1. Configura la tua chiave API OpenAI e le credenziali Kanka nelle impostazioni del modulo.\n2. Avvia una sessione di registrazione usando il pulsante registra.\n3. Dopo la sessione, ferma la registrazione e trascrivila.\n4. Rivedi le entita estratte e pubblica su Kanka.",
-      "ApiKeys": "Chiavi API",
-      "ApiKeysText": "Hai bisogno di una chiave API OpenAI (per trascrizione e immagini) e di un token API Kanka (per la pubblicazione). Entrambi sono necessari per la piena funzionalita.",
-      "Costs": "Costi",
-      "CostsText": "La trascrizione OpenAI costa $0.006/minuto. Le immagini gpt-image-1 costano $0.02 (bassa), $0.04 (media) o $0.08 (alta) per immagine.",
-      "Support": "Supporto",
-      "SupportText": "Per problemi e richieste di funzionalita, visita il nostro repository GitHub."
-    },
-    "OffTrack": {
-      "NoContext": "Nessun contesto avventura impostato per il rilevamento fuori tema.",
-      "ParseError": "Impossibile analizzare la risposta del rilevamento fuori tema.",
-      "Warning": "I giocatori sembrano fuori strada!",
-      "Severe": "I giocatori sono completamente fuori tema rispetto all'avventura.",
-      "Minor": "Lieve deviazione dalla trama principale.",
-      "Severity": "Gravita: {{severity}}"
-    },
-    "Suggestions": {
-      "TypeNarration": "Narrazione",
-      "TypeDialogue": "Dialogo",
-      "TypeAction": "Azione",
-      "TypeReference": "Riferimento",
-      "HighConfidence": "Alta confidenza",
-      "MediumConfidence": "Media confidenza",
-      "LowConfidence": "Bassa confidenza"
-    },
-    "Recording": {
-      "StateInactive": "Inattivo",
-      "StateRecording": "In registrazione",
-      "StatePaused": "In pausa",
-      "StateProcessing": "Elaborazione",
-      "AudioLevelLow": "Livello audio basso",
-      "AudioLevelNormal": "Livello audio normale",
-      "AudioLevelHigh": "Livello audio alto"
-    },
     "Journal": {
       "NoJournalFound": "Journal non trovato",
       "ParsingJournal": "Analisi Journal in corso...",
@@ -919,79 +707,6 @@
       "SectionBreak": "--- Sezione ---",
       "ChapterStructure": "Struttura Capitoli",
       "NoChaptersFound": "Nessun capitolo trovato"
-    },
-    "Chapter": {
-      "CurrentChapter": "Capitolo Corrente",
-      "NoChapterDetected": "Nessun capitolo rilevato",
-      "SelectChapter": "Seleziona Capitolo"
-    },
-    "Grounding": {
-      "SourceNotFound": "Fonte non trovata nel journal",
-      "CitationRequired": "Citazione richiesta"
-    },
-    "Images": {
-      "Generating": "Generazione in corso...",
-      "CacheExpired": "URL immagine scaduto, usando cache locale",
-      "NoCache": "Immagine non disponibile (URL scaduto e nessuna cache)",
-      "ClickToEnlarge": "Clicca per ingrandire",
-      "Delete": "Elimina",
-      "Download": "Scarica"
-    },
-    "KeyboardShortcuts": {
-      "Title": "Scorciatoie Tastiera",
-      "StartRecording": "Avvia Registrazione: Ctrl+Shift+R",
-      "StopRecording": "Ferma Registrazione: Ctrl+Shift+S",
-      "PauseRecording": "Pausa/Riprendi Registrazione: Ctrl+Shift+P",
-      "Help": "Scorciatoie disponibili: Ctrl+Shift+R (avvia), Ctrl+Shift+S (ferma), Ctrl+Shift+P (pausa/riprendi)",
-      "Enabled": "Scorciatoie tastiera abilitate per i controlli di registrazione"
-    },
-    "Accessibility": {
-      "RecordButton": "Pulsante registrazione",
-      "AudioLevel": "Indicatore livello audio",
-      "TabNavigation": "Navigazione schede",
-      "ImageGallery": "Galleria immagini",
-      "SuggestionsList": "Lista suggerimenti"
-    },
-    "SpeakerLabels": {
-      "Speaker": "Parlante",
-      "SpeakerNumber": "Parlante {number}",
-      "UnknownSpeaker": "Parlante Sconosciuto",
-      "AssignName": "Assegna Nome",
-      "EditName": "Modifica Nome",
-      "ResetName": "Ripristina Nome",
-      "NamePlaceholder": "Inserisci nome giocatore...",
-      "ManageSpeakers": "Gestisci Parlanti",
-      "SpeakerList": "Lista Parlanti",
-      "NoSpeakersDetected": "Nessun parlante rilevato nella trascrizione",
-      "SpeakersDetected": "{count} parlanti rilevati",
-      "ClearAllNames": "Cancella Tutti i Nomi",
-      "ConfirmClearNames": "Sei sicuro di voler cancellare tutti i nomi dei parlanti?",
-      "NameAssigned": "Nome assegnato a {speaker}",
-      "NameCleared": "Nome rimosso da {speaker}",
-      "AllNamesCleared": "Tutti i nomi dei parlanti sono stati cancellati",
-      "DiarizationEnabled": "Identificazione parlanti abilitata",
-      "DiarizationDisabled": "Identificazione parlanti disabilitata",
-      "ShowSpeakerLabels": "Mostra Etichette Parlanti",
-      "HideSpeakerLabels": "Nascondi Etichette Parlanti",
-      "ColorCode": "Codice Colore",
-      "SpeakerColor": "Colore Parlante {number}",
-      "TranscriptionWithSpeakers": "Trascrizione con Parlanti"
-    },
-    "Scenes": {
-      "SceneBreak": "Interruzione Scena",
-      "SceneTypeExploration": "Esplorazione",
-      "SceneTypeCombat": "Combattimento",
-      "SceneTypeSocial": "Sociale",
-      "SceneTypeRest": "Riposo",
-      "SceneTransitionDetected": "Transizione scena rilevata",
-      "ManualSceneBreak": "Interruzione scena manuale",
-      "MarkSceneBreak": "Segna Interruzione Scena",
-      "SceneType": "Tipo Scena",
-      "AutomaticBreak": "Automatico",
-      "ManualBreak": "Manuale",
-      "SelectSceneType": "Seleziona il tipo di scena",
-      "SceneMarked": "Interruzione scena segnata",
-      "NoActiveScene": "Nessuna scena attiva"
     },
     "Rules": {
       "NoRulesDetected": "Nessuna domanda sulle regole rilevata",
@@ -1037,20 +752,6 @@
       "PageIn": "Pagina in {journal}",
       "Page": "Pagina",
       "ChapterSummary": "Riepilogo Capitolo"
-    },
-    "Silence": {
-      "Detected": "Nessun parlato rilevato per {{seconds}} secondi",
-      "RecoveryTitle": "Dove riprendere?",
-      "WhereToResume": "Seleziona un punto da cui riprendere la narrazione",
-      "SelectSubchapter": "Seleziona sottocapitolo",
-      "TimeSinceLast": "Tempo dall'ultima trascrizione: {seconds}s",
-      "NoChapterContext": "Nessun capitolo attivo. Seleziona un journal dell'avventura.",
-      "ResumeFromHere": "Riprendi da qui",
-      "SuggestedResume": "Ripresa Suggerita",
-      "ManualResume": "Ripresa Manuale",
-      "DismissRecovery": "Chiudi",
-      "ContinueListening": "Continua ad ascoltare",
-      "Recovery": "Naviga a un capitolo per continuare"
     },
     "Scene": {
       "Combat": "Combattimento",
@@ -1165,16 +866,6 @@
         "InvalidPayload": "Il payload dell'evento deve essere un oggetto"
       }
     },
-    "Resilience": {
-      "Error": {
-        "CircuitOpen": "Servizio {service} temporaneamente non disponibile",
-        "AllFallbacksFailed": "Tutte le opzioni di recupero esaurite per {service}",
-        "ServiceNotRegistered": "Il servizio {service} non è registrato"
-      },
-      "Status": {
-        "Recovered": "Servizio {service} ripristinato"
-      }
-    },
     "Provider": {
       "Error": {
         "NotImplemented": "Il metodo {method} deve essere implementato dalla sottoclasse del provider",
@@ -1189,39 +880,6 @@
         "InvalidResponse": "Risposta non valida dall'API OpenAI: {details}",
         "StreamError": "Errore durante lo streaming OpenAI: {error}"
       }
-    },
-    "Session": {
-      "State": {
-        "Idle": "Inattivo",
-        "Configuring": "Configurazione",
-        "Live": "In diretta",
-        "Transitioning": "Transizione",
-        "Chronicle": "Cronaca",
-        "Publishing": "Pubblicazione",
-        "Complete": "Completato",
-        "Error": "Errore"
-      },
-      "Error": {
-        "InvalidTransition": "Transizione non valida: evento \"{event}\" non valido nello stato \"{state}\"",
-        "GuardFailed": "Transizione bloccata dalla condizione di guardia"
-      }
-    },
-    "Stream": {
-      "Started": "Streaming avviato",
-      "Completed": "Streaming completato ({charCount} caratteri, {duration}ms)",
-      "Cancelled": "Streaming annullato dall'utente",
-      "Error": "Errore streaming: {error}",
-      "FirstToken": "Primo token ricevuto in {latency}ms"
-    },
-    "Cache": {
-      "Hit": "Cache trovata: {key}",
-      "Miss": "Cache mancante: {key}",
-      "Invalidated": "Cache invalidata: {prefix}",
-      "Stats": "Statistiche cache — Percentuale successo: {rate}%, Dimensione: {size}"
-    },
-    "Queue": {
-      "CategoryFull": "Coda richieste piena per la categoria {category}",
-      "Parallel": "Elaborazione di {count} code di richieste parallele"
     }
   }
 }

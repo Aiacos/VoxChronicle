@@ -65,9 +65,6 @@
       "SessionCostCapHint": "[EN] Maximum API cost per live session in dollars. AI suggestions pause when exceeded. Set to 0 to disable.",
       "SpeakerLabels": "[EN] Speaker Labels",
       "SpeakerLabelsHint": "Enable custom name assignment to detected speakers in transcription",
-      "ConfigureSpeakers": "[EN] Configure Speakers",
-      "SpeakerLabeling": "[EN] Speaker Labeling",
-      "SpeakerLabelingHint": "[EN] Assign player names to detected speaker voices",
       "TestConnection": "[EN] Test Connection",
       "CampaignPlaceholder": "[EN] Select a campaign...",
       "CampaignNone": "[EN] No campaigns available",
@@ -75,93 +72,41 @@
       "CampaignError": "[EN] Failed to load campaigns",
       "VocabularyDictionary": "[EN] Vocabulary Dictionary",
       "VocabularyDictionaryHint": "[EN] Custom vocabulary terms for improved transcription accuracy (managed via Vocabulary UI)",
-      "ApiKeyName": "OpenAI APIキー",
-      "ApiKeyHint": "OpenAI APIキーを入力してください。クレジット付きアカウントが必要です（最低$5）。platform.openai.com/api-keysから取得できます",
-      "LanguageName": "文字起こし言語",
-      "MultiLanguageModeName": "Multi-language Mode",
       "MultiLanguageModeHint": "Enable transcription in multiple languages",
-      "TranscriptionBatchDurationName": "[EN] Transcription Batch Duration",
       "TranscriptionBatchDurationHint": "[EN] Audio accumulation time before transcription in milliseconds (5-30 seconds). Higher values reduce API calls and improve transcription quality with longer segments",
-      "PanelPositionName": "パネル位置",
-      "PanelPositionHint": "DMパネルの保存された位置",
-      "SensitivityName": "脱線検知感度",
-      "SensitivityHint": "プレイヤーが冒険のストーリーから外れた際の検知の厳密さ",
       "SensitivityLow": "低 - 大きな逸脱のみ",
       "SensitivityMedium": "中 - バランス型",
       "SensitivityHigh": "高 - 小さな変化も検知",
-      "SpeakerLabelsName": "Speaker Labels",
-      "SpeakerLabelsHintNM": "[EN] Enable custom name assignment to detected speakers in transcription",
-      "DebugModeName": "[EN] Debug Mode",
       "DebugModeHint": "[EN] Enable detailed debug messages in the browser console. Useful for troubleshooting issues and monitoring module behavior",
-      "RulesDetectionName": "Rules Detection",
       "RulesDetectionHint": "Enable automatic detection of rules questions in conversations",
-      "RulesSourceName": "SRD Rules Source",
       "RulesSourceHint": "Select which compendium to use for rules answers",
       "RulesSourceAuto": "Automatic - Search all compendia",
-      "RulesSourceDnd5e": "D&D 5e - Only D&D 5e compendia",
-      "ApiRetryEnabledName": "自動リトライを有効化",
       "ApiRetryEnabledHint": "失敗したAPIリクエストを指数バックオフで自動的に再試行",
-      "ApiRetryMaxAttemptsName": "最大試行回数",
       "ApiRetryMaxAttemptsHint": "失敗したAPIリクエストの最大再試行回数 (0-10)",
-      "ApiRetryBaseDelayName": "基本遅延 (ms)",
       "ApiRetryBaseDelayHint": "最初の再試行前の初期遅延時間（ミリ秒）",
-      "ApiRetryMaxDelayName": "最大遅延 (ms)",
       "ApiRetryMaxDelayHint": "再試行間の最大遅延時間（ミリ秒）（指数バックオフの上限）",
-      "ApiQueueMaxSizeName": "最大キューサイズ",
       "ApiQueueMaxSizeHint": "同時にキューイングできるAPIリクエストの最大数",
       "MultiLanguageMode": "[EN] Multi-Language Mode",
-      "MultiLanguageModeHintVC": "[EN] Enable transcription of multiple languages in the same session",
       "TranscriptionBatchDuration": "[EN] Live Transcription Interval",
-      "TranscriptionBatchDurationHintVC": "[EN] How often to transcribe during live mode (5-30 seconds)",
       "AdaptiveChunking": "Adaptive Chunking",
       "AdaptiveChunkingHint": "Adjust transcription interval based on speech activity",
       "OffTrackSensitivity": "[EN] Off-Track Sensitivity",
       "OffTrackSensitivityHint": "[EN] How sensitive the AI is to detecting off-track players",
-      "SensitivityLowVC": "[EN] Low",
-      "SensitivityMediumVC": "[EN] Medium",
-      "SensitivityHighVC": "[EN] High",
       "RulesDetection": "[EN] Rules Detection",
-      "RulesDetectionHintVC": "[EN] Detect D&D rules questions in conversation",
       "RulesSource": "[EN] Rules Source",
-      "RulesSourceHintVC": "[EN] Which rules compendium to search",
-      "RulesSourceAutoVC": "[EN] Auto-detect",
       "RulesSourceDnD5e": "[EN] D&D 5e SRD",
       "DebugMode": "[EN] Debug Mode",
-      "DebugModeHintVC": "[EN] Enable verbose logging for troubleshooting",
       "ApiRetryEnabled": "[EN] API Retry",
-      "ApiRetryEnabledHintVC": "[EN] Automatically retry failed API requests",
       "ApiRetryMaxAttempts": "[EN] Max Retry Attempts",
-      "ApiRetryMaxAttemptsHintVC": "[EN] Maximum number of retry attempts for failed API requests",
       "ApiRetryBaseDelay": "[EN] Retry Base Delay (ms)",
-      "ApiRetryBaseDelayHintVC": "[EN] Base delay between retry attempts",
       "ApiRetryMaxDelay": "[EN] Retry Max Delay (ms)",
-      "ApiRetryMaxDelayHintVC": "[EN] Maximum delay between retry attempts",
       "ApiQueueMaxSize": "[EN] API Queue Size",
-      "ApiQueueMaxSizeHintVC": "[EN] Maximum number of API requests that can be queued",
       "RAGEnabled": "[EN] Enable RAG Search",
       "RAGEnabledHint": "[EN] Use Retrieval-Augmented Generation to enhance AI responses with context from journals and compendiums",
-      "RAGIndexOnLoad": "[EN] Auto-Index on Load",
-      "RAGIndexOnLoadHint": "[EN] Automatically build the RAG index when VoxChronicle initializes",
-      "RAGTopResults": "[EN] RAG Top Results",
-      "RAGTopResultsHint": "[EN] Number of most relevant chunks to retrieve for AI context (1-20)",
-      "RAGSimilarityThreshold": "[EN] RAG Similarity Threshold",
-      "RAGSimilarityThresholdHint": "[EN] Minimum similarity score (0-1) for retrieved chunks to be included",
-      "RAGChunkSize": "[EN] RAG Chunk Size",
-      "RAGChunkSizeHint": "[EN] Size of text chunks for indexing (200-1000 characters)",
-      "RAGChunkOverlap": "[EN] RAG Chunk Overlap",
-      "RAGChunkOverlapHint": "[EN] Overlap between consecutive chunks (50-200 characters)",
       "RAGAutoIndex": "[EN] Auto-Index on Change",
       "RAGAutoIndexHint": "[EN] Automatically rebuild RAG index when journal content changes",
-      "RAGEmbeddingModel": "[EN] Embedding Model",
-      "RAGEmbeddingModelHint": "[EN] OpenAI model used for generating embeddings",
-      "RAGEmbeddingModelSmall": "[EN] text-embedding-3-small (faster, cheaper)",
-      "RAGEmbeddingModelLarge": "[EN] text-embedding-3-large (higher quality)",
-      "RAGEmbeddingDimensions": "[EN] Embedding Dimensions",
-      "RAGEmbeddingDimensionsHint": "[EN] Vector dimensions (512/1024/1536). Lower is faster, higher is more accurate",
       "RAGMaxResults": "[EN] Maximum Results",
       "RAGMaxResultsHint": "[EN] Maximum number of context chunks to retrieve per query (1-20)",
-      "RAGStorageLimit": "[EN] Storage Limit (MB)",
-      "RAGStorageLimitHint": "[EN] Maximum IndexedDB storage for vector embeddings (10-500 MB)",
       "RAGSilenceThreshold": "[EN] Silence Detection Threshold",
       "RAGSilenceThresholdHint": "[EN] Time in milliseconds before triggering autonomous suggestion (10-120 seconds)",
       "RAGProvider": "[EN] RAG Provider",
@@ -181,9 +126,7 @@
       "SupplementaryJournals": "補助ジャーナル",
       "SupplementaryJournalsHint": "メイン冒険ジャーナルと併せてコンテキストを提供する追加ジャーナル",
       "ContextTokenBudget": "コンテキストトークンバジェット",
-      "ContextTokenBudgetHint": "AI提案サイクルあたりの最大トークン数。低い値はコストを削減し、高い値はより多くのコンテキストを提供します。デフォルト: 12000",
-      "SummaryAgeBadge": "コンテキスト: {count}ターン要約済み",
-      "SummaryAgeBadgeNone": "コンテキスト: 要約なし"
+      "ContextTokenBudgetHint": "AI提案サイクルあたりの最大トークン数。低い値はコストを削減し、高い値はより多くのコンテキストを提供します。デフォルト: 12000"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -296,59 +239,6 @@
       "KankaValidationError": "[EN] Error validating Kanka API token: {error}",
       "KankaValidationFailed": "[EN] Kanka validation failed: {error}"
     },
-    "Recorder": {
-      "Title": "[EN] Session Recorder",
-      "StartRecording": "[EN] Start Recording",
-      "StopRecording": "[EN] Stop Recording",
-      "PauseRecording": "[EN] Pause Recording",
-      "ResumeRecording": "[EN] Resume Recording",
-      "Recording": "[EN] Recording...",
-      "Paused": "[EN] Paused",
-      "Stopped": "[EN] Stopped",
-      "Duration": "[EN] Duration",
-      "FileSize": "[EN] File Size",
-      "Status": "[EN] Status",
-      "Ready": "[EN] Ready to record",
-      "Processing": "[EN] Processing...",
-      "MicrophoneAccess": "[EN] Microphone Access",
-      "MicrophoneAccessRequired": "[EN] Microphone access is required for recording.",
-      "MicrophoneAccessDenied": "[EN] Microphone access was denied. Please grant permission in your browser settings.",
-      "NoAudioSupport": "[EN] Your browser does not support audio recording.",
-      "RecordingStarted": "[EN] Recording started",
-      "RecordingStopped": "[EN] Recording stopped",
-      "RecordingFailed": "[EN] Recording failed",
-      "Segments": "[EN] Segments:",
-      "Speakers": "[EN] Speakers:",
-      "CancelSession": "[EN] Cancel Session",
-      "TranscriptionMode": "[EN] Transcription Mode",
-      "ModeAPI": "[EN] API",
-      "ModeLocal": "[EN] Local",
-      "ModeAuto": "[EN] Auto",
-      "ModeTooltipAPI": "[EN] Using OpenAI cloud service for transcription",
-      "ModeTooltipLocal": "[EN] Using local Whisper backend for offline transcription",
-      "ModeTooltipAuto": "[EN] Automatic mode (tries local first, falls back to API)",
-      "LocalBackendConnected": "[EN] Local backend connected",
-      "LocalBackendChecking": "[EN] Checking local backend...",
-      "LocalBackendUnavailable": "[EN] Local backend unavailable"
-    },
-    "Transcription": {
-      "Title": "[EN] Transcription",
-      "Transcribing": "[EN] Transcribing audio...",
-      "TranscriptionComplete": "[EN] Transcription complete",
-      "TranscriptionFailed": "[EN] Transcription failed",
-      "NoSpeech": "[EN] No speech detected in the recording",
-      "SpeakerUnknown": "[EN] Unknown Speaker",
-      "ProcessingChunk": "[EN] Processing chunk {current} of {total}...",
-      "EstimatedTime": "[EN] Estimated time remaining: {time}",
-      "Cost": "[EN] Estimated cost: ${cost}",
-      "Started": "文字起こし開始（{mode}モード）",
-      "Ready": "文字起こし完了（{segments}セグメント、{durationMs}ms）",
-      "Error": "文字起こしエラー: {error}",
-      "FallingBackToAPI": "API文字起こしに切り替え中...",
-      "FallbackComplete": "文字起こし完了（APIフォールバック経由）",
-      "LanguageDetected": "検出された言語: {language}",
-      "ChunkingStarted": "オーディオの分割が必要: {sizeMB}MB"
-    },
     "SpeakerLabeling": {
       "Title": "[EN] Speaker Labeling",
       "Description": "[EN] Assign names to the speakers detected in the transcription. These labels will be used in the session chronicle.",
@@ -456,14 +346,6 @@
       "TermCountLabel": "用語",
       "NoTermsCount": "用語なし"
     },
-    "EntityExtraction": {
-      "Title": "[EN] Entity Extraction",
-      "Extracting": "[EN] Extracting entities from transcription...",
-      "ExtractionComplete": "[EN] Entity extraction complete",
-      "ExtractionFailed": "[EN] Entity extraction failed",
-      "NoEntitiesFound": "[EN] No new entities found in the transcription",
-      "EntitiesFound": "[EN] {count} new entities found"
-    },
     "EntityPreview": {
       "Title": "[EN] Review Extracted Entities",
       "Description": "[EN] Description",
@@ -551,26 +433,6 @@
       "ChronicleUnknownSpeaker": "不明",
       "ChronicleMoreSegments": "... 他{count}セグメント",
       "ChronicleGeneratedBy": "VoxChronicleで生成"
-    },
-    "Chronicle": {
-      "Title": "[EN] Session Chronicle",
-      "SessionNumber": "[EN] Session {number}",
-      "Date": "[EN] Date",
-      "Duration": "[EN] Duration",
-      "Participants": "[EN] Participants",
-      "Summary": "[EN] Summary",
-      "Transcript": "[EN] Full Transcript",
-      "Highlights": "[EN] Highlights",
-      "NewEntities": "[EN] New Entities",
-      "GeneratedImages": "[EN] Generated Images",
-      "Publish": "[EN] Publish Chronicle",
-      "Preview": "[EN] Preview Chronicle",
-      "Edit": "[EN] Edit Chronicle",
-      "Delete": "[EN] Delete",
-      "Discard": "[EN] Discard",
-      "ConfirmDiscard": "[EN] Are you sure you want to discard this session? This cannot be undone.",
-      "Published": "[EN] Chronicle published successfully",
-      "DefaultTitle": "[EN] Session Chronicle - {date}"
     },
     "RelationshipGraph": {
       "Title": "[EN] Entity Relationships",
@@ -763,8 +625,6 @@
       "FailedToOpenSettings": "[EN] VoxChronicle: Failed to open settings. Check console."
     },
     "Warnings": {
-      "ConfigIncomplete": "設定が不完全です",
-      "TranscriptionCircuitBreaker": "[EN] Transcription paused due to repeated errors. Try stopping and restarting recording.",
       "AutonomousSuggestionFailed": "[EN] VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.",
       "EntityExtractionFailed": "[EN] VoxChronicle: Entity extraction failed. Session will continue without entities.",
       "RagStateSaveFailed": "[EN] VoxChronicle: Failed to persist RAG state — reindexing may be required next session.",
@@ -838,78 +698,6 @@
       "RAGIndex": "[EN] RAG Knowledge Index",
       "RAGSearch": "[EN] RAG Search"
     },
-    "UI": {
-      "ControlTitle": "[EN] VoxChronicle",
-      "ControlHint": "[EN] Open VoxChronicle session recorder",
-      "Loading": "[EN] Loading...",
-      "Processing": "[EN] Processing...",
-      "PleaseWait": "[EN] Please wait...",
-      "NoData": "[EN] No data available",
-      "Confirm": "[EN] Are you sure?",
-      "Success": "[EN] Success",
-      "Warning": "[EN] Warning",
-      "Error": "[EN] Error",
-      "Info": "[EN] Information"
-    },
-    "Tooltips": {
-      "StartRecording": "[EN] Start recording the session audio",
-      "StopRecording": "[EN] Stop the current recording",
-      "OpenSettings": "モジュール設定を開く",
-      "ViewChronicle": "[EN] View session chronicle",
-      "PublishToKanka": "[EN] Publish this chronicle to Kanka",
-      "ToggleRecording": "音声録音を開始または停止",
-      "PauseRecording": "[EN] Pause or resume recording (Ctrl+Shift+P)",
-      "GenerateImage": "現在のコンテキストに基づいて画像を生成",
-      "ClearImages": "生成されたすべての画像をクリア",
-      "CopyText": "テキストをクリップボードにコピー",
-      "OpenSettingsNM": "[EN] Open module settings",
-      "ExpandRuleAnswer": "Expand to see full answer",
-      "CollapseRuleAnswer": "Hide full answer",
-      "DismissRuleAnswer": "Dismiss this rules answer",
-      "CopyRuleAnswer": "Copy answer to clipboard",
-      "RAGRebuildIndex": "[EN] Rebuild the RAG index from all journals and compendiums",
-      "RAGClearIndex": "[EN] Clear the RAG index to free up memory",
-      "RAGRefreshIndex": "[EN] Refresh the RAG index with latest content",
-      "RAGSearchContext": "[EN] Search your knowledge base for relevant context",
-      "RAGViewStats": "[EN] View RAG index statistics"
-    },
-    "Help": {
-      "Title": "[EN] VoxChronicle Help",
-      "GettingStarted": "[EN] Getting Started",
-      "GettingStartedText": "[EN] 1. Configure your OpenAI API key and Kanka credentials in module settings.\n2. Start a recording session using the record button.\n3. After your session, stop the recording and transcribe it.\n4. Review extracted entities and publish to Kanka.",
-      "ApiKeys": "[EN] API Keys",
-      "ApiKeysText": "[EN] You need an OpenAI API key (for transcription and images) and a Kanka API token (for publishing). Both are required for full functionality.",
-      "Costs": "[EN] Costs",
-      "CostsText": "[EN] OpenAI transcription costs $0.006/minute. gpt-image-1 images cost $0.02 (low), $0.04 (medium), or $0.08 (high) per image.",
-      "Support": "[EN] Support",
-      "SupportText": "[EN] For issues and feature requests, please visit our GitHub repository."
-    },
-    "OffTrack": {
-      "NoContext": "脱線検知のための冒険コンテキストが設定されていません。",
-      "ParseError": "脱線検知のレスポンスを解析できませんでした。",
-      "Warning": "プレイヤーが冒険のストーリーから外れています。",
-      "Severe": "プレイヤーが冒険から完全に脱線しています。",
-      "Minor": "メインストーリーからわずかに逸脱しています。",
-      "Severity": "[EN] Severity: {{severity}}"
-    },
-    "Suggestions": {
-      "TypeNarration": "ナレーション",
-      "TypeDialogue": "対話",
-      "TypeAction": "アクション",
-      "TypeReference": "参照",
-      "HighConfidence": "高信頼度",
-      "MediumConfidence": "中信頼度",
-      "LowConfidence": "低信頼度"
-    },
-    "Recording": {
-      "StateInactive": "非アクティブ",
-      "StateRecording": "録音中",
-      "StatePaused": "一時停止中",
-      "StateProcessing": "処理中",
-      "AudioLevelLow": "音声レベル：低",
-      "AudioLevelNormal": "音声レベル：通常",
-      "AudioLevelHigh": "音声レベル：高"
-    },
     "Journal": {
       "NoJournalFound": "ジャーナルが見つかりません",
       "ParsingJournal": "ジャーナルを解析中...",
@@ -919,79 +707,6 @@
       "SectionBreak": "[EN] --- Section ---",
       "ChapterStructure": "[EN] Chapter Structure",
       "NoChaptersFound": "[EN] No chapters found"
-    },
-    "Chapter": {
-      "CurrentChapter": "[EN] Current Chapter",
-      "NoChapterDetected": "[EN] No chapter detected",
-      "SelectChapter": "[EN] Select Chapter"
-    },
-    "Grounding": {
-      "SourceNotFound": "[EN] Source not found in journal",
-      "CitationRequired": "[EN] Citation required"
-    },
-    "Images": {
-      "Generating": "生成中...",
-      "CacheExpired": "画像URLの有効期限が切れました。ローカルキャッシュを使用します",
-      "NoCache": "画像が利用できません（URLの有効期限切れでキャッシュなし）",
-      "ClickToEnlarge": "クリックして拡大",
-      "Delete": "削除",
-      "Download": "ダウンロード"
-    },
-    "KeyboardShortcuts": {
-      "Title": "[EN] Keyboard Shortcuts",
-      "StartRecording": "[EN] Start Recording: Ctrl+Shift+R",
-      "StopRecording": "[EN] Stop Recording: Ctrl+Shift+S",
-      "PauseRecording": "[EN] Pause/Resume Recording: Ctrl+Shift+P",
-      "Help": "[EN] Available shortcuts: Ctrl+Shift+R (start), Ctrl+Shift+S (stop), Ctrl+Shift+P (pause/resume)",
-      "Enabled": "[EN] Keyboard shortcuts enabled for recording controls"
-    },
-    "Accessibility": {
-      "RecordButton": "録音ボタン",
-      "AudioLevel": "音声レベルインジケーター",
-      "TabNavigation": "タブナビゲーション",
-      "ImageGallery": "画像ギャラリー",
-      "SuggestionsList": "提案リスト"
-    },
-    "SpeakerLabels": {
-      "Speaker": "Speaker",
-      "SpeakerNumber": "Speaker {number}",
-      "UnknownSpeaker": "Unknown Speaker",
-      "AssignName": "Assign Name",
-      "EditName": "Edit Name",
-      "ResetName": "Reset Name",
-      "NamePlaceholder": "Enter player name...",
-      "ManageSpeakers": "Manage Speakers",
-      "SpeakerList": "Speaker List",
-      "NoSpeakersDetected": "No speakers detected in the transcription",
-      "SpeakersDetected": "{count} speakers detected",
-      "ClearAllNames": "Clear All Names",
-      "ConfirmClearNames": "Are you sure you want to clear all speaker names?",
-      "NameAssigned": "Name assigned to {speaker}",
-      "NameCleared": "Name cleared from {speaker}",
-      "AllNamesCleared": "All speaker names have been cleared",
-      "DiarizationEnabled": "Speaker identification enabled",
-      "DiarizationDisabled": "Speaker identification disabled",
-      "ShowSpeakerLabels": "Show Speaker Labels",
-      "HideSpeakerLabels": "Hide Speaker Labels",
-      "ColorCode": "Color Code",
-      "SpeakerColor": "Speaker Color {number}",
-      "TranscriptionWithSpeakers": "Transcription with Speakers"
-    },
-    "Scenes": {
-      "SceneBreak": "Scene Break",
-      "SceneTypeExploration": "Exploration",
-      "SceneTypeCombat": "Combat",
-      "SceneTypeSocial": "Social",
-      "SceneTypeRest": "Rest",
-      "SceneTransitionDetected": "Scene transition detected",
-      "ManualSceneBreak": "Manual scene break",
-      "MarkSceneBreak": "Mark Scene Break",
-      "SceneType": "Scene Type",
-      "AutomaticBreak": "Automatic",
-      "ManualBreak": "Manual",
-      "SelectSceneType": "Select the scene type",
-      "SceneMarked": "Scene break marked",
-      "NoActiveScene": "No active scene"
     },
     "Rules": {
       "NoRulesDetected": "No rules questions detected",
@@ -1037,20 +752,6 @@
       "PageIn": "[EN] Page in {journal}",
       "Page": "[EN] Page",
       "ChapterSummary": "[EN] Chapter Summary"
-    },
-    "Silence": {
-      "Detected": "[EN] No speech detected for {{seconds}} seconds",
-      "RecoveryTitle": "[EN] Where to resume?",
-      "WhereToResume": "[EN] Select a point to resume the narration",
-      "SelectSubchapter": "[EN] Select subchapter",
-      "TimeSinceLast": "[EN] Time since last transcription: {seconds}s",
-      "NoChapterContext": "[EN] No active chapter. Select an adventure journal.",
-      "ResumeFromHere": "[EN] Resume from here",
-      "SuggestedResume": "[EN] Suggested Resume",
-      "ManualResume": "[EN] Manual Resume",
-      "DismissRecovery": "[EN] Dismiss",
-      "ContinueListening": "[EN] Continue listening",
-      "Recovery": "[EN] Navigate to a chapter to continue"
     },
     "Scene": {
       "Combat": "[EN] Combat",
@@ -1165,16 +866,6 @@
         "InvalidPayload": "イベントペイロードはオブジェクトである必要があります"
       }
     },
-    "Resilience": {
-      "Error": {
-        "CircuitOpen": "サービス {service} は一時的に利用できません",
-        "AllFallbacksFailed": "サービス {service} のすべての回復オプションが使い果たされました",
-        "ServiceNotRegistered": "サービス {service} は登録されていません"
-      },
-      "Status": {
-        "Recovered": "サービス {service} が復旧しました"
-      }
-    },
     "Provider": {
       "Error": {
         "NotImplemented": "メソッド {method} はプロバイダーサブクラスで実装する必要があります",
@@ -1189,39 +880,6 @@
         "InvalidResponse": "OpenAI APIからの無効なレスポンス: {details}",
         "StreamError": "OpenAIストリーミング中にエラーが発生しました: {error}"
       }
-    },
-    "Session": {
-      "State": {
-        "Idle": "待機中",
-        "Configuring": "設定中",
-        "Live": "ライブ",
-        "Transitioning": "移行中",
-        "Chronicle": "クロニクル",
-        "Publishing": "公開中",
-        "Complete": "完了",
-        "Error": "エラー"
-      },
-      "Error": {
-        "InvalidTransition": "無効な遷移: イベント \"{event}\" は状態 \"{state}\" では有効ではありません",
-        "GuardFailed": "ガード条件により遷移がブロックされました"
-      }
-    },
-    "Stream": {
-      "Started": "ストリーミング開始",
-      "Completed": "ストリーミング完了（{charCount}文字、{duration}ms）",
-      "Cancelled": "ユーザーによりストリーミングがキャンセルされました",
-      "Error": "ストリーミングエラー: {error}",
-      "FirstToken": "最初のトークンを{latency}msで受信"
-    },
-    "Cache": {
-      "Hit": "キャッシュヒット: {key}",
-      "Miss": "キャッシュミス: {key}",
-      "Invalidated": "キャッシュ無効化: {prefix}",
-      "Stats": "キャッシュ統計 — ヒット率: {rate}%、サイズ: {size}"
-    },
-    "Queue": {
-      "CategoryFull": "カテゴリ {category} のリクエストキューが満杯です",
-      "Parallel": "{count} 件の並列リクエストキューを処理中"
     }
   }
 }

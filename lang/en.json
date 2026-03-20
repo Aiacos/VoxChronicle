@@ -65,9 +65,6 @@
       "SessionCostCapHint": "Maximum API cost per live session in dollars. AI suggestions pause when exceeded. Set to 0 to disable.",
       "SpeakerLabels": "Speaker Labels",
       "SpeakerLabelsHint": "Map speaker IDs to player names for transcription",
-      "ConfigureSpeakers": "Configure Speakers",
-      "SpeakerLabeling": "Speaker Labeling",
-      "SpeakerLabelingHint": "Assign player names to detected speaker voices",
       "TestConnection": "Test Connection",
       "CampaignPlaceholder": "Select a campaign...",
       "CampaignNone": "No campaigns available",
@@ -75,93 +72,41 @@
       "CampaignError": "Failed to load campaigns",
       "VocabularyDictionary": "Vocabulary Dictionary",
       "VocabularyDictionaryHint": "Custom vocabulary terms for improved transcription accuracy (managed via Vocabulary UI)",
-      "ApiKeyName": "OpenAI API Key",
-      "ApiKeyHint": "Your OpenAI API key. Requires a paid account with credits (minimum $5). Get it from platform.openai.com/api-keys",
-      "LanguageName": "Transcription Language",
-      "MultiLanguageModeName": "Multi-language Mode",
       "MultiLanguageModeHint": "Enable transcription in multiple languages",
-      "TranscriptionBatchDurationName": "Transcription Batch Duration",
       "TranscriptionBatchDurationHint": "Audio accumulation time before transcription in milliseconds (5-30 seconds). Higher values reduce API calls and improve transcription quality with longer segments",
-      "PanelPositionName": "Panel Position",
-      "PanelPositionHint": "Saved position of the DM panel",
-      "SensitivityName": "Off-Track Detection Sensitivity",
-      "SensitivityHint": "How strictly to detect when players deviate from the adventure plot",
       "SensitivityLow": "Low - Only major deviations",
       "SensitivityMedium": "Medium - Balanced",
       "SensitivityHigh": "High - Even small variations",
-      "SpeakerLabelsName": "Speaker Labels",
-      "SpeakerLabelsHintNM": "Enable custom name assignment to detected speakers in transcription",
-      "DebugModeName": "Debug Mode",
       "DebugModeHint": "Enable detailed debug messages in the browser console. Useful for troubleshooting issues and monitoring module behavior",
-      "RulesDetectionName": "Rules Detection",
       "RulesDetectionHint": "Enable automatic detection of rules questions in conversations",
-      "RulesSourceName": "SRD Rules Source",
       "RulesSourceHint": "Select which compendium to use for rules answers",
       "RulesSourceAuto": "Automatic - Search all compendia",
-      "RulesSourceDnd5e": "D&D 5e - Only D&D 5e compendia",
-      "ApiRetryEnabledName": "Enable Automatic Retry",
       "ApiRetryEnabledHint": "Automatically retry failed API requests with exponential backoff",
-      "ApiRetryMaxAttemptsName": "Maximum Attempts",
       "ApiRetryMaxAttemptsHint": "Maximum number of retry attempts for failed API requests (0-10)",
-      "ApiRetryBaseDelayName": "Base Delay (ms)",
       "ApiRetryBaseDelayHint": "Initial delay in milliseconds before the first retry attempt",
-      "ApiRetryMaxDelayName": "Maximum Delay (ms)",
       "ApiRetryMaxDelayHint": "Maximum delay in milliseconds between retries (exponential backoff limit)",
-      "ApiQueueMaxSizeName": "Maximum Queue Size",
       "ApiQueueMaxSizeHint": "Maximum number of API requests that can be queued simultaneously",
       "MultiLanguageMode": "Multi-Language Mode",
-      "MultiLanguageModeHintVC": "Enable transcription of multiple languages in the same session",
       "TranscriptionBatchDuration": "Live Transcription Interval",
-      "TranscriptionBatchDurationHintVC": "How often to transcribe during live mode (5-30 seconds)",
       "AdaptiveChunking": "Adaptive Chunking",
       "AdaptiveChunkingHint": "Automatically adjust transcription interval based on speech activity (shorter during conversation, longer during silence)",
       "OffTrackSensitivity": "Off-Track Sensitivity",
       "OffTrackSensitivityHint": "How sensitive the AI is to detecting off-track players",
-      "SensitivityLowVC": "Low",
-      "SensitivityMediumVC": "Medium",
-      "SensitivityHighVC": "High",
       "RulesDetection": "Rules Detection",
-      "RulesDetectionHintVC": "Detect D&D rules questions in conversation",
       "RulesSource": "Rules Source",
-      "RulesSourceHintVC": "Which rules compendium to search",
-      "RulesSourceAutoVC": "Auto-detect",
       "RulesSourceDnD5e": "D&D 5e SRD",
       "DebugMode": "Debug Mode",
-      "DebugModeHintVC": "Enable verbose logging for troubleshooting",
       "ApiRetryEnabled": "API Retry",
-      "ApiRetryEnabledHintVC": "Automatically retry failed API requests",
       "ApiRetryMaxAttempts": "Max Retry Attempts",
-      "ApiRetryMaxAttemptsHintVC": "Maximum number of retry attempts for failed API requests",
       "ApiRetryBaseDelay": "Retry Base Delay (ms)",
-      "ApiRetryBaseDelayHintVC": "Base delay between retry attempts",
       "ApiRetryMaxDelay": "Retry Max Delay (ms)",
-      "ApiRetryMaxDelayHintVC": "Maximum delay between retry attempts",
       "ApiQueueMaxSize": "API Queue Size",
-      "ApiQueueMaxSizeHintVC": "Maximum number of API requests that can be queued",
       "RAGEnabled": "Enable RAG Search",
       "RAGEnabledHint": "Use Retrieval-Augmented Generation to enhance AI responses with context from journals and compendiums",
-      "RAGIndexOnLoad": "Auto-Index on Load",
-      "RAGIndexOnLoadHint": "Automatically build the RAG index when VoxChronicle initializes",
-      "RAGTopResults": "RAG Top Results",
-      "RAGTopResultsHint": "Number of most relevant chunks to retrieve for AI context (1-20)",
-      "RAGSimilarityThreshold": "RAG Similarity Threshold",
-      "RAGSimilarityThresholdHint": "Minimum similarity score (0-1) for retrieved chunks to be included",
-      "RAGChunkSize": "RAG Chunk Size",
-      "RAGChunkSizeHint": "Size of text chunks for indexing (200-1000 characters)",
-      "RAGChunkOverlap": "RAG Chunk Overlap",
-      "RAGChunkOverlapHint": "Overlap between consecutive chunks (50-200 characters)",
       "RAGAutoIndex": "Auto-Index on Change",
       "RAGAutoIndexHint": "Automatically rebuild RAG index when journal content changes",
-      "RAGEmbeddingModel": "Embedding Model",
-      "RAGEmbeddingModelHint": "OpenAI model used for generating embeddings",
-      "RAGEmbeddingModelSmall": "text-embedding-3-small (faster, cheaper)",
-      "RAGEmbeddingModelLarge": "text-embedding-3-large (higher quality)",
-      "RAGEmbeddingDimensions": "Embedding Dimensions",
-      "RAGEmbeddingDimensionsHint": "Vector dimensions (512/1024/1536). Lower is faster, higher is more accurate",
       "RAGMaxResults": "Maximum Results",
       "RAGMaxResultsHint": "Maximum number of context chunks to retrieve per query (1-20)",
-      "RAGStorageLimit": "Storage Limit (MB)",
-      "RAGStorageLimitHint": "Maximum IndexedDB storage for vector embeddings (10-500 MB)",
       "RAGSilenceThreshold": "Silence Detection Threshold",
       "RAGSilenceThresholdHint": "Time in milliseconds before triggering autonomous suggestion (10-120 seconds)",
       "RAGProvider": "RAG Provider",
@@ -181,9 +126,7 @@
       "SupplementaryJournals": "Supplementary Journals",
       "SupplementaryJournalsHint": "Additional journals providing context alongside the primary adventure journal",
       "ContextTokenBudget": "Context Token Budget",
-      "ContextTokenBudgetHint": "Maximum tokens per AI suggestion cycle. Lower values reduce costs, higher values provide more context. Default: 12000",
-      "SummaryAgeBadge": "Context: {count} turns summarized",
-      "SummaryAgeBadgeNone": "Context: no summary yet"
+      "ContextTokenBudgetHint": "Maximum tokens per AI suggestion cycle. Lower values reduce costs, higher values provide more context. Default: 12000"
     },
     "Panel": {
       "Title": "VoxChronicle",
@@ -296,59 +239,6 @@
       "KankaValidationError": "Error validating Kanka API token: {error}",
       "KankaValidationFailed": "Kanka validation failed: {error}"
     },
-    "Recorder": {
-      "Title": "Session Recorder",
-      "StartRecording": "Start Recording",
-      "StopRecording": "Stop Recording",
-      "PauseRecording": "Pause Recording",
-      "ResumeRecording": "Resume Recording",
-      "Recording": "Recording...",
-      "Paused": "Paused",
-      "Stopped": "Stopped",
-      "Duration": "Duration",
-      "FileSize": "File Size",
-      "Status": "Status",
-      "Ready": "Ready to record",
-      "Processing": "Processing...",
-      "MicrophoneAccess": "Microphone Access",
-      "MicrophoneAccessRequired": "Microphone access is required for recording.",
-      "MicrophoneAccessDenied": "Microphone access was denied. Please grant permission in your browser settings.",
-      "NoAudioSupport": "Your browser does not support audio recording.",
-      "RecordingStarted": "Recording started",
-      "RecordingStopped": "Recording stopped",
-      "RecordingFailed": "Recording failed",
-      "Segments": "Segments:",
-      "Speakers": "Speakers:",
-      "CancelSession": "Cancel Session",
-      "TranscriptionMode": "Transcription Mode",
-      "ModeAPI": "API",
-      "ModeLocal": "Local",
-      "ModeAuto": "Auto",
-      "ModeTooltipAPI": "Using OpenAI cloud service for transcription",
-      "ModeTooltipLocal": "Using local Whisper backend for offline transcription",
-      "ModeTooltipAuto": "Automatic mode (tries local first, falls back to API)",
-      "LocalBackendConnected": "Local backend connected",
-      "LocalBackendChecking": "Checking local backend...",
-      "LocalBackendUnavailable": "Local backend unavailable"
-    },
-    "Transcription": {
-      "Title": "Transcription",
-      "Transcribing": "Transcribing audio...",
-      "TranscriptionComplete": "Transcription complete",
-      "TranscriptionFailed": "Transcription failed",
-      "NoSpeech": "No speech detected in the recording",
-      "SpeakerUnknown": "Unknown Speaker",
-      "ProcessingChunk": "Processing chunk {current} of {total}...",
-      "EstimatedTime": "Estimated time remaining: {time}",
-      "Cost": "Estimated cost: ${cost}",
-      "Started": "Transcription started ({mode} mode)",
-      "Ready": "Transcription ready ({segments} segments, {durationMs}ms)",
-      "Error": "Transcription error: {error}",
-      "FallingBackToAPI": "Falling back to API transcription...",
-      "FallbackComplete": "Transcription complete (via API fallback)",
-      "LanguageDetected": "Language detected: {language}",
-      "ChunkingStarted": "Audio requires chunking: {sizeMB}MB"
-    },
     "SpeakerLabeling": {
       "Title": "Speaker Labeling",
       "Description": "Assign names to the speakers detected in the transcription. These labels will be used in the session chronicle.",
@@ -456,14 +346,6 @@
       "TermCountLabel": "terms",
       "NoTermsCount": "No terms"
     },
-    "EntityExtraction": {
-      "Title": "Entity Extraction",
-      "Extracting": "Extracting entities from transcription...",
-      "ExtractionComplete": "Entity extraction complete",
-      "ExtractionFailed": "Entity extraction failed",
-      "NoEntitiesFound": "No new entities found in the transcription",
-      "EntitiesFound": "{count} new entities found"
-    },
     "EntityPreview": {
       "Title": "Review Extracted Entities",
       "Description": "Description",
@@ -551,26 +433,6 @@
       "ChronicleUnknownSpeaker": "Unknown",
       "ChronicleMoreSegments": "... and {count} more segments",
       "ChronicleGeneratedBy": "Generated by VoxChronicle"
-    },
-    "Chronicle": {
-      "Title": "Session Chronicle",
-      "SessionNumber": "Session {number}",
-      "Date": "Date",
-      "Duration": "Duration",
-      "Participants": "Participants",
-      "Summary": "Summary",
-      "Transcript": "Full Transcript",
-      "Highlights": "Highlights",
-      "NewEntities": "New Entities",
-      "GeneratedImages": "Generated Images",
-      "Publish": "Publish Chronicle",
-      "Preview": "Preview Chronicle",
-      "Edit": "Edit Chronicle",
-      "Delete": "Delete",
-      "Discard": "Discard",
-      "ConfirmDiscard": "Are you sure you want to discard this session? This cannot be undone.",
-      "Published": "Chronicle published successfully",
-      "DefaultTitle": "Session Chronicle - {date}"
     },
     "RelationshipGraph": {
       "Title": "Entity Relationships",
@@ -763,8 +625,6 @@
       "FailedToOpenSettings": "VoxChronicle: Failed to open settings. Check console."
     },
     "Warnings": {
-      "ConfigIncomplete": "Configuration incomplete",
-      "TranscriptionCircuitBreaker": "Transcription paused due to repeated errors. Try stopping and restarting recording.",
       "AutonomousSuggestionFailed": "VoxChronicle: Autonomous suggestions are failing repeatedly. Check your API key and connection.",
       "EntityExtractionFailed": "VoxChronicle: Entity extraction failed. Session will continue without entities.",
       "RagStateSaveFailed": "VoxChronicle: Failed to persist RAG state — reindexing may be required next session.",
@@ -838,78 +698,6 @@
       "RAGIndex": "RAG Knowledge Index",
       "RAGSearch": "RAG Search"
     },
-    "UI": {
-      "ControlTitle": "VoxChronicle",
-      "ControlHint": "Open VoxChronicle session recorder",
-      "Loading": "Loading...",
-      "Processing": "Processing...",
-      "PleaseWait": "Please wait...",
-      "NoData": "No data available",
-      "Confirm": "Are you sure?",
-      "Success": "Success",
-      "Warning": "Warning",
-      "Error": "Error",
-      "Info": "Information"
-    },
-    "Tooltips": {
-      "StartRecording": "Start recording the session audio",
-      "StopRecording": "Stop the current recording",
-      "OpenSettings": "Open VoxChronicle settings",
-      "ViewChronicle": "View session chronicle",
-      "PublishToKanka": "Publish this chronicle to Kanka",
-      "ToggleRecording": "Start or stop audio recording (Ctrl+Shift+R to start, Ctrl+Shift+S to stop)",
-      "PauseRecording": "Pause or resume recording (Ctrl+Shift+P)",
-      "GenerateImage": "Generate an image based on the current context",
-      "ClearImages": "Clear all generated images",
-      "CopyText": "Copy text to clipboard",
-      "OpenSettingsNM": "Open module settings",
-      "ExpandRuleAnswer": "Expand to see full answer",
-      "CollapseRuleAnswer": "Hide full answer",
-      "DismissRuleAnswer": "Dismiss this rules answer",
-      "CopyRuleAnswer": "Copy answer to clipboard",
-      "RAGRebuildIndex": "Rebuild the RAG index from all journals and compendiums",
-      "RAGClearIndex": "Clear the RAG index to free up memory",
-      "RAGRefreshIndex": "Refresh the RAG index with latest content",
-      "RAGSearchContext": "Search your knowledge base for relevant context",
-      "RAGViewStats": "View RAG index statistics"
-    },
-    "Help": {
-      "Title": "VoxChronicle Help",
-      "GettingStarted": "Getting Started",
-      "GettingStartedText": "1. Configure your OpenAI API key and Kanka credentials in module settings.\n2. Start a recording session using the record button.\n3. After your session, stop the recording and transcribe it.\n4. Review extracted entities and publish to Kanka.",
-      "ApiKeys": "API Keys",
-      "ApiKeysText": "You need an OpenAI API key (for transcription and images) and a Kanka API token (for publishing). Both are required for full functionality.",
-      "Costs": "Costs",
-      "CostsText": "OpenAI transcription costs $0.006/minute. gpt-image-1 images cost $0.02 (low), $0.04 (medium), or $0.08 (high) per image.",
-      "Support": "Support",
-      "SupportText": "For issues and feature requests, please visit our GitHub repository."
-    },
-    "OffTrack": {
-      "NoContext": "No adventure context set for off-track detection.",
-      "ParseError": "Unable to parse off-track detection response.",
-      "Warning": "Players seem to be off-track!",
-      "Severe": "Players are completely off-track from the adventure.",
-      "Minor": "Slight deviation from the main plot.",
-      "Severity": "Severity: {{severity}}"
-    },
-    "Suggestions": {
-      "TypeNarration": "Narration",
-      "TypeDialogue": "Dialogue",
-      "TypeAction": "Action",
-      "TypeReference": "Reference",
-      "HighConfidence": "High confidence",
-      "MediumConfidence": "Medium confidence",
-      "LowConfidence": "Low confidence"
-    },
-    "Recording": {
-      "StateInactive": "Inactive",
-      "StateRecording": "Recording",
-      "StatePaused": "Paused",
-      "StateProcessing": "Processing",
-      "AudioLevelLow": "Low audio level",
-      "AudioLevelNormal": "Normal audio level",
-      "AudioLevelHigh": "High audio level"
-    },
     "Journal": {
       "NoJournalFound": "Journal not found",
       "ParsingJournal": "Parsing Journal...",
@@ -919,79 +707,6 @@
       "SectionBreak": "--- Section ---",
       "ChapterStructure": "Chapter Structure",
       "NoChaptersFound": "No chapters found"
-    },
-    "Chapter": {
-      "CurrentChapter": "Current Chapter",
-      "NoChapterDetected": "No chapter detected",
-      "SelectChapter": "Select Chapter"
-    },
-    "Grounding": {
-      "SourceNotFound": "Source not found in journal",
-      "CitationRequired": "Citation required"
-    },
-    "Images": {
-      "Generating": "Generating...",
-      "CacheExpired": "Image URL expired, using local cache",
-      "NoCache": "Image not available (URL expired and no cache)",
-      "ClickToEnlarge": "Click to enlarge",
-      "Delete": "Delete",
-      "Download": "Download"
-    },
-    "KeyboardShortcuts": {
-      "Title": "Keyboard Shortcuts",
-      "StartRecording": "Start Recording: Ctrl+Shift+R",
-      "StopRecording": "Stop Recording: Ctrl+Shift+S",
-      "PauseRecording": "Pause/Resume Recording: Ctrl+Shift+P",
-      "Help": "Available shortcuts: Ctrl+Shift+R (start), Ctrl+Shift+S (stop), Ctrl+Shift+P (pause/resume)",
-      "Enabled": "Keyboard shortcuts enabled for recording controls"
-    },
-    "Accessibility": {
-      "RecordButton": "Record button",
-      "AudioLevel": "Audio level indicator",
-      "TabNavigation": "Tab navigation",
-      "ImageGallery": "Image gallery",
-      "SuggestionsList": "Suggestions list"
-    },
-    "SpeakerLabels": {
-      "Speaker": "Speaker",
-      "SpeakerNumber": "Speaker {number}",
-      "UnknownSpeaker": "Unknown Speaker",
-      "AssignName": "Assign Name",
-      "EditName": "Edit Name",
-      "ResetName": "Reset Name",
-      "NamePlaceholder": "Enter player name...",
-      "ManageSpeakers": "Manage Speakers",
-      "SpeakerList": "Speaker List",
-      "NoSpeakersDetected": "No speakers detected in the transcription",
-      "SpeakersDetected": "{count} speakers detected",
-      "ClearAllNames": "Clear All Names",
-      "ConfirmClearNames": "Are you sure you want to clear all speaker names?",
-      "NameAssigned": "Name assigned to {speaker}",
-      "NameCleared": "Name cleared from {speaker}",
-      "AllNamesCleared": "All speaker names have been cleared",
-      "DiarizationEnabled": "Speaker identification enabled",
-      "DiarizationDisabled": "Speaker identification disabled",
-      "ShowSpeakerLabels": "Show Speaker Labels",
-      "HideSpeakerLabels": "Hide Speaker Labels",
-      "ColorCode": "Color Code",
-      "SpeakerColor": "Speaker Color {number}",
-      "TranscriptionWithSpeakers": "Transcription with Speakers"
-    },
-    "Scenes": {
-      "SceneBreak": "Scene Break",
-      "SceneTypeExploration": "Exploration",
-      "SceneTypeCombat": "Combat",
-      "SceneTypeSocial": "Social",
-      "SceneTypeRest": "Rest",
-      "SceneTransitionDetected": "Scene transition detected",
-      "ManualSceneBreak": "Manual scene break",
-      "MarkSceneBreak": "Mark Scene Break",
-      "SceneType": "Scene Type",
-      "AutomaticBreak": "Automatic",
-      "ManualBreak": "Manual",
-      "SelectSceneType": "Select the scene type",
-      "SceneMarked": "Scene break marked",
-      "NoActiveScene": "No active scene"
     },
     "Rules": {
       "NoRulesDetected": "No rules questions detected",
@@ -1037,20 +752,6 @@
       "PageIn": "Page in {journal}",
       "Page": "Page",
       "ChapterSummary": "Chapter Summary"
-    },
-    "Silence": {
-      "Detected": "No speech detected for {{seconds}} seconds",
-      "RecoveryTitle": "Where to resume?",
-      "WhereToResume": "Select a point to resume the narration",
-      "SelectSubchapter": "Select subchapter",
-      "TimeSinceLast": "Time since last transcription: {seconds}s",
-      "NoChapterContext": "No active chapter. Select an adventure journal.",
-      "ResumeFromHere": "Resume from here",
-      "SuggestedResume": "Suggested Resume",
-      "ManualResume": "Manual Resume",
-      "DismissRecovery": "Dismiss",
-      "ContinueListening": "Continue listening",
-      "Recovery": "Navigate to a chapter to continue"
     },
     "Scene": {
       "Combat": "Combat",
@@ -1165,16 +866,6 @@
         "InvalidPayload": "Event payload must be a plain object"
       }
     },
-    "Resilience": {
-      "Error": {
-        "CircuitOpen": "Service {service} temporarily unavailable",
-        "AllFallbacksFailed": "All recovery options exhausted for {service}",
-        "ServiceNotRegistered": "Service {service} is not registered"
-      },
-      "Status": {
-        "Recovered": "Service {service} recovered"
-      }
-    },
     "Provider": {
       "Error": {
         "NotImplemented": "Method {method} must be implemented by provider subclass",
@@ -1189,39 +880,6 @@
         "InvalidResponse": "Invalid response from OpenAI API: {details}",
         "StreamError": "Error during OpenAI streaming: {error}"
       }
-    },
-    "Session": {
-      "State": {
-        "Idle": "Idle",
-        "Configuring": "Configuring",
-        "Live": "Live",
-        "Transitioning": "Transitioning",
-        "Chronicle": "Chronicle",
-        "Publishing": "Publishing",
-        "Complete": "Complete",
-        "Error": "Error"
-      },
-      "Error": {
-        "InvalidTransition": "Invalid transition: event \"{event}\" is not valid in state \"{state}\"",
-        "GuardFailed": "Transition blocked by guard condition"
-      }
-    },
-    "Stream": {
-      "Started": "Streaming started",
-      "Completed": "Streaming completed ({charCount} characters, {duration}ms)",
-      "Cancelled": "Streaming cancelled by user",
-      "Error": "Streaming error: {error}",
-      "FirstToken": "First token received in {latency}ms"
-    },
-    "Cache": {
-      "Hit": "Cache hit: {key}",
-      "Miss": "Cache miss: {key}",
-      "Invalidated": "Cache invalidated: {prefix}",
-      "Stats": "Cache stats — Hit rate: {rate}%, Size: {size}"
-    },
-    "Queue": {
-      "CategoryFull": "Request queue full for category {category}",
-      "Parallel": "Processing {count} parallel request queues"
     }
   }
 }

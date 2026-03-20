@@ -65,9 +65,6 @@
       "SessionCostCapHint": "",
       "SpeakerLabels": "",
       "SpeakerLabelsHint": "",
-      "ConfigureSpeakers": "",
-      "SpeakerLabeling": "",
-      "SpeakerLabelingHint": "",
       "TestConnection": "",
       "CampaignPlaceholder": "",
       "CampaignNone": "",
@@ -75,93 +72,41 @@
       "CampaignError": "",
       "VocabularyDictionary": "",
       "VocabularyDictionaryHint": "",
-      "ApiKeyName": "",
-      "ApiKeyHint": "",
-      "LanguageName": "",
-      "MultiLanguageModeName": "",
       "MultiLanguageModeHint": "",
-      "TranscriptionBatchDurationName": "",
       "TranscriptionBatchDurationHint": "",
-      "PanelPositionName": "",
-      "PanelPositionHint": "",
-      "SensitivityName": "",
-      "SensitivityHint": "",
       "SensitivityLow": "",
       "SensitivityMedium": "",
       "SensitivityHigh": "",
-      "SpeakerLabelsName": "",
-      "SpeakerLabelsHintNM": "",
-      "DebugModeName": "",
       "DebugModeHint": "",
-      "RulesDetectionName": "",
       "RulesDetectionHint": "",
-      "RulesSourceName": "",
       "RulesSourceHint": "",
       "RulesSourceAuto": "",
-      "RulesSourceDnd5e": "",
-      "ApiRetryEnabledName": "",
       "ApiRetryEnabledHint": "",
-      "ApiRetryMaxAttemptsName": "",
       "ApiRetryMaxAttemptsHint": "",
-      "ApiRetryBaseDelayName": "",
       "ApiRetryBaseDelayHint": "",
-      "ApiRetryMaxDelayName": "",
       "ApiRetryMaxDelayHint": "",
-      "ApiQueueMaxSizeName": "",
       "ApiQueueMaxSizeHint": "",
       "MultiLanguageMode": "",
-      "MultiLanguageModeHintVC": "",
       "TranscriptionBatchDuration": "",
-      "TranscriptionBatchDurationHintVC": "",
       "AdaptiveChunking": "",
       "AdaptiveChunkingHint": "",
       "OffTrackSensitivity": "",
       "OffTrackSensitivityHint": "",
-      "SensitivityLowVC": "",
-      "SensitivityMediumVC": "",
-      "SensitivityHighVC": "",
       "RulesDetection": "",
-      "RulesDetectionHintVC": "",
       "RulesSource": "",
-      "RulesSourceHintVC": "",
-      "RulesSourceAutoVC": "",
       "RulesSourceDnD5e": "",
       "DebugMode": "",
-      "DebugModeHintVC": "",
       "ApiRetryEnabled": "",
-      "ApiRetryEnabledHintVC": "",
       "ApiRetryMaxAttempts": "",
-      "ApiRetryMaxAttemptsHintVC": "",
       "ApiRetryBaseDelay": "",
-      "ApiRetryBaseDelayHintVC": "",
       "ApiRetryMaxDelay": "",
-      "ApiRetryMaxDelayHintVC": "",
       "ApiQueueMaxSize": "",
-      "ApiQueueMaxSizeHintVC": "",
       "RAGEnabled": "",
       "RAGEnabledHint": "",
-      "RAGIndexOnLoad": "",
-      "RAGIndexOnLoadHint": "",
-      "RAGTopResults": "",
-      "RAGTopResultsHint": "",
-      "RAGSimilarityThreshold": "",
-      "RAGSimilarityThresholdHint": "",
-      "RAGChunkSize": "",
-      "RAGChunkSizeHint": "",
-      "RAGChunkOverlap": "",
-      "RAGChunkOverlapHint": "",
       "RAGAutoIndex": "",
       "RAGAutoIndexHint": "",
-      "RAGEmbeddingModel": "",
-      "RAGEmbeddingModelHint": "",
-      "RAGEmbeddingModelSmall": "",
-      "RAGEmbeddingModelLarge": "",
-      "RAGEmbeddingDimensions": "",
-      "RAGEmbeddingDimensionsHint": "",
       "RAGMaxResults": "",
       "RAGMaxResultsHint": "",
-      "RAGStorageLimit": "",
-      "RAGStorageLimitHint": "",
       "RAGSilenceThreshold": "",
       "RAGSilenceThresholdHint": "",
       "RAGProvider": "",
@@ -181,9 +126,7 @@
       "SupplementaryJournals": "",
       "SupplementaryJournalsHint": "",
       "ContextTokenBudget": "",
-      "ContextTokenBudgetHint": "",
-      "SummaryAgeBadge": "",
-      "SummaryAgeBadgeNone": ""
+      "ContextTokenBudgetHint": ""
     },
     "Panel": {
       "Title": "",
@@ -296,59 +239,6 @@
       "KankaValidationError": "",
       "KankaValidationFailed": ""
     },
-    "Recorder": {
-      "Title": "",
-      "StartRecording": "",
-      "StopRecording": "",
-      "PauseRecording": "",
-      "ResumeRecording": "",
-      "Recording": "",
-      "Paused": "",
-      "Stopped": "",
-      "Duration": "",
-      "FileSize": "",
-      "Status": "",
-      "Ready": "",
-      "Processing": "",
-      "MicrophoneAccess": "",
-      "MicrophoneAccessRequired": "",
-      "MicrophoneAccessDenied": "",
-      "NoAudioSupport": "",
-      "RecordingStarted": "",
-      "RecordingStopped": "",
-      "RecordingFailed": "",
-      "Segments": "",
-      "Speakers": "",
-      "CancelSession": "",
-      "TranscriptionMode": "",
-      "ModeAPI": "",
-      "ModeLocal": "",
-      "ModeAuto": "",
-      "ModeTooltipAPI": "",
-      "ModeTooltipLocal": "",
-      "ModeTooltipAuto": "",
-      "LocalBackendConnected": "",
-      "LocalBackendChecking": "",
-      "LocalBackendUnavailable": ""
-    },
-    "Transcription": {
-      "Title": "",
-      "Transcribing": "",
-      "TranscriptionComplete": "",
-      "TranscriptionFailed": "",
-      "NoSpeech": "",
-      "SpeakerUnknown": "",
-      "ProcessingChunk": "",
-      "EstimatedTime": "",
-      "Cost": "",
-      "Started": "",
-      "Ready": "",
-      "Error": "",
-      "FallingBackToAPI": "",
-      "FallbackComplete": "",
-      "LanguageDetected": "",
-      "ChunkingStarted": ""
-    },
     "SpeakerLabeling": {
       "Title": "",
       "Description": "",
@@ -456,14 +346,6 @@
       "TermCountLabel": "",
       "NoTermsCount": ""
     },
-    "EntityExtraction": {
-      "Title": "",
-      "Extracting": "",
-      "ExtractionComplete": "",
-      "ExtractionFailed": "",
-      "NoEntitiesFound": "",
-      "EntitiesFound": ""
-    },
     "EntityPreview": {
       "Title": "",
       "Description": "",
@@ -551,26 +433,6 @@
       "ChronicleUnknownSpeaker": "",
       "ChronicleMoreSegments": "",
       "ChronicleGeneratedBy": ""
-    },
-    "Chronicle": {
-      "Title": "",
-      "SessionNumber": "",
-      "Date": "",
-      "Duration": "",
-      "Participants": "",
-      "Summary": "",
-      "Transcript": "",
-      "Highlights": "",
-      "NewEntities": "",
-      "GeneratedImages": "",
-      "Publish": "",
-      "Preview": "",
-      "Edit": "",
-      "Delete": "",
-      "Discard": "",
-      "ConfirmDiscard": "",
-      "Published": "",
-      "DefaultTitle": ""
     },
     "RelationshipGraph": {
       "Title": "",
@@ -763,8 +625,6 @@
       "FailedToOpenSettings": ""
     },
     "Warnings": {
-      "ConfigIncomplete": "",
-      "TranscriptionCircuitBreaker": "",
       "AutonomousSuggestionFailed": "",
       "EntityExtractionFailed": "",
       "RagStateSaveFailed": "",
@@ -838,78 +698,6 @@
       "RAGIndex": "",
       "RAGSearch": ""
     },
-    "UI": {
-      "ControlTitle": "",
-      "ControlHint": "",
-      "Loading": "",
-      "Processing": "",
-      "PleaseWait": "",
-      "NoData": "",
-      "Confirm": "",
-      "Success": "",
-      "Warning": "",
-      "Error": "",
-      "Info": ""
-    },
-    "Tooltips": {
-      "StartRecording": "",
-      "StopRecording": "",
-      "OpenSettings": "",
-      "ViewChronicle": "",
-      "PublishToKanka": "",
-      "ToggleRecording": "",
-      "PauseRecording": "",
-      "GenerateImage": "",
-      "ClearImages": "",
-      "CopyText": "",
-      "OpenSettingsNM": "",
-      "ExpandRuleAnswer": "",
-      "CollapseRuleAnswer": "",
-      "DismissRuleAnswer": "",
-      "CopyRuleAnswer": "",
-      "RAGRebuildIndex": "",
-      "RAGClearIndex": "",
-      "RAGRefreshIndex": "",
-      "RAGSearchContext": "",
-      "RAGViewStats": ""
-    },
-    "Help": {
-      "Title": "",
-      "GettingStarted": "",
-      "GettingStartedText": "",
-      "ApiKeys": "",
-      "ApiKeysText": "",
-      "Costs": "",
-      "CostsText": "",
-      "Support": "",
-      "SupportText": ""
-    },
-    "OffTrack": {
-      "NoContext": "",
-      "ParseError": "",
-      "Warning": "",
-      "Severe": "",
-      "Minor": "",
-      "Severity": ""
-    },
-    "Suggestions": {
-      "TypeNarration": "",
-      "TypeDialogue": "",
-      "TypeAction": "",
-      "TypeReference": "",
-      "HighConfidence": "",
-      "MediumConfidence": "",
-      "LowConfidence": ""
-    },
-    "Recording": {
-      "StateInactive": "",
-      "StateRecording": "",
-      "StatePaused": "",
-      "StateProcessing": "",
-      "AudioLevelLow": "",
-      "AudioLevelNormal": "",
-      "AudioLevelHigh": ""
-    },
     "Journal": {
       "NoJournalFound": "",
       "ParsingJournal": "",
@@ -919,79 +707,6 @@
       "SectionBreak": "",
       "ChapterStructure": "",
       "NoChaptersFound": ""
-    },
-    "Chapter": {
-      "CurrentChapter": "",
-      "NoChapterDetected": "",
-      "SelectChapter": ""
-    },
-    "Grounding": {
-      "SourceNotFound": "",
-      "CitationRequired": ""
-    },
-    "Images": {
-      "Generating": "",
-      "CacheExpired": "",
-      "NoCache": "",
-      "ClickToEnlarge": "",
-      "Delete": "",
-      "Download": ""
-    },
-    "KeyboardShortcuts": {
-      "Title": "",
-      "StartRecording": "",
-      "StopRecording": "",
-      "PauseRecording": "",
-      "Help": "",
-      "Enabled": ""
-    },
-    "Accessibility": {
-      "RecordButton": "",
-      "AudioLevel": "",
-      "TabNavigation": "",
-      "ImageGallery": "",
-      "SuggestionsList": ""
-    },
-    "SpeakerLabels": {
-      "Speaker": "",
-      "SpeakerNumber": "",
-      "UnknownSpeaker": "",
-      "AssignName": "",
-      "EditName": "",
-      "ResetName": "",
-      "NamePlaceholder": "",
-      "ManageSpeakers": "",
-      "SpeakerList": "",
-      "NoSpeakersDetected": "",
-      "SpeakersDetected": "",
-      "ClearAllNames": "",
-      "ConfirmClearNames": "",
-      "NameAssigned": "",
-      "NameCleared": "",
-      "AllNamesCleared": "",
-      "DiarizationEnabled": "",
-      "DiarizationDisabled": "",
-      "ShowSpeakerLabels": "",
-      "HideSpeakerLabels": "",
-      "ColorCode": "",
-      "SpeakerColor": "",
-      "TranscriptionWithSpeakers": ""
-    },
-    "Scenes": {
-      "SceneBreak": "",
-      "SceneTypeExploration": "",
-      "SceneTypeCombat": "",
-      "SceneTypeSocial": "",
-      "SceneTypeRest": "",
-      "SceneTransitionDetected": "",
-      "ManualSceneBreak": "",
-      "MarkSceneBreak": "",
-      "SceneType": "",
-      "AutomaticBreak": "",
-      "ManualBreak": "",
-      "SelectSceneType": "",
-      "SceneMarked": "",
-      "NoActiveScene": ""
     },
     "Rules": {
       "NoRulesDetected": "",
@@ -1037,20 +752,6 @@
       "PageIn": "",
       "Page": "",
       "ChapterSummary": ""
-    },
-    "Silence": {
-      "Detected": "",
-      "RecoveryTitle": "",
-      "WhereToResume": "",
-      "SelectSubchapter": "",
-      "TimeSinceLast": "",
-      "NoChapterContext": "",
-      "ResumeFromHere": "",
-      "SuggestedResume": "",
-      "ManualResume": "",
-      "DismissRecovery": "",
-      "ContinueListening": "",
-      "Recovery": ""
     },
     "Scene": {
       "Combat": "",
@@ -1165,16 +866,6 @@
         "InvalidPayload": ""
       }
     },
-    "Resilience": {
-      "Error": {
-        "CircuitOpen": "",
-        "AllFallbacksFailed": "",
-        "ServiceNotRegistered": ""
-      },
-      "Status": {
-        "Recovered": ""
-      }
-    },
     "Provider": {
       "Error": {
         "NotImplemented": "",
@@ -1189,39 +880,6 @@
         "InvalidResponse": "",
         "StreamError": ""
       }
-    },
-    "Session": {
-      "State": {
-        "Idle": "",
-        "Configuring": "",
-        "Live": "",
-        "Transitioning": "",
-        "Chronicle": "",
-        "Publishing": "",
-        "Complete": "",
-        "Error": ""
-      },
-      "Error": {
-        "InvalidTransition": "",
-        "GuardFailed": ""
-      }
-    },
-    "Stream": {
-      "Started": "",
-      "Completed": "",
-      "Cancelled": "",
-      "Error": "",
-      "FirstToken": ""
-    },
-    "Cache": {
-      "Hit": "",
-      "Miss": "",
-      "Invalidated": "",
-      "Stats": ""
-    },
-    "Queue": {
-      "CategoryFull": "",
-      "Parallel": ""
     }
   }
 }
