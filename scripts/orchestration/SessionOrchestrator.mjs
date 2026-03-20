@@ -2175,6 +2175,74 @@ class SessionOrchestrator {
   }
 
   /**
+   * Handle an on-demand general DM query from the UI.
+   * Mirrors handleManualRulesQuery pattern but routes to AIAssistant with full journal context.
+   * Works in any mode (live, idle, chronicle) — checks AI configuration, not live mode.
+   *
+   * @param {string} question - The DM's question or request
+   * @returns {Promise<void>}
+   */
+  async handleGeneralQuery(question) {
+    if (!this._aiAssistant?.isConfigured()) {
+      this._logger.warn('General query ignored — AIAssistant not configured');
+      if (this._callbacks.onStreamComplete) {
+        this._callbacks.onStreamComplete({
+          type: 'reference',
+          content: '(AI not available)',
+          streamId: Date.now(),
+          error: true
+        });
+      }
+      return;
+    }
+
+    const streamId = Date.now();
+
+    // Notify UI to open a streaming card before first token arrives
+    if (this._callbacks.onStreamToken) {
+      this._callbacks.onStreamToken({ token: '', accumulated: '', streamId });
+    }
+
+    try {
+      const messages = this._aiAssistant._promptBuilder.buildGeneralQueryMessages(question);
+      const streamResult = await this._aiAssistant._makeChatRequestStreaming(messages, {
+        onToken: (accumulated) => {
+          if (this._callbacks.onStreamToken) {
+            this._callbacks.onStreamToken({ token: '', accumulated, streamId });
+          }
+        },
+        signal: this._shutdownController?.signal
+      });
+
+      const type = this._detectSuggestionType(streamResult.text);
+      if (this._callbacks.onStreamComplete) {
+        this._callbacks.onStreamComplete({
+          type,
+          content: streamResult.text,
+          streamId,
+          usage: streamResult.usage || null
+        });
+      }
+
+      // Track cost if usage available
+      if (streamResult.usage && this._costTracker) {
+        const model = streamResult.model || this._aiAssistant._model || 'gpt-4o-mini';
+        this._costTracker.addUsage(model, streamResult.usage);
+      }
+    } catch (err) {
+      this._logger.warn('General query streaming failed:', err.message);
+      if (this._callbacks.onStreamComplete) {
+        this._callbacks.onStreamComplete({
+          type: 'reference',
+          content: '(Query failed)',
+          streamId,
+          error: true
+        });
+      }
+    }
+  }
+
+  /**
    * Safely emit an event on the EventBus, swallowing errors.
    * @param {string} channel - Event channel
    * @param {object} data - Event payload
