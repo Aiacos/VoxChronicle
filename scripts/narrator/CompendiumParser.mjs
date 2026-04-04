@@ -1035,7 +1035,6 @@ export class CompendiumParser {
     else if (normalizedName.includes(normalizedQuery)) {
       score += 50;
     }
-
     // Word-by-word matching
     for (const word of queryWords) {
       // Word in name

@@ -15,7 +15,7 @@
  */
 
 import { Logger } from '../utils/Logger.mjs';
-import { AudioUtils } from '../utils/AudioUtils.mjs';
+// import { AudioUtils } from '../utils/AudioUtils.mjs';
 
 /**
  * Possible recording states.
@@ -175,7 +175,7 @@ class AudioRecorder {
    * @returns {Promise<void>}
    * @throws {Error} If already recording or if microphone access is denied.
    */
-  async startRecording(options = {}) {
+  async startRecording(_options = {}) {
     if (this._state !== RecordingState.INACTIVE) throw new Error('Already recording');
 
     try {

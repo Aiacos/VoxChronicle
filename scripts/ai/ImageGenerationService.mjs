@@ -752,17 +752,17 @@ class ImageGenerationService {
   // Cost estimation
   // ---------------------------------------------------------------------------
 
-  /**
-   * Estimate generation cost for an image
-   * gpt-image-1 pricing (approximate):
-   *   - low quality: ~$0.02/image (small), ~$0.04/image (medium/square)
-   *   - medium/standard quality: ~$0.04/image (square), ~$0.08/image (landscape/portrait)
-   *   - high/hd quality: ~$0.08/image (square), ~$0.12/image (landscape/portrait)
-   *
-   * @param {string} [quality='high'] - Image quality
-   * @param {string} [size='1024x1024'] - Image size
-   * @returns {object} Cost estimate
-   */
+/**
+ * Estimate generation cost for an image
+ * gpt-image-1 pricing (approximate):
+ *   - low quality: ~$0.02/image (small), ~$0.04/image (medium/square)
+ *   - medium/standard quality: ~$0.04/image (square), ~$0.08/image (landscape/portrait)
+ *   - high/hd quality: ~$0.08/image (square), ~$0.12/image (landscape/portrait)
+ *
+ * @param {string} [quality='high'] - Image quality
+ * @param {string} [size='1024x1024'] - Image size
+ * @returns {object} Cost estimate
+ */
   estimateCost(quality = ImageQuality.HIGH, size = ImageSize.SQUARE) {
     const isLarge = size === ImageSize.PORTRAIT || size === ImageSize.LANDSCAPE;
 

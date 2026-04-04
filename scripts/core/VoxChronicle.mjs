@@ -18,7 +18,7 @@ import { ImageGenerationService } from '../ai/ImageGenerationService.mjs';
 import { KankaService } from '../kanka/KankaService.mjs';
 import { EntityExtractor } from '../ai/EntityExtractor.mjs';
 import { NarrativeExporter } from '../kanka/NarrativeExporter.mjs';
-import { VocabularyDictionary } from './VocabularyDictionary.mjs';
+// import { VocabularyDictionary } from './VocabularyDictionary.mjs';
 import { JournalParser } from '../narrator/JournalParser.mjs';
 import { CompendiumParser } from '../narrator/CompendiumParser.mjs';
 import { ChapterTracker } from '../narrator/ChapterTracker.mjs';
@@ -335,7 +335,7 @@ class VoxChronicle {
       // Get transcription mode settings
       const transcriptionMode = this._getSetting('transcriptionMode') || 'auto';
       const whisperBackendUrl = this._getSetting('whisperBackendUrl');
-      const transcriptionLanguage = this._getSetting('transcriptionLanguage');
+      // const transcriptionLanguage = this._getSetting('transcriptionLanguage');
       const aiResponseLanguage = this._getSetting('aiResponseLanguage') || 'it';
 
       // Initialize audio recorder (if not exists)
