@@ -10,6 +10,8 @@
       "AnthropicKeyHint": "Sua chave API Anthropic para modelos Claude (opcional)",
       "GoogleKey": "Chave API Google",
       "GoogleKeyHint": "Sua chave API Google para modelos Gemini (opcional)",
+      "MistralKey": "Chave API Mistral",
+      "MistralKeyHint": "Sua chave API Mistral para modelos Mistral AI (opcional)",
       "KankaToken": "[EN] Kanka API Token",
       "KankaTokenHint": "[EN] Your Kanka personal access token. Generate at app.kanka.io/settings/api",
       "KankaCampaign": "[EN] Kanka Campaign ID",
@@ -883,7 +885,8 @@
         "ConnectionFailed": "Falha ao conectar à API OpenAI: {error}",
         "InvalidResponse": "Resposta inválida da API OpenAI: {details}",
         "StreamError": "Erro durante o streaming OpenAI: {error}"
-      }
+      },
+      "FallbackActivated": "VoxChronicle: Provedor de IA primário indisponível, tentando fallback..."
     }
   }
 }

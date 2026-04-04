@@ -10,6 +10,8 @@
       "AnthropicKeyHint": "",
       "GoogleKey": "",
       "GoogleKeyHint": "",
+      "MistralKey": "",
+      "MistralKeyHint": "",
       "KankaToken": "",
       "KankaTokenHint": "",
       "KankaCampaign": "",
@@ -883,7 +885,8 @@
         "ConnectionFailed": "",
         "InvalidResponse": "",
         "StreamError": ""
-      }
+      },
+      "FallbackActivated": ""
     }
   }
 }
