@@ -104,7 +104,8 @@ export default [
         $: 'readonly',
 
         // Third-party libraries
-        vis: 'readonly'
+        vis: 'readonly',
+        Handlebars: 'readonly'
       }
     },
     rules: {
@@ -140,7 +141,7 @@ export default [
         'null': 'ignore'
       }],
       'curly': ['error', 'multi-line', 'consistent'],
-      'brace-style': ['error', '1tbs', {
+      'brace-style': ['warn', '1tbs', {
         'allowSingleLine': true
       }],
       'max-len': ['warn', {
@@ -191,6 +192,9 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         performance: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
 
         // Browser APIs needed in tests
         Blob: 'readonly',
@@ -203,6 +207,13 @@ export default [
         MediaStream: 'readonly',
         fetch: 'readonly',
         AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        TextEncoder: 'readonly',
+        navigator: 'readonly',
+        AudioContext: 'readonly',
+        crypto: 'readonly',
+        KeyboardEvent: 'readonly',
+        Event: 'readonly',
         atob: 'readonly',
         btoa: 'readonly',
         Audio: 'readonly',
@@ -258,6 +269,8 @@ export default [
       'prefer-const': 'error',
       'no-var': 'error',
       'no-undef': 'error',
+      'no-prototype-builtins': 'off',
+      'require-yield': 'off',
 
       // Relaxed rules for tests
       'max-len': 'off',

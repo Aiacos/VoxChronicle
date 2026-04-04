@@ -118,7 +118,6 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Register Handlebars 'includes' helper for tab filtering (Story 6.2 AC2)
     // Handlebars is a global variable provided by Foundry VTT
-    /* global Handlebars */
     if (typeof Handlebars !== 'undefined' && !Handlebars.helpers?.includes) {
       Handlebars.registerHelper('includes', (array, value) => {
         return Array.isArray(array) && array.includes(value);
@@ -1755,8 +1754,7 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       container.appendChild(card);
 
       // Auto-dismiss after 10 seconds with fade animation
-      let timeoutRef;
-      timeoutRef = setTimeout(() => {
+      const timeoutRef = setTimeout(() => {
         const idx = this._rulesDismissTimeouts.indexOf(timeoutRef);
         if (idx !== -1) this._rulesDismissTimeouts.splice(idx, 1);
         card.classList.add('vox-chronicle-suggestion--dismissing');

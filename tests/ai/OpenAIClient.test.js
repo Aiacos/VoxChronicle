@@ -4,6 +4,8 @@
  * Covers: constructor, isConfigured, setApiKey, request methods,
  * retry with exponential backoff, sequential request queue, operation history,
  * error handling, circuit breaker, rate limiting integration, and validateApiKey.
+ *
+ * @global {AbortSignal} - Browser AbortSignal API for request cancellation
  */
 
 import {

@@ -528,7 +528,6 @@ describe('AIAssistant', () => {
           relevantPages: [],
           summary: 'Test'
         }),
-        usage: {},
         usage: { prompt_tokens: 150, completion_tokens: 50, total_tokens: 200 },
         model: 'gpt-4o-mini-2024-07-18'
       };
@@ -550,7 +549,6 @@ describe('AIAssistant', () => {
           relevantPages: [],
           summary: 'Test'
         }),
-        usage: {},
         usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
         model: 'gpt-4o-mini-2024-07-18'
       };

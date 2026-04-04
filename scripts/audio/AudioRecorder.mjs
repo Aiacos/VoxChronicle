@@ -172,6 +172,7 @@ class AudioRecorder {
   /**
    * Start recording audio from the user's microphone.
    * @param {object} [options={}] - Per-call options (currently unused, reserved for future use).
+   * @param _options
    * @returns {Promise<void>}
    * @throws {Error} If already recording or if microphone access is denied.
    */

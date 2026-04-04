@@ -100,14 +100,6 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
   #listenerController = null;
 
   /**
-   * Whether vis-network library script has been loaded
-   * @type {boolean}
-   * @private
-   * @static
-   */
-  static #visLoaded = false;
-
-  /**
    * Shared promise for vis-network load (prevents duplicate script injection)
    * @type {Promise<void>|null}
    * @private
@@ -527,7 +519,6 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _loadVisLibrary() {
     if (typeof vis !== 'undefined') {
-      RelationshipGraph.#visLoaded = true;
       return;
     }
 
@@ -538,7 +529,6 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
         const script = document.createElement('script');
         script.src = `modules/${MODULE_ID}/scripts/vendor/vis-network.min.js`;
         script.onload = () => {
-          RelationshipGraph.#visLoaded = true;
           resolve();
         };
         script.onerror = () => {
@@ -751,7 +741,6 @@ class RelationshipGraph extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static _resetVisLoadState() {
-    RelationshipGraph.#visLoaded = false;
     RelationshipGraph.#visLoadPromise = null;
   }
 }
