@@ -64,6 +64,8 @@ VoxChronicle/
 │   │       ├── OpenAIEmbeddingProvider.mjs # OpenAI embeddings
 │   │       ├── AnthropicChatProvider.mjs  # Anthropic Claude chat implementation
 │   │       ├── GoogleChatProvider.mjs    # Google Gemini chat implementation
+│   │       ├── MistralChatProvider.mjs    # Mistral AI chat implementation
+│   │       ├── FallbackChatProvider.mjs   # Transparent retry across providers
 │   │       ├── ProviderRegistry.mjs      # Service locator for providers
 │   │       └── CachingProviderDecorator.mjs # L2 cache decorator
 │   ├── rag/                        # Modular RAG provider system (v3.0)
@@ -289,6 +291,19 @@ class OpenAIClient {
 }
 ```
 
+### Provider Fallback Pattern
+
+All chat consumers use FallbackChatProvider which transparently retries across providers:
+
+```javascript
+// FallbackChatProvider wraps the registry — consumers don't know about fallback
+const fallbackChat = new FallbackChatProvider(registry);
+const assistant = new AIAssistant({ chatProvider: fallbackChat });
+
+// If OpenAI fails (quota, timeout, 5xx), automatically tries Anthropic, Google, Mistral
+// Non-retryable errors (400, 401, 403) are thrown immediately
+```
+
 ### Foundry VTT Hooks
 
 Module initialization uses standard Foundry hooks:
@@ -317,6 +332,12 @@ Settings are registered with proper scopes:
 ```javascript
 // Client-side (per user) - for personal API keys
 game.settings.register(MODULE_ID, 'openaiApiKey', {
+  scope: 'client',
+  config: true,
+  type: String
+});
+
+game.settings.register(MODULE_ID, 'mistralApiKey', {
   scope: 'client',
   config: true,
   type: String
@@ -795,6 +816,7 @@ When testing with real APIs:
 | Embeddings (text-embedding-3-small) | $0.02/1M tokens |
 | File Search (v3.0 planned) | $0.10/GB/day + $2.50/1000 queries |
 | Chat (GPT-4o-mini for suggestions) | $0.15/1M input, $0.60/1M output |
+| Chat (Mistral Small) | $0.10/1M input, $0.30/1M output |
 
 Use mocks for development and save real API calls for integration testing.
 

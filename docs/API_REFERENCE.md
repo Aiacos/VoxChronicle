@@ -2,7 +2,7 @@
 
 This document provides detailed API documentation for all service classes in the VoxChronicle module.
 
-**Last updated:** 2026-03-15 (v4.0.3 — missing services: AnthropicChatProvider, GoogleChatProvider, RulesLookupService, CostTracker, JournalPicker, NPCProfileExtractor)
+**Last updated:** 2026-04-04 (v4.1 — added MistralChatProvider, FallbackChatProvider; still missing: AnthropicChatProvider, GoogleChatProvider, RulesLookupService, CostTracker, JournalPicker, NPCProfileExtractor)
 
 ## Table of Contents
 
@@ -27,6 +27,8 @@ This document provides detailed API documentation for all service classes in the
    - [OpenAITranscriptionProvider](#openaitranscriptionprovider)
    - [OpenAIImageProvider](#openaiimageprovider)
    - [OpenAIEmbeddingProvider](#openaiembeddingprovider)
+   - [MistralChatProvider](#mistralchatprovider)
+   - [FallbackChatProvider](#fallbackchatprovider)
    - [ProviderRegistry](#providerregistry)
    - [CachingProviderDecorator](#cachingovider-decorator)
 5. [RAG Services](#rag-services)
@@ -985,6 +987,109 @@ import { OpenAIEmbeddingProvider } from './scripts/ai/providers/OpenAIEmbeddingP
 
 ---
 
+### MistralChatProvider
+
+Mistral AI implementation of ChatProvider using Mistral Small and other Mistral models.
+
+**Import:**
+```javascript
+import { MistralChatProvider } from './scripts/ai/providers/MistralChatProvider.mjs';
+```
+
+#### Constructor
+
+```javascript
+const provider = new MistralChatProvider({
+  apiKey: 'your-mistral-api-key',
+  model: 'mistral-small-latest',
+  defaultTemperature: 0.7
+});
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `options.apiKey` | `string` | (required) | Mistral API key |
+| `options.model` | `string` | `'mistral-small-latest'` | Default model |
+| `options.defaultTemperature` | `number` | `0.7` | Default temperature |
+
+#### Features
+
+- Supports streaming and non-streaming chat via Mistral's `/v1/chat/completions` endpoint
+- Maps standard `ChatProvider` message format to Mistral's expected format
+- Competitive pricing: $0.10/1M input, $0.30/1M output (Mistral Small)
+- Static `capabilities` property: `['chat', 'chatStream']`
+
+#### Methods
+
+Implements `chat(messages, options)` and `chatStream(messages, options)` per the `ChatProvider` abstract interface.
+
+---
+
+### FallbackChatProvider
+
+Transparent retry wrapper that automatically falls back across multiple chat providers when one fails with a retryable error. Implements the `ChatProvider` interface so consumers (AIAssistant, RulesReference, etc.) use it without knowing about the fallback logic.
+
+**Import:**
+```javascript
+import { FallbackChatProvider } from './scripts/ai/providers/FallbackChatProvider.mjs';
+```
+
+#### Constructor
+
+```javascript
+const fallback = new FallbackChatProvider(providerRegistry);
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `providerRegistry` | `ProviderRegistry` | Registry instance to query for chat providers |
+
+#### Methods
+
+##### `chat(messages, options)`
+Attempts chat with the default provider first. On retryable failure, iterates through remaining providers from `registry.getProvidersForCapability('chat')`.
+
+```javascript
+const result = await fallback.chat(
+  [{ role: 'user', content: 'Hello' }],
+  { temperature: 0.7 }
+);
+```
+
+##### `chatStream(messages, options)`
+Same fallback logic for streaming responses.
+
+```javascript
+for await (const chunk of fallback.chatStream(messages, options)) {
+  console.log(chunk.token);
+}
+```
+
+#### Properties
+
+##### `lastUsedProvider`
+Returns the name/identifier of the provider that handled the most recent request. Useful for debugging which provider was used after a fallback.
+
+```javascript
+const result = await fallback.chat(messages);
+console.log(fallback.lastUsedProvider); // e.g., 'anthropic-chat'
+```
+
+#### Retryable vs Non-Retryable Errors
+
+| HTTP Status | Behavior |
+|-------------|----------|
+| 429 (Rate Limit / Quota) | Retryable -- tries next provider |
+| 500, 502, 503, 504 | Retryable -- tries next provider |
+| Timeout / Network Error | Retryable -- tries next provider |
+| 400 (Bad Request) | Non-retryable -- throws immediately |
+| 401 (Unauthorized) | Non-retryable -- throws immediately |
+| 403 (Forbidden) | Non-retryable -- throws immediately |
+
+If all providers fail with retryable errors, the last error is thrown.
+
+---
+
 ### ProviderRegistry
 
 Central registry for managing AI provider instances with capability-based dispatch.
@@ -1032,6 +1137,21 @@ const result = await provider.chat(messages);
 **Returns:** Provider instance
 
 **Throws:** Error if no provider registered for capability
+
+##### `getProvidersForCapability(capability)`
+Retrieve all providers for a capability, ordered with the default first.
+
+```javascript
+const providers = registry.getProvidersForCapability('chat');
+// [{ name: 'openai-chat', provider: ... }, { name: 'anthropic-chat', provider: ... }, ...]
+```
+
+**Parameters:**
+- `capability` (string): Capability name ('chat', 'transcribe', 'image', 'embed')
+
+**Returns:** `Array<{name: string, provider: Object}>` - Ordered list with default provider first
+
+Used by `FallbackChatProvider` to iterate through providers in priority order.
 
 ##### `listProviders()`
 List all registered providers and their capabilities.

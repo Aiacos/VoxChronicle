@@ -141,6 +141,8 @@ scripts/
 │   │   ├── OpenAITranscriptionProvider.mjs # OpenAI transcription implementation
 │   │   ├── OpenAIImageProvider.mjs   # OpenAI image generation implementation
 │   │   ├── OpenAIEmbeddingProvider.mjs # OpenAI embedding implementation
+│   │   ├── MistralChatProvider.mjs   # Mistral AI chat implementation
+│   │   ├── FallbackChatProvider.mjs  # Transparent retry across providers
 │   │   ├── CachingChatDecorator.mjs  # L2 caching for chat responses
 │   │   ├── CachingEmbeddingDecorator.mjs # L2 caching for embeddings
 │   │   ├── ProviderRegistry.mjs      # Service locator for providers
@@ -233,12 +235,26 @@ Hooks.on('getSceneControlButtons', (controls) => { /* v13 object format */ });
 
 ### Layer 4: AI Services (`ai/`)
 
-**Provider Architecture (v3.1):**
+**Provider Architecture (v3.1+):**
 - **Provider Interfaces** — `ChatProvider`, `TranscriptionProvider`, `ImageProvider`, `EmbeddingProvider` define abstract API
 - **OpenAI Implementations** — `OpenAIChatProvider`, `OpenAITranscriptionProvider`, `OpenAIImageProvider`, `OpenAIEmbeddingProvider` handle API calls
+- **Multi-Provider Chat** — `AnthropicChatProvider`, `GoogleChatProvider`, `MistralChatProvider` provide alternative chat backends
+- **FallbackChatProvider** — Transparent retry across all registered chat providers. If the default provider fails with a retryable error (quota exceeded, timeout, 5xx), automatically tries the next provider in the registry. Non-retryable errors (400, 401, 403) are thrown immediately.
 - **Caching Decorators** — `CachingChatDecorator`, `CachingEmbeddingDecorator` provide L2 caching layer
-- **ProviderRegistry** — Service locator for accessing providers by type
+- **ProviderRegistry** — Service locator for accessing providers by type, with `getProvidersForCapability()` for ordered fallback lists
 - **ProviderFactory** — Creates providers based on configuration
+
+**Fallback Chain:**
+
+```
+Consumer (AIAssistant) → FallbackChatProvider → Provider 1 (default)
+                                               ↓ (retryable error)
+                                               → Provider 2
+                                               ↓ (retryable error)
+                                               → Provider 3
+                                               ↓ (retryable error)
+                                               → throw last error
+```
 
 **Services (use composition with providers):**
 - **OpenAIClient** — Base client with Bearer auth, exponential backoff + jitter retry, sequential request queue, circuit breaker

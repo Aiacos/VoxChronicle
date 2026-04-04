@@ -115,6 +115,40 @@ The OpenAI API key is required for:
 
 > **Important:** Your API key is stored locally in your browser. Each player needs to enter their own key if they want to use VoxChronicle features.
 
+### Alternative AI Providers (Optional)
+
+VoxChronicle supports multiple AI chat providers. If your primary provider (OpenAI) experiences downtime or quota issues, the module automatically tries other configured providers. No user action is needed -- this happens transparently.
+
+#### Mistral AI Configuration
+
+Mistral AI is an optional alternative chat provider offering competitive pricing.
+
+**How to get your Mistral API key:**
+
+1. Go to [console.mistral.ai](https://console.mistral.ai/)
+2. Sign in or create an account
+3. Navigate to **API Keys**
+4. Click **Create new key**
+5. Copy the key
+
+**Entering your Mistral API key in VoxChronicle:**
+
+1. In Foundry VTT, go to **Settings** -> **Module Settings**
+2. Find the **VoxChronicle** section
+3. Paste your key in the **Mistral API Key** field
+4. Click **Save**
+
+> **Note:** Mistral is optional. If configured alongside OpenAI, it serves as a fallback provider. You can also configure Anthropic and Google API keys for additional redundancy.
+
+#### Provider Fallback
+
+When multiple AI providers are configured, VoxChronicle uses an automatic fallback system:
+
+- If the primary provider fails with a retryable error (quota exceeded, server error, timeout), the module automatically tries the next available provider
+- Authentication errors (invalid API key) are **not** retried -- they fail immediately so you can fix your credentials
+- No configuration is needed beyond entering your API keys -- the fallback is fully automatic
+- You can check which provider handled your last request in the browser console (debug mode)
+
 ### Kanka Integration
 
 Kanka is where your session chronicles and entities will be published.
