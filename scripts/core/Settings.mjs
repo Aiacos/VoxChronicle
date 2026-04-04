@@ -71,6 +71,17 @@ class Settings {
       onChange: () => Settings._onApiKeyChange('google')
     });
 
+    // Mistral API Key (client-side, per user)
+    game.settings.register(MODULE_ID, 'mistralApiKey', {
+      name: 'VOXCHRONICLE.Settings.MistralKey',
+      hint: 'VOXCHRONICLE.Settings.MistralKeyHint',
+      scope: 'client',
+      config: true,
+      type: String,
+      default: '',
+      onChange: () => Settings._onApiKeyChange('mistral')
+    });
+
     // Per-task AI provider selection (Story 7.2)
     game.settings.register(MODULE_ID, 'aiProviderSuggestions', {
       name: 'VOXCHRONICLE.Settings.AIProviderSuggestions',
@@ -83,7 +94,8 @@ class Settings {
         default: 'Default',
         'openai-chat': 'OpenAI',
         'anthropic-chat': 'Anthropic Claude',
-        'google-chat': 'Google Gemini'
+        'google-chat': 'Google Gemini',
+        'mistral-chat': 'Mistral AI'
       }
     });
 
@@ -98,7 +110,8 @@ class Settings {
         default: 'Default',
         'openai-chat': 'OpenAI',
         'anthropic-chat': 'Anthropic Claude',
-        'google-chat': 'Google Gemini'
+        'google-chat': 'Google Gemini',
+        'mistral-chat': 'Mistral AI'
       }
     });
 
@@ -113,7 +126,8 @@ class Settings {
         default: 'Default',
         'openai-chat': 'OpenAI',
         'anthropic-chat': 'Anthropic Claude',
-        'google-chat': 'Google Gemini'
+        'google-chat': 'Google Gemini',
+        'mistral-chat': 'Mistral AI'
       }
     });
 

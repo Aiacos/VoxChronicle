@@ -128,6 +128,9 @@ class VoxChronicle {
     /** @type {CacheManager|null} L1 rules cache */
     this._l1RulesCache = null;
 
+    /** @type {object|null} Fallback-wrapped chat provider */
+    this._fallbackChat = null;
+
     // State tracking
     /** @type {boolean} Whether the module is fully initialized */
     this.isInitialized = false;
@@ -177,6 +180,7 @@ class VoxChronicle {
       inst.sessionOrchestrator = null;
       inst.transcriptionService = null;
       inst.imageGenerationService = null;
+      inst._fallbackChat = null;
       inst.isInitialized = false;
       VoxChronicle._hooksRegistered = false;
     }
@@ -275,6 +279,7 @@ class VoxChronicle {
       const openaiApiKey = this._getSetting('openaiApiKey')?.trim();
       const anthropicApiKey = this._getSetting('anthropicApiKey')?.trim();
       const googleApiKey = this._getSetting('googleApiKey')?.trim();
+      const mistralApiKey = this._getSetting('mistralApiKey')?.trim();
       const kankaApiToken = this._getSetting('kankaApiToken')?.trim();
       const kankaCampaignId = this._getSetting('kankaCampaignId')?.trim();
 
@@ -326,6 +331,21 @@ class VoxChronicle {
         logger.info('Google provider registered');
       }
 
+      // Register Mistral provider
+      if (mistralApiKey) {
+        const { MistralChatProvider } = await import('../ai/providers/MistralChatProvider.mjs');
+        const mistralChat = new MistralChatProvider(mistralApiKey);
+        registry.register('mistral-chat', mistralChat, {
+          default: !openaiApiKey && !anthropicApiKey && !googleApiKey
+        });
+        logger.info('Mistral provider registered');
+      }
+
+      // Wrap chat capability with fallback decorator for transparent retry
+      const { FallbackChatProvider } = await import('../ai/providers/FallbackChatProvider.mjs');
+      const fallbackChat = new FallbackChatProvider(registry);
+      this._fallbackChat = fallbackChat;
+
       const audioSettings = {
         echoCancellation: this._getSetting('echoCancellation') ?? true,
         noiseSuppression: this._getSetting('noiseSuppression') ?? true,
@@ -363,11 +383,11 @@ class VoxChronicle {
         this.imageGenerationService = new ImageGenerationService(
           registry.getProvider('generateImage')
         );
-        this.entityExtractor = new EntityExtractor(registry.getProvider('chat'));
+        this.entityExtractor = new EntityExtractor(fallbackChat);
         // Create L1 cache for narrator suggestions (Story 2.3)
         this._l1SuggestionsCache = new CacheManager({ name: 'l1-suggestions', maxSize: 50 });
         this.aiAssistant = new AIAssistant({
-          chatProvider: registry.getProvider('chat'),
+          chatProvider: fallbackChat,
           primaryLanguage: aiResponseLanguage,
           cache: this._l1SuggestionsCache,
           eventBus
@@ -382,7 +402,7 @@ class VoxChronicle {
       if (kankaApiToken && kankaCampaignId) {
         this.kankaService = new KankaService(kankaApiToken, kankaCampaignId);
         this.narrativeExporter = new NarrativeExporter({
-          chatProvider: registry.getProvider('chat')
+          chatProvider: fallbackChat
         });
       } else {
         this.kankaService = null;
@@ -455,7 +475,7 @@ class VoxChronicle {
             {
               cooldownMs: 5 * 60 * 1000,
               language: aiResponseLanguage,
-              chatProvider: registry.getProvider('chat')
+              chatProvider: fallbackChat
             }
           );
         }
@@ -538,7 +558,7 @@ class VoxChronicle {
         if (provider) return provider;
       }
     }
-    return registry.getProvider('chat');
+    return this._fallbackChat || registry.getProvider('chat');
   }
 
   /**
