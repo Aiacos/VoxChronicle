@@ -8,6 +8,9 @@
  * Features:
  * - Topic cooldown prevents duplicate auto-lookups within 5 minutes
  * - On-demand queries (skipCooldown) always execute
+ *
+ * @global {AbortSignal} - Browser AbortSignal API for request cancellation
+ * @global {TextEncoder} - Browser TextEncoder API for text encoding
  * - AbortSignal support for lifecycle management
  *
  * @class RulesLookupService

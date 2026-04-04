@@ -117,8 +117,10 @@ class MainPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     this._debouncedRender = debounce(() => this.render(), 150);
 
     // Register Handlebars 'includes' helper for tab filtering (Story 6.2 AC2)
+    // Handlebars is a global variable provided by Foundry VTT
+    /* global Handlebars */
     if (typeof Handlebars !== 'undefined' && !Handlebars.helpers?.includes) {
-      Handlebars.registerHelper('includes', function (array, value) {
+      Handlebars.registerHelper('includes', (array, value) => {
         return Array.isArray(array) && array.includes(value);
       });
     }
