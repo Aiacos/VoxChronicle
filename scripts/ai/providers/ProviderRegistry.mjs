@@ -132,6 +132,31 @@ export class ProviderRegistry {
   }
 
   /**
+   * Get all providers that support a given capability, default first.
+   * @param {string} capability
+   * @returns {Array<{name: string, provider: object}>}
+   */
+  getProvidersForCapability(capability) {
+    const defaultName = this.#defaults.get(capability);
+    const result = [];
+    let defaultEntry = null;
+
+    for (const [name, { provider, capabilities }] of this.#providers) {
+      if (capabilities.includes(capability)) {
+        const entry = { name, provider };
+        if (name === defaultName) {
+          defaultEntry = entry;
+        } else {
+          result.push(entry);
+        }
+      }
+    }
+
+    if (defaultEntry) result.unshift(defaultEntry);
+    return result;
+  }
+
+  /**
    * Change the default provider for a specific capability.
    * @param {string} name - Provider name
    * @param {string} capability - Capability to set default for

@@ -290,6 +290,42 @@ describe('ProviderRegistry', () => {
     });
   });
 
+  describe('getProvidersForCapability()', () => {
+    it('should return all providers for a given capability in registration order', () => {
+      const registry = ProviderRegistry.getInstance();
+      const providerA = new MockChatProvider();
+      const providerB = new MockChatProvider();
+      const providerC = new MockEmbeddingProvider();
+
+      registry.register('a-chat', providerA);
+      registry.register('b-chat', providerB);
+      registry.register('c-embed', providerC);
+
+      const chatProviders = registry.getProvidersForCapability('chat');
+      expect(chatProviders).toHaveLength(2);
+      expect(chatProviders[0]).toEqual({ name: 'a-chat', provider: providerA });
+      expect(chatProviders[1]).toEqual({ name: 'b-chat', provider: providerB });
+    });
+
+    it('should return empty array for unknown capability', () => {
+      const registry = ProviderRegistry.getInstance();
+      expect(registry.getProvidersForCapability('unknown')).toEqual([]);
+    });
+
+    it('should put the default provider first', () => {
+      const registry = ProviderRegistry.getInstance();
+      const providerA = new MockChatProvider();
+      const providerB = new MockChatProvider();
+
+      registry.register('a-chat', providerA);
+      registry.register('b-chat', providerB, { default: true });
+
+      const result = registry.getProvidersForCapability('chat');
+      expect(result[0].name).toBe('b-chat');
+      expect(result[1].name).toBe('a-chat');
+    });
+  });
+
   describe('mixed provider types', () => {
     it('should handle different provider types independently', () => {
       const registry = ProviderRegistry.getInstance();
