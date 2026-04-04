@@ -24,7 +24,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **SUG-03**: Silence detection triggers suggestions after 20-30 seconds of DM silence (calibrated threshold)
 - [x] **SUG-04**: DM can type a question in the panel and receive a direct AI answer (on-demand query)
 - [x] **SUG-05**: Suggestion prompts adapt to current scene type (narration, combat, social, exploration)
-- [ ] **SUG-06**: AI detects when players go off-track from the adventure and offers recovery suggestions
+- [x] **SUG-06**: AI detects when players go off-track from the adventure and offers recovery suggestions
 - [x] **SUG-07**: AI uses speaker participation data to weight suggestions (e.g., surface opportunities for quiet players)
 
 ### Rules Lookup
@@ -97,7 +97,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUG-03 | Phase 6 | Complete |
 | SUG-04 | Phase 8 | Complete |
 | SUG-05 | Phase 8 | Complete |
-| SUG-06 | Phase 8 | Pending |
+| SUG-06 | Phase 8 | Complete |
 | SUG-07 | Phase 8 | Complete |
 | RULE-01 | Phase 7 | Complete |
 | RULE-02 | Phase 7 | Complete |
