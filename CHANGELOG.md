@@ -5,6 +5,23 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2026-04-06
+
+### Added
+- **MistralChatProvider** — New AI provider for Mistral AI models (mistral-small-latest). OpenAI-compatible API format with full streaming support.
+- **FallbackChatProvider** — Transparent fallback decorator that automatically retries across registered chat providers when one fails. Handles quota exhaustion (429), server errors (5xx), timeouts, and network failures. Non-retryable errors (400, 401, 403) are thrown immediately.
+- **ProviderRegistry.getProvidersForCapability()** — New method to retrieve all providers for a given capability, with the default provider first. Used by FallbackChatProvider for the fallback chain.
+- **Mistral API Key setting** — New client-scoped `mistralApiKey` setting with `onChange` reinitialize trigger.
+- **Mistral as provider choice** — Added `'mistral-chat': 'Mistral AI'` to `aiProviderSuggestions`, `aiProviderRules`, and `aiProviderExtraction` settings.
+- **Localization** — MistralKey, MistralKeyHint, and FallbackActivated strings added to all 8 language files (en, it, de, es, fr, ja, pt, template).
+- **RAG Adventure Test Suite** — 108 mock tests validating full suggestion pipeline across 8 D&D adventures (Barovia, Death House, Goblin Ambush, Dragon Lair, Vallaki, Wave Echo Cave, Greenest, Nightstone).
+- **Exhaustive Live API Tests** — 62 integration tests covering 11 features: suggestions, summaries, off-track detection, NPC dialogue, narrative bridges, scene detection, rules questions, silence/autonomous suggestions, multi-language, full analysis pipeline, and RAG journal queries.
+- **Multi-provider live tests** — 13 integration tests with automatic Mistral/Gemini/OpenAI/Claude provider fallback.
+
+### Changed
+- **VoxChronicle.initialize()** — All chat consumers now receive a `FallbackChatProvider` instance instead of a raw provider, enabling transparent failover.
+- **VoxChronicle.getProviderForTask()** — Falls back to `FallbackChatProvider` when task-specific provider is not configured.
+
 ## [4.0.3] - 2026-03-15
 
 ### Fixed
