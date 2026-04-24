@@ -5,6 +5,19 @@ All notable changes to VoxChronicle will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.1] - 2026-04-24
+
+### Changed
+- **Foundry VTT v14 verified compatibility** — `module.json` now declares `compatibility.verified: "14"` while keeping `minimum: "13"`. Module is supported on both v13 and v14.
+- **package.json Foundry metadata** — Removed hard `foundry.maximum: "13"` cap that was blocking v14 installations; set `verified: "14"`. Aligned `package.json.version` to `4.2.1` (previously drifted at `4.1.0`).
+
+### Fixed
+- **AudioRecorder.mjs (`_captureWebRTCStream`, line 261)** — Foundry v14 forward-compatible WebRTC peer capture: now prefers the public `game.webrtc.client.peerConnections` API when available and falls back to the private `_peerConnections` for v13. Emits a one-time warning if neither is present (future API rename), replacing the previous silent `return null`.
+- **SessionOrchestrator.mjs (`_liveCycle`, line ~1672)** — Session cost cap now also covers transcription. Before running the paid `transcribe()` call, the cycle checks `CostTracker.isCapExceeded()`; if the cap has already been hit, the entire cycle short-circuits and neither transcription nor AI analysis runs. Previously the cap only halted AI suggestions while transcription kept billing.
+
+### CI / Release
+- **release.yml** — Added `autoclaude` (the default branch) to the release triggers and treated it as a stable-release branch alongside `master`. Added `docs/` to the release ZIP payload so README links to `docs/WHISPER_SETUP.md` and `docs/CONTRIBUTING.md` resolve inside an installed module.
+
 ## [4.2.0] - 2026-04-06
 
 ### Added

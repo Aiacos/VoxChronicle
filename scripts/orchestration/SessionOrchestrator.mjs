@@ -1668,6 +1668,26 @@ class SessionOrchestrator {
         if (audioChunk && audioChunk.size > 0) {
           this._silenceStartTime = null;
           const chunkSizeMB = (audioChunk.size / (1024 * 1024)).toFixed(2);
+
+          // Cost cap covers transcription too (v4.2.1): if the budget is already
+          // exceeded, skip the paid transcription call as well as AI analysis.
+          // Without this pre-check, transcription would continue to bill the user
+          // even after the AI suggestion path was paused.
+          const preCycleCostCap = this._getCostCap();
+          if (this._costTracker?.isCapExceeded(preCycleCostCap)) {
+            if (!this._aiSuggestionsPaused) {
+              this._aiSuggestionsPaused = true;
+              this._logger.warn(
+                `Cost cap exceeded ($${preCycleCostCap}). Transcription and AI suggestions paused for this session.`
+              );
+            } else {
+              this._logger.debug(
+                `Cost cap still exceeded ($${preCycleCostCap}); skipping transcription for this cycle.`
+              );
+            }
+            return;
+          }
+
           this._logger.log(`Live cycle: got audio chunk ${chunkSizeMB}MB, transcribing...`);
 
           const transcribeStart = Date.now();

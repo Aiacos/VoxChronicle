@@ -1,6 +1,30 @@
 # TODO - VoxChronicle
 
-Updated 2026-03-15 (v4.0.3 session 2: review + predictive analysis).
+Updated 2026-04-24 (v4.2.1: Foundry v14 verified + targeted spec-compliance fixes).
+
+## V4.2.1 SESSION — 2026-04-24
+
+Foundry v14 forward-compat pass + targeted fixes for previously-open HIGH items that were safe to address without a refactor. Manifest (`module.json` / `package.json`) and release workflow brought into alignment with `autoclaude` as default branch.
+
+### HIGH — Fixed This Session
+
+- [x] `AudioRecorder.mjs:261` — WebRTC capture is now Foundry v14 forward-compatible: prefers the public `game.webrtc.client.peerConnections` API and falls back to the private `_peerConnections` for v13. Logs a one-time warning if neither property exists (future API rename) instead of silently returning `null`.
+- [x] `SessionOrchestrator.mjs:1672` — Cost cap now covers transcription. `_liveCycle` checks `CostTracker.isCapExceeded()` **before** calling the paid `transcribe()` method and short-circuits the entire cycle (transcription + AI) when the session cap has been hit. Previously only AI suggestions were paused while transcription kept billing.
+
+### Manifest / CI — Fixed This Session
+
+- [x] `module.json` — `compatibility.verified` bumped from `"13"` to `"14"`; `minimum` stays `"13"`; no `maximum` set (forward-compat).
+- [x] `package.json` — Removed hard `foundry.maximum: "13"` cap that blocked v14 installations; `verified` set to `"14"`; `.version` aligned to `4.2.1` (was drifting at `4.1.0`).
+- [x] `.github/workflows/release.yml` — Added `autoclaude` (the current default branch) to the release triggers and treated it as a stable-release branch alongside `master`. Added `docs/` to the release ZIP payload so README links (`docs/WHISPER_SETUP.md`, `docs/CONTRIBUTING.md`) resolve from an installed module.
+- [x] `README.md` — Badges updated to `v13-v14` / `4.2.1`; Requirements section now reads “Foundry VTT v13 or v14”.
+
+### HIGH — Still Open (deferred; reason documented)
+
+- [ ] `CostTracker.mjs:30` — Hardcoded OpenAI pricing + missing Anthropic/Google/Mistral pricing entries. **Deferred**: fixing requires a product decision on whether to externalize pricing (remote JSON vs. world setting vs. per-provider hook). Mechanical code change without that decision risks getting it wrong. Track as future work.
+- [ ] `SessionOrchestrator.mjs:1703` — `_fullTranscriptText` grows without bound; 3-hour session ≈ 160KB; may hit entity-extraction context-window limits. **Deferred**: needs a real ring-buffer / chunked-extract strategy, not a hard truncation that would silently drop data.
+- [ ] `AIAssistant.mjs:2198` — Fire-and-forget summarization can lose turns during rapid speech if eviction outpaces summarization. **Deferred**: requires a proper back-pressure design on `RollingSummarizer`.
+- [ ] `SessionOrchestrator.mjs` — Still 2487 LOC after v4.2.1 edits; candidate for decomposition into `RecordingOrchestrator` / `ProcessingOrchestrator` / `LiveModeOrchestrator`. **Deferred** (architectural): not a spec divergence, tracked as future work.
+- [ ] `AIAssistant.mjs` — 2027 LOC god object, known since v3.0.4 audit. **Deferred** (architectural): future work.
 
 ## V4.0.3 SESSION 2 — 2026-03-15
 
@@ -25,13 +49,13 @@ Code review (3 agents), security delta scan, predictive analysis.
 
 ### HIGH — Open (Predictive Analysis, Architectural)
 
-- [ ] `SessionOrchestrator.mjs:1703` — `_fullTranscriptText` grows without bound; 3-hour session = ~160KB text → entity extraction may hit context window limits
-- [ ] `AudioRecorder.mjs:264` — WebRTC private API `_peerConnections` will break on Foundry v14 (private property rename)
-- [ ] `CostTracker.mjs:30` — Hardcoded pricing will go stale within 6-12 months; missing Anthropic/Google provider pricing
-- [ ] `SessionOrchestrator.mjs:1727` — Cost cap only covers AI suggestions, not transcription; transcription continues past user-configured cap
-- [ ] `AIAssistant.mjs:2198` — Fire-and-forget summarization can lose turns during rapid speech if eviction outpaces summarization
-- [ ] `SessionOrchestrator.mjs` — 2218 LOC, 24 catch blocks; candidate for decomposition into RecordingOrchestrator/ProcessingOrchestrator/LiveModeOrchestrator
-- [ ] `AIAssistant.mjs` — 2027 LOC; god object, known since v3.0.4 audit
+- [ ] `SessionOrchestrator.mjs:1703` — `_fullTranscriptText` grows without bound; 3-hour session = ~160KB text → entity extraction may hit context window limits *(still open, see V4.2.1)*
+- [x] `AudioRecorder.mjs:264` — WebRTC private API `_peerConnections` will break on Foundry v14 — **fixed in v4.2.1**: public `peerConnections` preferred, private fallback, warning on missing API
+- [ ] `CostTracker.mjs:30` — Hardcoded pricing will go stale within 6-12 months; missing Anthropic/Google provider pricing *(deferred in v4.2.1 — needs product decision)*
+- [x] `SessionOrchestrator.mjs:1727` — Cost cap only covers AI suggestions, not transcription — **fixed in v4.2.1**: pre-transcription cap check added in `_liveCycle`
+- [ ] `AIAssistant.mjs:2198` — Fire-and-forget summarization can lose turns during rapid speech if eviction outpaces summarization *(still open, see V4.2.1)*
+- [ ] `SessionOrchestrator.mjs` — 2218 LOC, 24 catch blocks; candidate for decomposition into RecordingOrchestrator/ProcessingOrchestrator/LiveModeOrchestrator *(still open)*
+- [ ] `AIAssistant.mjs` — 2027 LOC; god object, known since v3.0.4 audit *(still open)*
 
 ### MEDIUM — Open (Predictive Analysis)
 

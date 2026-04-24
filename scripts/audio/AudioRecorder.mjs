@@ -260,10 +260,23 @@ class AudioRecorder {
    */
   _captureWebRTCStream() {
     try {
-      // _peerConnections is a private Foundry API — may change in future v13.x patches
+      // Foundry v14 forward-compat: prefer public `peerConnections` API when available,
+      // fall back to private `_peerConnections` for v13. If neither is present (future API
+      // rename), log a warning once so we fail loudly instead of silently returning null.
       const client = globalThis.game?.webrtc?.client;
-      const peerConnections = client?._peerConnections ?? client?.peerConnections;
-      if (!peerConnections || peerConnections.size === 0) return null;
+      const peerConnections = client?.peerConnections ?? client?._peerConnections;
+      if (!peerConnections) {
+        if (!this._webrtcApiMissingWarned && client) {
+          this._webrtcApiMissingWarned = true;
+          this._logger.warn(
+            'WebRTC peerConnections API not found on game.webrtc.client ' +
+              '(neither `peerConnections` nor `_peerConnections`). ' +
+              'Foundry may have renamed the API; mixed-stream capture will be unavailable.'
+          );
+        }
+        return null;
+      }
+      if (peerConnections.size === 0) return null;
 
       const tracks = [];
       for (const [peerId, peerData] of peerConnections) {

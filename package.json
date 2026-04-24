@@ -1,6 +1,6 @@
 {
   "name": "vox-chronicle",
-  "version": "4.1.0",
+  "version": "4.2.1",
   "description": "Foundry VTT module that automatically transcribes tabletop RPG sessions and publishes them as adventure chronicles to Kanka",
   "type": "module",
   "main": "scripts/main.mjs",
@@ -52,7 +52,6 @@
   },
   "foundry": {
     "minimum": "13",
-    "verified": "13",
-    "maximum": "13"
+    "verified": "14"
   }
 }

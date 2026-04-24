@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - autoclaude
       - develop
 
 # Prevent concurrent releases
@@ -40,7 +41,7 @@ jobs:
           MODULE_ID=$(jq -r '.id' module.json)
           BRANCH="${{ github.ref_name }}"
 
-          if [ "$BRANCH" = "master" ]; then
+          if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "autoclaude" ]; then
             # Stable release: auto-bump patch if tag exists
             VERSION="$BASE_VERSION"
             while gh release view "v${VERSION}" >/dev/null 2>&1; do
@@ -104,7 +105,7 @@ jobs:
           for file in module.json README.md LICENSE CHANGELOG.md; do
             [ -f "$file" ] && cp "$file" "$STAGING/"
           done
-          for dir in scripts lang styles templates assets packs icons images fonts; do
+          for dir in scripts lang styles templates assets packs icons images fonts docs; do
             [ -d "$dir" ] && cp -r "$dir" "$STAGING/"
           done
 
